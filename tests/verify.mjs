@@ -1344,9 +1344,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       typeof NEEDLE_RANGED_MUL === 'number' &&
       Math.abs(NEEDLE_RANGED_MUL - 0.70) < 1e-6 &&
       typeof YELLOW_ARROW_MOB_MUL === 'number' &&
-      Math.abs(YELLOW_ARROW_MOB_MUL - 1.00) < 1e-6 &&
+      Math.abs(YELLOW_ARROW_MOB_MUL - 0.80) < 1e-6 &&
       typeof YELLOW_RANGED_SPINNER_MUL === 'number' &&
-      Math.abs(YELLOW_RANGED_SPINNER_MUL - 1.00) < 1e-6 &&
+      Math.abs(YELLOW_RANGED_SPINNER_MUL - 0.80) < 1e-6 &&
       typeof ELITE_MOB_COUNT_MUL === 'number' &&
       Math.abs(ELITE_MOB_COUNT_MUL - 0.70) < 1e-6 &&
       NEEDLE_RANGED_TYPES.has('frost_wisp') &&
@@ -1696,9 +1696,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       BASE_PICKUP_MAGNET === 143 &&
       Math.abs(UNCOLLECTED_MAT_SWEEP_RATE - 0.70) < 1e-9 &&
       Math.abs(MOB_DMG_MUL - 0.90) < 1e-9 &&
-      Math.abs(YELLOW_ARROW_MOB_MUL - 1.00) < 1e-9 &&
+      Math.abs(YELLOW_ARROW_MOB_MUL - 0.80) < 1e-9 &&
       Math.abs(ELITE_MOB_COUNT_MUL - 0.70) < 1e-9 &&
-      Math.abs(YELLOW_RANGED_SPINNER_MUL - 1.00) < 1e-9
+      Math.abs(YELLOW_RANGED_SPINNER_MUL - 0.80) < 1e-9
     );
     // D1 -> D5 progressive terrain impact (+0% -> +30%) & terrain size (+0% -> +50%), D1 strictly unchanged
     const terrainDiffScaleOk = (() => {

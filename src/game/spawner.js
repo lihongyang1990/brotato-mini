@@ -1498,9 +1498,9 @@ function spawnWarning(x, y, type, variant = '') {
 const RANGED_ENEMY_TYPES = new Set(['shooter', 'sniper_bug', 'mortar', 'spinner', 'rad_scorpion', 'frost_wisp', 'spore_mother', 'summoner']);
 const NEEDLE_RANGED_TYPES = new Set(['frost_wisp', 'shooter', 'rad_scorpion', 'sniper_bug']);
 const NEEDLE_RANGED_MUL = 0.70;
-// 潜渊骨蛇 sand_worm 与旋刃陀螺偶 spinner 刷新概率还原至 1.00；双形态狂化精英怪 e.elite 刷出系数回升至 0.70
-const YELLOW_ARROW_MOB_MUL = 1.00;
-const YELLOW_RANGED_SPINNER_MUL = 1.00;
+// 潜渊骨蛇 sand_worm 与旋刃陀螺偶 spinner 刷新概率回调至 0.80；双形态狂化精英怪 e.elite 刷出系数回调至 0.70
+const YELLOW_ARROW_MOB_MUL = 0.80;
+const YELLOW_RANGED_SPINNER_MUL = 0.80;
 const ELITE_MOB_COUNT_MUL = 0.70;
 const FLOOR16_BOSS_DODGE = 0.25;
 if (typeof globalThis !== 'undefined') {

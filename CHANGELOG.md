@@ -20,7 +20,7 @@
   - 同步接入普通小怪、魂露晶树与首领共鸣阵眼血包掉落，下调分裂子嗣 `mini_slime`（`0.35x`）与群聚纸灵 `swarmer`（`0.65x`）单只血包权重，并增设地面未拾取血包软衰减（`>=5` 减半、`>=10` 封顶），彻底解决后期满地血包问题。
 - **第 16 层终幕首领【日蚀圣女】新增 `D2~D5` 阶梯最高 `25%` 镜影闪避（D1 不加） & 怪池刷出率回调（`src/data/arsenal.js`、`src/game/spawner.js`、`src/game/combat.js`、`src/data/monsters.js`）**：
   - 新增 `getFloor16BossDodge(diff)`：第 16 层首领（`wave === 16` / `solar_seraph`）在 **`D0/D1` 不加闪避（`0%`）**，在 **`D2`~`D5` 阶梯递增至最高 `25%` 闪避率**（`6.25%` / `12.5%` / `18.75%` / `25%`），触发时弹出金色 `◈ 闪避` 与残影火花（灼烧/毒蚀 DoT 与破阵反噬真伤不触发闪避）；
-  - 将【潜渊骨蛇 `sand_worm`】（`YELLOW_ARROW_MOB_MUL = 1.00`）与【旋刃陀螺偶 `spinner`】（`YELLOW_RANGED_SPINNER_MUL = 1.00`）刷新概率还原至 `100%` 原始权重，并将双形态【狂化精英怪 `e.elite`】刷出系数回调至 **`0.70`**（`ELITE_MOB_COUNT_MUL = 0.70`）。
+  - 将【潜渊骨蛇 `sand_worm`】（`YELLOW_ARROW_MOB_MUL = 0.80`）与【旋刃陀螺偶 `spinner`】（`YELLOW_RANGED_SPINNER_MUL = 0.80`）刷新系数还原至 **`0.80`**，并将双形态【狂化精英怪 `e.elite`】刷出系数回调至 **`0.70`**（`ELITE_MOB_COUNT_MUL = 0.70`）。
 - **狂化精英怪双形态重做与专属微光标识（`src/game/spawner.js`、`src/game/update.js`、`src/game/combat.js`、`src/data/boss_portraits.js`、`src/render/sprites.js`）**：
   - 将原先单一的精英怪拆分为 `50% : 50%` 等概率刷出的两种独立狂化形态（`applyEliteAffix`）：
     1. **【血怒狂化形态 `frenzy` · 隐隐发红】**：在基础精英属性上额外获得 **攻击速度 `+20%`**（全远程射击/近战战技冷却与贴身肉搏间隔统一提速 `1.20x`）、**移动速度 `+20%`**、**最大生命值 `+20%`**，阵亡时**不触发**亡语飞箭；精灵本体叠加离屏预烘焙绯红微光滤色，脚底伴随呼吸红晕、双翼赤色疾风纹与绯红血条 **「狂」** 字标；
