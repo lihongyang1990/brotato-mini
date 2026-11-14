@@ -797,6 +797,26 @@ function primeBomber(e) {
   addText(e.x, e.y - e.r - 10, '自爆预警!', '#ffbe0b', 13, 0.62, false);
 }
 
+function countActiveHealDrops() {
+  if (typeof drops === 'undefined' || !Array.isArray(drops)) return 0;
+  let c = 0;
+  for (let i = 0; i < drops.length; i++) {
+    if (drops[i] && drops[i].kind === 'heal') c++;
+  }
+  return c;
+}
+
+function getGroundHealCrowdFactor() {
+  const onMap = countActiveHealDrops();
+  if (onMap >= 10) return 0;
+  if (onMap >= 5) return 0.50;
+  return 1.00;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.countActiveHealDrops = countActiveHealDrops;
+  globalThis.getGroundHealCrowdFactor = getGroundHealCrowdFactor;
+}
+
 function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts = {}) {
   if (!e || e.hp <= 0 || e.primed || !Number.isFinite(rawDmg)) return;
   if (!player || player.hp <= 0 || state !== 'wave') return;
@@ -815,6 +835,19 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
       }
     }
     return;
+  }
+
+  // 第 16 层终幕首领（日蚀圣女）常驻 25% 镜影闪避（持续灼烧/毒蚀 DoT 与阵眼崩碎反噬真伤不触发闪避）
+  if ((e.dodge || 0) > 0 && !(opts && (opts.isDot || opts.undodgeable))) {
+    if (Math.random() < e.dodge) {
+      if (!e._dodgeTxtCd || e._dodgeTxtCd <= 0) {
+        e._dodgeTxtCd = 0.26;
+        addText(e.x + (Math.random() - 0.5) * 20, e.y - e.r - 14, '◈ 闪避', '#fde68a', 14, 0.44, false);
+        if (_frameSparks < 14) { _frameSparks++; addSparks(e.x, e.y, knockA !== null ? knockA : Math.random() * 6.28, '#fde68a', 3); }
+        if (_frameHitBeeps < 2) { _frameHitBeeps++; beep(780, 0.024, 'sine', 0.022); }
+      }
+      return;
+    }
   }
 
   // 首领共鸣阵眼棱柱护佑减伤（场上存在存活阵眼时减免 28% 非破盾伤害，引导玩家优先转火击破阵眼）
@@ -1314,8 +1347,14 @@ function awardEnemyRewards(e) {
       waveCratesDropped++;
       drops.push({ x: e.x, y: e.y, kind: 'crate', bob: 0 });
       addText(e.x, e.y - e.r - 16, '◆ 战利品箱!', '#ffd166', 16, 1.65, true);
-    } else if (Math.random() < Math.min(0.22, 0.032 + player.healDropBonus + luck * 0.0006)) {
-      drops.push({ x: e.x, y: e.y, kind: 'heal', bob: 0 });
+    } else {
+      const baseHealProb = Math.min(0.22, 0.032 + player.healDropBonus + luck * 0.0006);
+      const lateDiffMul = typeof getEffectiveHealDropMul === 'function' ? getEffectiveHealDropMul(wave, diff) : 1.0;
+      const unitHealWeight = e.type === 'mini_slime' ? 0.35 : (e.type === 'swarmer' ? 0.65 : 1.0);
+      const crowdFactor = getGroundHealCrowdFactor();
+      if (crowdFactor > 0 && Math.random() < baseHealProb * lateDiffMul * unitHealWeight * crowdFactor) {
+        drops.push({ x: e.x, y: e.y, kind: 'heal', bob: 0 });
+      }
     }
   }
 

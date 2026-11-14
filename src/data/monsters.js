@@ -30,7 +30,7 @@ const BOSS_DEFS = {
   solar_seraph: {
     id: 'solar_seraph', icon: '🌑', sprite: 'assets/spire/hero_eclipse.png', portrait: 'assets/spire/port_eclipse.jpg',
     name: '第999号 · 日蚀圣女', epithet: '终层镜中真我 · 蚀日天灾神骸', color: '#ff9f1c', spd: 88,
-    desc: '黑水圣所镜中的神明真我：展开【黑日引力奇点】牵引全场并投射双生金色【晨曦庇护印】（踏入庇护印可免疫黑日新星并令圣女破防！）、施放阴阳双曜；二阶段解锁【黑日神罚天体崩落】，D5 二阶段濒死必触发一次 10 秒【临死挣扎】！'
+    desc: '黑水圣所镜中的神明真我（常驻 25% 镜影残像闪避）：展开【黑日引力奇点】牵引全场并投射双生金色【晨曦庇护印】（踏入庇护印可免疫黑日新星并令圣女破防！）、施放阴阳双曜；二阶段解锁【黑日神罚天体崩落】，D5 二阶段濒死必触发一次 10 秒【临死挣扎】！'
   }
 };
 
@@ -142,7 +142,7 @@ const MONSTER_CODEX = [
   { id: 'b_void',       cat: 'boss',   sprite: 'assets/spire/hero_jialan.png',          icon: '🕰️', name: '紫电弦月人偶 · 伽蓝',    badge: '第三幕守誓主宰', wave: '第 12 层固定镇守', stats: '❤️巨额主宰级 · 🎬专属剧场演出',   desc: BOSS_DEFS.void_weaver.desc },
   { id: 'b_mech',       cat: 'boss',   sprite: 'assets/spire/boss_mech_colossus.png',   icon: '⚙️', name: '倒悬机神 · 伽蓝重装态',  badge: '钟楼重装主宰',   wave: '无尽深渊双王镇守', stats: '❤️巨额主宰级 · 🔥双肩熔炮齐射',   desc: BOSS_DEFS.mech_colossus.desc },
   { id: 'b_plague',     cat: 'boss',   sprite: 'assets/spire/hero_qingyu.png',          icon: '🍃', name: '残羽魔女 · 青羽试炼影',  badge: '风语守誓主宰',   wave: '无尽深渊试炼幻影', stats: '❤️巨额主宰级 · 🎬专属剧场演出',   desc: BOSS_DEFS.plague_empress.desc },
-  { id: 'b_solar',      cat: 'boss',   sprite: 'assets/spire/hero_eclipse.png',         icon: '🌑', name: '第999号 · 日蚀圣女',     badge: '终幕镜中真我',   wave: '第 16 层最终决战', stats: '❤️巨额主宰级 · 🎬必入神话二阶段', desc: BOSS_DEFS.solar_seraph.desc },
+  { id: 'b_solar',      cat: 'boss',   sprite: 'assets/spire/hero_eclipse.png',         icon: '🌑', name: '第999号 · 日蚀圣女',     badge: '终幕镜中真我',   wave: '第 16 层最终决战', stats: '❤️巨额主宰级 · 💨25%镜影闪避 · 🎬必入二阶段', desc: BOSS_DEFS.solar_seraph.desc },
 
   // 3 大记忆祭坛召唤 Boss（无尽深渊奇遇）
   { id: 'sb_crimson',   cat: 'special', sprite: 'assets/spire/sb_crimson_lord.png',     icon: '🦊', name: '烬羽 · 第998世残响',     badge: '🏮 记忆祭坛首领', wave: '无尽深渊 · 激活雨夜断刃祭坛', stats: '🎁×1 遗物匣 + 💎30 + 满血恢复',     desc: `${SPECIAL_RELICS[0].bossDesc}<br><b>${SPECIAL_RELICS[0].rewardDesc}</b>` },

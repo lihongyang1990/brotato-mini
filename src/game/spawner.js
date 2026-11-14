@@ -914,7 +914,9 @@ function hurtTree(tr, rawDmg) {
       addBurst(tr.x, tr.y - 6, pCol, 14, 175);
       if (rings.length < 40) rings.push({ x: tr.x, y: tr.y, r: 78, color: pCol, t: 0.30, maxT: 0.30, kind: 'hex' });
       dropCrystals(tr.x, tr.y, 3 + Math.floor(wave * 0.4));
-      if (Math.random() < 0.45) drops.push({ x: tr.x, y: tr.y, kind: 'heal', bob: 0 });
+      const pylonHealMul = (typeof getEffectiveHealDropMul === 'function' ? getEffectiveHealDropMul(wave, diff) : 1.0)
+        * (typeof getGroundHealCrowdFactor === 'function' ? getGroundHealCrowdFactor() : 1.0);
+      if (pylonHealMul > 0 && Math.random() < 0.45 * pylonHealMul) drops.push({ x: tr.x, y: tr.y, kind: 'heal', bob: 0 });
       const boss = tr.owner;
       if (boss && boss.hp > 0) {
         if (lightnings.length < 36) {
@@ -930,7 +932,7 @@ function hurtTree(tr, rawDmg) {
         boss.exposeT = Math.max(boss.exposeT || 0, 1.85);
         addText(boss.x, boss.y - boss.r - 24, `💥 ${tr.pylonLabel || '阵眼'}崩碎 · 反噬破防!`, '#fde68a', 15, 1.4, true);
         if (typeof hurtEnemy === 'function' && !(boss.d5LastStandT > 0)) {
-          hurtEnemy(boss, Math.max(8, Math.round(boss.maxHp * 0.042)), true, null, true, { noProc: true, srcId: 'relic_proc' });
+          hurtEnemy(boss, Math.max(8, Math.round(boss.maxHp * 0.042)), true, null, true, { noProc: true, undodgeable: true, srcId: 'relic_proc' });
         }
       }
     }
@@ -952,8 +954,12 @@ function hurtTree(tr, rawDmg) {
       waveCratesDropped++;
       drops.push({ x: tr.x, y: tr.y, kind: 'crate', bob: 0 });
       addText(tr.x, tr.y - 34, '🎁 战利品箱!', '#ffd166', 16, 1.65, true);
-    } else if (Math.random() < Math.min(0.80, 0.52 + luck * 0.004)) {
-      drops.push({ x: tr.x, y: tr.y, kind: 'heal', bob: 0 });
+    } else {
+      const treeHealMul = (typeof getEffectiveHealDropMul === 'function' ? getEffectiveHealDropMul(wave, diff) : 1.0)
+        * (typeof getGroundHealCrowdFactor === 'function' ? getGroundHealCrowdFactor() : 1.0);
+      if (treeHealMul > 0 && Math.random() < Math.min(0.80, 0.52 + luck * 0.004) * treeHealMul) {
+        drops.push({ x: tr.x, y: tr.y, kind: 'heal', bob: 0 });
+      }
     }
   }
 }
@@ -1491,10 +1497,17 @@ function spawnWarning(x, y, type, variant = '') {
 const RANGED_ENEMY_TYPES = new Set(['shooter', 'sniper_bug', 'mortar', 'spinner', 'rad_scorpion', 'frost_wisp', 'spore_mother', 'summoner']);
 const NEEDLE_RANGED_TYPES = new Set(['frost_wisp', 'shooter', 'rad_scorpion', 'sniper_bug']);
 const NEEDLE_RANGED_MUL = 0.70;
-// 黄色箭头/金黄弹幕怪在原 -20% 基础上再减少 20%（0.80 * 0.80 = 0.64；同时黄色回旋弹幕怪 spinner 同步减少 20%）
-const YELLOW_ARROW_MOB_MUL = 0.64;
-const YELLOW_RANGED_SPINNER_MUL = 0.80;
-const ELITE_MOB_COUNT_MUL = 0.64;
+// 潜渊骨蛇 sand_worm 与旋刃陀螺偶 spinner 刷新概率还原至 1.00；双形态狂化精英怪 e.elite 刷出系数回升至 0.70
+const YELLOW_ARROW_MOB_MUL = 1.00;
+const YELLOW_RANGED_SPINNER_MUL = 1.00;
+const ELITE_MOB_COUNT_MUL = 0.70;
+const FLOOR16_BOSS_DODGE = 0.25;
+if (typeof globalThis !== 'undefined') {
+  globalThis.YELLOW_ARROW_MOB_MUL = YELLOW_ARROW_MOB_MUL;
+  globalThis.YELLOW_RANGED_SPINNER_MUL = YELLOW_RANGED_SPINNER_MUL;
+  globalThis.ELITE_MOB_COUNT_MUL = ELITE_MOB_COUNT_MUL;
+  globalThis.FLOOR16_BOSS_DODGE = FLOOR16_BOSS_DODGE;
+}
 const TANK_MELEE_TYPES = new Set(['shielder', 'brute', 'juggernaut', 'iron_guard', 'charger', 'splitter']);
 const BASIC_FODDER_MELEE_TYPES = new Set(['chaser', 'stalker', 'swarmer', 'magma_imp']);
 const EARLY_TANK_MELEE_MUL = 0.85;
@@ -2062,8 +2075,10 @@ function createEnemy(x, y, type, variant = '') {
     const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.6 : (wave <= 12 ? 11.2 : 12.6));
     // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；无尽保留随机神话觉醒。
     const phase2Chance = isStoryBoss ? 1 : mythicRate;
+    const bossDodge = (wave === 16 || bKey === 'solar_seraph') ? FLOOR16_BOSS_DODGE : 0;
     ent = {
       ...base, r: 56, hp: bhp, maxHp: bhp, spd: bDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
+      dodge: bossDodge,
       color: bDef.color, type: 'boss', variant: bKey,
       bossTitle: `${bDef.icon} ${bDef.name}${isStoryBoss ? ' · 第一阶段' : ''}`,
       storyPhaseBoss: isStoryBoss, storyStage: isStoryBoss ? 1 : 0,

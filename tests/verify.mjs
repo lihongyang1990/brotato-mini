@@ -450,14 +450,14 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
     function __defeatStoryBoss() {
       const boss = __spawnPendingBoss();
       if (!boss) throw new Error('Missing story boss on floor ' + wave);
-      hurtEnemy(boss, boss.maxHp + 99999, true);
+      hurtEnemy(boss, boss.maxHp + 99999, true, null, false, { undodgeable: true });
       if (boss.d5LastStandT > 0) throw new Error('Phase 1 must never trigger D5 Last Stand');
       __drainDirector();
       if (boss.storyStage !== 2 || boss.hp <= 0) throw new Error('Boss did not enter phase two');
-      hurtEnemy(boss, boss.maxHp + 99999, true);
+      hurtEnemy(boss, boss.maxHp + 99999, true, null, false, { undodgeable: true });
       if (diff && diff.id === 5 && boss.d5LastStandT > 0) {
         for (let k = 0; k < 105; k++) { player.hp = player.maxHp = 99999; update(0.10); }
-        hurtEnemy(boss, boss.maxHp + 99999, true);
+        hurtEnemy(boss, boss.maxHp + 99999, true, null, false, { undodgeable: true });
       }
       if (wave < MAX_WAVE) {
         if (state !== 'wave' || !spireFloorFlow.bossDefeated) {
@@ -1681,9 +1681,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       BASE_PICKUP_MAGNET === 143 &&
       Math.abs(UNCOLLECTED_MAT_SWEEP_RATE - 0.70) < 1e-9 &&
       Math.abs(MOB_DMG_MUL - 0.90) < 1e-9 &&
-      Math.abs(YELLOW_ARROW_MOB_MUL - 0.64) < 1e-9 &&
-      Math.abs(ELITE_MOB_COUNT_MUL - 0.64) < 1e-9 &&
-      Math.abs(YELLOW_RANGED_SPINNER_MUL - 0.80) < 1e-9
+      Math.abs(YELLOW_ARROW_MOB_MUL - 1.00) < 1e-9 &&
+      Math.abs(ELITE_MOB_COUNT_MUL - 0.70) < 1e-9 &&
+      Math.abs(YELLOW_RANGED_SPINNER_MUL - 1.00) < 1e-9
     );
     // D1 -> D5 progressive terrain impact (+0% -> +30%) & terrain size (+0% -> +50%), D1 strictly unchanged
     const terrainDiffScaleOk = (() => {
@@ -1896,7 +1896,70 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       return true;
     })();
 
-    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk);
+    // Late-game (W10-16+) heal pack drop curve (-30% base, then D1=1.00 -> D5=0.50 stepped reduction + ground crowd cap) + Floor 16 Boss 25% dodge + Boss HP HUD text
+    const lateHealDropAndBoss16DodgeOk = (() => {
+      if (typeof getEffectiveHealDropMul !== 'function' || typeof getGroundHealCrowdFactor !== 'function') return false;
+      for (let wv = 1; wv <= 9; wv++) {
+        for (let di = 0; di < DIFFS.length; di++) {
+          if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[di]) - 1.00) > 1e-9) return false;
+        }
+      }
+      for (const wv of [10, 12, 16, 18]) {
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[0]) - 0.70) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[1]) - 0.70) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[2]) - 0.6125) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[3]) - 0.5250) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[4]) - 0.4375) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[5]) - 0.3500) > 1e-9) return false;
+      }
+      drops.length = 0;
+      if (getGroundHealCrowdFactor() !== 1.0) return false;
+      for (let i = 0; i < 6; i++) drops.push({ x: 500 + i * 10, y: 500, kind: 'heal', bob: 0 });
+      if (getGroundHealCrowdFactor() !== 0.5) return false;
+      for (let i = 0; i < 5; i++) drops.push({ x: 600 + i * 10, y: 500, kind: 'heal', bob: 0 });
+      if (getGroundHealCrowdFactor() !== 0) return false;
+      drops.length = 0;
+
+      // Floor 16 Boss 25% dodge verification
+      state = 'wave'; endlessMode = false; diff = DIFFS[1]; selectedDiff = 1;
+      enemies.length = 0; texts.length = 0;
+      wave = 8;
+      const b8 = createEnemy(1320, 900, 'boss', 'frost_queen');
+      if ((b8.dodge || 0) !== 0) return false;
+      enemies.length = 0;
+      wave = 16;
+      const b16 = createEnemy(1320, 900, 'boss', 'solar_seraph');
+      if (Math.abs((b16.dodge || 0) - 0.25) > 1e-9) return false;
+      enemies.push(b16);
+      hudAcc = 1.0;
+      update(0.05);
+      const bossHpDom = document.getElementById('bossHpText');
+      if (!bossHpDom || !String(bossHpDom.textContent || '').includes('%')) return false;
+
+      const hp0 = b16.hp;
+      const origRand = Math.random;
+      Math.random = () => 0.12; // < 0.25 -> must dodge!
+      hurtEnemy(b16, 500, false, 0);
+      if (b16.hp !== hp0 || !texts.some(t => String(t.txt).includes('闪避'))) {
+        Math.random = origRand;
+        return false;
+      }
+      // DoT must NOT be dodged even when random < 0.25
+      hurtEnemy(b16, 200, false, null, true, { isDot: true, dotColor: '#ff9f1c', noProc: true });
+      if (!(b16.hp < hp0)) {
+        Math.random = origRand;
+        return false;
+      }
+      const hpAfterDot = b16.hp;
+      Math.random = () => 0.80; // >= 0.25 -> normal attack hits!
+      hurtEnemy(b16, 500, false, 0);
+      Math.random = origRand;
+      if (!(b16.hp < hpAfterDot)) return false;
+      enemies.length = 0;
+      return true;
+    })();
+
+    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk && lateHealDropAndBoss16DodgeOk);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,

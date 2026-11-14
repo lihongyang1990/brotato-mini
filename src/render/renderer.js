@@ -3115,27 +3115,28 @@ function draw() {
     ctx.textAlign = 'center';
     let lastFontSize = -1;
     const denseTexts = texts.length > 18;
+    const desktopTextScale = isTouch ? 1.0 : 1.18;
     for (let i = 0; i < texts.length; i++) {
       const t = texts[i];
       if (t.x < vL || t.x > vR || t.y < vT || t.y > vB) continue;
       const life = Math.max(0, t.t / Math.max(0.01, t.maxT));
-      const scale = t.important
+      const scale = (t.important
         ? (life > 0.90 ? 1 + (1 - life) * 2.2 : 1)
         : (t.isCritPop
             ? (life > 0.76 ? 1 + Math.sin(((1 - life) / 0.24) * Math.PI) * 0.42 : 1)
-            : (life > 0.8 ? 1 + (1 - life) * 1.7 : 1));
+            : (life > 0.8 ? 1 + (1 - life) * 1.7 : 1))) * desktopTextScale;
       ctx.globalAlpha = t.important ? Math.min(1, life / 0.22) : Math.min(1, life * 1.9);
-      const fSize = (Math.max(10, Math.round(t.size * scale)) + 1) & ~1;
+      const fSize = (Math.max(11, Math.round(t.size * scale)) + 1) & ~1;
       if (fSize !== lastFontSize) {
         lastFontSize = fSize;
         ctx.font = `900 ${fSize}px -apple-system, sans-serif`;
       }
       if (t.important) {
-        const padX = 9, pillH = fSize + 9;
+        const padX = 11, pillH = fSize + 10;
         if (!(t._baseW > 0)) {
           t._baseW = ctx.measureText(t.txt).width / Math.max(0.5, scale);
         }
-        const tw = Math.min(340, Math.max(44, t._baseW * scale + padX * 2));
+        const tw = Math.min(400, Math.max(48, t._baseW * scale + padX * 2));
         ctx.fillStyle = 'rgba(15, 11, 26, 0.78)';
         ctx.strokeStyle = t.color;
         ctx.lineWidth = 1.4;
@@ -3476,8 +3477,8 @@ function draw() {
 
   // 屏幕顶部战术事件持久播报横幅（停留 3~4 秒，带剩余时间条，确保玩家不错过任何奇遇/环境异象）
   if (state === 'wave' && typeof banners !== 'undefined' && banners.length > 0) {
-    const baseY = uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 98);
-    const fSize = uiMode === 'desktop' ? 14 : 12.5;
+    const baseY = uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 118);
+    const fSize = uiMode === 'desktop' ? 16.5 : 12.5;
     ctx.save();
     ctx.font = `800 ${fSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = 'center';
@@ -3495,8 +3496,8 @@ function draw() {
         b._tw = ctx.measureText(b.txt).width;
         b._fSize = fSize;
       }
-      const tw = Math.min(maxW, Math.max(190, b._tw + 34));
-      const bh = uiMode === 'desktop' ? 32 : 28;
+      const tw = Math.min(maxW, Math.max(220, b._tw + 40));
+      const bh = uiMode === 'desktop' ? 37 : 28;
       const bx = viewW * 0.5 - tw * 0.5;
       const by = baseY + i * (bh + 7) - (1 - enterP) * 8;
       ctx.globalAlpha = alpha;

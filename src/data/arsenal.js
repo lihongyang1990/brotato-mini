@@ -31,6 +31,29 @@ if (typeof globalThis !== 'undefined') {
   globalThis.getDiffTerrainSizeMul = getDiffTerrainSizeMul;
 }
 
+// 后期（第 10~16 层及无尽 10+ 层）血包爆率阶梯管控：
+// 1. 全难度（D0~D5）在 10 层及以后统一先降低 30%（* 0.70）；
+// 2. 在此基础上 D0/D1 保持不变（* 1.00），D2~D5 阶段性再额外递减至 D5 的 -50%（D2=0.875 / D3=0.75 / D4=0.625 / D5=0.50 -> 净乘数 0.70 / 0.6125 / 0.525 / 0.4375 / 0.35）。
+const LATE_WAVE_HEAL_DROP_MUL = 0.70;
+const DIFF_LATE_HEAL_DROP_MAX_REDUCTION = 0.50;
+function getDiffHealDropMul(d = (typeof diff !== 'undefined' ? diff : null)) {
+  const id = (d && Number.isFinite(d.id)) ? d.id : (typeof d === 'number' && Number.isFinite(d) ? d : 1);
+  if (id <= 1) return 1.00;
+  const step = Math.min(4, Math.max(0, id - 1)) / 4;
+  return +(1.00 - step * DIFF_LATE_HEAL_DROP_MAX_REDUCTION).toFixed(4);
+}
+function getEffectiveHealDropMul(w = (typeof wave !== 'undefined' ? wave : 1), d = (typeof diff !== 'undefined' ? diff : null)) {
+  const wv = Math.max(1, Number(w) || 1);
+  if (wv < 10) return 1.00;
+  return +(LATE_WAVE_HEAL_DROP_MUL * getDiffHealDropMul(d)).toFixed(6);
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.LATE_WAVE_HEAL_DROP_MUL = LATE_WAVE_HEAL_DROP_MUL;
+  globalThis.DIFF_LATE_HEAL_DROP_MAX_REDUCTION = DIFF_LATE_HEAL_DROP_MAX_REDUCTION;
+  globalThis.getDiffHealDropMul = getDiffHealDropMul;
+  globalThis.getEffectiveHealDropMul = getEffectiveHealDropMul;
+}
+
 // 6 位《烬塔残响：第999次救赎》设定集正统登塔角色（配备设定集左侧半身立绘 + Q版二头身实机精灵 + 专属【青焰瞬步】主动残响战技）
 const CLASSES = [
   {

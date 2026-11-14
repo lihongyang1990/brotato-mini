@@ -2739,6 +2739,7 @@ function update(dt) {
     if (e._flashCd > 0) e._flashCd -= dt;
     if (e._blkTxtCd > 0) e._blkTxtCd -= dt;
     if (e._lsTxtCd > 0) e._lsTxtCd -= dt;
+    if (e._dodgeTxtCd > 0) e._dodgeTxtCd -= dt;
     if (e._pylonTxtCd > 0) e._pylonTxtCd -= dt;
     if (e._reactCd > 0) e._reactCd -= dt;
     if ((e.d5LastStandT || 0) > 0) {
@@ -4830,9 +4831,12 @@ function update(dt) {
         const bnEl = hudEls.bossName || (hudEls.bossName = document.querySelector('.boss-name'));
         if (bnEl) bnEl.textContent = bName;
       }
-      setHudWidth('bossFill', Math.round((bossCur / Math.max(1, bossTot)) * 1000) / 10 + '%');
+      const bossPct = Math.max(0, Math.min(100, Math.round((bossCur / Math.max(1, bossTot)) * 1000) / 10));
+      setHudWidth('bossFill', bossPct + '%');
+      setHudText('bossHpText', `${Math.ceil(bossCur)} / ${Math.ceil(bossTot)} (${Math.round(bossPct)}%)`);
     } else if (!pendingBossSpawn) {
       setHudWidth('bossFill', '0%');
+      setHudText('bossHpText', '');
       if (bcsEl && !bcsEl.classList.contains('hidden')) bcsEl.classList.add('hidden');
       if (bwEl) {
         bwEl.classList.remove('mythic');
