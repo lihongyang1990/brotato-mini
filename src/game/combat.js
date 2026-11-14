@@ -681,6 +681,9 @@ function triggerBossMythicPhase2(e) {
     }
   }
   beep(155, 0.32, 'sawtooth', 0.09);
+  if (typeof SpireAudio !== 'undefined' && SpireAudio && typeof SpireAudio.enterPhase2 === 'function') {
+    SpireAudio.enterPhase2((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId);
+  }
   if (typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.triggerHitstop === 'function') {
     SpireDirector.triggerHitstop(0.055);
   }

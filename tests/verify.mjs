@@ -2001,6 +2001,27 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       Math.random = origRand;
       if (!(b16.hp < hpAfterDot)) return false;
       enemies.length = 0;
+
+      // 5) 4-Chapter Stage-1 Classical Piano BGM + Boss Phase-2 Variation BGM auto-switching & shop/wave reset
+      for (const [sid, s1Url, p2Url] of [
+        ['foundry', 'assets/audio/scene_foundry_rain.wav', 'assets/audio/scene_foundry_phase2.wav'],
+        ['glacier', 'assets/audio/scene_glacier_frost.wav', 'assets/audio/scene_glacier_phase2.wav'],
+        ['wasteland', 'assets/audio/scene_wasteland_clock.wav', 'assets/audio/scene_wasteland_phase2.wav'],
+        ['desert', 'assets/audio/scene_desert_eclipse.wav', 'assets/audio/scene_desert_phase2.wav']
+      ]) {
+        curScene = SCENES.find(sc => sc.id === sid) || SCENES[0];
+        SpireAudio.syncScene(sid);
+        if (SpireAudio.activeSceneId !== sid || SpireAudio.phase2Active !== false || AudioBank.currentBgmUrl !== s1Url) return false;
+        const p2Boss = createEnemy(1320, 900, 'boss', 'butcher');
+        p2Boss.canPhase2 = true;
+        p2Boss.mythicPhase2 = false;
+        player.waveMythicAwakened = false;
+        if (!triggerBossMythicPhase2(p2Boss)) return false;
+        if (SpireAudio.phase2Active !== true || AudioBank.currentBgmUrl !== p2Url) return false;
+        openShop(true);
+        if (SpireAudio.phase2Active !== false || AudioBank.currentBgmUrl !== s1Url) return false;
+      }
+      state = 'wave';
       return true;
     })();
 
@@ -2097,7 +2118,18 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     ]) {
       assert(typeof map[key] === "string" && map[key].startsWith("data:image/"), `Single-file bundle missing inline data URI for ${key}`);
     }
-    assert(typeof map["assets/audio/scene_foundry_rain.wav"] === "string" && map["assets/audio/scene_foundry_rain.wav"].startsWith("data:audio/"), "Single-file bundle must inline scene audio WAV assets");
+    for (const wavKey of [
+      "assets/audio/scene_foundry_rain.wav",
+      "assets/audio/scene_foundry_phase2.wav",
+      "assets/audio/scene_glacier_frost.wav",
+      "assets/audio/scene_glacier_phase2.wav",
+      "assets/audio/scene_wasteland_clock.wav",
+      "assets/audio/scene_wasteland_phase2.wav",
+      "assets/audio/scene_desert_eclipse.wav",
+      "assets/audio/scene_desert_phase2.wav"
+    ]) {
+      assert(typeof map[wavKey] === "string" && map[wavKey].startsWith("data:audio/"), `Single-file bundle must inline scene audio WAV asset: ${wavKey}`);
+    }
   } finally {
     if (tempBuilt && fs.existsSync(singlePath)) fs.unlinkSync(singlePath);
   }

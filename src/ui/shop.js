@@ -1111,6 +1111,9 @@ function openShop(fresh) {
   confirmSellIdx = -1;
   syncSetHp();
   if (fresh) {
+    if (typeof SpireAudio !== 'undefined' && SpireAudio && SpireAudio.phase2Active) {
+      SpireAudio.syncScene((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId, false);
+    }
     survivalTrialQueued = false;
     // 跨波累进刷新定价：首店 1💎 起刷，每次付费刷新固定 +2💎；之后每次进店仅恢复 50% 价格（减半回落，保底 1💎，绝不直接归 1）
     freeRerollsLeft = player.freeRerolls || 0;

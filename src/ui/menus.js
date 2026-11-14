@@ -786,7 +786,13 @@ function showStart() {
   if (clm) clm.classList.add('hidden');
   const am = document.getElementById('audioModal');
   if (am) am.classList.add('hidden');
-  if (typeof SpireAudio !== 'undefined' && SpireAudio.refreshButtons) SpireAudio.refreshButtons();
+  if (typeof SpireAudio !== 'undefined') {
+    if (SpireAudio.phase2Active && typeof SpireAudio.syncScene === 'function') {
+      SpireAudio.syncScene('foundry', false);
+    } else if (SpireAudio.refreshButtons) {
+      SpireAudio.refreshButtons();
+    }
+  }
   bossCutscene = null;
   if (typeof pendingBossCutscene !== 'undefined') pendingBossCutscene = null;
   survivalTrialQueued = false;
