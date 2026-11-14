@@ -92,6 +92,17 @@ function getIceFreezeTriggerSec(d = (typeof diff !== 'undefined' ? diff : null))
   const step = Math.min(4, Math.max(0, id - 1)) / 4;
   return +(ICE_FREEZE_BASE_SEC - step * (ICE_FREEZE_BASE_SEC - ICE_FREEZE_MIN_SEC)).toFixed(3);
 }
+
+// 【蚀界生存试炼】天外弹道与神罚陷阱最低真实伤害保底阶梯：
+// 无法闪避、无视护甲与护盾减免，单次至少造成玩家最大生命值 10%（D0/D1）~ 20%（D5）的真实伤害（D2=12.5% / D3=15.0% / D4=17.5% / D5=20.0%）
+const SURVIVAL_TRUE_DMG_BASE_PCT = 0.10;
+const SURVIVAL_TRUE_DMG_MAX_PCT = 0.20;
+function getSurvivalTrueDmgFloorPct(d = (typeof diff !== 'undefined' ? diff : null)) {
+  const id = (d && Number.isFinite(d.id)) ? d.id : (typeof d === 'number' && Number.isFinite(d) ? d : 1);
+  if (id <= 1) return SURVIVAL_TRUE_DMG_BASE_PCT;
+  const step = Math.min(4, Math.max(0, id - 1)) / 4;
+  return +(SURVIVAL_TRUE_DMG_BASE_PCT + step * (SURVIVAL_TRUE_DMG_MAX_PCT - SURVIVAL_TRUE_DMG_BASE_PCT)).toFixed(4);
+}
 if (typeof globalThis !== 'undefined') {
   globalThis.FLOOR16_BOSS_MAX_DODGE = FLOOR16_BOSS_MAX_DODGE;
   globalThis.getFloor16BossDodge = getFloor16BossDodge;
@@ -104,6 +115,9 @@ if (typeof globalThis !== 'undefined') {
   globalThis.ICE_FREEZE_BASE_SEC = ICE_FREEZE_BASE_SEC;
   globalThis.ICE_FREEZE_MIN_SEC = ICE_FREEZE_MIN_SEC;
   globalThis.getIceFreezeTriggerSec = getIceFreezeTriggerSec;
+  globalThis.SURVIVAL_TRUE_DMG_BASE_PCT = SURVIVAL_TRUE_DMG_BASE_PCT;
+  globalThis.SURVIVAL_TRUE_DMG_MAX_PCT = SURVIVAL_TRUE_DMG_MAX_PCT;
+  globalThis.getSurvivalTrueDmgFloorPct = getSurvivalTrueDmgFloorPct;
 }
 
 // 6 位《烬塔残响：第999次救赎》设定集正统登塔角色（配备设定集左侧半身立绘 + Q版二头身实机精灵 + 专属【青焰瞬步】主动残响战技）
@@ -558,37 +572,37 @@ const WEAPONS = {
     ]
   },
 
-  // --- 🪄 秘术法杖谱系 (4 把 · 独立纯粹元素/构筑吟唱体系，不依赖远程枪械加成) ---
+  // --- 🪄 秘术法杖谱系 (4 把 · 独立真法术技能吟唱体系：陨炎火球 / 极寒暴风雪 / 奥术连锁闪电 / 万蛊蚀骨毒雾) ---
   ember_staff: {
-    name: '赤烬魂灯杖', icon: '🪄', set: 'elemental', melee: false, isStaff: true, isEmberStaff: true, dmg: 23.0, cd: 0.68, range: 335, spd: 560, pierce: 1, blastR: 58, elemScale: 1.30, cost: 19,
-    desc: '【秘术法杖】纯享 130% 元素增幅（不吃枪械加成），吟唱赤烬火球命中必挂灼烧并绽放余烬炎阵！',
+    name: '赤烬魂灯杖', icon: '🪄', set: 'elemental', melee: false, isStaff: true, isEmberStaff: true, spellSkill: 'fireball', dmg: 23.0, cd: 0.78, range: 355, spd: 540, pierce: 0, blastR: 72, elemScale: 1.30, cost: 19,
+    desc: '【秘术法杖 · 陨炎火球术】纯享 130% 元素增幅（不吃枪械加成）：吟唱重型陨炎火球轰击目标，爆裂震波并在地面铺开持续灼烧的【熔火燎原炎海】！',
     evos: [
-      { id: 'staff_solar',     name: '日冕焚世圣杖·赫利俄斯', tag: '双阳齐吟 · 巨型熔阵', color: '#ff6b35', dmgMul: 1.36, pelletsAdd: 1, blastAdd: 36, forceBurn: true, desc: '每次同时吟唱 2 颗日冕炎阳，落点熔火法阵扩大 +36 并持续灼烧全场！' },
-      { id: 'staff_purgatory', name: '九幽冥灯魔杖·青焰引渡', tag: '极速贯穿 · 连环魂爆', color: '#72efdd', dmgMul: 1.34, cdMul: 0.72, pierceAdd: 2, forcePoison: true, forceBurn: true, desc: '吟唱冷却 -28%、穿透 +2，贯穿敌群同时引爆青焰毒火双相反应！' }
+      { id: 'staff_solar',     name: '日冕焚世圣杖·赫利俄斯', tag: '双阳齐轰 · 巨型火海', color: '#ff6b35', dmgMul: 1.36, pelletsAdd: 1, blastAdd: 42, forceBurn: true, desc: '每次同时吟唱 2 颗日冕大火球，落点【熔火燎原炎海】半径扩大 +42 并高频焚烧敌群！' },
+      { id: 'staff_purgatory', name: '九幽冥灯魔杖·青焰引渡', tag: '极速连发 · 毒火炼狱', color: '#72efdd', dmgMul: 1.34, cdMul: 0.72, pierceAdd: 1, forcePoison: true, forceBurn: true, desc: '火球吟唱冷却 -28%，炎海同时引爆青焰灼烧与风蚀剧毒双相炼狱反应！' }
     ]
   },
   frost_scepter: {
-    name: '永冻星辉杖', icon: '❄️', set: 'elemental', melee: false, isStaff: true, isFrostStaff: true, dmg: 21.0, cd: 0.72, range: 365, spd: 630, pierce: 1, frostShards: 3, elemScale: 1.30, cost: 20,
-    desc: '【秘术法杖】纯享 130% 元素增幅，发射寒星秘弹必附冰缓，命中首目标向扇形迸裂 3 枚碎冰星屑！',
+    name: '永冻星辉杖', icon: '❄️', set: 'elemental', melee: false, isStaff: true, isFrostStaff: true, spellSkill: 'blizzard', dmg: 21.0, cd: 1.05, range: 375, spd: 630, pierce: 1, frostShards: 3, elemScale: 1.30, cost: 20,
+    desc: '【秘术法杖 · 极寒暴风雪】纯享 130% 元素增幅：直接在敌群上空召唤【极寒暴风雪法阵】，降下密集冰雹暴雪持续切割减速并周期冻结区域魔物！',
     evos: [
-      { id: 'staff_glacier',   name: '碎冕极光帝杖·凛冬神座', tag: '五棱迸裂 · 极寒冰封', color: '#38bdf8', dmgMul: 1.38, frostShardsAdd: 2, forceFreeze: 0.38, blastAdd: 54, desc: '碎冰星屑增至 5 枚，命中高达 38% 概率冻结敌群并引爆极光霜环！' },
-      { id: 'staff_comet',     name: '白夜彗星秘杖·星轨贯穿', tag: '双星连珠 · 万里冰河', color: '#a5f3fc', dmgMul: 1.30, cdMul: 0.78, pelletsAdd: 1, pierceAdd: 2, desc: '冷却 -22%，每次齐射 2 枚贯穿寒星秘弹，铺开扇形碎冰弹幕！' }
+      { id: 'staff_glacier',   name: '碎冕极光帝杖·凛冬神座', tag: '万里冰封 · 极光暴雪', color: '#38bdf8', dmgMul: 1.38, frostShardsAdd: 2, forceFreeze: 0.42, blastAdd: 48, desc: '【极寒暴风雪】半径扩大 +48、持续延长，每轮冰雹高达 42% 概率直接冻结敌群！' },
+      { id: 'staff_comet',     name: '白夜彗星秘杖·星轨贯穿', tag: '双阵齐降 · 凛冬风暴', color: '#a5f3fc', dmgMul: 1.30, cdMul: 0.78, pelletsAdd: 1, pierceAdd: 2, desc: '暴风雪吟唱冷却 -22%，每次同时召唤 2 座交叠极寒暴风雪席卷战场！' }
     ]
   },
   storm_rod: {
-    name: '紫电星轨杖', icon: '⚡', set: 'elemental', melee: false, isStaff: true, isStormStaff: true, dmg: 18.5, cd: 0.56, range: 345, spd: 710, pierce: 0, chainOnHit: 3, elemScale: 1.25, minTier: 2, cost: 22,
-    desc: '【秘术法杖】高频吟唱紫电秘球（享 125% 元素增幅），命中敌躯瞬发 3 跳超导奥术连锁雷弧！',
+    name: '紫电星轨杖', icon: '⚡', set: 'elemental', melee: false, isStaff: true, isStormStaff: true, spellSkill: 'chain_lightning', dmg: 19.5, cd: 0.62, range: 365, spd: 710, pierce: 0, chainOnHit: 5, elemScale: 1.25, minTier: 2, cost: 22,
+    desc: '【秘术法杖 · 奥术连锁闪电】享 125% 元素增幅：无需飞行弹道，直接引落天罚落雷轰顶并在敌群间瞬发 5~8 跳高压分叉【连锁闪电】！',
     evos: [
-      { id: 'staff_thunder',   name: '万雷天引神杖·建御雷',   tag: '七重雷链 · 天罚麻痹', color: '#c084fc', dmgMul: 1.40, cdMul: 0.78, chainsAdd: 4, forceFreeze: 0.24, desc: '吟唱加速 -22%、伤害 +40%，奥术雷链跃迁增至 7 跳并 24% 概率麻痹定身！' },
-      { id: 'staff_void',      name: '虚空磁暴星杖·次元坍缩', tag: '双球磁暴 · 雷火聚变', color: '#f472b6', dmgMul: 1.32, pelletsAdd: 1, blastAdd: 62, forceBurn: true, desc: '双球齐发并在命中点引爆虚空雷火磁场，同时触发超导与融毁！' }
+      { id: 'staff_thunder',   name: '万雷天引神杖·建御雷',   tag: '十重雷链 · 天罚麻痹', color: '#c084fc', dmgMul: 1.40, cdMul: 0.78, chainsAdd: 4, forceFreeze: 0.26, desc: '吟唱加速 -22%、伤害 +40%，连锁闪电跃迁增至 9+ 跳并 26% 概率麻痹定身！' },
+      { id: 'staff_void',      name: '虚空磁暴星杖·次元坍缩', tag: '双道天雷 · 雷火磁暴', color: '#f472b6', dmgMul: 1.32, pelletsAdd: 1, blastAdd: 62, forceBurn: true, desc: '每次同时劈落 2 道主天雷连锁电弧，并在首目标处引爆虚空雷火磁场！' }
     ]
   },
   chrono_staff: {
-    name: '发条共鸣法杖', icon: '🔮', set: 'tech', melee: false, isStaff: true, isChronoStaff: true, deploysTotem: true, dmg: 20.5, cd: 0.68, range: 340, spd: 620, pierce: 1, techScale: 0.90, elemScale: 0.90, minTier: 2, cost: 23,
-    desc: '【建筑×秘术法杖】同时享 90% 工程与 90% 元素增幅！额外部署 1 座【秘法共鸣图腾塔】增幅周围机关攻速！',
+    name: '发条共鸣法杖', icon: '🔮', set: 'tech', melee: false, isStaff: true, isChronoStaff: true, deploysTotem: true, spellSkill: 'poison_mist', dmg: 20.5, cd: 0.96, range: 355, spd: 620, pierce: 1, techScale: 0.90, elemScale: 0.90, minTier: 2, cost: 23,
+    desc: '【建筑×秘术法杖 · 万蛊蚀骨毒雾】双享 90% 工程与 90% 元素增幅！部署【秘法共鸣图腾塔】并在敌群脚下弥漫【万蛊蚀骨毒雾】，高频叠毒腐蚀易伤！',
     evos: [
-      { id: 'staff_orrery',    name: '浑天星晷圣杖·万塔齐鸣', tag: '双座图腾 · 协同飞弹', color: '#fbbf24', dmgMul: 1.36, cdMul: 0.80, extraTotem: 1, commandSalvo: true, desc: '额外部署 +1 座星晷图腾塔（共 2 座），法杖每第 2 次吟唱号令全场建筑齐射星导飞弹！' },
-      { id: 'staff_obelisk',   name: '以太方尖碑主杖·神匠核', tag: '超距雷柱 · 双修极境', color: '#38bdf8', dmgMul: 1.52, pierceAdd: 2, blastAdd: 68, chainOnHit: 4, desc: '伤害 +52%、穿透 +2，秘弹命中劈落 4 跳以太雷柱并引发大范围奥术震波！' }
+      { id: 'staff_orrery',    name: '浑天星晷圣杖·万塔齐鸣', tag: '双座图腾 · 剧毒星云', color: '#fbbf24', dmgMul: 1.36, cdMul: 0.80, extraTotem: 1, commandSalvo: true, desc: '额外部署 +1 座星晷图腾塔（共 2 座），释放蚀骨毒雾时每第 2 次号令全场建筑齐射星导飞弹！' },
+      { id: 'staff_obelisk',   name: '以太方尖碑主杖·神匠核', tag: '巨型瘴云 · 雷毒聚变', color: '#38bdf8', dmgMul: 1.52, pierceAdd: 2, blastAdd: 54, chainOnHit: 4, desc: '伤害 +52%、蚀骨毒雾范围扩大 +54，毒雾成型瞬间额外劈落 4 跳以太雷毒电弧！' }
     ]
   }
 };

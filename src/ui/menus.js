@@ -534,7 +534,7 @@ let survivalTrialState = {
 };
 let cam = { x: WORLD.w / 2, y: WORLD.h / 2 };
 let player, enemies = [], bullets = [], eBullets = [], hazards = [], drops = [], spawns = [], turrets = [], mines = [], rings = [], trees = [];
-let relics = [], sporeZones = [], terrains = [], portals = [], portalPairCd = 0, banners = [], bossCutscene = null;
+let relics = [], sporeZones = [], spellZones = [], terrains = [], portals = [], portalPairCd = 0, banners = [], bossCutscene = null;
 let relicSpawnT = -1, activeSceneEvent = null, sceneEventT = 0, sandGustT = 0, sceneMobEnabled = false;
 let lastBossVariant = '', lastMiniBossVariant = '';
 let texts = [], particles = [], sparks = [], lightnings = [], slashes = [], beams = [], stains = [], shells = [];
@@ -747,7 +747,7 @@ function startGame(cls, opts) {
   }
   syncSetHp();
   wave = 1; endlessMode = runEndless; pendingLevels = 0; pendingCrates = 0; freeRerollsLeft = 0; rerollBase = 1; rerollStep = 2; rerollCost = 1; if (typeof rerollRawCost !== 'undefined') rerollRawCost = 1; anvilUpgradedMsg = ''; shopOffers = []; waveCheckpoint = null;
-  survivalTrialQueued = false; survivalTrialWave = false; survivalTrialHits = 0; survivalFissures = []; survivalSkyVolleys = [];
+  survivalTrialQueued = false; survivalTrialWave = false; survivalTrialHits = 0; survivalFissures = []; survivalSkyVolleys = []; spellZones = [];
   logInfo('GAME', `开局 ver=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '-'}, mode=${runEndless ? 'endless' : 'story'}, cls=${cls}, diff=${diff.badge}, sceneMode=${selectedScene}, ui=${uiMode}, world=${WORLD.w}x${WORLD.h}`);
   document.getElementById('startMenu').classList.add('hidden');
   document.getElementById('endMenu').classList.add('hidden');

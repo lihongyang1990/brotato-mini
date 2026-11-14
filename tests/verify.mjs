@@ -2080,7 +2080,92 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       return cmdCrates === 1;
     })();
 
-    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk && lateHealDropAndBoss16DodgeOk && twinBossSingleCrateOk);
+    // v2.1.13: 4 Staff Spells + Survival True DMG (D1 10% -> D5 20%) + Colossal Black Hole + 5 Summon Altars + Dual-Boss Independent HP & Phase-2
+    const v2113Ok = (() => {
+      // 1) Survival Trial Unblockable True Damage Floor (D1=10% -> D5=20%, ignores dodge/armor/shield)
+      if (Math.abs(getSurvivalTrueDmgFloorPct(1) - 0.10) > 1e-6) return false;
+      if (Math.abs(getSurvivalTrueDmgFloorPct(5) - 0.20) > 1e-6) return false;
+      survivalTrialWave = true;
+      state = 'wave';
+      selectedDiff = 1; diff = DIFFS[1];
+      player.maxHp = 200; player.hp = 200; player.dodge = 0.90; player.armor = 999; player.shield = 120; player.invuln = 0;
+      hurtPlayer(1, true, 'trap_sky_lance');
+      if (player.hp > 180.01 || player.shield !== 120) return false; // 10% of 200 = 20 HP directly off HP, ignoring dodge/armor/shield!
+      selectedDiff = 5; diff = DIFFS[5];
+      player.hp = 200;
+      hurtPlayer(1, true, 'trap_void_orb');
+      if (player.hp > 160.01) return false; // 20% of 200 = 40 HP True Damage on D5!
+      survivalTrialWave = false;
+      player.dodge = 0; player.armor = 0; player.shield = 0; player.hp = 200;
+
+      // 2) 5 Summon Boss Altars (including mech_colossus & plague_empress) & active in Story Mode
+      if (!Array.isArray(SPECIAL_RELICS) || SPECIAL_RELICS.length !== 5) return false;
+      const altarBossIds = SPECIAL_RELICS.map(r => r.bossId);
+      if (!altarBossIds.includes('mech_colossus') || !altarBossIds.includes('plague_empress')) return false;
+      const summMech = createEnemy(900, 700, 'special_boss', 'mech_colossus');
+      const summEmp = createEnemy(1100, 700, 'special_boss', 'plague_empress');
+      if (summMech.variant !== 'mech_colossus' || summEmp.variant !== 'plague_empress') return false;
+
+      // 3) Dual Boss Independent Phase-2 Awakening & Independent HUD HP Bars
+      enemies.length = 0; spawns.length = 0; spellZones.length = 0; bullets.length = 0; lightnings.length = 0;
+      const db1 = createEnemy(player.x + 180, player.y, 'boss', 'butcher');
+      const db2 = createEnemy(player.x - 180, player.y, 'boss', 'frost_queen');
+      db1.canPhase2 = true; db1.mythicPhase2 = false; db1.hp = Math.round(db1.maxHp * 0.72);
+      db2.canPhase2 = true; db2.mythicPhase2 = false; db2.hp = Math.round(db2.maxHp * 0.41);
+      if (!triggerBossMythicPhase2(db1)) return false;
+      if (!triggerBossMythicPhase2(db2)) return false; // Second boss MUST ALSO awaken Phase 2 independently!
+      if (!db1.mythicPhase2 || !db2.mythicPhase2) return false;
+      db2.hp = Math.round(db2.maxHp * 0.45);
+      update(0.016);
+      const extraHtml = document.getElementById('bossExtraBars').innerHTML;
+      if (!extraHtml.includes('boss-sub-row') || !extraHtml.includes('45%')) return false;
+
+      // 4) 4 Staff True Spellcasting Skills + Canvas VFX render check
+      enemies.length = 0; bullets.length = 0; spellZones.length = 0; lightnings.length = 0;
+      const dummyA = createEnemy(player.x + 120, player.y, 'grunt');
+      const dummyB = createEnemy(player.x + 195, player.y + 24, 'grunt');
+      dummyA.hp = 99999; dummyA.maxHp = 99999;
+      dummyB.hp = 99999; dummyB.maxHp = 99999;
+      player.weapons = [
+        { id: 'ember_staff', tier: 2, cd: 0 },
+        { id: 'frost_scepter', tier: 2, cd: 0 },
+        { id: 'storm_rod', tier: 2, cd: 0 },
+        { id: 'chrono_staff', tier: 2, cd: 0 }
+      ];
+      update(0.02);
+      const hasFireball = bullets.some(b => b.isFireball);
+      const hasBlizzard = spellZones.some(z => z.kind === 'blizzard');
+      const hasPoisonMist = spellZones.some(z => z.kind === 'poison_mist');
+      const hasChainLightning = lightnings.length >= 2;
+      if (!hasFireball || !hasBlizzard || !hasPoisonMist || !hasChainLightning) return false;
+      // Advance fireball into dummyA to spawn 'fire_patch' molten sea
+      const fb = bullets.find(b => b.isFireball);
+      fb.x = dummyA.x; fb.y = dummyA.y;
+      update(0.02);
+      if (!spellZones.some(z => z.kind === 'fire_patch')) return false;
+
+      // 5) Colossal Black Hole Gravity Skill (r >= 430, pullRange >= 750, strong real suction on player)
+      enemies.length = 0;
+      const bhBoss = createEnemy(900, 600, 'special_boss', 'abyss_devourer');
+      bhBoss.arenaMechCd = 0.01;
+      enemies.push(bhBoss);
+      player.x = 1260; player.y = 600;
+      tickBossArenaMechanic(bhBoss, 0.02);
+      if (!bhBoss.eclipseSingularity || bhBoss.eclipseSingularity.r < 430) return false;
+      // Ensure sanctuaries don't overlap player test position
+      bhBoss.eclipseSingularity.s1x = 500; bhBoss.eclipseSingularity.s1y = 500;
+      bhBoss.eclipseSingularity.s2x = 500; bhBoss.eclipseSingularity.s2y = 700;
+      const distBefore = Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y);
+      tickBossArenaMechanic(bhBoss, 0.20);
+      const distAfter = Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y);
+      if (!(distAfter < distBefore - 18)) return false;
+      bhBoss.sigWindupT = 0.5; bhBoss.sigMaxW = 0.9; bhBoss.sigKind = 'frost_prism';
+      draw(); // Verify all new VFX (spellZones, blackHoleCore, sigWindupT, dual-boss overhead) render with 0 radialGradient & 0 shadowBlur!
+      enemies.length = 0; spellZones.length = 0; bullets.length = 0;
+      return true;
+    })();
+
+    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk && lateHealDropAndBoss16DodgeOk && twinBossSingleCrateOk && v2113Ok);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,

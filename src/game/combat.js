@@ -268,33 +268,98 @@ function addSparks(x, y, baseA, color = '#ffe8a3', n = 3) {
   }
 }
 
-// 连锁闪电弹跳逻辑（电击枪、紫电法杖 & 特斯拉线圈共用）
-function castChainLightning(sx, sy, firstTarget, jumps, rawDmg, critChance, srcId = '') {
+// 连锁闪电弹跳逻辑（电击枪、紫电星轨法杖【奥术连锁闪电】 & 特斯拉线圈共用，支持天雷轰顶与多叉奥术电弧）
+function castChainLightning(sx, sy, firstTarget, jumps, rawDmg, critChance, srcId = '', opts = null) {
   const visited = new Set();
   const useSrc = srcId || _activeWeaponId || 'taser';
+  const isArcane = !!(opts && opts.arcane);
+  const jumpRange = (opts && opts.jumpRange) || (isArcane ? 265 : 195);
+  const mainCol = (opts && opts.mainColor) || (isArcane ? '#c084fc' : '#72efdd');
+  const arcCol = (opts && opts.arcColor) || (isArcane ? '#38bdf8' : '#4cc9f0');
+  const boltDur = (opts && opts.dur) || (isArcane ? 0.25 : 0.14);
+  const freezeCh = (opts && opts.freezeChance) || 0;
+  const forceBurn = !!(opts && opts.forceBurn);
   let curX = sx, curY = sy, target = firstTarget;
+
+  // 【奥术连锁闪电 · 天罚主雷】从首目标头顶苍穹劈落锯齿雷柱与星芒雷环
+  if (opts && opts.skyStrike && target) {
+    const skyX = target.x + (Math.random() - 0.5) * 32;
+    const skyY = Math.max(14, target.y - 255);
+    const skyPts = [{ x: skyX, y: skyY }];
+    for (let s = 1; s < 6; s++) {
+      const f = s / 6;
+      const jx = (s % 2 === 0 ? 1 : -1) * (12 + Math.random() * 14);
+      skyPts.push({ x: skyX + (target.x - skyX) * f + jx, y: skyY + (target.y - skyY) * f });
+    }
+    skyPts.push({ x: target.x, y: target.y });
+    if (lightnings.length < 48) {
+      lightnings.push({ pts: skyPts, color: mainCol, coreColor: '#ffffff', width: 4.2, t: boltDur + 0.06, maxT: boltDur + 0.06 });
+    }
+    if (rings.length < 36) {
+      rings.push({ x: target.x, y: target.y, r: 56, color: mainCol, t: 0.24, maxT: 0.24, kind: 'star' });
+    }
+    curX = target.x; curY = target.y;
+  }
+
   for (let step = 0; step < jumps && target; step++) {
     visited.add(target);
-    const pts = [{ x: curX, y: curY }];
-    const segs = 4;
-    for (let s = 1; s < segs; s++) {
-      const f = s / segs;
-      const jx = (Math.random() - 0.5) * 18, jy = (Math.random() - 0.5) * 18;
-      pts.push({ x: curX + (target.x - curX) * f + jx, y: curY + (target.y - curY) * f + jy });
+    if (!(opts && opts.skyStrike && step === 0)) {
+      const pts = [{ x: curX, y: curY }];
+      const dxL = target.x - curX, dyL = target.y - curY;
+      const distL = Math.hypot(dxL, dyL) || 1;
+      const nx = -dyL / distL, ny = dxL / distL;
+      const segs = isArcane ? 6 : 4;
+      const amp = isArcane ? Math.min(26, Math.max(10, distL * 0.13)) : 12;
+      for (let s = 1; s < segs; s++) {
+        const f = s / segs;
+        const off = ((s % 2 === 0 ? 1 : -1) * (0.55 + Math.random() * 0.65)) * amp;
+        pts.push({ x: curX + dxL * f + nx * off, y: curY + dyL * f + ny * off });
+      }
+      pts.push({ x: target.x, y: target.y });
+      if (lightnings.length < 48) {
+        lightnings.push({
+          pts,
+          color: step === 0 ? mainCol : arcCol,
+          coreColor: isArcane ? '#fae8ff' : '#ffffff',
+          width: isArcane ? (step === 0 ? 3.8 : 3.0) : 2.8,
+          t: boltDur, maxT: boltDur
+        });
+        // 奥术连锁闪电附带侧翼电浆分叉细弧，告别单薄折线
+        if (isArcane && pts.length >= 4 && lightnings.length < 48 && step < 4) {
+          const mid = pts[Math.floor(pts.length * 0.5)];
+          const forkA = Math.atan2(dyL, dxL) + (step % 2 === 0 ? 0.68 : -0.68);
+          const forkLen = 24 + Math.random() * 22;
+          lightnings.push({
+            pts: [
+              { x: mid.x, y: mid.y },
+              { x: mid.x + Math.cos(forkA) * forkLen * 0.55 + nx * 6, y: mid.y + Math.sin(forkA) * forkLen * 0.55 + ny * 6 },
+              { x: mid.x + Math.cos(forkA) * forkLen, y: mid.y + Math.sin(forkA) * forkLen }
+            ],
+            color: arcCol, width: 1.6, t: boltDur * 0.8, maxT: boltDur * 0.8
+          });
+        }
+      }
     }
-    pts.push({ x: target.x, y: target.y });
-    if (lightnings.length < 35) {
-      lightnings.push({ pts, color: step === 0 ? '#72efdd' : '#4cc9f0', t: 0.14, maxT: 0.14 });
+    if (isArcane && step < 3) {
+      addSparks(target.x, target.y, Math.random() * 6.28, step === 0 ? mainCol : arcCol, 2);
     }
 
     const isCrit = Math.random() < critChance;
-    const falloff = Math.pow(0.88, step);
+    const falloff = Math.pow(isArcane ? 0.90 : 0.88, step);
     const cmul = getEffectiveCritMult(1.85);
-    hurtEnemy(target, rawDmg * falloff * (isCrit ? cmul : 1), isCrit, Math.atan2(target.y - curY, target.x - curX), true, { forceChill: true, srcId: useSrc });
+    const hitAng = Math.atan2(target.y - curY, target.x - curX);
+    hurtEnemy(target, rawDmg * falloff * (isCrit ? cmul : 1), isCrit, hitAng, true, {
+      forceChill: true,
+      forceBurn: forceBurn,
+      srcId: useSrc
+    });
     if (state !== 'wave') break;
+    if (freezeCh > 0 && target.hp > 0 && Math.random() < freezeCh) {
+      applyFreeze(target, 1.05);
+    }
     curX = target.x; curY = target.y;
 
-    let next = null, bestDSq = 195 * 195;
+    let next = null, bestDSq = jumpRange * jumpRange;
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
       if (e && e.hp > 0 && !e.primed && !visited.has(e)) {
@@ -467,10 +532,10 @@ function triggerSoulDash() {
     survivalTrialState.lanternBoostT = 1.25;
   }
 
-  // 瞬步起手即斩碎近身敌方弹幕（无全局无敌帧下依靠主动身法与斩弹操作规避伤害）
+  // 瞬步起手即斩碎近身常规敌方弹幕（蚀界生存试炼的天外神罚弹道 isCelestial 无法斩碎）
   for (let bi = eBullets.length - 1; bi >= 0; bi--) {
     const eb = eBullets[bi];
-    if (eb && Math.hypot(eb.x - ox, eb.y - oy) <= 54 + (eb.r || 5)) {
+    if (eb && !eb.isCelestial && Math.hypot(eb.x - ox, eb.y - oy) <= 54 + (eb.r || 5)) {
       addSparks(eb.x, eb.y, Math.random() * 6.28, '#72efdd', 2);
       eBullets.splice(bi, 1);
     }
@@ -504,7 +569,7 @@ function triggerSoulDash() {
     }
     for (let bi = eBullets.length - 1; bi >= 0; bi--) {
       const eb = eBullets[bi];
-      if (eb && Math.hypot(eb.x - sx, eb.y - sy) <= 112 + (eb.r || 5)) {
+      if (eb && !eb.isCelestial && Math.hypot(eb.x - sx, eb.y - sy) <= 112 + (eb.r || 5)) {
         addSparks(eb.x, eb.y, slashA, '#fb7185', 2);
         eBullets.splice(bi, 1);
       }
@@ -644,14 +709,10 @@ function applyPoison(e, addStacks = 1) {
   if (!e.poisonTick || e.poisonTick <= 0) e.poisonTick = 0.46;
 }
 
-// 主线固定第二阶段剧情死战，无尽/统领/祭坛首领按难度阶梯 D1=30% -> D5=50% 触发神话觉醒与额外战利品（血量再提升 50% + 攻击力提升 30% + 纯死战不加冗余时间）
+// 主线固定第二阶段剧情死战，无尽/双王/统领/祭坛首领按难度阶梯 D1=30% -> D5=50% 各自独立触发神话觉醒与额外战利品（双王同临可分别独立进入二阶段！）
 function triggerBossMythicPhase2(e) {
   if (!e || e.mythicPhase2) return false;
   const storyPhase = !!e.storyPhaseBoss && !endlessMode;
-  if (!storyPhase && player && player.waveMythicAwakened) {
-    e.canPhase2 = false;
-    return false;
-  }
   if (player) {
     player.waveMythicAwakened = true;
     if (!storyPhase) player.mythicAwakenedCount = (player.mythicAwakenedCount || 0) + 1;
@@ -1331,6 +1392,19 @@ function awardEnemyRewards(e) {
       drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
       addText(e.x, e.y - e.r - 22, '◆ 黄金秘宝崩裂：巨量晶石 + 首领秘宝！', '#ffd166', 18, 2.5);
       announce('◆ 击败黄金巨神！爆出海量晶石与首领秘宝箱', '#ffd166', 3.8);
+    } else if (e.variant === 'mech_colossus') {
+      player.techBonus = (player.techBonus || 0) + 0.14;
+      player.atkSpd += 0.08;
+      drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
+      addText(e.x, e.y - e.r - 22, '◆ 机神赐福：工程+14% 攻速+8% + 首领秘宝！', '#f77f00', 18, 2.5);
+      announce('◆ 击败祭坛倒悬机神！工程伤害永久 +14%、攻速 +8% 并掉首领秘宝箱', '#fbbf24', 3.8);
+    } else if (e.variant === 'plague_empress') {
+      player.maxHp += 10;
+      player.hp = Math.min(player.maxHp, player.hp + 10);
+      if (!player.noRegen) player.regen += 1.5;
+      drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
+      addText(e.x, e.y - e.r - 22, '◆ 苍岚赐福：生命+10 再生+1.5 + 首领秘宝！', '#52b788', 18, 2.5);
+      announce('◆ 击败祭坛残羽魔女！最大生命 +10、再生 +1.5/s 并掉首领秘宝箱', '#80ed99', 3.8);
     } else {
       player.dmgMul += 0.12;
       drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
@@ -1497,7 +1571,16 @@ function _applyD5BossLastStandSiphon(dmgSrc) {
   addText(targetBoss.x, targetBoss.y - targetBoss.r - 24, `◆ 噬血回春 +10% (+${healAmt})`, '#ff4d6d', 16, 1.15, true);
 }
 
-// 全面加固受击结算（参照《土豆兄弟》收敛隐性叠乘减伤并设 66% 非闪避减伤上限 + 记录精准承伤来源）
+function isSurvivalCelestialTrueDmgSource(dmgSrc) {
+  if (typeof survivalTrialWave === 'undefined' || !survivalTrialWave) return false;
+  if (!dmgSrc) return false;
+  const k = typeof dmgSrc === 'string' ? dmgSrc : (dmgSrc.srcKey || '');
+  return k === 'trap_sky_lance' || k === 'trap_void_orb' || k === 'trap_corridor'
+    || k === 'trap_fissure' || k === 'trap_ring' || k === 'trap_cross_star' || k === 'trap_meteor';
+}
+if (typeof globalThis !== 'undefined') globalThis.isSurvivalCelestialTrueDmgSource = isSurvivalCelestialTrueDmgSource;
+
+// 全面加固受击结算（参照《土豆兄弟》收敛隐性叠乘减伤并设 66% 非闪避减伤上限 + 生存试炼天外弹道保底 10%~20% 无视闪避/护甲真实伤害）
 function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
   if (!player || state !== 'wave' || player.hp <= 0 || inHurtPlayer) return;
   if (typeof isSpireCombatSuspended === 'function' && isSpireCombatSuspended()) return;
@@ -1506,7 +1589,8 @@ function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
   inHurtPlayer = true;
   try {
     player.invuln = 0;
-    if (Math.random() < Math.min(player.dodgeCap || 0.80, player.dodge || 0)) {
+    const isCelestialTrueDmg = isSurvivalCelestialTrueDmgSource(dmgSrc);
+    if (!isCelestialTrueDmg && Math.random() < Math.min(player.dodgeCap || 0.80, player.dodge || 0)) {
       addText(player.x, player.y - 28, '闪避!', '#4cc9f0', 17, 0.65, false);
       if ((player.dashCd || 0) > 0) player.dashCd = Math.max(0, player.dashCd - 0.6);
       if (player.thorns > 0) triggerThornsNova();
@@ -1516,44 +1600,54 @@ function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
       return;
     }
 
-    // 收敛多重隐性减伤叠乘，并与线性 EHP 护甲合并设定 <= 66% 非闪避总减伤封顶，防止重甲流无脑站撸不掉血
-    let closeGuard = 0;
-    const meleeCnt = getSetBonuses().meleeCnt || 0;
-    const meleeParry = Math.min(0.08, meleeCnt * 0.018);
-    const meleeProjGuard = (isProjectile && (meleeCnt >= 2 || player.cls === 'brawler'))
-      ? Math.min(0.08, Math.max(2, meleeCnt) * 0.02)
-      : 0;
-    if (meleeCnt >= 2 || player.cls === 'brawler' || player.cls === 'bull' || (player.meleeBossGuard || 0) > 0) {
-      let bossNear = false;
-      for (let bi = 0; bi < enemies.length; bi++) {
-        const be = enemies[bi];
-        if (be && be.hp > 0 && (be.type === 'boss' || be.type === 'special_boss' || be.type === 'mini_boss')) {
-          const bdx = be.x - player.x, bdy = be.y - player.y;
-          if (bdx * bdx + bdy * bdy < 210 * 210) { bossNear = true; break; }
+    let dmg = 1;
+    if (isCelestialTrueDmg) {
+      // 【蚀界生存试炼】天外弹道与神罚陷阱：无法闪避、不计算护甲/招架/护盾，保底造成最大生命 10%（D1）-> 20%（D5）的真实伤害！
+      const floorPct = typeof getSurvivalTrueDmgFloorPct === 'function' ? getSurvivalTrueDmgFloorPct(diff) : 0.10;
+      const floorDmg = Math.max(1, Math.ceil(player.maxHp * floorPct));
+      const capDmg = Math.max(floorDmg, Math.round(player.maxHp * 0.31));
+      dmg = Math.min(capDmg, Math.max(floorDmg, Math.round(rawDmg)));
+      survivalTrialHits = (survivalTrialHits || 0) + 1;
+    } else {
+      // 收敛多重隐性减伤叠乘，并与线性 EHP 护甲合并设定 <= 66% 非闪避总减伤封顶，防止重甲流无脑站撸不掉血
+      let closeGuard = 0;
+      const meleeCnt = getSetBonuses().meleeCnt || 0;
+      const meleeParry = Math.min(0.08, meleeCnt * 0.018);
+      const meleeProjGuard = (isProjectile && (meleeCnt >= 2 || player.cls === 'brawler'))
+        ? Math.min(0.08, Math.max(2, meleeCnt) * 0.02)
+        : 0;
+      if (meleeCnt >= 2 || player.cls === 'brawler' || player.cls === 'bull' || (player.meleeBossGuard || 0) > 0) {
+        let bossNear = false;
+        for (let bi = 0; bi < enemies.length; bi++) {
+          const be = enemies[bi];
+          if (be && be.hp > 0 && (be.type === 'boss' || be.type === 'special_boss' || be.type === 'mini_boss')) {
+            const bdx = be.x - player.x, bdy = be.y - player.y;
+            if (bdx * bdx + bdy * bdy < 210 * 210) { bossNear = true; break; }
+          }
+        }
+        if (bossNear) {
+          closeGuard = Math.min(0.14, (meleeCnt >= 2 || player.cls === 'brawler' || player.cls === 'bull' ? 0.06 : 0) + (player.meleeBossGuard || 0));
         }
       }
-      if (bossNear) {
-        closeGuard = Math.min(0.14, (meleeCnt >= 2 || player.cls === 'brawler' || player.cls === 'bull' ? 0.06 : 0) + (player.meleeBossGuard || 0));
+      const armorMit = getArmorMitigation();
+      const rawRemainFactor = (1 - armorMit) * (1 - meleeParry) * (1 - meleeProjGuard) * (1 - closeGuard);
+      const clampedRemainFactor = armorMit >= 0 ? Math.max(0.34, rawRemainFactor) : rawRemainFactor;
+      dmg = Math.max(1, Math.round(rawDmg * clampedRemainFactor));
+      // 第 4/8/12/16 层首领战防满血瞬秒保护（含剧情模式与无尽前16层）：单次受击扣血不超过最大生命值的 42%
+      if (wave <= MAX_WAVE && wave % 4 === 0) {
+        dmg = Math.min(dmg, Math.max(2, Math.round(player.maxHp * 0.42)));
       }
-    }
-    const armorMit = getArmorMitigation();
-    const rawRemainFactor = (1 - armorMit) * (1 - meleeParry) * (1 - meleeProjGuard) * (1 - closeGuard);
-    const clampedRemainFactor = armorMit >= 0 ? Math.max(0.34, rawRemainFactor) : rawRemainFactor;
-    let dmg = Math.max(1, Math.round(rawDmg * clampedRemainFactor));
-    // 第 4/8/12/16 层首领战防满血瞬秒保护（含剧情模式与无尽前16层）：单次受击扣血不超过最大生命值的 42%
-    if (wave <= MAX_WAVE && wave % 4 === 0) {
-      dmg = Math.min(dmg, Math.max(2, Math.round(player.maxHp * 0.42)));
-    }
-    // 蚀界生存试炼防暴毙容错保护（陷阱伤害提升 +20% 后同步校准单次受击上限至最大生命的 31%）
-    if (typeof survivalTrialWave !== 'undefined' && survivalTrialWave) {
-      dmg = Math.min(dmg, Math.max(2, Math.round(player.maxHp * 0.31)));
-      survivalTrialHits = (survivalTrialHits || 0) + 1;
+      // 蚀界生存试炼常规小怪受击上限保护
+      if (typeof survivalTrialWave !== 'undefined' && survivalTrialWave) {
+        dmg = Math.min(dmg, Math.max(2, Math.round(player.maxHp * 0.31)));
+        survivalTrialHits = (survivalTrialHits || 0) + 1;
+      }
     }
     player.shieldRegenT = player.fastShield ? 4.5 : 7.0;
 
     let totalAbsorbed = 0;
-    // 能量护盾优先吸收伤害
-    if (player.shield > 0) {
+    // 能量护盾优先吸收常规伤害（生存试炼天外真实伤害直接穿透护盾扣减生命值）
+    if (!isCelestialTrueDmg && player.shield > 0) {
       const absorbed = Math.min(player.shield, dmg);
       player.shield -= absorbed;
       dmg -= absorbed;
@@ -1579,10 +1673,10 @@ function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
     recordDamageTaken(dmgSrc || _activeEnemyActor, Math.max(1, Math.round(totalAbsorbed + hpLost)), isFatal);
     _applyD5BossLastStandSiphon(dmgSrc);
     player.hurtFlashT = 0.22;
-    shake = 4.5;
+    shake = isCelestialTrueDmg ? 5.6 : 4.5;
     beep(115, 0.15, 'sawtooth', 0.08);
-    addBurst(player.x, player.y, '#ff4d6d', 10, 175);
-    addText(player.x, player.y - 30, '-' + dmg, '#ff4d6d', 20, 0.72, false);
+    addBurst(player.x, player.y, isCelestialTrueDmg ? '#f72585' : '#ff4d6d', 10, 175);
+    addText(player.x, player.y - 30, isCelestialTrueDmg ? (`-${dmg} 真伤`) : ('-' + dmg), isCelestialTrueDmg ? '#ff2a85' : '#ff4d6d', 20, 0.76, isCelestialTrueDmg);
     if (isFatal) {
       player.hp = 0;
       endGame(false);

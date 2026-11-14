@@ -72,7 +72,7 @@ const MINI_BOSS_DEFS = {
   }
 };
 
-// 战场随机刷新的 3 座记忆共鸣祭坛
+// 战场随机刷新的 5 座记忆共鸣召唤祭坛（主线与无尽均会降临，包含无尽专属双主宰）
 const SPECIAL_RELICS = [
   {
     id: 'blood_altar', icon: '🏮', name: '雨夜断刃祭坛', color: '#ff2a55',
@@ -90,7 +90,19 @@ const SPECIAL_RELICS = [
     id: 'void_cube', icon: '🌑', name: '黑曜蚀日残镜', color: '#c77dff',
     bossId: 'abyss_devourer', bossIcon: '👁️', bossName: '零号容器 · 饥饿黑影', epithet: '提灯深处的天灾倒影', bossColor: '#7209b7',
     rewardDesc: '击败必爆：💎26 封魂晶石 + 🎁×1 守誓遗物匣 + 本局永久 +12% 全体伤害赐福！（若觉醒二阶段必爆传说圣遗物）',
-    bossDesc: '从黑曜石残镜溢出的天灾本源黑影：横扫高压蚀日毒雾龙息、释放双螺旋蚀日弹幕、暗物质外环坍缩并分裂黑水蚀影眷属；觉醒二阶段额外解锁黑日神罚终式。'
+    bossDesc: '从黑曜石残镜溢出的天灾本源黑影：展开震撼全场的【黑洞引力奇点】强吸猎物、横扫蚀日毒雾龙息并分裂黑水蚀影眷属！'
+  },
+  {
+    id: 'clockwork_altar', icon: '⚙️', name: '星晷重装祭坛', color: '#f77f00',
+    bossId: 'mech_colossus', bossIcon: '⚙️', bossName: '倒悬机神 · 伽蓝重装态', epithet: '无尽钟楼重装主宰 · 祭坛降临', bossColor: '#f77f00',
+    rewardDesc: '击败必爆：💎34 封魂晶石 + 🎁×1 守誓遗物匣 + 本局永久 +14% 工程伤害与 +8% 攻速赐福！',
+    bossDesc: '跨层召唤无尽首领【倒悬机神·伽蓝重装态】：部署超导磁暴引力桩牵引猎物、横扫熔核加特林与钢铁排炮，亦可独立觉醒二阶段！'
+  },
+  {
+    id: 'verdant_altar', icon: '🍃', name: '苍岚残羽祭坛', color: '#52b788',
+    bossId: 'plague_empress', bossIcon: '🍃', bossName: '残羽魔女 · 青羽试炼影', epithet: '无尽风语守望魔女 · 祭坛降临', bossColor: '#52b788',
+    rewardDesc: '击败必爆：💎32 封魂晶石 + 🎁×1 守誓遗物匣 + 本局永久 +10 最大生命与 +1.5/秒 再生赐福！',
+    bossDesc: '跨层召唤无尽首领【残羽魔女·青羽试炼影】：培植万蛊共生母苞护体、横扫高压剧毒吐息与双螺旋风翎弹，亦可独立觉醒二阶段！'
   }
 ];
 

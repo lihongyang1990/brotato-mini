@@ -1477,10 +1477,37 @@ function drawEnemySprite(e) {
     ctx.font = '800 11px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#a3e635';
-    ctx.fillText(`毒×${e.poisonStacks}`, e.x, e.y - r - 20);
+    ctx.fillText(`毒×${e.poisonStacks}`, e.x, e.y - r - 24);
   }
 
-  if (!isBoss && !isMini && (e.type === 'brute' || e.type === 'juggernaut' || e.type === 'iron_guard' || e.elite || e.hp < e.maxHp)) {
+  // 双首领 / 多主宰同屏时，每位首领头顶同步绘制精致独立血条（一阶绯红 / 二阶神话鎏金），一眼锁定集火目标
+  if (isBoss || isMini) {
+    let multiBossAlive = 0;
+    if (typeof enemies !== 'undefined') {
+      for (let bi = 0; bi < enemies.length; bi++) {
+        const be = enemies[bi];
+        if (be.hp > 0 && (be.type === 'boss' || be.type === 'mini_boss' || be.type === 'special_boss')) {
+          multiBossAlive++;
+          if (multiBossAlive >= 2) break;
+        }
+      }
+    }
+    if (multiBossAlive >= 2) {
+      const bw = Math.max(66, r * 1.95);
+      const barY = e.y - r - 15;
+      const hpRatio = Math.max(0, Math.min(1, e.hp / Math.max(1, e.maxHp)));
+      ctx.save();
+      ctx.fillStyle = 'rgba(8, 10, 18, 0.84)';
+      ctx.strokeStyle = e.mythicPhase2 ? '#ffd166' : 'rgba(251, 113, 133, 0.78)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.roundRect(e.x - bw * 0.5, barY, bw, 7, 3.5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = e.mythicPhase2 ? '#ffd166' : (e.type === 'special_boss' ? '#c77dff' : '#ff3b6b');
+      if (hpRatio > 0.005) {
+        ctx.fillRect(e.x - bw * 0.5 + 1.5, barY + 1.5, Math.max(2, (bw - 3) * hpRatio), 4);
+      }
+      ctx.restore();
+    }
+  } else if (e.type === 'brute' || e.type === 'juggernaut' || e.type === 'iron_guard' || e.elite || e.hp < e.maxHp) {
     const bw = Math.max(30, r * 1.85);
     const barY = e.y - Math.max(r + 16, r * 1.48);
     ctx.fillStyle = 'rgba(6,9,16,0.82)';

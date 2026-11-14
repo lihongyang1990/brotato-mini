@@ -305,8 +305,20 @@ canvas {
 }
 .boss-bar-wrap .hp-fill { opacity: 0.76; }
 .boss-bar-wrap.mythic { border-color: rgba(223, 192, 132, 0.58); }
-.boss-bar-wrap.mythic .boss-name { color: var(--gold-bright); }
-.boss-bar-wrap.mythic .hp-fill { background: linear-gradient(90deg, #9e223d, #c98a3c, #ebd098); opacity: 0.78; }
+.boss-bar-wrap.mythic #bossPrimaryRow.mythic .boss-name,
+.boss-row.mythic .boss-name { color: var(--gold-bright); }
+.boss-bar-wrap.mythic #bossPrimaryRow.mythic .hp-fill,
+.boss-row.mythic .hp-fill { background: linear-gradient(90deg, #9e223d, #c98a3c, #ebd098); opacity: 0.80; }
+.boss-extra-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.boss-extra-bars:not(:empty) {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+}
 .boss-name {
   font-family: var(--font-serif);
   font-size: 15.5px;
