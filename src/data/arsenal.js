@@ -4,12 +4,32 @@ if (typeof globalThis !== 'undefined') globalThis.MAX_WAVE = MAX_WAVE;
 const DIFFS = [
   { id: 0, code: 'D0', roman: 'I',   short: '寻光', tone: 'jade',    badge: 'D0 · 寻光', name: '寻光序章', hpMul: 0.88, dmgMul: 0.86, spdMul: 0.92, spawnMul: 0.90, eliteRate: 0.03, shopTax: 0.92, matBonus: 15, midElite: false, dualElite: false, doubleBoss: false, desc: '怪血量 -12%  ·  怪量 -10%  ·  行商 92 折  ·  开局赠 15 晶石，从容体验十六层四幕救赎剧情' },
   { id: 1, code: 'D1', roman: 'II',  short: '守誓', tone: 'gold',    badge: 'D1 · 守誓', name: '守誓试炼', hpMul: 1.14, dmgMul: 1.15, spdMul: 0.98, spawnMul: 1.05, eliteRate: 0.05, shopTax: 1.00, matBonus: 4,  midElite: true,  dualElite: false, doubleBoss: false, desc: '标准基准试炼：怪血量 +14%  ·  伤害 +15%  ·  第 4 / 8 / 12 / 16 层迎战四幕固定守誓主宰' },
-  { id: 2, code: 'D2', roman: 'III', short: '残响', tone: 'amber',   badge: 'D2 · 残响', name: '残响危局', hpMul: 1.30, dmgMul: 1.28, spdMul: 1.00, spawnMul: 1.11, eliteRate: 0.072, shopTax: 1.03, matBonus: 0, midElite: true,  dualElite: false, doubleBoss: false, desc: '怪血量 +30%  ·  伤害 +28%  ·  怪量 +11%  ·  第 6 / 10 / 14 层增派守誓先锋统领镇守' },
-  { id: 3, code: 'D3', roman: 'IV',  short: '蚀月', tone: 'rose',    badge: 'D3 · 蚀月', name: '蚀月狂厄', hpMul: 1.46, dmgMul: 1.40, spdMul: 1.03, spawnMul: 1.16, eliteRate: 0.093, shopTax: 1.06, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: false, desc: '怪血量 +46%  ·  伤害 +40%  ·  高阶机关苏醒，第 10 / 14 层双先锋统领同台夹击' },
-  { id: 4, code: 'D4', roman: 'V',   short: '逆钟', tone: 'violet',  badge: 'D4 · 逆钟', name: '逆钟深渊', hpMul: 1.63, dmgMul: 1.51, spdMul: 1.06, spawnMul: 1.22, eliteRate: 0.115, shopTax: 1.09, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '怪血量 +63%  ·  伤害 +51%  ·  主线首领固定双阶段，无尽层域解锁双王同临' },
-  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 1.83, dmgMul: 1.62, spdMul: 1.08, spawnMul: 1.27, eliteRate: 0.144, shopTax: 1.11, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +83%  ·  伤害 +62%  ·  行商物价 +11%  ·  十六层终局弑神试炼' }
+  { id: 2, code: 'D2', roman: 'III', short: '残响', tone: 'amber',   badge: 'D2 · 残响', name: '残响危局', hpMul: 1.30, dmgMul: 1.28, spdMul: 1.00, spawnMul: 1.11, eliteRate: 0.072, shopTax: 1.03, matBonus: 0, midElite: true,  dualElite: false, doubleBoss: false, desc: '怪血量 +30%  ·  伤害 +28%  ·  地形规模 +12.5% / 侵蚀 +7.5%  ·  第 6 / 10 / 14 层增派先锋统领' },
+  { id: 3, code: 'D3', roman: 'IV',  short: '蚀月', tone: 'rose',    badge: 'D3 · 蚀月', name: '蚀月狂厄', hpMul: 1.46, dmgMul: 1.40, spdMul: 1.03, spawnMul: 1.16, eliteRate: 0.093, shopTax: 1.06, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: false, desc: '怪血量 +46%  ·  伤害 +40%  ·  地形规模 +25% / 侵蚀 +15%  ·  第 10 / 14 层双先锋统领夹击' },
+  { id: 4, code: 'D4', roman: 'V',   short: '逆钟', tone: 'violet',  badge: 'D4 · 逆钟', name: '逆钟深渊', hpMul: 1.63, dmgMul: 1.51, spdMul: 1.06, spawnMul: 1.22, eliteRate: 0.115, shopTax: 1.09, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '怪血量 +63%  ·  伤害 +51%  ·  地形规模 +37.5% / 侵蚀 +22.5%  ·  无尽层域解锁双王同临' },
+  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 1.83, dmgMul: 1.62, spdMul: 1.08, spawnMul: 1.27, eliteRate: 0.144, shopTax: 1.11, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +83%  ·  伤害 +62%  ·  地形规模 +50% / 侵蚀 +30%  ·  二阶首领独享10秒临死挣扎' }
 ];
 let selectedDiff = 1;
+
+// D1->D5 阶梯地形强化（D0/D1 严格保持 1.00 不变；D2~D5 逐步将地形对玩家影响提高至 +30%、地形尺寸扩大至 +50%）
+const DIFF_TERRAIN_IMPACT_MAX_BONUS = 0.30;
+const DIFF_TERRAIN_SIZE_MAX_BONUS = 0.50;
+function getDiffTerrainImpactMul(d = (typeof diff !== 'undefined' ? diff : null)) {
+  const id = (d && Number.isFinite(d.id)) ? d.id : 1;
+  if (id <= 1) return 1.00;
+  const step = Math.min(4, Math.max(0, id - 1)) / 4;
+  return +(1.00 + step * DIFF_TERRAIN_IMPACT_MAX_BONUS).toFixed(4);
+}
+function getDiffTerrainSizeMul(d = (typeof diff !== 'undefined' ? diff : null)) {
+  const id = (d && Number.isFinite(d.id)) ? d.id : 1;
+  if (id <= 1) return 1.00;
+  const step = Math.min(4, Math.max(0, id - 1)) / 4;
+  return +(1.00 + step * DIFF_TERRAIN_SIZE_MAX_BONUS).toFixed(4);
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.getDiffTerrainImpactMul = getDiffTerrainImpactMul;
+  globalThis.getDiffTerrainSizeMul = getDiffTerrainSizeMul;
+}
 
 // 6 位《烬塔残响：第999次救赎》设定集正统登塔角色（配备设定集左侧半身立绘 + Q版二头身实机精灵 + 专属【青焰瞬步】主动残响战技）
 const CLASSES = [

@@ -451,9 +451,14 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
       const boss = __spawnPendingBoss();
       if (!boss) throw new Error('Missing story boss on floor ' + wave);
       hurtEnemy(boss, boss.maxHp + 99999, true);
+      if (boss.d5LastStandT > 0) throw new Error('Phase 1 must never trigger D5 Last Stand');
       __drainDirector();
       if (boss.storyStage !== 2 || boss.hp <= 0) throw new Error('Boss did not enter phase two');
       hurtEnemy(boss, boss.maxHp + 99999, true);
+      if (diff && diff.id === 5 && boss.d5LastStandT > 0) {
+        for (let k = 0; k < 105; k++) { player.hp = player.maxHp = 99999; update(0.10); }
+        hurtEnemy(boss, boss.maxHp + 99999, true);
+      }
       if (wave < MAX_WAVE) {
         if (state !== 'wave' || !spireFloorFlow.bossDefeated) {
           throw new Error('Early story boss defeat on floor ' + wave + ' must keep wave active to farm mobs');
@@ -1187,7 +1192,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       if (terrains.length === 0 || kinds.size !== 1) singleTerrainOk = false;
     }
 
-    // 5) Reworked Frost Terrain: 5s progressive slow -> 1s freeze -> thaw; 1s exit grace; monster -20% slow & never frozen
+    // 5) Reworked Frost Terrain (D1 baseline unchanged): 5s progressive slow -> 1s freeze -> thaw; 1s exit grace; monster -20% slow & never frozen
+    selectedDiff = 1;
+    diff = DIFFS[1];
     endlessMode = true;
     selectedScene = 'glacier';
     wave = 2;
@@ -1337,9 +1344,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       typeof NEEDLE_RANGED_MUL === 'number' &&
       Math.abs(NEEDLE_RANGED_MUL - 0.70) < 1e-6 &&
       typeof YELLOW_ARROW_MOB_MUL === 'number' &&
-      Math.abs(YELLOW_ARROW_MOB_MUL - 0.80) < 1e-6 &&
+      Math.abs(YELLOW_ARROW_MOB_MUL - 0.64) < 1e-6 &&
       typeof ELITE_MOB_COUNT_MUL === 'number' &&
-      Math.abs(ELITE_MOB_COUNT_MUL - 0.80) < 1e-6 &&
+      Math.abs(ELITE_MOB_COUNT_MUL - 0.64) < 1e-6 &&
       NEEDLE_RANGED_TYPES.has('frost_wisp') &&
       NEEDLE_RANGED_TYPES.has('shooter') &&
       NEEDLE_RANGED_TYPES.has('rad_scorpion') &&
@@ -1678,7 +1685,167 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       Math.abs(ELITE_MOB_COUNT_MUL - 0.64) < 1e-9 &&
       Math.abs(YELLOW_RANGED_SPINNER_MUL - 0.80) < 1e-9
     );
-    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk);
+    // D1 -> D5 progressive terrain impact (+0% -> +30%) & terrain size (+0% -> +50%), D1 strictly unchanged
+    const terrainDiffScaleOk = (() => {
+      if (!(
+        Math.abs(getDiffTerrainImpactMul(DIFFS[0]) - 1.00) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[1]) - 1.00) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[2]) - 1.075) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[3]) - 1.15) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[4]) - 1.225) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[5]) - 1.30) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[0]) - 1.00) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[1]) - 1.00) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[2]) - 1.125) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[3]) - 1.25) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[4]) - 1.375) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[5]) - 1.50) < 1e-9
+      )) return false;
+      diff = DIFFS[1]; selectedDiff = 1;
+      const d1EffSize = getEffectiveTerrainSizeMul();
+      diff = DIFFS[5]; selectedDiff = 5;
+      const d5EffSize = getEffectiveTerrainSizeMul();
+      if (!(Math.abs(d1EffSize - 1.05) < 1e-9 && Math.abs(d5EffSize - 1.05 * 1.50) < 1e-9)) return false;
+      for (const sid of ['foundry', 'glacier', 'wasteland', 'desert']) {
+        curScene = SCENES.find(sc => sc.id === sid) || SCENES[0];
+        spawnArenaTerrains();
+        if (terrains.length < 4) return false;
+      }
+      return true;
+    })();
+
+    // D5-exclusive Boss Phase-2 10s Last Stand (invulnerable 10s, +20% attack speed, +10% maxHp heal per player hit, triggers ONLY once & ONLY on D5 Phase 2)
+    const d5BossLastStandOk = (() => {
+      endlessMode = true;
+      state = 'wave';
+      wave = 8;
+      // 1) D4 Phase-2 Boss must NOT trigger Last Stand
+      diff = DIFFS[4]; selectedDiff = 4;
+      enemies.length = 0; trees.length = 0; eBullets.length = 0;
+      const d4Boss = createEnemy(player.x + 180, player.y, 'boss', 'butcher');
+      d4Boss.mythicPhase2 = true; d4Boss.canPhase2 = false; d4Boss.hp = 500; d4Boss.maxHp = 5000;
+      hurtEnemy(d4Boss, 99999, true);
+      if (d4Boss.hp > 0 || d4Boss._d5LastStandUsed) return false;
+
+      // 2) D5 Phase-1 Boss transitions into Phase-2 without consuming Last Stand; lethal hit in Phase-2 triggers 10s Last Stand once
+      diff = DIFFS[5]; selectedDiff = 5;
+      enemies.length = 0;
+      const d5Boss = createEnemy(player.x + 180, player.y, 'boss', 'butcher');
+      d5Boss.canPhase2 = true; d5Boss.mythicPhase2 = false; d5Boss.hp = 500; d5Boss.maxHp = 5000;
+      player.waveMythicAwakened = false;
+      hurtEnemy(d5Boss, 99999, true);
+      bossCutscene = null;
+      if (!d5Boss.mythicPhase2 || d5Boss._d5LastStandUsed || d5Boss.d5LastStandT > 0) return false;
+
+      d5Boss.maxHp = 6000; d5Boss.hp = 400;
+      hurtEnemy(d5Boss, 99999, true);
+      if (!(d5Boss._d5LastStandUsed === true && d5Boss.hp === 1 && Math.abs(d5Boss.d5LastStandT - 10.0) < 1e-6 && D5_LAST_STAND_ASPD_MUL === 1.20)) return false;
+
+      // Invulnerability during 10s window
+      hurtEnemy(d5Boss, 99999, true);
+      if (d5Boss.hp !== 1) return false;
+
+      // +10% maxHp heal per non-dodged hit on player (dodged hit & terrain hit must NOT heal Boss)
+      player.maxHp = 1000; player.hp = 1000; player.armor = 0; player.shield = 0;
+      player.dodge = 1.0; player.dodgeCap = 1.0;
+      hurtPlayer(50, false, d5Boss);
+      if (d5Boss.hp !== 1) return false;
+      player.dodge = 0; player.dodgeCap = 0.80;
+      hurtPlayer(50, false, 'terrain_lava');
+      if (d5Boss.hp !== 1) return false;
+      hurtPlayer(50, false, d5Boss);
+      if (d5Boss.hp !== 1 + Math.round(6000 * 0.10)) return false;
+      // Shield-absorbed hit by Boss also counts as damaging player -> heals +10%
+      player.shield = 200;
+      hurtPlayer(40, true, 'butcher');
+      if (d5Boss.hp !== 1 + Math.round(6000 * 0.10) * 2) return false;
+      draw();
+
+      // Tick past 10s -> invulnerability expires, exposeT opens, and next lethal hit kills Boss permanently (never triggers twice!)
+      d5Boss.x = player.x + 420; d5Boss.y = player.y;
+      for (let k = 0; k < 105; k++) {
+        player.hp = 1000;
+        spawnAcc = 99;
+        update(0.10);
+      }
+      if (d5Boss.d5LastStandT > 0 || !(d5Boss.exposeT > 0)) return false;
+      hurtEnemy(d5Boss, 999999, true);
+      return d5Boss.hp <= 0;
+    })();
+
+    // Innovative interactive counterplay mechanics across all 6 Bosses + clean 2D render pass
+    const bossMechanicsOverhaulOk = (() => {
+      endlessMode = true;
+      state = 'wave';
+      diff = DIFFS[2]; selectedDiff = 2;
+      enemies.length = 0; trees.length = 0; eBullets.length = 0; hazards.length = 0;
+      player.weapons = []; player.maxHp = 5000; player.hp = 5000;
+
+      // 1) Butcher Blood-Oath Duel Arena: completing inside grants player haste + Boss exposeT
+      const b1 = createEnemy(1320, 900, 'boss', 'butcher');
+      b1.hp = 50000; b1.maxHp = 50000; b1.arenaMechCd = 0.01;
+      player.x = 1380; player.y = 900;
+      update(0.05);
+      if (!b1.duelRing) return false;
+      draw();
+      b1.duelRing.t = 0.03;
+      update(0.05);
+      if (b1.duelRing !== null || !(b1.exposeT >= 2.0)) return false;
+
+      // 2) Frost Queen Twin Cryo-Obelisks: grant -28% barrier DR while alive; shattering deals backlash & exposeT
+      enemies.length = 0; trees.length = 0;
+      const b2 = createEnemy(1320, 900, 'boss', 'frost_queen');
+      b2.hp = 50000; b2.maxHp = 50000; b2.arenaMechCd = 0.01;
+      update(0.05);
+      const pylons = trees.filter(t => t && t.isBossPylon && t.pylonKind === 'cryo_obelisk');
+      if (pylons.length !== 2) return false;
+      draw();
+      const hpBeforePylonShatter = b2.hp;
+      hurtTree(pylons[0], 99999);
+      if (!(b2.hp < hpBeforePylonShatter && b2.exposeT >= 1.5)) return false;
+
+      // 3) Void Weaver Chrono-Anchor + Dispel Pad counterplay
+      enemies.length = 0; trees.length = 0;
+      const b3 = createEnemy(1320, 900, 'boss', 'void_weaver');
+      b3.hp = 50000; b3.maxHp = 50000; b3.arenaMechCd = 0.01;
+      player.x = 1120; player.y = 900;
+      update(0.05);
+      if (!b3.chronoAnchor) return false;
+      draw();
+      player.x = b3.chronoAnchor.dispelX; player.y = b3.chronoAnchor.dispelY;
+      update(0.05);
+      if (b3.chronoAnchor !== null || !(b3.exposeT >= 1.8)) return false;
+
+      // 4) Solar Seraph Eclipse Singularity + Golden Dawn Sanctuary Seals
+      enemies.length = 0;
+      const b4 = createEnemy(1320, 900, 'boss', 'solar_seraph');
+      b4.hp = 50000; b4.maxHp = 50000; b4.arenaMechCd = 0.01;
+      player.x = 1100; player.y = 900;
+      update(0.05);
+      if (!b4.eclipseSingularity || b4.eclipseSingularity.seals.length !== 2) return false;
+      draw();
+      player.x = b4.eclipseSingularity.seals[0].x;
+      player.y = b4.eclipseSingularity.seals[0].y;
+      b4.eclipseSingularity.t = 0.02;
+      const hpBeforeNova = player.hp;
+      update(0.05);
+      if (b4.eclipseSingularity !== null || player.hp !== hpBeforeNova || !(b4.exposeT >= 2.0)) return false;
+
+      // 5) Endless Bosses (mech_colossus & plague_empress) destructible pylons + render pass
+      enemies.length = 0; trees.length = 0;
+      const b5 = createEnemy(1220, 900, 'boss', 'mech_colossus');
+      b5.hp = 50000; b5.maxHp = 50000; b5.arenaMechCd = 0.01;
+      const b6 = createEnemy(1460, 900, 'boss', 'plague_empress');
+      b6.hp = 50000; b6.maxHp = 50000; b6.arenaMechCd = 0.01;
+      update(0.05);
+      draw();
+      const hasMagnetAndCocoon = trees.some(t => t && t.pylonKind === 'magnet_core') && trees.some(t => t && t.pylonKind === 'venom_cocoon');
+      enemies.length = 0; trees.length = 0; eBullets.length = 0; hazards.length = 0;
+      diff = DIFFS[2]; selectedDiff = 2;
+      return hasMagnetAndCocoon;
+    })();
+
+    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,

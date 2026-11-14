@@ -2155,6 +2155,130 @@ function draw() {
         }
         ctx.restore();
       }
+      // 首领创新交互机关地面法阵渲染（血誓决斗剑域 / 逆时锚点与断时解锚阵 / 黑日引力奇点与晨曦庇护圣印，零滤镜零渐变）
+      if (e.type === 'boss') {
+        if (e.duelRing) {
+          const dr = e.duelRing;
+          const drRatio = Math.max(0, Math.min(1, dr.t / Math.max(0.1, dr.maxT || 3.3)));
+          ctx.save();
+          ctx.strokeStyle = 'rgba(251, 113, 133, 0.78)';
+          ctx.lineWidth = 3.0;
+          ctx.setLineDash([14, 8]);
+          ctx.beginPath(); ctx.arc(dr.x, dr.y, dr.r, 0, Math.PI * 2); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.strokeStyle = '#fde68a';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath(); ctx.arc(dr.x, dr.y, dr.r - 8, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * drRatio); ctx.stroke();
+          for (let bk = 0; bk < 2; bk++) {
+            const ba = (dr.bladeA || 0) + bk * Math.PI;
+            const bx = dr.x + Math.cos(ba) * dr.r, by = dr.y + Math.sin(ba) * dr.r;
+            ctx.save();
+            ctx.translate(bx, by);
+            ctx.rotate(ba + Math.PI * 0.5);
+            ctx.fillStyle = '#ff2a55';
+            ctx.strokeStyle = '#fde68a';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(18, 0); ctx.lineTo(-10, -8); ctx.lineTo(-4, 0); ctx.lineTo(-10, 8);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+        if (e.chronoAnchor) {
+          const ca = e.chronoAnchor;
+          ctx.save();
+          if (player) {
+            ctx.strokeStyle = 'rgba(253, 230, 138, 0.72)';
+            ctx.lineWidth = 2.0;
+            ctx.setLineDash([7, 5]);
+            ctx.beginPath(); ctx.moveTo(ca.ax, ca.ay); ctx.lineTo(player.x, player.y); ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          ctx.strokeStyle = '#fde68a';
+          ctx.lineWidth = 2.4;
+          ctx.beginPath(); ctx.arc(ca.ax, ca.ay, 28, 0, Math.PI * 2); ctx.stroke();
+          const hAng = ca.spin || 0;
+          ctx.beginPath();
+          ctx.moveTo(ca.ax, ca.ay); ctx.lineTo(ca.ax + Math.cos(hAng) * 22, ca.ay + Math.sin(hAng) * 22);
+          ctx.moveTo(ca.ax, ca.ay); ctx.lineTo(ca.ax + Math.cos(-hAng * 0.4) * 15, ca.ay + Math.sin(-hAng * 0.4) * 15);
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(114, 239, 221, 0.18)';
+          ctx.strokeStyle = '#72efdd';
+          ctx.lineWidth = 2.8;
+          ctx.beginPath();
+          for (let hk = 0; hk < 6; hk++) {
+            const ha = (Math.PI * 2 * hk) / 6 + (ca.spin || 0) * 0.25;
+            const hx = ca.dx + Math.cos(ha) * ca.dr, hy = ca.dy + Math.sin(ha) * ca.dr;
+            if (hk === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+          }
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.font = '900 12px -apple-system, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#72efdd';
+          ctx.fillText('✨ 断时解锚阵', ca.dx, ca.dy + 4);
+          ctx.restore();
+        }
+        if (e.eclipseSingularity) {
+          const es = e.eclipseSingularity;
+          const ep = Math.max(0, Math.min(1, 1 - es.t / Math.max(0.1, es.maxT || 2.65)));
+          ctx.save();
+          ctx.strokeStyle = 'rgba(192, 132, 252, 0.65)';
+          ctx.lineWidth = 2.4;
+          ctx.setLineDash([12, 8]);
+          ctx.beginPath(); ctx.arc(e.x, e.y, es.r, 0, Math.PI * 2); ctx.stroke();
+          ctx.setLineDash([]);
+          const pullR = es.r * (1 - ((ep * 2.2) % 1) * 0.78);
+          ctx.strokeStyle = 'rgba(233, 213, 255, 0.42)';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath(); ctx.arc(e.x, e.y, Math.max(36, pullR), 0, Math.PI * 2); ctx.stroke();
+          const seals = [[es.s1x, es.s1y], [es.s2x, es.s2y]];
+          for (let sk = 0; sk < 2; sk++) {
+            const sx0 = seals[sk][0], sy0 = seals[sk][1];
+            ctx.fillStyle = 'rgba(253, 230, 138, 0.20)';
+            ctx.strokeStyle = '#fde68a';
+            ctx.lineWidth = 2.8;
+            ctx.beginPath(); ctx.arc(sx0, sy0, es.safeR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.font = '900 12px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#fef08a';
+            ctx.fillText('☀️ 晨曦庇护', sx0, sy0 + 4);
+          }
+          ctx.restore();
+        }
+      }
+    }
+
+    // 首领共鸣阵眼棱柱能量连线与双生极光冰弦绘制
+    if (trees.length > 0) {
+      let cryoA = null, cryoB = null;
+      ctx.save();
+      for (let ti = 0; ti < trees.length; ti++) {
+        const tr = trees[ti];
+        if (!tr || !tr.isBossPylon || tr.hp <= 0 || !tr.owner || tr.owner.hp <= 0) continue;
+        const pCol = tr.pylonColor || '#72efdd';
+        ctx.strokeStyle = pCol;
+        ctx.globalAlpha = 0.58;
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath(); ctx.moveTo(tr.x, tr.y - 6); ctx.lineTo(tr.owner.x, tr.owner.y - 8); ctx.stroke();
+        ctx.setLineDash([]);
+        if (tr.pylonKind === 'cryo_obelisk') {
+          if (!cryoA) cryoA = tr;
+          else if (!cryoB && tr.owner === cryoA.owner) cryoB = tr;
+        }
+      }
+      if (cryoA && cryoB) {
+        ctx.globalAlpha = 0.88;
+        ctx.strokeStyle = '#7dd3fc';
+        ctx.lineWidth = 5.0;
+        ctx.beginPath(); ctx.moveTo(cryoA.x, cryoA.y - 4); ctx.lineTo(cryoB.x, cryoB.y - 4); ctx.stroke();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(cryoA.x, cryoA.y - 4); ctx.lineTo(cryoB.x, cryoB.y - 4); ctx.stroke();
+      }
+      ctx.restore();
     }
 
     // 地面扩散冲击圈与多形态震波阵（圆环 / 六棱星芒 / 八芒烈焰 / 翡翠十字圣愈脉冲，零大面积圆盘过绘）
@@ -2328,7 +2452,8 @@ function draw() {
     renderList.length = 0;
     for (let i = 0; i < trees.length; i++) {
       const tr = trees[i];
-      if (tr.hp <= 0 || tr.x + 40 < vL || tr.x - 40 > vR || tr.y + 40 < vT || tr.y - 40 > vB) continue;
+      const tPad = tr.isBossPylon ? 110 : 40;
+      if (tr.hp <= 0 || tr.x + tPad < vL || tr.x - tPad > vR || tr.y + tPad < vT || tr.y - tPad > vB) continue;
       tr._rk = 3;
       renderList.push(tr);
     }

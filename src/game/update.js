@@ -197,8 +197,9 @@ function tickBossVenomBreath(e, dt, aimToPlayer, paceMult) {
   );
   if (!canVenom && !(e.venomWindupT > 0) && !(e.venomBreathT > 0)) return false;
 
+  const lsRate = (e.d5LastStandT || 0) > 0 ? 1.20 : 1.0;
   if ((e.venomWindupT || 0) > 0) {
-    e.venomWindupT -= dt;
+    e.venomWindupT -= dt * lsRate;
     // 蓄力最后 0.24s 锁定喷射方向不再跟转，保证近战提前侧移绕后 100% 有效
     if (e.venomWindupT > 0.24) {
       e.venomAimA = _turnAngleBounded(e.venomAimA !== undefined ? e.venomAimA : aimToPlayer, aimToPlayer, 1.15 * dt);
@@ -313,8 +314,9 @@ function tickBossVenomBreath(e, dt, aimToPlayer, paceMult) {
 // 隐藏神话二阶段 / 终幕二阶段【专属额外终极技能】状态机（突出二阶段首领压迫感与独立能力）
 function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
   if (!e.mythicPhase2) return false;
+  const lsRate = (e.d5LastStandT || 0) > 0 ? 1.20 : 1.0;
   if ((e.p2WindupT || 0) > 0) {
-    e.p2WindupT -= dt;
+    e.p2WindupT -= dt * lsRate;
     if (e.p2WindupT <= 0) {
       e.p2WindupT = 0;
       e.castEndT = 1.15;
@@ -448,6 +450,250 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
   return false;
 }
 
+// ============================================================================
+// 👑 六大守誓主宰【创新交互机制状态机】（告别单纯躲圈：决斗剑域见切破招 / 可破坏双生极光共鸣柱 / 逆时回溯锚点与断时阵 / 黑日引力奇点与晨曦庇护区 / 磁暴引力桩 / 万蛊共生母苞）
+// ============================================================================
+function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
+  if (!e || e.type !== 'boss' || !player || state !== 'wave') return false;
+  const vId = e.variant || 'butcher';
+
+  // 统计当前首领场上存活的共鸣阵眼棱柱（供减伤棱障与双柱冰弦连接使用）
+  let pylonA = null, pylonB = null, pylonCnt = 0;
+  if (typeof trees !== 'undefined') {
+    for (let ti = 0; ti < trees.length; ti++) {
+      const tr = trees[ti];
+      if (tr && tr.isBossPylon && tr.owner === e && tr.hp > 0) {
+        pylonCnt++;
+        if (!pylonA) pylonA = tr;
+        else if (!pylonB) pylonB = tr;
+      }
+    }
+  }
+  e._pylonShieldCnt = (vId === 'frost_queen' || vId === 'plague_empress') ? pylonCnt : 0;
+
+  // 双生极光冰棱柱同时存在时，两柱之间拉起寒霜极光冰弦（碰触减速并受寒霜切割，击破任一柱即刻瓦解！）
+  if (vId === 'frost_queen' && pylonA && pylonB) {
+    e._tetherHitCd = Math.max(0, (e._tetherHitCd || 0) - dt);
+    if (e._tetherHitCd <= 0) {
+      const seg = pointSegClosest(player.x, player.y, pylonA.x, pylonA.y, pylonB.x, pylonB.y);
+      if (seg.dSq <= (player.r + 7) * (player.r + 7)) {
+        e._tetherHitCd = 0.52;
+        if (!player.noSlow) player.chillSlowT = Math.max(player.chillSlowT || 0, 1.0);
+        addText(player.x, player.y - 34, '❄️ 极光冰弦切割!', '#7dd3fc', 14, 0.85);
+        hurtPlayer(Math.max(4, Math.round(e.dmg * 0.78)), true, e);
+        if (state !== 'wave') return true;
+      }
+    }
+  }
+
+  // 1) 烬羽（butcher）：【血誓·宿命决斗剑域】进行态
+  if (e.duelRing) {
+    const dr = e.duelRing;
+    dr.t -= dt;
+    dr.bladeA = (dr.bladeA || 0) + dt * (enraged ? 2.65 : 2.25);
+    dr._rimHitCd = Math.max(0, (dr._rimHitCd || 0) - dt);
+    const dRing = Math.hypot(player.x - dr.x, player.y - dr.y);
+
+    // 剑域外缘 2 柄游龙血刃高速环绕：擦碰环绕刃尖受创
+    if (dr._rimHitCd <= 0) {
+      for (let bk = 0; bk < 2; bk++) {
+        const ba = dr.bladeA + bk * Math.PI;
+        const bx = dr.x + Math.cos(ba) * dr.r;
+        const by = dr.y + Math.sin(ba) * dr.r;
+        if (Math.hypot(player.x - bx, player.y - by) <= player.r + 16) {
+          dr._rimHitCd = 0.45;
+          hurtPlayer(Math.max(4, Math.round(e.dmg * 0.85)), true, e);
+          if (state !== 'wave') return true;
+          break;
+        }
+      }
+    }
+
+    // 剑域中段触发一次【心眼·十字裂空斩】试炼（四角安全，引导走位见切）
+    if (!dr.slashSpawned && dr.t <= dr.maxT * 0.62) {
+      dr.slashSpawned = true;
+      const sa = Math.atan2(player.y - dr.y, player.x - dr.x) + Math.PI * 0.25;
+      for (let k = 0; k < 2; k++) {
+        spawnHazard(dr.x, dr.y, 26, e.dmg * 0.96, 0.82, {
+          color: '#fb7185', style: 'void_slash',
+          angle: sa + k * (Math.PI * 0.5), halfLen: dr.r - 18, halfW: 13,
+          srcKey: e.variant, bossOwner: e
+        });
+      }
+    }
+
+    // 若玩家逃出决斗剑域（超出 r + 24）：剑域碎裂，烬羽立刻锁定高速【违誓追魂一闪】！
+    if (dRing > dr.r + 24) {
+      e.duelRing = null;
+      beep(240, 0.12, 'sawtooth', 0.06);
+      if (rings.length < 40) rings.push({ x: dr.x, y: dr.y, r: dr.r, color: '#ff2a55', t: 0.28, maxT: 0.28 });
+      addText(player.x, player.y - 40, '⚠️ 脱离决斗圈 · 违誓追魂斩!', '#ff4d6d', 15, 1.35, true);
+      if (!e.dashing) {
+        lockLinearDash(e, aimToPlayer, Math.min(430, Math.max(290, distP + 65)), 0.36, '#ff2a55', 'iai_slash');
+        e.dashT = 0.36;
+      }
+    } else if (dr.t <= 0) {
+      // 坚守决斗剑域至期满：见切破招成功！刷新玩家瞬步、赋予攻速移速增益并令烬羽陷入长破绽！
+      e.duelRing = null;
+      e.exposeT = Math.max(e.exposeT || 0, 2.25);
+      player.dashCd = 0;
+      player.dashHasteT = Math.max(player.dashHasteT || 0, 2.2);
+      beep(760, 0.12, 'triangle', 0.065);
+      if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 145, color: '#72efdd', t: 0.32, maxT: 0.32, kind: 'hex' });
+      addText(player.x, player.y - 42, '⚔️ 决斗见切成功！瞬步刷新 + 首领破防!', '#72efdd', 15, 1.65, true);
+    }
+  }
+
+  // 2) 伽蓝（void_weaver）：【逆钟·时空回溯锚点 + 断时解锚阵】进行态
+  if (e.chronoAnchor) {
+    const ca = e.chronoAnchor;
+    ca.t -= dt;
+    ca.spin = (ca.spin || 0) + dt * 3.4;
+    // 玩家踏入青金【断时解锚阵】：斩断时间锁链，反噬伽蓝暴露破绽！
+    if (Math.hypot(player.x - ca.dx, player.y - ca.dy) <= ca.dr + player.r * 0.55) {
+      e.chronoAnchor = null;
+      e.exposeT = Math.max(e.exposeT || 0, 2.0);
+      player.dashHasteT = Math.max(player.dashHasteT || 0, 1.8);
+      beep(780, 0.11, 'triangle', 0.06);
+      if (rings.length < 40) rings.push({ x: ca.dx, y: ca.dy, r: 88, color: '#72efdd', t: 0.30, maxT: 0.30, kind: 'hex' });
+      if (lightnings.length < 36) {
+        lightnings.push({ pts: [{ x: ca.dx, y: ca.dy }, { x: e.x, y: e.y }], color: '#72efdd', t: 0.28, maxT: 0.28 });
+      }
+      addText(player.x, player.y - 42, '✨ 断时解锚成功！逆钟反噬破防!', '#72efdd', 15, 1.55, true);
+    } else if (ca.t <= 0) {
+      // 未及时解锚：强制时空倒流拽回锚点 72% 位移，并在锚点降下十字次元裂空斩！
+      e.chronoAnchor = null;
+      const oldPx = player.x, oldPy = player.y;
+      const nx = Math.max(player.r + 16, Math.min(WORLD.w - player.r - 16, oldPx + (ca.ax - oldPx) * 0.72));
+      const ny = Math.max(player.r + 16, Math.min(WORLD.h - player.r - 16, oldPy + (ca.ay - oldPy) * 0.72));
+      if (!isBlockedByTerrain(nx, ny, player.r)) {
+        player.x = nx; player.y = ny;
+      }
+      beep(310, 0.14, 'sawtooth', 0.065);
+      if (beams.length < 38) beams.push({ x1: oldPx, y1: oldPy, x2: player.x, y2: player.y, color: '#fde68a', t: 0.30, maxT: 0.30 });
+      if (rings.length < 40) rings.push({ x: player.x, y: player.y, r: 82, color: '#c084fc', t: 0.30, maxT: 0.30, kind: 'hex' });
+      addText(player.x, player.y - 42, '⏳ 时空强制回溯！速闪避裂空斩!', '#fde68a', 15, 1.35, true);
+      for (let k = 0; k < 2; k++) {
+        spawnHazard(ca.ax, ca.ay, 28, e.dmg * 1.04, 0.62, {
+          color: '#c084fc', style: 'void_slash',
+          angle: Math.PI * 0.25 + k * (Math.PI * 0.5), halfLen: 125, halfW: 13,
+          srcKey: e.variant, bossOwner: e
+        });
+      }
+    }
+  }
+
+  // 3) 日蚀圣女（solar_seraph）：【日蚀·黑日引力奇点 & 晨曦庇护圣印】进行态
+  if (e.eclipseSingularity) {
+    const es = e.eclipseSingularity;
+    es.t -= dt;
+    es.spin = (es.spin || 0) + dt * 2.8;
+    // 向首领体心施加柔和黑日引力牵引（玩家正常移动或瞬步即可抗衡走入晨曦庇护印）
+    if (distP > 48 && distP < es.r + 65 && !(player.dashT > 0)) {
+      const pull = (enraged ? 64 : 54) * dt;
+      const px2 = Math.max(player.r + 10, Math.min(WORLD.w - player.r - 10, player.x - Math.cos(aimToPlayer) * pull));
+      const py2 = Math.max(player.r + 10, Math.min(WORLD.h - player.r - 10, player.y - Math.sin(aimToPlayer) * pull));
+      if (!isBlockedByTerrain(px2, py2, player.r)) {
+        player.x = px2; player.y = py2;
+      }
+    }
+    if (es.t <= 0) {
+      e.eclipseSingularity = null;
+      const inSeal1 = Math.hypot(player.x - es.s1x, player.y - es.s1y) <= es.safeR + player.r * 0.45;
+      const inSeal2 = Math.hypot(player.x - es.s2x, player.y - es.s2y) <= es.safeR + player.r * 0.45;
+      beep(190, 0.18, 'sawtooth', 0.075);
+      shake = Math.max(shake, 6.2);
+      if (rings.length < 42) {
+        rings.push({ x: e.x, y: e.y, r: es.r, color: '#c084fc', t: 0.38, maxT: 0.38, kind: 'star' });
+        rings.push({ x: es.s1x, y: es.s1y, r: es.safeR, color: '#fde68a', t: 0.32, maxT: 0.32, kind: 'hex' });
+        rings.push({ x: es.s2x, y: es.s2y, r: es.safeR, color: '#fde68a', t: 0.32, maxT: 0.32, kind: 'hex' });
+      }
+      if (inSeal1 || inSeal2) {
+        e.exposeT = Math.max(e.exposeT || 0, 2.35);
+        player.chillSlowT = 0;
+        player.dashHasteT = Math.max(player.dashHasteT || 0, 2.4);
+        beep(820, 0.12, 'triangle', 0.06);
+        addText(player.x, player.y - 44, '☀️ 晨曦庇护抵御黑日！疾风赐福 + 圣女破防!', '#fde68a', 15, 1.75, true);
+      } else if (Math.hypot(player.x - e.x, player.y - e.y) <= es.r + player.r) {
+        addText(player.x, player.y - 40, '🌑 未入庇护印 · 黑日奇点蚀爆!', '#e0aaff', 15, 1.35, true);
+        hurtPlayer(Math.round(e.dmg * 1.14), true, e);
+        if (state !== 'wave') return true;
+      }
+    }
+  }
+
+  // 触发冷却推进（蓄力大招/冲刺时不抢占节奏）
+  if (e.dashing || (e.sigWindupT || 0) > 0 || (e.p2WindupT || 0) > 0 || e.duelRing || e.chronoAnchor || e.eclipseSingularity) {
+    return false;
+  }
+  e.arenaMechCd = (e.arenaMechCd !== undefined ? e.arenaMechCd : 5.2) - dt * bossMult;
+  if (e.arenaMechCd > 0) return false;
+
+  if (vId === 'butcher') {
+    e.arenaMechCd = enraged ? 8.2 : 9.6;
+    const midX = Math.max(235, Math.min(WORLD.w - 235, (e.x + player.x) * 0.5));
+    const midY = Math.max(235, Math.min(WORLD.h - 235, (e.y + player.y) * 0.5));
+    // 确保开启瞬间玩家在决斗圈内部，公平给予完整见切博弈空间
+    const dToMid = Math.hypot(player.x - midX, player.y - midY);
+    const cx = dToMid > 165 ? Math.max(235, Math.min(WORLD.w - 235, player.x + (e.x - player.x) * 0.30)) : midX;
+    const cy = dToMid > 165 ? Math.max(235, Math.min(WORLD.h - 235, player.y + (e.y - player.y) * 0.30)) : midY;
+    e.duelRing = { x: cx, y: cy, r: 215, t: 3.3, maxT: 3.3, bladeA: aimToPlayer + Math.PI * 0.5, slashSpawned: false, _rimHitCd: 0.35 };
+    beep(440, 0.11, 'triangle', 0.055);
+    if (rings.length < 40) rings.push({ x: cx, y: cy, r: 215, color: '#fb7185', t: 0.34, maxT: 0.34, kind: 'hex' });
+    addText(cx, cy - 36, '⚔️ 血誓决斗剑域！圈内应战破防 · 逃圈遭追斩!', '#fb7185', 14, 1.75, true);
+  } else if (vId === 'frost_queen') {
+    e.arenaMechCd = enraged ? 9.8 : 11.4;
+    if (pylonCnt === 0 && typeof spawnBossPylon === 'function') {
+      const perp = aimToPlayer + Math.PI * 0.5;
+      spawnBossPylon(e, 'cryo_obelisk', e.x + Math.cos(perp) * 176, e.y + Math.sin(perp) * 176);
+      spawnBossPylon(e, 'cryo_obelisk', e.x - Math.cos(perp) * 176, e.y - Math.sin(perp) * 176);
+      beep(560, 0.12, 'sine', 0.055);
+      announce('❄️ 艾丝特莉亚升起【双生极光共鸣棱柱】！击破冰棱柱可斩断护盾并反噬破防！', '#72efdd', 3.2);
+    } else {
+      e.arenaMechCd = 4.5;
+    }
+  } else if (vId === 'void_weaver') {
+    e.arenaMechCd = enraged ? 8.4 : 9.8;
+    const padAng = aimToPlayer + (Math.random() < 0.5 ? 1.15 : -1.15);
+    const dx = Math.max(115, Math.min(WORLD.w - 115, player.x + Math.cos(padAng) * 152));
+    const dy = Math.max(115, Math.min(WORLD.h - 115, player.y + Math.sin(padAng) * 152));
+    e.chronoAnchor = { ax: player.x, ay: player.y, dx, dy, dr: 52, t: 2.65, maxT: 2.65, spin: 0 };
+    beep(610, 0.10, 'triangle', 0.055);
+    if (rings.length < 40) rings.push({ x: player.x, y: player.y, r: 64, color: '#fde68a', t: 0.28, maxT: 0.28, kind: 'hex' });
+    addText(player.x, player.y - 44, '⏳ 逆时锚点锁定！速踏青色【断时阵】解锚破防!', '#fde68a', 14, 1.75, true);
+  } else if (vId === 'solar_seraph') {
+    e.arenaMechCd = enraged ? 9.0 : 10.6;
+    const perp = aimToPlayer + (Math.random() < 0.5 ? 1.05 : -1.05);
+    const s1x = Math.max(115, Math.min(WORLD.w - 115, e.x + Math.cos(perp) * 196));
+    const s1y = Math.max(115, Math.min(WORLD.h - 115, e.y + Math.sin(perp) * 196));
+    const s2x = Math.max(115, Math.min(WORLD.w - 115, e.x - Math.cos(perp) * 196));
+    const s2y = Math.max(115, Math.min(WORLD.h - 115, e.y - Math.sin(perp) * 196));
+    e.eclipseSingularity = { t: 2.65, maxT: 2.65, r: 335, safeR: 66, s1x, s1y, s2x, s2y, spin: 0 };
+    beep(350, 0.14, 'sine', 0.06);
+    addText(e.x, e.y - e.r - 26, '🌑 黑日引力奇点！速踏金色【晨曦庇护印】躲避新星!', '#fde68a', 14, 1.85, true);
+  } else if (vId === 'mech_colossus') {
+    e.arenaMechCd = enraged ? 9.4 : 11.0;
+    if (pylonCnt < 2 && typeof spawnBossPylon === 'function') {
+      const ma = aimToPlayer + (Math.random() < 0.5 ? 0.85 : -0.85);
+      spawnBossPylon(e, 'magnet_core', player.x + Math.cos(ma) * 145, player.y + Math.sin(ma) * 145);
+      beep(310, 0.11, 'sawtooth', 0.05);
+    } else {
+      e.arenaMechCd = 4.5;
+    }
+  } else if (vId === 'plague_empress') {
+    e.arenaMechCd = enraged ? 9.6 : 11.2;
+    if (pylonCnt === 0 && typeof spawnBossPylon === 'function') {
+      const perp = aimToPlayer + Math.PI * 0.5;
+      spawnBossPylon(e, 'venom_cocoon', e.x + Math.cos(perp) * 168, e.y + Math.sin(perp) * 168);
+      spawnBossPylon(e, 'venom_cocoon', e.x - Math.cos(perp) * 168, e.y - Math.sin(perp) * 168);
+      beep(420, 0.10, 'triangle', 0.05);
+    } else {
+      e.arenaMechCd = 4.5;
+    }
+  }
+  return false;
+}
+
 function update(dt) {
   if (!Number.isFinite(dt) || dt <= 0) return;
   if (typeof SpireAudio !== 'undefined') SpireAudio.tick(dt);
@@ -553,7 +799,8 @@ function update(dt) {
     }
   }
 
-  // 碎冕寒晶方砖台状态机：站立 5.0s 渐进冰缓 -> 满 5.0s 冰封 1.0s 后解冻清零；离开冰面 1.0s 后开始消退恢复
+  // 碎冕寒晶方砖台 / 翡翠毒沼 / 锻炉熔火槽状态机（D1 保持不变；D2->D5 阶梯递增地形对玩家影响最高 +30%）
+  const terrainImpactMul = typeof getDiffTerrainImpactMul === 'function' ? getDiffTerrainImpactMul(diff) : 1.00;
   if ((player.frostThawImmT || 0) > 0) player.frostThawImmT = Math.max(0, player.frostThawImmT - dt);
   if ((player.iceFreezeT || 0) > 0) {
     player.iceFreezeT -= dt;
@@ -571,7 +818,7 @@ function update(dt) {
   } else if (onIce && !(player.frostThawImmT > 0)) {
     player.frostLeaveGrace = 1.0;
     const prevGauge = player.frostGauge || 0;
-    player.frostGauge = Math.min(5.0, prevGauge + dt);
+    player.frostGauge = Math.min(5.0, prevGauge + dt * terrainImpactMul);
     if (prevGauge <= 0.05 && player.terrainHintT <= 0) {
       player.terrainHintT = 2.4;
       addText(player.x, player.y - 36, '寒霜侵蚀 · 渐进冰缓!', '#7dd3fc', 15, 1.6);
@@ -579,11 +826,11 @@ function update(dt) {
     if (player.frostGauge >= 5.0) {
       player.frostGauge = 0;
       player.frostLeaveGrace = 0;
-      player.iceFreezeT = 1.0;
+      player.iceFreezeT = +(1.0 * terrainImpactMul).toFixed(2);
       player.dashT = 0;
       beep(620, 0.14, 'triangle', 0.055);
       if (rings.length < 34) rings.push({ x: player.x, y: player.y, r: 54, color: '#7dd3fc', t: 0.30, maxT: 0.30, kind: 'hex' });
-      addText(player.x, player.y - 42, '❄️ 寒霜满溢 · 冰封1秒!', '#7dd3fc', 17, 1.5, true);
+      addText(player.x, player.y - 42, `❄️ 寒霜满溢 · 冰封${player.iceFreezeT.toFixed(1).replace(/\.0$/, '')}秒!`, '#7dd3fc', 17, 1.5, true);
     }
   } else if ((player.frostGauge || 0) > 0) {
     if ((player.frostLeaveGrace || 0) > 0) {
@@ -594,29 +841,31 @@ function update(dt) {
   }
 
   const frostRatio = (!player.noSlow && (player.frostGauge || 0) > 0) ? Math.min(1, player.frostGauge / 5.0) : 0;
-  const frostSpdMul = frostRatio > 0 ? Math.max(0.80, 1 - frostRatio * 0.20) : 1;
+  const frostSpdMul = frostRatio > 0 ? Math.max(0.68, 1 - frostRatio * 0.20 * terrainImpactMul) : 1;
+  const swampSpdMul = Math.max(0.55, +(1 - 0.30 * terrainImpactMul).toFixed(3));
+  const lavaSpdMul = Math.max(0.74, +(1 - 0.15 * terrainImpactMul).toFixed(3));
   player.terrainSpdMul = (player.iceFreezeT || 0) > 0
     ? 0
     : (frostRatio > 0
       ? frostSpdMul
-      : ((onSwamp && !player.noSlow) ? 0.70 : ((onLava && !player.noSlow) ? 0.85 : 1)));
+      : ((onSwamp && !player.noSlow) ? swampSpdMul : ((onLava && !player.noSlow) ? lavaSpdMul : 1)));
   if (player.terrainHintT <= 0) {
     if (onSwamp && !player.noSlow) {
       player.terrainHintT = 2.8;
-      addText(player.x, player.y - 36, '毒沼深陷 -30%移速', '#a3e635', 15, 1.8);
+      addText(player.x, player.y - 36, `毒沼深陷 -${Math.round((1 - swampSpdMul) * 100)}%移速`, '#a3e635', 15, 1.8);
     } else if (onLava && !player.noSlow) {
       player.terrainHintT = 2.8;
-      addText(player.x, player.y - 36, '熔岩灼足 -15%移速', '#ff6b35', 15, 1.8);
+      addText(player.x, player.y - 36, `熔岩灼足 -${Math.round((1 - lavaSpdMul) * 100)}%移速`, '#ff6b35', 15, 1.8);
     }
   }
   if (onLava && !player.noSlow) {
-    player.lavaExposure = (player.lavaExposure || 0) + dt;
+    player.lavaExposure = (player.lavaExposure || 0) + dt * terrainImpactMul;
     if (player.lavaExposure >= 0.26) {
       player.lavaTick = (player.lavaTick || 0) - dt;
       if (player.lavaTick <= 0) {
         player.lavaTick = 0.62;
         addText(player.x, player.y - 38, '岩浆灼烫!', '#ff6b35', 16, 1.6);
-        hurtPlayer(Math.max(3, Math.round((3.0 + wave * 0.50) * envDmgMul)), false, 'terrain_lava');
+        hurtPlayer(Math.max(3, Math.round((3.0 + wave * 0.50) * envDmgMul * terrainImpactMul)), false, 'terrain_lava');
         if (state !== 'wave') return;
       }
     }
@@ -625,13 +874,13 @@ function update(dt) {
     player.lavaTick = 0;
   }
   if (onSwamp && !player.noSlow) {
-    player.swampExposure = (player.swampExposure || 0) + dt;
+    player.swampExposure = (player.swampExposure || 0) + dt * terrainImpactMul;
     if (player.swampExposure >= 0.55) {
       player.swampTick = (player.swampTick || 0) - dt;
       if (player.swampTick <= 0) {
         player.swampTick = 0.85;
         addText(player.x, player.y - 38, '毒沼腐蚀!', '#a3e635', 15, 1.5);
-        hurtPlayer(Math.max(2, Math.round((2.0 + wave * 0.35) * envDmgMul)), false, 'terrain_swamp');
+        hurtPlayer(Math.max(2, Math.round((2.0 + wave * 0.35) * envDmgMul * terrainImpactMul)), false, 'terrain_swamp');
         if (state !== 'wave') return;
       }
     }
@@ -818,8 +1067,12 @@ function update(dt) {
     }
   }
 
-  // 异星晶树随战斗定时生长（拉长生长间隔，配合单波宝箱上限防泛滥）
-  if (!overtime && waveTime > 3 && trees.length < 4) {
+  // 异星晶树随战斗定时生长 + 首领可破坏共鸣阵眼棱柱更新（脉冲星刺 / 磁暴引力牵引 / 万蛊酸液孢子）
+  let normalTreeCnt = 0;
+  for (let i = 0; i < trees.length; i++) {
+    if (trees[i] && !trees[i].isBossPylon && trees[i].hp > 0) normalTreeCnt++;
+  }
+  if (!overtime && waveTime > 3 && normalTreeCnt < 4) {
     treeSpawnT -= dt;
     if (treeSpawnT <= 0) {
       treeSpawnT = Math.max(8.0, 14.5 - (player.bonusTrees || 0) * 2.2);
@@ -828,10 +1081,49 @@ function update(dt) {
   }
   for (let i = trees.length - 1; i >= 0; i--) {
     const tr = trees[i];
-    if (tr.hp <= 0) { trees.splice(i, 1); continue; }
+    if (tr.hp <= 0 || (tr.isBossPylon && (!tr.owner || tr.owner.hp <= 0))) { trees.splice(i, 1); continue; }
     if (tr.hitFlash > 0) tr.hitFlash -= dt;
     if (tr._flashCd > 0) tr._flashCd -= dt;
     tr.sway += dt * 2.4;
+    if (tr.isBossPylon && player && state === 'wave') {
+      const ownerBoss = tr.owner;
+      const pRate = (ownerBoss && (ownerBoss.d5LastStandT || 0) > 0) ? 1.20 : 1.0;
+      if (tr.pylonKind === 'magnet_core' && !(player.dashT > 0)) {
+        const dxM = tr.x - player.x, dyM = tr.y - player.y;
+        const dM = Math.hypot(dxM, dyM);
+        if (dM > 32 && dM < 238) {
+          const pullM = 44 * pRate * dt;
+          const mx2 = Math.max(player.r + 10, Math.min(WORLD.w - player.r - 10, player.x + (dxM / dM) * pullM));
+          const my2 = Math.max(player.r + 10, Math.min(WORLD.h - player.r - 10, player.y + (dyM / dM) * pullM));
+          if (!isBlockedByTerrain(mx2, my2, player.r)) { player.x = mx2; player.y = my2; }
+        }
+      }
+      tr.pulseT = (tr.pulseT || 1.7) - dt * pRate;
+      if (tr.pulseT <= 0) {
+        tr.pulseT = tr.pylonKind === 'magnet_core' ? 2.15 : 1.95;
+        const bDmg = Math.max(4, Math.round((ownerBoss ? ownerBoss.dmg : 8) * 0.68));
+        const bSrc = ownerBoss ? (ownerBoss.variant || 'boss') : 'boss';
+        if (tr.pylonKind === 'cryo_obelisk') {
+          if (rings.length < 40) rings.push({ x: tr.x, y: tr.y, r: 54, color: '#72efdd', t: 0.24, maxT: 0.24, kind: 'hex' });
+          for (let k = 0; k < 4 && eBullets.length < 172; k++) {
+            const ba = tr.sway * 0.6 + k * (Math.PI * 0.5);
+            eBullets.push({ x: tr.x, y: tr.y, px: tr.x, py: tr.y, vx: Math.cos(ba) * 132, vy: Math.sin(ba) * 132, dmg: bDmg, r: 5.4, color: '#7dd3fc', shape: 'shard', chillPlayer: true, srcKey: bSrc, bossOwner: ownerBoss });
+          }
+        } else if (tr.pylonKind === 'magnet_core') {
+          if (rings.length < 40) rings.push({ x: tr.x, y: tr.y, r: 108, color: '#ff9f1c', t: 0.28, maxT: 0.28, kind: 'star' });
+          if (Math.hypot(player.x - tr.x, player.y - tr.y) <= 98 + player.r) {
+            hurtPlayer(bDmg, true, ownerBoss || bSrc);
+            if (state !== 'wave') return;
+          }
+        } else if (tr.pylonKind === 'venom_cocoon') {
+          const aimP = Math.atan2(player.y - tr.y, player.x - tr.x);
+          for (let k = -1; k <= 1 && eBullets.length < 172; k += 2) {
+            const ba = aimP + k * 0.22;
+            eBullets.push({ x: tr.x, y: tr.y, px: tr.x, py: tr.y, vx: Math.cos(ba) * 128, vy: Math.sin(ba) * 128, dmg: bDmg, r: 5.5, color: '#5ef29b', shape: 'acid', chillPlayer: true, srcKey: bSrc, bossOwner: ownerBoss });
+          }
+        }
+      }
+    }
   }
 
   // 稀有地图奇遇圣物刷出与读条共鸣召唤特殊 Boss
@@ -1042,7 +1334,7 @@ function update(dt) {
     if (h.t <= 0) {
       const hCol = h.color || '#ff3b6b';
       const st = h.style || 'circle';
-      const hSrc = h.srcKey || 'hazard';
+      const hSrc = h.bossOwner || h.srcKey || 'hazard';
       const prevEnemyAct = typeof _activeEnemyActor !== 'undefined' ? _activeEnemyActor : null;
       _activeEnemyActor = hSrc;
       try {
@@ -1422,7 +1714,23 @@ function update(dt) {
         if (d < bestD) { bestD = d; best = e; bestIsTree = false; }
       }
     }
-    // 射程内无怪物时，武器也会智能索敌砍伐附近的异星晶树！
+    // 若射程内存在首领共鸣阵眼棱柱（或射程内无怪物时的普通封魂晶碑），武器会智能优先转火击破阵眼！
+    if (trees.length > 0) {
+      let bestPylon = null, bestPD = maxR;
+      for (let ti = 0; ti < trees.length; ti++) {
+        const tr = trees[ti];
+        if (!tr || !tr.isBossPylon || tr.hp <= 0) continue;
+        const dxT = tr.x - baseWx, dyT = tr.y - baseWy, limT = bestPD + tr.r;
+        const dSqT = dxT * dxT + dyT * dyT;
+        if (dSqT >= limT * limT) continue;
+        const d = Math.sqrt(dSqT) - tr.r;
+        if (d < bestPD) { bestPD = d; bestPylon = tr; }
+      }
+      if (bestPylon && (!best || best.type === 'boss' || bestPD < Math.hypot(best.x - baseWx, best.y - baseWy) - 18)) {
+        best = bestPylon;
+        bestIsTree = true;
+      }
+    }
     if (!best && trees.length > 0) {
       let bestTD = maxR;
       for (let ti = 0; ti < trees.length; ti++) {
@@ -2382,23 +2690,41 @@ function update(dt) {
   const canDotCrit = !!player.elemCrit;
   const dotCritMult = canDotCrit ? (1 + Math.max(0.35, (getEffectiveCritMult(1.95) - 1) * 0.5)) : 1;
   let prevActorKey = '';
+  let prevActorObj = null;
   let prevEbLen = eBullets.length;
   try {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (prevActorKey && eBullets.length > prevEbLen) {
       for (let bi = prevEbLen; bi < eBullets.length; bi++) {
-        if (eBullets[bi] && !eBullets[bi].srcKey) eBullets[bi].srcKey = prevActorKey;
+        if (eBullets[bi]) {
+          if (!eBullets[bi].srcKey) eBullets[bi].srcKey = prevActorKey;
+          if (!eBullets[bi].bossOwner && prevActorObj && prevActorObj.type === 'boss') eBullets[bi].bossOwner = prevActorObj;
+        }
       }
     }
     prevEbLen = eBullets.length;
     const e = enemies[i];
-    if (!e || e.hp <= 0) { prevActorKey = ''; continue; }
+    if (!e || e.hp <= 0) { prevActorKey = ''; prevActorObj = null; continue; }
     _activeEnemyActor = e;
     prevActorKey = e.variant || e.type;
+    prevActorObj = e;
     if (e.hitFlash > 0) e.hitFlash -= dt;
     if (e._flashCd > 0) e._flashCd -= dt;
     if (e._blkTxtCd > 0) e._blkTxtCd -= dt;
+    if (e._lsTxtCd > 0) e._lsTxtCd -= dt;
+    if (e._pylonTxtCd > 0) e._pylonTxtCd -= dt;
     if (e._reactCd > 0) e._reactCd -= dt;
+    if ((e.d5LastStandT || 0) > 0) {
+      e.d5LastStandT -= dt;
+      if (e.d5LastStandT <= 0) {
+        e.d5LastStandT = 0;
+        e.exposeT = Math.max(e.exposeT || 0, 1.85);
+        beep(720, 0.14, 'triangle', 0.065);
+        if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 145, color: '#72efdd', t: 0.34, maxT: 0.34, kind: 'hex' });
+        addText(e.x, e.y - e.r - 24, '✨ 临死挣扎结束 · 不灭金身瓦解!', '#72efdd', 16, 1.65, true);
+        announce('✨ 首领 10 秒临死挣扎结束！无敌状态已解除，速速斩杀！', '#72efdd', 3.2);
+      }
+    }
 
     // 灼烧持续伤害（享余烬魔典 dotHaste 频率加速与绝对零度 elemCrit 暴击）
     if (e.burnT > 0) {
@@ -2515,8 +2841,10 @@ function update(dt) {
       }
     } else if (e.type === 'boss') {
       const enraged = (e.hp < e.maxHp * 0.55) || overtime || !!e.mythicPhase2;
-      const bossMult = (enraged ? 1.15 : 1) * (e.mythicPhase2 ? 1.12 : 1) * twinBossPace;
+      const lastStandAspd = (e.d5LastStandT || 0) > 0 ? 1.20 : 1.0;
+      const bossMult = (enraged ? 1.15 : 1) * (e.mythicPhase2 ? 1.12 : 1) * twinBossPace * lastStandAspd;
 
+      if (tickBossArenaMechanic(e, dt, a, distP, enraged, bossMult)) return;
       if (tickBossVenomBreath(e, dt, a, bossMult)) return;
       if (tickBossPhase2Skill(e, dt, a, bossMult)) return;
 
@@ -2536,7 +2864,7 @@ function update(dt) {
       // 六大主宰专属咏唱终极奥义（高辨识度地面几何预警 + 专属形态弹幕/光炮 + 1.45s 破绽窗口）
       if (e.sigSkillT === undefined) e.sigSkillT = 3.4;
       if ((e.sigWindupT || 0) > 0) {
-        e.sigWindupT -= dt;
+        e.sigWindupT -= dt * lastStandAspd;
         if (e.sigWindupT <= 0) {
           e.sigWindupT = 0;
           e.castEndT = 1.15;
@@ -2559,7 +2887,17 @@ function update(dt) {
             for (let k = 0; k < 12 && eBullets.length < 170; k++) {
               const ba = baseA + (k / 12) * Math.PI * 2;
               const spd = 128 + (k % 3) * 28;
-              eBullets.push({ x: e.x, y: e.y, px: e.x, py: e.y, vx: Math.cos(ba) * spd, vy: Math.sin(ba) * spd, dmg: Math.max(4, Math.round(e.dmg * 0.78)), r: 6.2, color: k % 2 === 0 ? '#fde68a' : '#c084fc', shape: k % 3 === 0 ? 'crescent' : 'lance' });
+              const isRewindBlade = (k % 3 === 0);
+              eBullets.push({
+                x: e.x, y: e.y, px: e.x, py: e.y,
+                vx: Math.cos(ba) * spd, vy: Math.sin(ba) * spd,
+                dmg: Math.max(4, Math.round(e.dmg * 0.78)), r: 6.2,
+                color: k % 2 === 0 ? '#fde68a' : '#c084fc',
+                shape: isRewindBlade ? 'crescent' : 'lance',
+                rewindAt: isRewindBlade ? 0.88 : 0,
+                rewindOwner: isRewindBlade ? e : null,
+                life: isRewindBlade ? 2.45 : undefined
+              });
             }
             for (let k = 0; k < 3 && lightnings.length < 35; k++) {
               const la = baseA + (k / 3) * Math.PI * 2;
@@ -2669,7 +3007,7 @@ function update(dt) {
       if (e.variant === 'frost_queen') {
         // 【碎冕霜女皇 · 艾丝特莉亚】机制特征：先导轨预警后缓旋的双翼/二阶四翼极光冰束（近战可从容顺时针伴行挥砍） + 寒渊三叉冰戟 + 六合冰牢
         if ((e.beamWindupT || 0) > 0) {
-          e.beamWindupT -= dt;
+          e.beamWindupT -= dt * lastStandAspd;
           if (e.beamWindupT <= 0) {
             e.beamWindupT = 0;
             e.beamSweepT = e.beamSweepMaxT || 1.65;
@@ -2765,7 +3103,7 @@ function update(dt) {
           addText(e.x, e.y - e.r - 16, '🔥 熔核加特林横扫!', '#ff9f1c', 13, 1.1);
         }
         if (e.burstLeft > 0) {
-          e.burstCd -= dt;
+          e.burstCd -= dt * lastStandAspd;
           if (e.burstCd <= 0) {
             e.burstCd = 0.10;
             const idxShot = (enraged ? 9 : 7) - e.burstLeft;
@@ -2812,7 +3150,7 @@ function update(dt) {
         // 【逆时星晷主宰 · 伽蓝】机制特征：十字/X形次元裁决激光网锁定 + 双生残影折跃交叉弯刃 + 刀锋刺客召唤
         if (distP > 155) { e.x += Math.cos(a) * curSpd * bossMult * dt; e.y += Math.sin(a) * curSpd * bossMult * dt; }
         if ((e.laserGridT || 0) > 0) {
-          e.laserGridT -= dt;
+          e.laserGridT -= dt * lastStandAspd;
           if (e.laserGridT <= 0) {
             e.laserGridT = 0;
             const gx = e.laserGridX, gy = e.laserGridY, ga = e.laserGridA || 0;
@@ -2847,7 +3185,7 @@ function update(dt) {
         }
         // 第 12 层首领【逆时星晷主宰·伽蓝】双生残影相位折跃（带 D1->D5 阶梯递减落点预警，D5 预警时长为 D1 的 50%！）
         if ((e.tpWindupT || 0) > 0) {
-          e.tpWindupT -= dt;
+          e.tpWindupT -= dt * lastStandAspd;
           if (e.tpWindupT <= 0) {
             e.tpWindupT = 0;
             e.exposeT = Math.max(e.exposeT || 0, 1.15);
@@ -2856,7 +3194,7 @@ function update(dt) {
             const oldAim = Math.atan2(player.y - oldY, player.x - oldX);
             for (let k = -1; k <= 1 && eBullets.length < 185; k++) {
               const ba = oldAim + k * 0.22;
-              eBullets.push({ x: oldX, y: oldY, px: oldX, py: oldY, vx: Math.cos(ba) * 165, vy: Math.sin(ba) * 165, dmg: Math.max(4, Math.round(e.dmg * 0.74)), r: 6.8, color: '#fde68a', shape: 'crescent', srcKey: e.variant || e.type });
+              eBullets.push({ x: oldX, y: oldY, px: oldX, py: oldY, vx: Math.cos(ba) * 165, vy: Math.sin(ba) * 165, dmg: Math.max(4, Math.round(e.dmg * 0.74)), r: 6.8, color: '#fde68a', shape: 'crescent', rewindAt: 0.84, rewindOwner: e, life: 2.35, srcKey: e.variant || e.type, bossOwner: e });
             }
             e.x = Number.isFinite(e.tpDestX) ? e.tpDestX : e.x;
             e.y = Number.isFinite(e.tpDestY) ? e.tpDestY : e.y;
@@ -4096,14 +4434,17 @@ function update(dt) {
   } finally {
     if (prevActorKey && eBullets.length > prevEbLen) {
       for (let bi = prevEbLen; bi < eBullets.length; bi++) {
-        if (eBullets[bi] && !eBullets[bi].srcKey) eBullets[bi].srcKey = prevActorKey;
+        if (eBullets[bi]) {
+          if (!eBullets[bi].srcKey) eBullets[bi].srcKey = prevActorKey;
+          if (!eBullets[bi].bossOwner && prevActorObj && prevActorObj.type === 'boss') eBullets[bi].bossOwner = prevActorObj;
+        }
       }
     }
     _activeEnemyActor = null;
   }
   compactAliveEnemies();
 
-  // 敌方差异化轨迹弹幕引擎（支持弧线包抄 curve、加减速长矛/星雷球 accel、S形双螺旋交织波 waveAmp、飞盘自转与友好擦弹判定）
+  // 敌方差异化轨迹弹幕引擎（支持逆时回旋月刃 rewindAt、弧线包抄 curve、加减速长矛/星雷球 accel、S形双螺旋交织波 waveAmp、飞盘自转与友好擦弹判定）
   const ebSpdMul = sandGustT > 0 ? 0.78 : 1;
   for (let i = eBullets.length - 1; i >= 0; i--) {
     if (state !== 'wave') return;
@@ -4116,6 +4457,16 @@ function update(dt) {
     }
     b.px = b.x; b.py = b.y;
     b.age = (b.age || 0) + dt * ebSpdMul;
+    if (b.rewindAt > 0 && !b._rewound && b.age >= b.rewindAt) {
+      b._rewound = true;
+      const ro = (b.rewindOwner && b.rewindOwner.hp > 0) ? b.rewindOwner : null;
+      const spdR = Math.max(152, Math.hypot(b.vx, b.vy) * 1.06);
+      const revA = ro ? Math.atan2(ro.y - b.y, ro.x - b.x) : (Math.atan2(b.vy, b.vx) + Math.PI);
+      b.vx = Math.cos(revA) * spdR;
+      b.vy = Math.sin(revA) * spdR;
+      b.color = '#fde68a';
+      addSparks(b.x, b.y, revA, '#fde68a', 2);
+    }
     if (b.waveAmp && b.baseAng !== undefined) {
       const fSpd = b.baseSpd || 148;
       const latSpd = Math.cos(b.age * (b.waveFreq || 6.4)) * b.waveAmp * (b.waveSign || 1);
@@ -4157,7 +4508,7 @@ function update(dt) {
     const hitRHigh = Math.max(6, player.r * 0.88 + effHitR - 2.0);
     if (dxLow * dxLow + dyLow * dyLow < hitRLow * hitRLow || dxHigh * dxHigh + dyHigh * dyHigh < hitRHigh * hitRHigh) {
       if (b.chillPlayer && !player.noSlow) player.chillSlowT = 1.25;
-      hurtPlayer(b.dmg, true, b.srcKey || (b.isVortexTrap ? 'trap_void_orb' : (b.isCelestial ? 'trap_sky_lance' : 'enemy_proj')));
+      hurtPlayer(b.dmg, true, b.bossOwner || b.srcKey || (b.isVortexTrap ? 'trap_void_orb' : (b.isCelestial ? 'trap_sky_lance' : 'enemy_proj')));
       eBullets.splice(i, 1);
       if (state !== 'wave') return;
     }
@@ -4364,9 +4715,20 @@ function update(dt) {
         bossCur += Math.max(0, e.hp);
         bossTot += e.maxHp;
         if (e.mythicPhase2) anyMythicBoss = true;
-        if (!activeCastLabel) {
+        if ((e.d5LastStandT || 0) > 0) {
+          anyMythicBoss = true;
+          activeCastLabel = `🩸 临死挣扎 · 无敌 ${e.d5LastStandT.toFixed(1)}s（攻速+20% · 命中回血10%）`;
+        } else if (!activeCastLabel) {
           if ((e.p2WindupT || 0) > 0 && e.p2Label) {
             activeCastLabel = `⚠️ 二阶终式蓄力 · ${e.p2Label}`;
+          } else if (e.eclipseSingularity) {
+            activeCastLabel = `🌑 黑日引力奇点 (${e.eclipseSingularity.t.toFixed(1)}s · 踏入晨曦庇护印免疫)`;
+          } else if (e.chronoAnchor) {
+            activeCastLabel = `⏳ 逆时回溯锚点 (${e.chronoAnchor.t.toFixed(1)}s · 踏入断时阵解锚)`;
+          } else if (e.duelRing) {
+            activeCastLabel = `⚔️ 血誓决斗剑域 (${e.duelRing.t.toFixed(1)}s · 圈内应战破防)`;
+          } else if ((e._pylonShieldCnt || 0) > 0) {
+            activeCastLabel = `⚡ 共鸣阵眼护体×${e._pylonShieldCnt}（优先击破棱柱破防）`;
           } else if ((e.venomBreathT || 0) > 0) {
             activeCastLabel = e.venomTwin ? '☠️ 释放二阶终式 · 双龙万蛊毒息' : '☠️ 高压横扫 · 剧毒龙息喷流';
           } else if (e.castLabel && ((e.sigWindupT || 0) > 0 || (e.castEndT || 0) > 0)) {

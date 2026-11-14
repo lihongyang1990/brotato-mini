@@ -5,32 +5,32 @@ const BOSS_DEFS = {
   butcher: {
     id: 'butcher', icon: '🦊', sprite: 'assets/spire/hero_jinyu.png', portrait: 'assets/spire/port_jinyu.jpg',
     name: '绯红断刃剑姬 · 烬羽', epithet: '一层守桥挚友 · 第998道残火', color: '#e63946', spd: 90,
-    desc: '佩戴半截白狐假面、死守雨夜孤桥九百九十八世的昔日剑卫：拔刀锁定居合一闪斩线、释放【红莲外环剑域（贴身风眼安全）】、倾泻专属场景熔池并唤出浪人残偶；33% 概率燃尽魂火觉醒二阶段，必展二阶隐藏立绘并额外解锁专属终式【绯夜八荒剑狱】！'
+    desc: '死守雨夜孤桥九百九十八世的昔日剑卫：展开【血誓决斗剑域】（圈内见切应战可刷新瞬步并令其破防，逃出剑圈将遭违誓追魂一闪）、释放【血眼回天斩（内圈风眼安全）】与连环居合；二阶段解锁终式【绯夜八荒剑狱】，D5 二阶段濒死更会触发一次 10 秒【临死挣扎】！'
   },
   frost_queen: {
     id: 'frost_queen', icon: '❄️', sprite: 'assets/spire/hero_astria.png', portrait: 'assets/spire/port_astria.jpg',
     name: '永冻星使 · 艾丝特莉亚', epithet: '二层冰封王城之主 · 碎冕星瞳', color: '#00bbf9', spd: 84,
-    desc: '遵从你千年前遗愿冰封全城子民的挚友星使：架设双轨寒晶导轨掠袭、绽放螺旋霜星花瓣弹、吟唱【眠冬外环暴雪】并凝结专属寒冰台；33% 概率碎冕觉醒二阶段，必展二阶隐藏立绘并额外解锁专属终式【绝对零度四翼极光环】！'
+    desc: '遵从遗愿冰封王城的挚友星使：升起可破坏的【双生极光共鸣棱柱】（拉起极光冰弦并赋予棱障减伤，优先击破冰棱柱可斩断护盾并反噬破防！）、扫射极光冰束与六合冰牢；二阶段解锁【绝对零度四翼极光环】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   mech_colossus: {
     id: 'mech_colossus', icon: '⚙️', sprite: 'assets/spire/boss_mech_colossus.png', portrait: 'assets/spire/port_jialan.jpg',
     name: '倒悬机神 · 伽蓝重装态', epithet: '三层逆转发条钟楼镇守者', color: '#f77f00', spd: 78,
-    desc: '伽蓝操控的倒悬钟楼重装镇塔巨像：双肩发条火炮交叉齐射、改造本层专属地形、轰击星晷外环震波并投放齿轮陀螺偶；33% 概率超载觉醒二阶段，必展二阶隐藏立绘并额外解锁专属终式【末日熔核锯刃风暴】！'
+    desc: '伽蓝操控的钟楼重装巨像：部署可破坏的【超导磁暴引力桩】牵引猎物（击破引力桩可超载反噬机神破防）、横扫熔核加特林与钢铁矩阵排炮；二阶段解锁终式【末日熔核锯刃风暴】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   void_weaver: {
     id: 'void_weaver', icon: '🕰️', sprite: 'assets/spire/hero_jialan.png', portrait: 'assets/spire/port_jialan.jpg',
     name: '紫电弦月人偶 · 伽蓝', epithet: '三层星晷断罪少主 · 逆命傀儡师', color: '#9d4edd', spd: 86,
-    desc: '头插黄金骷髅发条的毒舌人偶少主：施展逆钟折跃与十字激光网、扫射高压【炼金秘毒龙息喷流】并操控双刃剑偶；觉醒二阶段后额外解锁专属终式【逆时米字次元断罪】！'
+    desc: '倒悬钟楼的毒舌人偶少主：刻印【逆时回溯锚点】并生成青色【断时解锚阵】（及时踏入解锚阵可反噬破防，否则将被强制时空拽回！），折跃投出回旋逆时弦月刃；二阶段解锁【逆时米字断罪光网】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   plague_empress: {
     id: 'plague_empress', icon: '🍃', sprite: 'assets/spire/hero_qingyu.png', portrait: 'assets/spire/port_qingyu.jpg',
     name: '残羽魔女 · 青羽试炼影', epithet: '风语守望者 · 最后的温柔锁', color: '#52b788', spd: 85,
-    desc: '守望九百九十九次轮回的残羽魔女幻影：蓄力横扫高压扇形【万蛊剧毒吐息喷流】、旋舞双螺旋苍翠风翎弹幕并唤出灵体；觉醒二阶段额外解锁专属终式【双龙剧毒吐息狂潮】！'
+    desc: '守望轮回的残羽魔女幻影：培植可破坏的【万蛊共生母苞】护体（击破母苞触发反噬破防）、横扫高压【万蛊剧毒吐息】并旋舞双螺旋风翎弹；二阶段解锁终式【双龙万蛊毒息】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   solar_seraph: {
     id: 'solar_seraph', icon: '🌑', sprite: 'assets/spire/hero_eclipse.png', portrait: 'assets/spire/port_eclipse.jpg',
     name: '第999号 · 日蚀圣女', epithet: '终层镜中真我 · 蚀日天灾神骸', color: '#ff9f1c', spd: 88,
-    desc: '端坐黑水圣所巨镜之中的你真正的神明本体：锁定黑金圣枪导轨贯日突刺、释放阴阳双曜并震塌黑曜断层；第 16 层终战必定揭下黑纱觉醒二阶段并解锁专属终式【黑日神罚天体崩落】！'
+    desc: '黑水圣所镜中的神明真我：展开【黑日引力奇点】牵引全场并投射双生金色【晨曦庇护印】（踏入庇护印可免疫黑日新星并令圣女破防！）、施放阴阳双曜；二阶段解锁【黑日神罚天体崩落】，D5 二阶段濒死必触发一次 10 秒【临死挣扎】！'
   }
 };
 

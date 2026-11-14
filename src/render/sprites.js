@@ -658,10 +658,63 @@ function drawWeaponSprite(w) {
   ctx.restore();
 }
 
-// 🗼 四大层域专属可破坏封魂器物（石灯笼 / 极寒冰晶簇 / 齿轮断柱 / 黑曜裂纹方碑，彻底删除旧蘑菇树！）
+// 🗼 四大层域专属可破坏封魂器物 & 首领共鸣阵眼棱柱（零 createRadialGradient / 零 shadowBlur）
 function drawTreeSprite(tr) {
   const sw = Math.sin(tr.sway || 0) * 0.04;
   const flash = tr.hitFlash > 0;
+  if (tr.isBossPylon) {
+    const now = _syncNow();
+    const pk = tr.pylonKind || 'cryo_obelisk';
+    const col = flash ? '#ffffff' : (tr.pylonColor || '#72efdd');
+    ctx.save();
+    ctx.translate(tr.x, tr.y);
+    ctx.fillStyle = 'rgba(0,0,0,0.46)';
+    ctx.beginPath(); ctx.ellipse(0, 18, 25, 9.5, 0, 0, Math.PI * 2); ctx.fill();
+    if (pk === 'magnet_core') {
+      ctx.strokeStyle = 'rgba(255, 159, 28, 0.28)';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath(); ctx.arc(0, 4, 98, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.arc(0, 6, 26, now * 0.004, now * 0.004 + Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    const bob = Math.sin(now * 0.006 + (tr.sway || 0)) * 3.2;
+    ctx.fillStyle = pk === 'cryo_obelisk' ? '#0c4a6e' : (pk === 'magnet_core' ? '#431407' : '#064e3b');
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(0, -34 + bob);
+    ctx.lineTo(15, -10 + bob);
+    ctx.lineTo(11, 16);
+    ctx.lineTo(-11, 16);
+    ctx.lineTo(-15, -10 + bob);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(0, -24 + bob);
+    ctx.lineTo(6, -10 + bob);
+    ctx.lineTo(0, 4 + bob);
+    ctx.lineTo(-6, -10 + bob);
+    ctx.closePath();
+    ctx.fill();
+    const bw = 44;
+    ctx.fillStyle = 'rgba(6,9,16,0.88)';
+    ctx.fillRect(-bw * 0.5, -50, bw, 6);
+    ctx.fillStyle = col;
+    ctx.fillRect(-bw * 0.5 + 1, -49, (bw - 2) * Math.max(0, tr.hp / Math.max(1, tr.maxHp)), 4);
+    ctx.font = '800 10px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fef08a';
+    ctx.fillText('击破破防', 0, -55);
+    ctx.restore();
+    return;
+  }
   const scId = (typeof curScene !== 'undefined' && curScene && curScene.id) ? curScene.id : 'foundry';
 
   ctx.fillStyle = 'rgba(0,0,0,0.44)';
@@ -1023,6 +1076,36 @@ function drawEnemySprite(e) {
   if (e.type === 'shielder') {
     ctx.strokeStyle = '#72efdd'; ctx.lineWidth = 5.5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.arc(e.x, e.y, r + 5, e.faceA - 0.85, e.faceA + 0.85); ctx.stroke();
+  }
+
+  if ((e.d5LastStandT || 0) > 0 && isBoss) {
+    const lsRatio = Math.max(0, Math.min(1, e.d5LastStandT / Math.max(0.1, e.d5LastStandMaxT || 10.0)));
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.strokeStyle = 'rgba(255, 42, 85, 0.86)';
+    ctx.lineWidth = 3.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, r + 16, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * lsRatio);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffd166';
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([9, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r + 23, now * 0.005, now * 0.005 + Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '900 12px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    const lsTxt = `🩸 临死挣扎·无敌 ${e.d5LastStandT.toFixed(1)}s`;
+    const lw = 166;
+    const ly = -r - 56;
+    ctx.fillStyle = 'rgba(42, 6, 18, 0.92)';
+    ctx.strokeStyle = '#ff4d6d';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.roundRect(-lw * 0.5, ly - 12, lw, 20, 6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffd166';
+    ctx.fillText(lsTxt, 0, ly + 2);
+    ctx.restore();
   }
 
   const activeWindup = (e.p2WindupT || 0) > 0 ? e.p2WindupT : (e.sigWindupT || 0);
