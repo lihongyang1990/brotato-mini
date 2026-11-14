@@ -1537,7 +1537,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       liveShopDiscountOk && meleeRangeGapOk
     );
 
-    // v2.1.9 专项校验：法杖与新道具 + 10%隐藏爆率封顶 + 八荒血月斩预烘焙 + 赛后总结 + 10/12层传送预警(D5=50%D1) + 护甲/吸血原版化 + 后期金币概率掉落
+    // v2.1.9 ~ v2.1.10 专项校验：法杖与新道具 + 20%隐藏爆率封顶 + 试炼金币补偿翻倍 + 1~5层小怪血量-15% + 八荒血月斩预烘焙 + 赛后总结与点击详情 + 10/12层传送预警(D5=50%D1) + 护甲/吸血原版化 + 后期金币概率掉落
     const neutralP = { cls: 'allrounder', weapons: [{ id: 'pistol', tier: 1 }] };
     const neutralBoost = getArchetypeAffinityBoosts(neutralP);
     const committedStaffP = {
@@ -1550,11 +1550,26 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     const staffItemMul = getItemArchetypeWeightMul(ITEMS.find(x => x.id === 'arcane_focus_orb'), staffBoost);
     const hiddenBoostOk = (
       neutralBoost.staff === 0 &&
-      staffBoost.staff > 0.08 &&
-      staffBoost.staff <= 0.10 + 1e-9 &&
-      staffWpnMul > 1.08 && staffWpnMul <= 1.10 + 1e-9 &&
-      staffItemMul > 1.08 && staffItemMul <= 1.10 + 1e-9
+      staffBoost.staff > 0.16 &&
+      staffBoost.staff <= 0.20 + 1e-9 &&
+      staffWpnMul > 1.16 && staffWpnMul <= 1.20 + 1e-9 &&
+      staffItemMul > 1.16 && staffItemMul <= 1.20 + 1e-9
     );
+
+    // 验证 1~5 层小怪血量降低 15%（0.85x），第 6 层起恢复 1.00x
+    const earlyMobHpOk = (
+      typeof getEarlyMobHpMul === 'function' &&
+      Math.abs(getEarlyMobHpMul(1) - 0.85) < 1e-9 &&
+      Math.abs(getEarlyMobHpMul(3) - 0.85) < 1e-9 &&
+      Math.abs(getEarlyMobHpMul(5) - 0.85) < 1e-9 &&
+      Math.abs(getEarlyMobHpMul(6) - 1.00) < 1e-9 &&
+      Math.abs(getEarlyMobHpMul(12) - 1.00) < 1e-9
+    );
+
+    // 验证蚀界生存试炼金币补偿大幅上调且受击 >=3 次仍有保底赏金
+    const trialCompLow = typeof calcSurvivalTrialGoldComp === 'function' ? calcSurvivalTrialGoldComp(3, 4, { harvest: 1 }) : { total: 0 };
+    const trialCompFlawless = typeof calcSurvivalTrialGoldComp === 'function' ? calcSurvivalTrialGoldComp(3, 0, { harvest: 1 }) : { total: 0 };
+    const trialGoldCompOk = (trialCompLow.total >= 50 && trialCompFlawless.total > trialCompLow.total);
 
     const wD1 = getBossTeleportWarnSec(1), wD2 = getBossTeleportWarnSec(2), wD3 = getBossTeleportWarnSec(3), wD4 = getBossTeleportWarnSec(4), wD5 = getBossTeleportWarnSec(5);
     const tpWarnLadderOk = (wD1 > wD2 && wD2 > wD3 && wD3 > wD4 && wD4 > wD5 && Math.abs(wD5 - wD1 * 0.50) < 1e-6);
@@ -1587,13 +1602,21 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     dropCrystals(300, 300, 30, true);
     const bossHasBigCoin = drops.some(d => d.kind === 'mat' && d.bigCoin === true);
 
-    // 验证八荒血月斩预烘焙精灵存在 & 赛后总结渲染双栏数据
+    // 验证八荒血月斩预烘焙精灵存在 & 赛后总结渲染双栏数据及点击查看武器/魔物详情弹窗
     const bmSprite = getBloodMoonWaveSprite();
     hurtPlayer(12, true, 'void_weaver');
     renderEndRunSummary(false);
     const endSumHtml = document.getElementById('endSummaryPanel').innerHTML || '';
-    const postGameSummaryOk = (!!bmSprite && endSumHtml.includes('赤烬魂灯杖') && endSumHtml.includes('伽蓝'));
-    const v219Ok = (hiddenBoostOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk);
+    const detailWpnOpened = openEndSummaryDetail('dealt', 'ember_staff') &&
+      !document.getElementById('endDetailModal').classList.contains('hidden') &&
+      (document.getElementById('endDetailBody').innerHTML || '').includes('赤烬魂灯杖');
+    const detailMobOpened = openEndSummaryDetail('taken', 'void_weaver') &&
+      !document.getElementById('endDetailModal').classList.contains('hidden') &&
+      (document.getElementById('endDetailBody').innerHTML || '').includes('伽蓝');
+    closeEndSummaryDetail();
+    const detailClosed = document.getElementById('endDetailModal').classList.contains('hidden');
+    const postGameSummaryOk = (!!bmSprite && endSumHtml.includes('赤烬魂灯杖') && endSumHtml.includes('伽蓝') && endSumHtml.includes('openEndSummaryDetail') && detailWpnOpened && detailMobOpened && detailClosed);
+    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,

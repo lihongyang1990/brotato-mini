@@ -396,6 +396,10 @@ body.m-ui .end-summary-panel { padding: 9px 10px; gap: 8px; }
 body.m-ui .end-sum-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 body.m-ui .end-sum-list { max-height: 150px; }
 body.m-ui .end-sum-kpis { font-size: 11px; gap: 4px 10px; }
+body.m-ui .end-sum-tabs { flex-wrap: wrap; }
+body.m-ui .end-detail-box { height: auto; max-height: calc(100dvh - 24px); }
+body.m-ui .end-detail-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.m-ui .end-detail-evo-grid { grid-template-columns: minmax(0, 1fr); }
 
 body.m-ui .codex-box,
 body.m-ui .log-box {

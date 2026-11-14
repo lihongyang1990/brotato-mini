@@ -768,6 +768,7 @@ function replayOpeningCutscene() {
 
 function showStart() {
   if (typeof resetWeaponEvolutionUI === 'function') resetWeaponEvolutionUI();
+  if (typeof closeEndSummaryDetail === 'function') closeEndSummaryDetail();
   state = 'menu';
   resetJoy();
   if (typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.resetForNewRun === 'function') {
@@ -997,6 +998,7 @@ function retryFailedWave(options) {
   for (const k in keys) keys[k] = false;
   resetJoy();
   last = performance.now();
+  if (typeof closeEndSummaryDetail === 'function') closeEndSummaryDetail();
   document.getElementById('endMenu').classList.add('hidden');
   document.getElementById('startMenu').classList.add('hidden');
   document.getElementById('pauseMenu').classList.add('hidden');
@@ -1021,6 +1023,7 @@ function abandonAndRestart() {
   for (const k in keys) keys[k] = false;
   resetJoy();
   last = performance.now();
+  if (typeof closeEndSummaryDetail === 'function') closeEndSummaryDetail();
   document.getElementById('endMenu').classList.add('hidden');
   logInfo('RESTART', `放弃当前进度并从第 1 波重头开始 · cls=${targetCls || '-'}`);
   if (targetCls) startGame(targetCls, { mode: endlessMode ? 'endless' : 'story' });

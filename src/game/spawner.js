@@ -1855,7 +1855,14 @@ function spawnSurvivalAbyssVortex(phase) {
 }
 
 // 全异星怪物、4 大新增特异兵种、5 大场景专属怪、随机精英统领、4 大主宰 Boss 与 3 大奇遇首领生成
-// （整体怪物与首领血量下调 -20%，前 5 层进一步温和减压，第 10 轮及以后保持陡峭高压！）
+// （1~5 层普通与特异小怪血量再下调 -15%，第 10 轮及以后保持陡峭高压！）
+const EARLY_MOB_HP_MUL = 0.85;
+function getEarlyMobHpMul(wv) {
+  const n = Math.max(1, Number(wv) || 1);
+  return n <= 5 ? EARLY_MOB_HP_MUL : 1.00;
+}
+globalThis.getEarlyMobHpMul = getEarlyMobHpMul;
+
 function createEnemy(x, y, type, variant = '') {
   const hpBaseMul = typeof MONSTER_HP_BASE_MUL === 'number' ? MONSTER_HP_BASE_MUL : 1.44;
   const hpLinearSlope = typeof MONSTER_HP_LINEAR_SLOPE === 'number' ? MONSTER_HP_LINEAR_SLOPE : 0.72;
@@ -1866,11 +1873,12 @@ function createEnemy(x, y, type, variant = '') {
   const monsterDmgMul = typeof MONSTER_DMG_MUL === 'number' ? MONSTER_DMG_MUL : 1.20;
   const midLateHpMul = typeof getMidLateWaveHpMul === 'function' ? getMidLateWaveHpMul(wave) : 1.0;
   const midLateDmgMul = typeof getMidLateWaveDmgMul === 'function' ? getMidLateWaveDmgMul(wave) : 1.0;
+  const earlyMobHpMul = getEarlyMobHpMul(wave);
   const endlessMul = wave > MAX_WAVE ? Math.pow(1.20, wave - MAX_WAVE) : 1;
   const wIdx = Math.max(0, wave - 1);
-  // 常规魔物与首领生命值、攻击力随波数进一步成长：中后期血量再翻一倍（2.0x）、攻击力再翻一倍（2.0x）！
+  // 常规魔物与首领生命值、攻击力随波数进一步成长：中后期血量再翻一倍（2.0x）、攻击力再翻一倍（2.0x），1~5层小怪血量降低 15%！
   const clampedStoryIdx = Math.min(15, wIdx);
-  const s = hpBaseMul * (1 + wIdx * hpLinearSlope) * midLateHpMul * endlessMul * diff.hpMul;
+  const s = hpBaseMul * (1 + wIdx * hpLinearSlope) * midLateHpMul * earlyMobHpMul * endlessMul * diff.hpMul;
   const dm = (1 + clampedStoryIdx * 0.105 + Math.max(0, Math.min(16, wave) - 7) * 0.048) * midLateDmgMul * (wave > MAX_WAVE ? Math.pow(1.10, wave - MAX_WAVE) : 1) * diff.dmgMul * monsterDmgMul;
   const monsterSpdMul = typeof MONSTER_SPD_MUL === 'number' ? MONSTER_SPD_MUL : 0.80;
   const sm = (1 + Math.min(0.18, wIdx * 0.012)) * diff.spdMul * monsterSpdMul;
@@ -1881,12 +1889,13 @@ function createEnemy(x, y, type, variant = '') {
   };
 
   const lateCoinMul = wave >= 6 ? 0.80 : (wave === 5 ? 0.90 : 1.00);
+  const trialCoinMul = (typeof survivalTrialWave !== 'undefined' && survivalTrialWave) ? 1.40 : 1.00;
   if (type === 'swarmer') {
     const softCap = isTouch ? 64 : 80;
     const swCnt = Math.max(1, Math.min(wave >= 6 ? 3 : 2, softCap - (enemies.length + Math.max(0, spawns.length - 1))));
     for (let k = 0; k < swCnt; k++) {
       const ox = x + (Math.random() - 0.5) * 54, oy = y + (Math.random() - 0.5) * 54;
-      const swMat = +((k === 0 ? 0.90 : 0.45) * lateCoinMul).toFixed(2);
+      const swMat = +((k === 0 ? 0.90 : 0.45) * lateCoinMul * trialCoinMul).toFixed(2);
       enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * dm)), color: '#ffbe0b', type, mat: swMat });
     }
     addBurst(x, y, '#ff4d6d', 5, 85);
@@ -2003,10 +2012,10 @@ function createEnemy(x, y, type, variant = '') {
     ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(3.8 * dm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
   }
 
-  // 中后期普通与特异小怪晶石产出下调约 20%（配合 dropCrystals 概率单枚掉落，不再爆大号金币堆）
+  // 中后期普通与特异小怪晶石产出下调约 20%（配合 dropCrystals 概率单枚掉落，不再爆大号金币堆；蚀界试炼小怪额外补偿晶石）
   const isBossLike = type === 'boss' || type === 'mini_boss' || type === 'special_boss';
   if (!isBossLike) {
-    ent.mat = +((ent.mat || 0) * lateCoinMul).toFixed(2);
+    ent.mat = +((ent.mat || 0) * lateCoinMul * trialCoinMul).toFixed(2);
   }
   // 第 3 波起按难度刷出【狂化精英词缀怪】（蚀界生存试炼期间禁用狂化精英词缀，保持纯粹走位闪避节奏）
   const canElite = !survivalTrialWave && wave >= 3 && !isBossLike && type !== 'mini_slime' && type !== 'bomber' && (type !== 'juggernaut' || wave >= 8);

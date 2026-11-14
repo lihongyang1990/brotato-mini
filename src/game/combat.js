@@ -156,11 +156,12 @@ function recordDamageTaken(src, amount, isFatal = false) {
   const key = meta.id || 'abyss_attack';
   let entry = rs.dmgTaken[key];
   if (!entry) {
-    entry = { id: key, name: meta.name, icon: meta.icon || '👾', dmg: 0, hits: 0, fatal: false };
+    entry = { id: key, name: meta.name, icon: meta.icon || '👾', dmg: 0, hits: 0, maxHit: 0, fatal: false };
     rs.dmgTaken[key] = entry;
   }
   entry.dmg += amount;
   entry.hits += 1;
+  if (amount > (entry.maxHit || 0)) entry.maxHit = amount;
   if (isFatal) entry.fatal = true;
   rs.totalTaken = (rs.totalTaken || 0) + amount;
 }
