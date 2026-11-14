@@ -569,13 +569,13 @@ function makeWeapon(id, tier = 1) {
 
 const _EMPTY_SET_BONUSES = {
   counts: { primitive: 0, precise: 0, gun: 0, heavy: 0, elemental: 0, tech: 0 },
-  hp: 0, crit: 0, range: 0, aspd: 0, armor: 0, blast: 0, elem: 0, tech: 0,
+  hp: 0, crit: 0, range: 0, aspd: 0, armor: 0, blast: 0, elem: 0, tech: 0, turretAspd: 0,
   rocks: 0, sticks: 0, meleeCnt: 0, staffCnt: 0, totemCnt: 0, screwdrivers: 0, maxMineTier: 1, doubleMines: 0
 };
 const _PRIM_STEPS = [2, 4, 6], _PREC_STEPS = [2, 3, 5], _GUN_STEPS = [2, 4, 6];
 const _HVY_STEPS = [2, 3, 5], _ELEM_STEPS = [2, 3, 5], _TECH_STEPS = [2, 3, 5];
 const _HP_TIERS = [0, 8, 18, 30], _CRIT_TIERS = [0, 0.06, 0.12, 0.20], _RNG_TIERS = [0, 45, 95, 155];
-const _ASPD_TIERS = [0, 0.08, 0.16, 0.25], _ARM_TIERS = [0, 2, 5, 8], _ELEM_TIERS = [0, 0.18, 0.38, 0.62], _TECH_TIERS = [0, 0.25, 0.52, 0.85];
+const _ASPD_TIERS = [0, 0.08, 0.16, 0.25], _ARM_TIERS = [0, 2, 5, 8], _ELEM_TIERS = [0, 0.18, 0.38, 0.62], _TECH_TIERS = [0, 0.25, 0.52, 0.85], _TECH_ASPD_TIERS = [0, 0.08, 0.16, 0.25];
 
 function _tierOfSet(c, steps) {
   return c >= steps[2] ? 3 : (c >= steps[1] ? 2 : (c >= steps[0] ? 1 : 0));
@@ -596,7 +596,7 @@ function getSetBonuses() {
   if (!cache) {
     cache = {
       counts: { primitive: 0, precise: 0, gun: 0, heavy: 0, elemental: 0, tech: 0 },
-      hp: 0, crit: 0, range: 0, aspd: 0, armor: 0, blast: 0, elem: 0, tech: 0,
+      hp: 0, crit: 0, range: 0, aspd: 0, armor: 0, blast: 0, elem: 0, tech: 0, turretAspd: 0,
       rocks: 0, sticks: 0, meleeCnt: 0, staffCnt: 0, totemCnt: 0, screwdrivers: 0, maxMineTier: 1, doubleMines: 0,
       _len: 0, _ids: [], _tiers: [], _evos: []
     };
@@ -648,6 +648,7 @@ function getSetBonuses() {
   cache.blast = tHvy > 0 ? 0.20 : 0;
   cache.elem  = _ELEM_TIERS[tElem];
   cache.tech  = _TECH_TIERS[tTech];
+  cache.turretAspd = _TECH_ASPD_TIERS[tTech];
   cache.rocks = rocks;
   cache.sticks = sticks;
   cache.meleeCnt = meleeCnt;
@@ -821,6 +822,11 @@ function renderBuildSummary(statsId, setsId) {
   const rng = getTotalRangeBonus();
   const rngTxt = rng >= 0 ? `+${rng}` : `${rng}`;
   const harv = Math.round(player.harvestFlat || 0);
+  const tAspdBase = typeof TURRET_BASE_ASPD_MUL === 'number' ? TURRET_BASE_ASPD_MUL : 0.85;
+  const turretAspdBonusTotal = (player.turretAspdBonus || 0) + (setB.turretAspd || 0);
+  const showTurretAspd = turretAspdBonusTotal > 0 || (setB.counts && setB.counts.tech > 0) ||
+    ((player.bonusTurrets || 0) + (player.laserTurrets || 0) + (player.shockTurrets || 0) + (player.totemTurrets || 0)) > 0;
+  const turretAspdPct = Math.round(tAspdBase * (1 + turretAspdBonusTotal) * 100);
   const stEl = document.getElementById(statsId);
   if (stEl) {
     stEl.innerHTML =
@@ -830,6 +836,7 @@ function renderBuildSummary(statsId, setsId) {
       `<span>汲血 <b>${Math.round(player.lifesteal * 100)}%</b></span>` +
       `<span>伤害 <b>${dmgPct}%</b></span>` +
       `<span>攻速 <b>${aspdPct}%</b></span>` +
+      (showTurretAspd ? `<span>建筑攻速 <b>${turretAspdPct}%</b></span>` : '') +
       `<span>范围 <b>${rngTxt}</b></span>` +
       `<span>暴击 <b>${critPct}%</b> <small style="color:#dfc084">(${critDmgPct}%)</small></span>` +
       `<span>闪避 <b>${Math.round(Math.min(player.dodgeCap || 0.80, player.dodge) * 100)}%</b></span>` +

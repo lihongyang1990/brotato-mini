@@ -1065,7 +1065,7 @@ function shouldRollRareBossPortrait(variantKey = '', forceCutscene = false) {
 }
 
 function startBossCutscene(mode, variant, title, subtitle, extraTag = '', color = '#ff4d6d', accent = '#ffd166', dur = BOSS_CUTSCENE_TOTAL_SEC, extra = null) {
-  if (!endlessMode) return;
+  if (!endlessMode && mode !== 'last_stand') return;
   const fadeDur = (extra && extra.fadeDur) || BOSS_CUTSCENE_FADE_SEC;
   const totalDur = Math.max(fadeDur + 0.5, dur || BOSS_CUTSCENE_TOTAL_SEC);
   bossCutscene = Object.assign({
@@ -1082,11 +1082,11 @@ function startBossCutscene(mode, variant, title, subtitle, extraTag = '', color 
   }, extra || {});
   pendingBossCutscene = null;
   if (player) player.invuln = 0;
-  if (typeof SpireAudio !== 'undefined') SpireAudio.playCutsceneCue(variant, mode === 'mythic_phase2');
+  if (typeof SpireAudio !== 'undefined') SpireAudio.playCutsceneCue(variant, mode === 'mythic_phase2' || mode === 'last_stand');
 }
 
 function queueBossCutscene(mode, variant, title, subtitle, extraTag = '', color = '#ff4d6d', accent = '#ffd166', dur = BOSS_CUTSCENE_TOTAL_SEC, extra = null) {
-  if (!endlessMode) return;
+  if (!endlessMode && mode !== 'last_stand') return;
   const fadeDur = (extra && extra.fadeDur) || BOSS_CUTSCENE_FADE_SEC;
   const totalDur = Math.max(fadeDur + 0.5, dur || BOSS_CUTSCENE_TOTAL_SEC);
   pendingBossCutscene = Object.assign({
@@ -2077,8 +2077,10 @@ function createEnemy(x, y, type, variant = '') {
     else baseBossHp = 14800 + Math.max(0, wave - MAX_WAVE) * 3600;
     const bhp = Math.round(baseBossHp * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinScale);
     const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.6 : (wave <= 12 ? 11.2 : 12.6));
-    // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；无尽保留随机神话觉醒。
-    const phase2Chance = isStoryBoss ? 1 : mythicRate;
+    // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；D5 第 16 层（主线与无尽）首领 100% 必定进入二阶段！
+    const isD5Floor16Boss = (wave === 16 && typeof diff !== 'undefined' && diff && diff.id === 5);
+    const forcePhase2 = isStoryBoss || isD5Floor16Boss;
+    const phase2Chance = forcePhase2 ? 1 : mythicRate;
     const bossDodge = (wave === 16 || bKey === 'solar_seraph')
       ? (typeof getFloor16BossDodge === 'function' ? getFloor16BossDodge(diff) : 0)
       : 0;
@@ -2090,7 +2092,7 @@ function createEnemy(x, y, type, variant = '') {
       storyPhaseBoss: isStoryBoss, storyStage: isStoryBoss ? 1 : 0,
       dashT: 2.5, sumT: 5.8, meteorT: 4.1, skillT: 2.0, sigSkillT: 4.2, terrainCd: 6.2, ringCd: 4.9,
       venomCd: 4.4, p2SkillT: 2.8, arenaMechCd: (bKey === 'solar_seraph' ? 2.5 : 4.2),
-      burstLeft: 0, burstCd: 0, canPhase2: Math.random() < phase2Chance, mythicPhase2: false,
+      burstLeft: 0, burstCd: 0, canPhase2: forcePhase2 ? true : (Math.random() < phase2Chance), mythicPhase2: false,
       _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
       mat: wave <= 4 ? 26 : (wave <= 8 ? 34 : (wave <= 12 ? 42 : 52))
     };

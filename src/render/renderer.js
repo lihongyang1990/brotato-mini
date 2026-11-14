@@ -718,14 +718,17 @@ function draw() {
   drawCrispArenaBalustrade(vL, vR, vT, vB, activeSceneId);
 
   if (state !== 'menu') {
-    // 蚀界生存试炼 · 魂灯迷雾世界空间视野半径（严密剔除雾外全部怪物、怪血条、刷怪红叉与普通敌弹，外圈浓雾 100% 不可透视怪物！）
-    const _stFog = (typeof survivalTrialWave !== 'undefined' && survivalTrialWave && player && typeof survivalTrialState === 'object' && survivalTrialState) ? survivalTrialState : null;
-    const _fogIntroP = _stFog ? Math.max(0.05, Math.min(1, _stFog.fogIntroP || 0)) : ((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) ? 1 : 0);
+    // 蚀界生存试炼 & D5 第 16 层二阶段蚀日浓雾 · 魂灯迷雾世界空间视野半径（严密剔除雾外全部怪物、怪血条、刷怪红叉与普通敌弹，外圈浓雾 100% 不可透视怪物！）
+    const _d5P2Fog = typeof isD5Floor16Phase2FogActive === 'function' && isD5Floor16Phase2FogActive();
+    const _anyFogWave = !!((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) || _d5P2Fog);
+    const _stFog = (player && typeof survivalTrialState === 'object' && survivalTrialState && (_anyFogWave || (survivalTrialState.fogIntroP || 0) > 0.01)) ? survivalTrialState : null;
+    const _fogIntroP = _stFog ? Math.max(_anyFogWave ? 0.05 : 0, Math.min(1, _stFog.fogIntroP || 0)) : (_anyFogWave ? 1 : 0);
     const _fogBoostP = (_stFog && _stFog.lanternBoostT > 0) ? Math.min(1, _stFog.lanternBoostT / 1.25) : 0;
-    const _fogTargetWorldR = (238 + _fogBoostP * 70) + Math.sin(now * 0.0042) * 3.5;
+    const _fogBaseWorldR = _d5P2Fog ? 268 : 238;
+    const _fogTargetWorldR = (_fogBaseWorldR + _fogBoostP * 72) + Math.sin(now * 0.0042) * 3.5;
     const _fogScreenClearR = Math.max(64, (Math.hypot(viewW, viewH) * (1 - _fogIntroP)) + (_fogTargetWorldR * camZoom) * _fogIntroP);
     const fogEffWorldR = _fogScreenClearR / Math.max(0.25, camZoom);
-    const fogCullActive = !!(typeof survivalTrialWave !== 'undefined' && survivalTrialWave && player && _fogIntroP > 0.35);
+    const fogCullActive = !!(player && _fogIntroP > 0.35);
     const fogWorldInnerR = fogEffWorldR * 0.90;
     const fogWorldCutR = fogEffWorldR * 1.25;
 
@@ -2836,6 +2839,17 @@ function draw() {
       ctx.beginPath();
       ctx.arc(player.x, player.y, magR, 0, Math.PI * 2);
       ctx.stroke();
+      if (typeof isBossLastStandFearActive === 'function' && isBossLastStandFearActive()) {
+        const fPulse = Math.sin(now * 0.012);
+        const fRad = 32 + fPulse * 2.5;
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.58)';
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([7, 5]);
+        ctx.beginPath();
+        ctx.arc(player.x, player.y + 4, fRad, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       ctx.restore();
     }
 
@@ -3635,16 +3649,20 @@ function draw() {
 
   ctx.restore();
 
-  // 蚀界生存试炼 · 沉浸浓雾提灯视野系统（预烘焙 100% 纯黑不透怪外圈遮罩 + 动态翻涌迷雾云团 + 机关幽芒预警与灯圈来袭箭头，战斗帧 0 createRadialGradient / 0 shadowBlur）
-  if (typeof survivalTrialWave !== 'undefined' && survivalTrialWave && player && state !== 'menu' && viewW > 40 && viewH > 40) {
+  // 蚀界生存试炼 & D5 第 16 层二阶段蚀日浓雾 · 沉浸浓雾提灯视野系统（预烘焙 100% 纯黑不透怪外圈遮罩 + 动态翻涌迷雾云团 + 机关幽芒预警与灯圈来袭/首领方位箭头，战斗帧 0 渐变 / 0 模糊）
+  const _d5P2FogOverlay = typeof isD5Floor16Phase2FogActive === 'function' && isD5Floor16Phase2FogActive();
+  const _hasResidualFog = !!(typeof survivalTrialState === 'object' && survivalTrialState && (survivalTrialState.fogIntroP || 0) > 0.015);
+  if (((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) || _d5P2FogOverlay || _hasResidualFog) && player && state !== 'menu' && viewW > 40 && viewH > 40) {
     const st = (typeof survivalTrialState === 'object' && survivalTrialState) ? survivalTrialState : null;
-    const introP = st ? Math.max(0.05, Math.min(1, st.fogIntroP || 0)) : 1;
+    const activeFogNow = !!((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) || _d5P2FogOverlay);
+    const introP = st ? Math.max(activeFogNow ? 0.05 : 0, Math.min(1, st.fogIntroP || 0)) : 1;
     const boostP = (st && st.lanternBoostT > 0) ? Math.min(1, st.lanternBoostT / 1.25) : 0;
     const fNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.001;
     const lx = viewW * 0.5 + sx + (player.x - cam.x) * camZoom;
     const ly = viewH * 0.5 + sy + (player.y - cam.y) * camZoom;
     const diag = Math.hypot(viewW, viewH);
-    const targetWorldR = (238 + boostP * 70) + Math.sin(fNow * 4.2) * 3.5;
+    const baseWorldR = _d5P2FogOverlay ? 268 : 238;
+    const targetWorldR = (baseWorldR + boostP * 72) + Math.sin(fNow * 4.2) * 3.5;
     const clearR = Math.max(64, (diag * (1 - introP)) + (targetWorldR * camZoom) * introP);
     const scId = (curScene && curScene.id) || 'foundry';
     const fogRgb = (typeof SOUL_FOG_PALETTE !== 'undefined' && SOUL_FOG_PALETTE[scId]) || [5, 8, 15];
@@ -3889,6 +3907,56 @@ function draw() {
         ctx.restore();
       }
     }
+    if (_d5P2FogOverlay && typeof enemies !== 'undefined' && enemies.length > 0) {
+      const worldClearR = r0 / Math.max(0.25, camZoom);
+      for (let i = 0; i < enemies.length; i++) {
+        const be = enemies[i];
+        if (!be || be.hp <= 0 || (be.type !== 'boss' && be.type !== 'special_boss')) continue;
+        if (be.eclipseSingularity && Array.isArray(be.eclipseSingularity.sanctuaries)) {
+          const sancts = be.eclipseSingularity.sanctuaries;
+          for (let sk = 0; sk < sancts.length; sk++) {
+            const sc = sancts[sk];
+            const dxs = sc.x - player.x, dys = sc.y - player.y;
+            if (Math.hypot(dxs, dys) > worldClearR * 0.85) {
+              const angS = Math.atan2(dys, dxs);
+              ctx.save();
+              ctx.translate(lx + Math.cos(angS) * (chevR - 3), ly + Math.sin(angS) * (chevR - 3));
+              ctx.rotate(angS);
+              ctx.globalAlpha = 0.88 * introP;
+              ctx.fillStyle = '#fde047';
+              ctx.strokeStyle = '#78350f';
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.moveTo(7.5, 0); ctx.lineTo(0, -5.2); ctx.lineTo(-5.5, 0); ctx.lineTo(0, 5.2);
+              ctx.closePath();
+              ctx.fill(); ctx.stroke();
+              ctx.restore();
+            }
+          }
+        }
+        const dxE = be.x - player.x, dyE = be.y - player.y;
+        const distE = Math.hypot(dxE, dyE);
+        if (distE > worldClearR * 0.86) {
+          const angE = Math.atan2(dyE, dxE);
+          ctx.save();
+          ctx.translate(lx + Math.cos(angE) * chevR, ly + Math.sin(angE) * chevR);
+          ctx.rotate(angE);
+          ctx.globalAlpha = 0.94 * introP;
+          ctx.fillStyle = (be.d5LastStandT || 0) > 0 ? '#ffd166' : '#ff2a55';
+          ctx.strokeStyle = '#fffbeb';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(12.2, 0);
+          ctx.lineTo(-5.8, -6.8);
+          ctx.lineTo(-2.4, 0);
+          ctx.lineTo(-5.8, 6.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
     ctx.restore();
   }
 
@@ -4063,10 +4131,11 @@ function draw() {
     ctx.restore();
   }
 
-  // 👑 首领登场（一阶段 33% 概率）/ 神话二阶段觉醒（二阶段 D1=30% -> D5=50% 概率觉醒且 100% 必出立绘）半透明斜向破框立绘横幅
-  // 完整展示 4.0 秒后进入 0.85 秒丝滑上浮消逝动画（0 radialGradient / 0 shadowBlur · 高透光不挡走位与弹幕）
-  if (state === 'wave' && endlessMode &&
+  // 👑 首领登场 / 神话二阶段觉醒 / D5 临死挣扎（主线与无尽均强制展示立绘）半透明斜向破框立绘横幅
+  // 完整展示后进入 0.85 秒丝滑上浮消逝动画（0 渐变分配 / 0 模糊滤镜 · 高透光不挡走位与弹幕）
+  if (state === 'wave' &&
       typeof bossCutscene !== 'undefined' && bossCutscene && bossCutscene.t > 0 &&
+      (endlessMode || bossCutscene.mode === 'last_stand') &&
       !(typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.isBlockingGameplay === 'function' && SpireDirector.isBlockingGameplay())) {
     const bc = bossCutscene;
     const fadeDur = Math.max(0.35, bc.fadeDur || 0.85);
@@ -4079,7 +4148,8 @@ function draw() {
     const exitP = rawExit * rawExit * (3 - 2 * rawExit);
     const alpha = enterP * exitP;
     const dissolveLift = (1 - exitP) * 20;
-    const isMythic = bc.mode === 'mythic_phase2';
+    const isLastStand = bc.mode === 'last_stand';
+    const isMythic = bc.mode === 'mythic_phase2' || isLastStand;
     const mainCol = isMythic ? '#ff2a55' : (bc.color || '#e11d48');
     const accCol = isMythic ? '#ffd166' : (bc.accent || '#f6d379');
     const portraitPortrait = viewW < 620;
@@ -4172,7 +4242,7 @@ function draw() {
       ctx.fillStyle = isMythic ? '#ffd166' : '#ffffff';
       ctx.font = `italic 900 ${portraitPortrait ? 44 : 74}px -apple-system, BlinkMacSystemFont, sans-serif`;
       ctx.textAlign = 'right';
-      ctx.fillText(isMythic ? 'PHASE II · AWAKENING' : 'PHASE I · SOVEREIGN', viewW - 24, cy + (portraitPortrait ? 86 : 58));
+      ctx.fillText(isLastStand ? 'LAST STAND · UNDYING DREAD' : (isMythic ? 'PHASE II · AWAKENING' : 'PHASE I · SOVEREIGN'), viewW - 24, cy + (portraitPortrait ? 86 : 58));
 
       // 斜向流光速度线
       const slope = (-2 * slant) / Math.max(1, xR - xL);
@@ -4226,12 +4296,16 @@ function draw() {
       // 4. 破框半身立绘（一阶段夏装 / 二阶段隐藏泳装）与主宰铭文排印
       ctx.globalAlpha = 0.84 * alpha;
       const slideOffset = (1 - enterP) * 64;
-      const phaseBadgeTxt = isMythic ? '⚡ PHASE II · 神话二阶立绘解封' : '👑 PHASE I · 首领降临立绘';
+      const phaseBadgeTxt = isLastStand
+        ? '🩸 D5 绝境死战 · 临死挣扎'
+        : (isMythic ? '⚡ PHASE II · 神话二阶立绘解封' : '👑 PHASE I · 首领降临立绘');
       const personaShort = personaSpec ? personaSpec.personaName.split(' · ')[0] : '';
       const skinTitle = personaSpec
-        ? (isMythic
-          ? `🔥 隐藏二阶 · ${personaShort}「${personaSpec.mythicTitle || personaSpec.summerTitle}」`
-          : `✨ 一阶夏装 · ${personaShort}「${personaSpec.summerTitle}」`)
+        ? (isLastStand
+          ? `🩸 不灭死战 · ${personaShort}「${personaSpec.mythicTitle || personaSpec.summerTitle}」`
+          : (isMythic
+            ? `🔥 隐藏二阶 · ${personaShort}「${personaSpec.mythicTitle || personaSpec.summerTitle}」`
+            : `✨ 一阶夏装 · ${personaShort}「${personaSpec.summerTitle}」`))
         : (bc.subtitle || '🕯️ 守誓主宰显圣');
 
       if (portraitPortrait) {

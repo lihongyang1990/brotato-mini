@@ -7,7 +7,7 @@ const DIFFS = [
   { id: 2, code: 'D2', roman: 'III', short: '残响', tone: 'amber',   badge: 'D2 · 残响', name: '残响危局', hpMul: 1.28, dmgMul: 1.24, spdMul: 1.00, spawnMul: 1.11, eliteRate: 0.072, shopTax: 1.03, matBonus: 0, midElite: true,  dualElite: false, doubleBoss: false, desc: '怪血量 +28%  ·  伤害 +24%  ·  二阶概率 35%  ·  寒晶 3.5s 冰封  ·  第 6 / 10 / 14 层增派先锋统领' },
   { id: 3, code: 'D3', roman: 'IV',  short: '蚀月', tone: 'rose',    badge: 'D3 · 蚀月', name: '蚀月狂厄', hpMul: 1.42, dmgMul: 1.33, spdMul: 1.03, spawnMul: 1.16, eliteRate: 0.093, shopTax: 1.06, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: false, desc: '怪血量 +42%  ·  伤害 +33%  ·  二阶概率 40%  ·  寒晶 3.0s 冰封  ·  第 10 / 14 层双先锋统领夹击' },
   { id: 4, code: 'D4', roman: 'V',   short: '逆钟', tone: 'violet',  badge: 'D4 · 逆钟', name: '逆钟深渊', hpMul: 1.56, dmgMul: 1.41, spdMul: 1.06, spawnMul: 1.22, eliteRate: 0.115, shopTax: 1.09, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '怪血量 +56%  ·  伤害 +41%  ·  二阶概率 45%  ·  寒晶 2.5s 冰封  ·  无尽层域解锁双王同临' },
-  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 1.70, dmgMul: 1.50, spdMul: 1.08, spawnMul: 1.27, eliteRate: 0.144, shopTax: 1.11, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +70%  ·  伤害 +50%  ·  二阶概率 50%  ·  寒晶 2.0s 冰封  ·  二阶首领独享10秒临死挣扎' }
+  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 1.70, dmgMul: 1.50, spdMul: 1.08, spawnMul: 1.27, eliteRate: 0.144, shopTax: 1.11, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +70%  ·  伤害 +50%  ·  二阶概率 50%（16层必入二阶浓雾）  ·  寒晶 2.0s 冰封  ·  二阶首领10秒临死挣扎' }
 ];
 let selectedDiff = 1;
 
@@ -191,8 +191,13 @@ const SET_DEFS = {
   gun:       { label: '🔫封魂铳', steps: [2, 4, 6], desc: '2/4/6把: 攻击范围 +45/+95/+155 · 攻速 +8%/+16%/+25%' },
   heavy:     { label: '🛡️黑曜重装', steps: [2, 3, 5], desc: '2/3/5把: 护甲 +2/+5/+8 · 爆破范围 +20%' },
   elemental: { label: '🔥四象元素', steps: [2, 3, 5], desc: '2/3/5把: 元素与反应伤害 +18%/+38%/+62%' },
-  tech:      { label: '⚙️发条机巧', steps: [2, 3, 5], desc: '2/3/5把: 发条机关攻速与伤害 +25%/+52%/+85%' }
+  tech:      { label: '⚙️发条机巧', steps: [2, 3, 5], desc: '2/3/5把: 工程伤害 +25%/+52%/+85% · 建筑攻速 +8%/+16%/+25%' }
 };
+
+// 参照《土豆兄弟 (Brotato)》建筑攻速独立法则：
+// 角色自身【攻击速度 (atkSpd)】与【工程学伤害 (tech)】绝不加速炮台/图腾开火，建筑仅受独立【建筑攻速 (turretAspdBonus)】加成；基础塔攻速整体下调 15%（0.85x）
+const TURRET_BASE_ASPD_MUL = 0.85;
+if (typeof globalThis !== 'undefined') globalThis.TURRET_BASE_ASPD_MUL = TURRET_BASE_ASPD_MUL;
 
 // 全局硬核平衡常量（无主角无敌帧；全流程小怪血量再下调 -20%，第 10 层及以后首领血量下调 -20%；前 5 层强度温和下调；怪物移速 -20%；远程怪数量 -20% 且怪物总量不变）
 const PLAYER_RANGE_SCALE = 0.80;
@@ -618,7 +623,7 @@ const ITEMS = [
   { id: 'hedgehog',   name: '白骨棘刺护腕', icon: '🦔', cost: 15, tier: 1, tags: ['melee', 'tank'], desc: '近战加成 +15%，全体伤害 +6%，护甲 +1，闪避 -4%', apply: p => { p.meleeBonus += 0.15; p.dmgMul += 0.06; p.armor += 1; p.dodge = Math.max(0, p.dodge - 0.04); } },
   { id: 'whetstone',  name: '守桥砺剑石',   icon: '🪓', cost: 15, tier: 1, maxCount: 4, tags: ['melee'], desc: '近战伤害 +18%；近战命中撕裂护甲使目标易伤 +12%（持续3.2s）', apply: p => { p.meleeBonus += 0.18; p.meleeSunder = true; } },
   { id: 'toolbox',    name: '伽蓝发条匣',   icon: '🧰', cost: 15, tier: 1, maxCount: 4, tags: ['tech'], desc: '发条机巧（炮台与地雷）伤害 +18%，再生 +0.8/秒', apply: p => { p.techBonus = (p.techBonus || 0) + 0.18; if (!p.noRegen) p.regen += 0.8; } },
-  { id: 'gear_oil',   name: '钟楼高纯润滑脂', icon: '🛢️', cost: 15, tier: 1, maxCount: 4, tags: ['tech'], desc: '所有友方炮台与图腾攻速 +16%，工程伤害 +10%', apply: p => { p.turretAspdBonus = (p.turretAspdBonus || 0) + 0.16; p.techBonus = (p.techBonus || 0) + 0.10; } },
+  { id: 'gear_oil',   name: '钟楼高纯润滑脂', icon: '🛢️', cost: 15, tier: 1, maxCount: 4, tags: ['tech'], desc: '建筑攻速 +16%（所有友方炮台与图腾独立攻速），工程伤害 +10%', apply: p => { p.turretAspdBonus = (p.turretAspdBonus || 0) + 0.16; p.techBonus = (p.techBonus || 0) + 0.10; } },
   { id: 'blueprint_scroll', name: '筑城机关草图', icon: '📜', cost: 16, tier: 1, maxCount: 3, tags: ['tech', 'tank'], desc: '战场上每存在 1 座友方建筑，提供 +0.8/秒 生命再生与 +6% 工程增幅（最多计 5 座）', apply: p => { p.turretBastion = (p.turretBastion || 0) + 1; } },
   { id: 'mana_wick',  name: '青焰秘杖灯芯', icon: '🕯️', cost: 15, tier: 1, maxCount: 4, tags: ['staff', 'elemental'], desc: '元素伤害 +14%，【法杖】类兵装吟唱冷却缩短 10%', apply: p => { p.elemBonus += 0.14; p.staffHaste = (p.staffHaste || 0) + 0.10; } },
   { id: 'heavy_greaves', name: '黑曜镇步胫甲', icon: '🥾', cost: 15, tier: 1, maxCount: 4, tags: ['tank', 'melee'], desc: '最大生命 +9，近战震退力度 +18%，移速 -3%', apply: p => { p.maxHp += 9; p.hp += 9; p.meleeKnockBonus = (p.meleeKnockBonus || 0) + 0.18; p.spdMul = Math.max(0.68, p.spdMul - 0.03); } },
@@ -724,7 +729,7 @@ const UPGRADES = [
   { name: '断刃剑意', icon: '⚔️', desc: '近战伤害 +21%，最大生命 +5',         apply: p => { p.meleeBonus += 0.21; p.maxHp += 5; p.hp += 5; } },
   { name: '鹰眼强铳', icon: '🔫', desc: '远程兵装伤害 +18%，攻击范围 +32',   apply: p => { p.rangedBonus = (p.rangedBonus || 0) + 0.18; p.rangeBonus += 32; } },
   { name: '秘杖吟唱', icon: '🪄', desc: '元素伤害 +20%，法杖冷却缩短 8%',     apply: p => { p.elemBonus += 0.20; p.staffHaste = (p.staffHaste || 0) + 0.08; } },
-  { name: '发条专精', icon: '🔧', desc: '发条机巧（炮台/星雷）伤害 +24%，护甲 +1', apply: p => { p.techBonus = (p.techBonus || 0) + 0.24; p.armor += 1; } },
+  { name: '发条专精', icon: '🔧', desc: '发条机巧伤害 +22%，建筑攻速 +10%，护甲 +1', apply: p => { p.techBonus = (p.techBonus || 0) + 0.22; p.turretAspdBonus = (p.turretAspdBonus || 0) + 0.10; p.armor += 1; } },
   { name: '疾速扣击', icon: '⚡', desc: '攻击速度 +12%',                     apply: p => { p.atkSpd += 0.12; } },
   { name: '星瞳扩距', icon: '📏', desc: '攻击范围 +55，全体伤害 +6%',         apply: p => { p.rangeBonus += 55; p.dmgMul += 0.06; } },
   { name: '黑曜铭甲', icon: '🪨', desc: '护甲 +2，最大生命 +5',               apply: p => { p.armor += 2; p.maxHp += 5; p.hp += 5; } },

@@ -1800,6 +1800,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       d5Boss.maxHp = 6000; d5Boss.hp = 400;
       hurtEnemy(d5Boss, 99999, true);
       if (!(d5Boss._d5LastStandUsed === true && d5Boss.hp === 1 && Math.abs(d5Boss.d5LastStandT - 10.0) < 1e-6 && D5_LAST_STAND_ASPD_MUL === 1.20)) return false;
+      if (!bossCutscene || bossCutscene.mode !== 'last_stand') return false;
+      draw(); // Verify last_stand portrait banner renders cleanly with 0 radialGradient & 0 shadowBlur
+      bossCutscene = null;
 
       // Invulnerability during 10s window
       hurtEnemy(d5Boss, 99999, true);
@@ -2165,7 +2168,73 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       return true;
     })();
 
-    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk && lateHealDropAndBoss16DodgeOk && twinBossSingleCrateOk && v2113Ok);
+    // v2.1.14: D5 Floor 16 Guaranteed Phase-2 + Phase-2 Soul Fog + Last Stand Portrait & Fear (-15% Spd / +50% Dash CD) + Independent Structure Aspd (-15% Base)
+    const v2114Ok = (() => {
+      // 1) Independent Structure Attack Speed (-15% base = 0.85, player atkSpd & techBonus must NOT affect turret fire rate!)
+      player.weapons = [];
+      player.atkSpd = 0;
+      player.techBonus = 0;
+      player.turretAspdBonus = 0;
+      player.turretOverclockT = 0;
+      const baseTurretAspd = getEffectiveTurretAspdMul(1);
+      if (Math.abs(baseTurretAspd - 0.85) > 1e-6) return false;
+      // Crank player atkSpd (+300%) and techBonus (+400%) -> turret attack speed MUST remain 0.85!
+      player.atkSpd = 3.0;
+      player.techBonus = 4.0;
+      if (Math.abs(getEffectiveTurretAspdMul(1) - 0.85) > 1e-6) return false;
+      // Dedicated turretAspdBonus (+32%) MUST scale turret attack speed cleanly
+      player.turretAspdBonus = 0.32;
+      if (Math.abs(getEffectiveTurretAspdMul(1) - +(0.85 * 1.32).toFixed(6)) > 1e-5) return false;
+      player.atkSpd = 0; player.techBonus = 0; player.turretAspdBonus = 0;
+
+      // 2) D5 Floor 16 Boss 100% Guaranteed Phase-2 (even in Endless Mode when Math.random is 0.9999) + Phase-2 Soul Fog
+      endlessMode = true;
+      state = 'wave';
+      wave = 16;
+      selectedDiff = 5; diff = DIFFS[5];
+      enemies.length = 0;
+      const origR = Math.random;
+      Math.random = () => 0.999999;
+      const f16Boss = createEnemy(player.x + 260, player.y, 'boss', 'solar_seraph');
+      Math.random = origR;
+      if (f16Boss.canPhase2 !== true) return false;
+      enemies.push(f16Boss);
+      if (isD5Floor16Phase2FogActive() !== false) return false;
+      triggerBossMythicPhase2(f16Boss);
+      bossCutscene = null;
+      if (!f16Boss.mythicPhase2 || isD5Floor16Phase2FogActive() !== true || isSoulFogActive() !== true) return false;
+      update(0.5);
+      if (!(survivalTrialState.fogIntroP > 0.40)) return false;
+      draw(); // Verify D5 Floor 16 Phase-2 Soul Fog + Boss Rim Compass render with 0 radialGradient & 0 shadowBlur!
+
+      // 3) Last Stand Cut-in Portrait (works in Story Mode too!) + Player Fear (-15% Move Speed, +50% Dash Cooldown)
+      endlessMode = false;
+      player.spdMul = 1.0; player.noSlow = true; player.dashHasteT = 0; player.dashCdMul = 1; player.cls = 'allrounder';
+      const spdBeforeFear = getEffectiveSpdMul();
+      player.dashCd = 0; player.dashT = 0; bossCutscene = null;
+      triggerSoulDash();
+      const dashCdNormal = player.dashMaxCd;
+      player.dashCd = 0; player.dashT = 0;
+
+      f16Boss.hp = 10;
+      hurtEnemy(f16Boss, 99999, true);
+      if (!bossCutscene || bossCutscene.mode !== 'last_stand') return false;
+      draw(); // Verify Story Mode Last Stand portrait renders cleanly!
+      bossCutscene = null;
+      if (!isBossLastStandFearActive()) return false;
+      const spdDuringFear = getEffectiveSpdMul();
+      if (Math.abs(spdDuringFear - spdBeforeFear * 0.85) > 1e-3) return false;
+      triggerSoulDash();
+      const dashCdFeared = player.dashMaxCd;
+      if (Math.abs(dashCdFeared - dashCdNormal * 1.50) > 1e-4) return false;
+
+      player.noSlow = false; player.dashCd = 0; player.dashT = 0;
+      enemies.length = 0; survivalTrialState.fogIntroP = 0;
+      endlessMode = true;
+      return true;
+    })();
+
+    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk && lateHealDropAndBoss16DodgeOk && twinBossSingleCrateOk && v2113Ok && v2114Ok);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,

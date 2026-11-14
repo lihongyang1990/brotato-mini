@@ -4,6 +4,21 @@
 
 ---
 
+## [v2.1.14] - 2026-11-15
+### 🌫️ D5 第 16 层首领必进二阶段并降临迷雾 & 🩸 临死挣扎破框立绘特写 + 主角恐惧减益（移速 `-15%` / 瞬步冷却 `+50%`） & ⚙️ 参照《土豆兄弟》重构独立【建筑攻速】词条并下调 `15%` 基础塔攻速
+- **D5 第 16 层首领必定二阶段 + 二阶段迷雾降临（`src/game/spawner.js`、`src/game/combat.js`、`src/game/update.js`、`src/render/renderer.js`）**：
+  - 在最高厄度 `D5` 下，第 `16` 层首领（主线与无尽模式均生效）强制 `canPhase2 = true`（`100%` 必定觉醒二阶段）；
+  - 当 D5 第 16 层首领进入二阶段时，`isD5Floor16Phase2FogActive()` 激活全场 **【蚀日浓雾】**（复用预烘焙离屏浓雾遮罩与提灯照明圈，严格保持战斗帧 `0 createRadialGradient` / `0 shadowBlur`），并在提灯边缘提供首领方位与晨曦庇护印罗盘指引，击败首领后浓雾平滑散去。
+- **首领【临死挣扎】新增破框立绘特写展示（`src/game/combat.js`、`src/game/spawner.js`、`src/render/renderer.js`）**：
+  - 主线与无尽 D5 首领触发 10 秒【临死挣扎】瞬间，强制弹出二阶段破框立绘横幅（`mode = 'last_stand'`），清晰展示 `🩸 D5 绝境死战 · 临死挣扎`、锁血无敌与恐惧威压词条，支持点击或 `Enter` 随时跳过。
+- **垂死挣扎期间主角【恐惧威压】减益（`src/game/combat.js`、`src/game/update.js`、`src/render/renderer.js`）**：
+  - 任意存活首领处于 `d5LastStandT > 0` 期间，`isBossLastStandFearActive()` 生效：主角因恐惧**移动速度降低 `15%`**（`×0.85`，穿透常规地形免减速下限），且 **【青焰瞬步】冲刺冷却增加 `50%`**（`×1.50`，同步作用于新施放瞬步与当前冷却剩余时长，并在 HUD 瞬步条与脚底恐惧虚线环实时提示）。
+- **参照《土豆兄弟》彻底解耦独立【建筑攻速】词条并降低 `15%` 基础塔攻速（`src/data/arsenal.js`、`src/ui/menus.js`、`src/game/combat.js`、`src/game/update.js`）**：
+  - **根因定位与修复**：此前炮台冷却同时被 `Math.sqrt(effAspd)`（角色攻击速度）与 `techMul`（工程学伤害乘区，中后期高达 `3x~4.5x`）相除，且 `t.tier` 除数位于 `Math.max` 保底之外、每帧又被 `dt * turretAspdAll` 二次乘算，导致工程学词条对炮台产生“既加伤害又暴增攻速”的四重叠乘失控；
+  - **独立建筑攻速体系**：彻底剥离 `effAspd`（角色攻速）与 `techMul`（工程学仅增幅建筑/地雷伤害），新增 `getEffectiveTurretAspdMul(totemHaste)`，令所有友方炮台与图腾**仅受独立【建筑攻速】（`turretAspdBonus`：钟楼高纯润滑脂 `+16%`、移动齿轮要塞 `+18%`、发条专精 `+10%`、发条机巧羁绊 `+8%/+16%/+25%`）、图腾共鸣光环与工程师瞬步超频加成**，同时将基础塔攻击速度整体下调 **`15%`**（`TURRET_BASE_ASPD_MUL = 0.85`），并在暂停/结算面板独立展示 `建筑攻速` 数值。
+
+---
+
 ## [v2.1.13] - 2026-11-15
 ### 🪄 四大法杖真元素技能重做 & ✨ 首领技能奥术特效升级 & ☄️ 生存试炼天外弹道无视闪避护甲真伤（D1 `10%` → D5 `20%`） & 🌌 超巨黑洞强引力奇点 & ⛩️ 战场召唤首领祭坛回归（接入无尽主宰） & 👑 双首领独立血条与独立觉醒二阶段
 - **四大法杖全面重做为真正元素大法术（`src/data/arsenal.js`、`src/game/update.js`、`src/game/combat.js`、`src/render/renderer.js`）**：

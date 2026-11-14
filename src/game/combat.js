@@ -474,11 +474,58 @@ function getTechMul() {
   return 1 + (player ? (player.techBonus || 0) : 0) + getSetBonuses().tech + bastionBonus + elemInherit;
 }
 function getBlastScale() { return (player ? player.explosionScale : 1) + getSetBonuses().blast; }
+
+// 参照《土豆兄弟》独立【建筑攻速】计算：完全剥离角色自身 atkSpd 与 techMul，仅由独立建筑攻速词条（turretAspdBonus + 机巧羁绊）+ 图腾共鸣 + 瞬步超频驱动，且基础塔攻速降低 15%（0.85x）
+function getEffectiveTurretAspdMul(totemHaste = 1) {
+  const baseMul = typeof TURRET_BASE_ASPD_MUL === 'number' ? TURRET_BASE_ASPD_MUL : 0.85;
+  const sb = typeof getSetBonuses === 'function' ? getSetBonuses() : null;
+  const setTurretAspd = (sb && sb.turretAspd) ? sb.turretAspd : 0;
+  const bonus = (player ? (player.turretAspdBonus || 0) : 0) + setTurretAspd;
+  const overclockMul = (player && (player.turretOverclockT || 0) > 0) ? 1.55 : 1;
+  return Math.max(0.25, +(baseMul * (1 + bonus) * (totemHaste || 1) * overclockMul).toFixed(6));
+}
+
+// D5 第 16 层首领进入二阶段时，蚀日迷雾笼罩全场（主线与无尽均生效）
+function isD5Floor16Phase2FogActive() {
+  if (typeof wave === 'undefined' || wave !== 16) return false;
+  if (typeof diff === 'undefined' || !diff || diff.id !== 5) return false;
+  if (typeof enemies === 'undefined' || !Array.isArray(enemies)) return false;
+  for (let i = 0; i < enemies.length; i++) {
+    const e = enemies[i];
+    if (e && e.hp > 0 && e.type === 'boss' && e.mythicPhase2) return true;
+  }
+  return false;
+}
+function isSoulFogActive() {
+  return !!((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) || isD5Floor16Phase2FogActive());
+}
+
+// D5 首领【临死挣扎】期间主角陷入恐惧：移动速度降低 15%，冲刺冷却增加 50%
+const D5_LAST_STAND_FEAR_SPD_MUL = 0.85;
+const D5_LAST_STAND_FEAR_DASH_CD_MUL = 1.50;
+function isBossLastStandFearActive() {
+  if (typeof enemies === 'undefined' || !Array.isArray(enemies)) return false;
+  for (let i = 0; i < enemies.length; i++) {
+    const e = enemies[i];
+    if (e && e.hp > 0 && (e.d5LastStandT || 0) > 0) return true;
+  }
+  return false;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.getEffectiveTurretAspdMul = getEffectiveTurretAspdMul;
+  globalThis.isD5Floor16Phase2FogActive = isD5Floor16Phase2FogActive;
+  globalThis.isSoulFogActive = isSoulFogActive;
+  globalThis.D5_LAST_STAND_FEAR_SPD_MUL = D5_LAST_STAND_FEAR_SPD_MUL;
+  globalThis.D5_LAST_STAND_FEAR_DASH_CD_MUL = D5_LAST_STAND_FEAR_DASH_CD_MUL;
+  globalThis.isBossLastStandFearActive = isBossLastStandFearActive;
+}
+
 function getEffectiveSpdMul() {
   if (!player) return 1;
   const dashSpd = (player.dashHasteT || 0) > 0 ? 0.26 : 0;
   const raw = player.spdMul + dashSpd;
-  return player.noSlow ? Math.max(1.0, raw) : Math.max(0.72, raw);
+  const baseSpd = player.noSlow ? Math.max(1.0, raw) : Math.max(0.72, raw);
+  return isBossLastStandFearActive() ? +(baseSpd * D5_LAST_STAND_FEAR_SPD_MUL).toFixed(4) : baseSpd;
 }
 
 // v2.5.0 【青焰瞬步 · Soul Dash】全角色通用极速闪避 + 六大角色专属派生战技
@@ -516,7 +563,8 @@ function triggerSoulDash() {
   dy /= len;
 
   const ox = player.x, oy = player.y;
-  const cdMax = Math.max(1.15, (player.cls === 'ghost' ? 2.5 : 3.2) * (player.dashCdMul || 1));
+  const fearDashMul = isBossLastStandFearActive() ? D5_LAST_STAND_FEAR_DASH_CD_MUL : 1;
+  const cdMax = Math.max(1.15, (player.cls === 'ghost' ? 2.5 : 3.2) * (player.dashCdMul || 1)) * fearDashMul;
   player.dashMaxCd = cdMax;
   player.dashCd = cdMax;
   player.dashT = 0.17;
@@ -528,7 +576,7 @@ function triggerSoulDash() {
   player.invuln = 0;
   player.magnetPulseT = Math.max(player.magnetPulseT || 0, 1.15);
   if (player.dashSurge) player.dashSurgeT = 2.6;
-  if (typeof survivalTrialWave !== 'undefined' && survivalTrialWave && typeof survivalTrialState !== 'undefined' && survivalTrialState) {
+  if (isSoulFogActive() && typeof survivalTrialState !== 'undefined' && survivalTrialState) {
     survivalTrialState.lanternBoostT = 1.25;
   }
 
@@ -760,6 +808,13 @@ function triggerBossMythicPhase2(e) {
   }
   const bw = document.getElementById('bossBarWrap');
   if (bw) { bw.classList.remove('hidden'); bw.classList.add('mythic'); }
+  if (typeof wave !== 'undefined' && wave === 16 && typeof diff !== 'undefined' && diff && diff.id === 5 && e.type === 'boss') {
+    if (typeof survivalTrialState === 'object' && survivalTrialState) {
+      survivalTrialState.fogIntroP = Math.max(survivalTrialState.fogIntroP || 0, 0.08);
+    }
+    if (player) addText(player.x, player.y - 74, '◆ 蚀日浓雾降临 · 凭魂灯照明迎敌!', '#f6d379', 18, 2.5, true);
+    announce('🌫️ D5 第 16 层终幕神罚 ·【蚀日浓雾】笼罩全场！二阶段全程迷雾封锁视野，留意提灯边缘首领方位！', '#f6d379', 4.4);
+  }
   if (storyPhase && typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.onBossPhase2 === 'function') {
     SpireDirector.onBossPhase2(wave, e);
   }
@@ -806,6 +861,7 @@ function canTriggerD5BossLastStand(e) {
 
 function triggerBossD5LastStand(e) {
   if (!canTriggerD5BossLastStand(e)) return false;
+  const wasFearActive = isBossLastStandFearActive();
   e._d5LastStandUsed = true;
   e.hp = 1;
   e.d5LastStandMaxT = D5_LAST_STAND_DURATION_SEC;
@@ -814,6 +870,16 @@ function triggerBossD5LastStand(e) {
   e.freezeT = 0;
   e.chillT = 0;
   e.hitFlash = 0.16;
+  if (player) {
+    player.invuln = 0;
+    if (!wasFearActive && (player.dashCd || 0) > 0) {
+      player.dashCd *= D5_LAST_STAND_FEAR_DASH_CD_MUL;
+      player.dashMaxCd = Math.max(player.dashCd, (player.dashMaxCd || 3.2) * D5_LAST_STAND_FEAR_DASH_CD_MUL);
+    }
+    for (let i = eBullets.length - 1; i >= 0; i--) {
+      if (Math.hypot(eBullets[i].x - player.x, eBullets[i].y - player.y) < 220) eBullets.splice(i, 1);
+    }
+  }
   shake = Math.max(shake, 7.5);
   beep(165, 0.24, 'sawtooth', 0.085);
   beep(520, 0.16, 'triangle', 0.065);
@@ -837,9 +903,24 @@ function triggerBossD5LastStand(e) {
       });
     }
   }
-  addText(e.x, e.y - e.r - 28, '◆ 临死挣扎 · 10秒无敌狂暴!', '#ffd166', 19, 2.2, true);
-  announce('◆ 蚀日神罚·临死挣扎！首领进入 10 秒不灭状态（无敌 · 攻速+20% · 命中玩家回血10%）！', '#ff4d6d', 4.2);
-  logInfo('D5_LAST_STAND', `${e.bossTitle || e.variant} 触发 D5 二阶段 10s 临死挣扎`);
+  // 临死挣扎破框立绘特写（主线与无尽均强制展示，让玩家第一时间知晓锁血无敌与恐惧减益！）
+  const cleanBossName = String(e.bossTitle || '守誓主宰')
+    .replace(/^⚡\s*/, '')
+    .replace(/\s*·\s*(第一阶段|第二阶段|神话二阶段)$/, '')
+    .trim();
+  const lsTitle = `${cleanBossName} · 临死挣扎`;
+  const lsSub = '🩸 锁血 1 HP · 10 秒死战无敌 · 攻速+20% · 伤敌汲血 10%！';
+  const lsTag = '😱 恐惧威压：主角移动速度 -15% · 青焰瞬步冷却 +50%！';
+  const lsDur = 3.65;
+  const dirBlocking = (typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.isBlockingGameplay === 'function' && SpireDirector.isBlockingGameplay());
+  if (dirBlocking && typeof queueBossCutscene === 'function') {
+    queueBossCutscene('last_stand', e.variant, lsTitle, lsSub, lsTag, '#ff2a55', '#ffd166', lsDur);
+  } else if (typeof startBossCutscene === 'function') {
+    startBossCutscene('last_stand', e.variant, lsTitle, lsSub, lsTag, '#ff2a55', '#ffd166', lsDur);
+  }
+  addText(e.x, e.y - e.r - 28, '◆ 临死挣扎 · 10秒无敌 · 恐惧减速15%!', '#ffd166', 19, 2.4, true);
+  announce('🩸 蚀日神罚·临死挣扎！首领 10 秒无敌锁血（攻速+20%/命中回血10%），恐惧令主角移速 -15%、瞬步冷却 +50%！', '#ff4d6d', 4.5);
+  logInfo('D5_LAST_STAND', `${e.bossTitle || e.variant} 触发 D5 二阶段 10s 临死挣扎（立绘特写 + 恐惧减益）`);
   return true;
 }
 

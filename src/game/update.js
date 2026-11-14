@@ -1168,6 +1168,13 @@ function update(dt) {
         if (f.activeT <= 0) survivalFissures.splice(i, 1);
       }
     }
+  } else if (typeof isD5Floor16Phase2FogActive === 'function' && isD5Floor16Phase2FogActive()) {
+    const st = survivalTrialState || (survivalTrialState = { fogIntroP: 0, lanternBoostT: 0 });
+    st.fogIntroP = Math.min(1, (st.fogIntroP || 0) + dt / 0.85);
+    if ((st.lanternBoostT || 0) > 0) st.lanternBoostT = Math.max(0, st.lanternBoostT - dt);
+  } else if (typeof survivalTrialState === 'object' && survivalTrialState && (survivalTrialState.fogIntroP || 0) > 0 && !(typeof survivalTrialWave !== 'undefined' && survivalTrialWave)) {
+    survivalTrialState.fogIntroP = Math.max(0, survivalTrialState.fogIntroP - dt / 0.65);
+    if ((survivalTrialState.lanternBoostT || 0) > 0) survivalTrialState.lanternBoostT = Math.max(0, survivalTrialState.lanternBoostT - dt);
   }
 
   // 双生虚空传送门 A ↔ B 折跃判定
@@ -1625,8 +1632,12 @@ function update(dt) {
       const len = Math.hypot(dx, dy) || 1;
       const chillMul = (player.chillSlowT > 0 && !player.noSlow) ? 0.85 : 1;
       const envSpdMul = (sandGustT > 0 ? 1.14 : 1) * chillMul * (player.terrainSpdMul !== undefined ? player.terrainSpdMul : 1);
+      const fearSpdActive = typeof isBossLastStandFearActive === 'function' && isBossLastStandFearActive();
+      const fearSpdMul = fearSpdActive ? (typeof D5_LAST_STAND_FEAR_SPD_MUL === 'number' ? D5_LAST_STAND_FEAR_SPD_MUL : 0.85) : 1;
+      const rawSpdMul = getEffectiveSpdMul();
+      const unfearedSpdMul = fearSpdActive ? (rawSpdMul / fearSpdMul) : rawSpdMul;
       const minSpdFloor = player.noSlow ? 1.0 : 0.68;
-      const effSpd = Math.max(minSpdFloor, getEffectiveSpdMul() * envSpdMul);
+      const effSpd = Math.max(minSpdFloor, unfearedSpdMul * envSpdMul) * fearSpdMul;
       const v = player.spd * effSpd * moveScale;
       tvx = (dx / len) * v;
       tvy = (dy / len) * v;
@@ -2604,12 +2615,13 @@ function update(dt) {
   }
   player._displayRange = maxEquipRange > 0 ? maxEquipRange : Math.max(68, 104 + totalRange);
 
-  // 自动机炮塔、浮游激光塔、紫电震波塔与秘法共鸣图腾塔索敌开火（享受工程增幅、润滑脂攻速、图腾共鸣与星导飞弹协同！）
+  // 自动机炮塔、浮游激光塔、紫电震波塔与秘法共鸣图腾塔索敌开火
+  // （参照《土豆兄弟》建筑机制：角色自身 atkSpd 与工程学 techMul 绝不加速塔开火，仅受独立【建筑攻速】、图腾共鸣与瞬步超频影响，且基础塔攻速下调 15%！）
   const turretMaxR = Math.max(148, 316 + Math.round(totalRange * 0.5));
   for (let ti = 0; ti < turrets.length; ti++) {
     const t = turrets[ti];
     t.pulsePhase = (t.pulsePhase || 0) + dt * 3.6;
-    // 检测周围 220px 内是否有【秘法共鸣图腾塔】提供 +18% 攻速光环
+    // 检测周围 220px 内是否有【秘法共鸣图腾塔】提供 +18% 独立建筑攻速光环
     let totemHaste = 1;
     for (let oi = 0; oi < turrets.length; oi++) {
       const ot = turrets[oi];
@@ -2618,8 +2630,7 @@ function update(dt) {
         if (dxO * dxO + dyO * dyO <= 220 * 220) { totemHaste = 1.18; break; }
       }
     }
-    const turretAspdAll = (1 + (player.turretAspdBonus || 0)) * totemHaste;
-    t.cd -= dt * turretAspdAll;
+    t.cd -= dt;
     if (t.recoil > 0) t.recoil = Math.max(0, t.recoil - dt * 8);
     const searchR = t.kind === 'shock' ? Math.round(165 * getBlastScale()) : turretMaxR;
     let best = null, bestDSq = searchR * searchR;
@@ -2635,10 +2646,12 @@ function update(dt) {
       if (t.cd <= 0) {
         const isCrit = !!(player.turretCrit && Math.random() < baseCrit * 0.85);
         const cMul = isCrit ? getEffectiveCritMult(1.85) : 1;
-        const overclockMul = (player.turretOverclockT || 0) > 0 ? 1.75 : 1;
+        const tAspd = typeof getEffectiveTurretAspdMul === 'function'
+          ? getEffectiveTurretAspdMul(totemHaste)
+          : (0.85 * (1 + (player.turretAspdBonus || 0)) * totemHaste * ((player.turretOverclockT || 0) > 0 ? 1.55 : 1));
         const tSrc = t.kind === 'laser' ? 'turret_laser' : (t.kind === 'shock' ? 'turret_shock' : (t.kind === 'totem' ? 'turret_totem' : 'turret_gun'));
         if (t.kind === 'shock') {
-          t.cd = Math.max(0.45, 1.55 / (Math.sqrt(effAspd) * Math.sqrt(techMul) * overclockMul));
+          t.cd = Math.max(0.65, 1.55 / tAspd);
           t.recoil = 1;
           const shockR = Math.round(162 * getBlastScale());
           const sdmg = (18.0 + wave * 2.6) * (1 + (t.tier - 1) * 0.42) * effDmg * techMul * cMul;
@@ -2657,7 +2670,8 @@ function update(dt) {
             }
           }
         } else if (t.kind === 'laser') {
-          t.cd = Math.max(0.18, 0.81 / (Math.sqrt(effAspd) * techMul * overclockMul)) / (1 + (t.tier - 1) * 0.14);
+          const tierAspd = 1 + (t.tier - 1) * 0.12;
+          t.cd = Math.max(0.32, 0.81 / (tAspd * tierAspd));
           t.recoil = 1;
           const ldmg = (14.5 + wave * 1.75) * (1 + (t.tier - 1) * 0.45) * effDmg * techMul * cMul;
           if ((player.bounceBonus || 0) > 0) {
@@ -2702,7 +2716,8 @@ function update(dt) {
           }
         } else if (bullets.length < (isTouch ? 180 : 260)) {
           const isTotem = t.kind === 'totem';
-          t.cd = Math.max(0.14, (isTotem ? 0.62 : 0.465) / (Math.sqrt(effAspd) * techMul * overclockMul)) / (1 + (t.tier - 1) * 0.15);
+          const tierAspd = 1 + (t.tier - 1) * 0.12;
+          t.cd = Math.max(isTotem ? 0.28 : 0.22, (isTotem ? 0.62 : 0.465) / (tAspd * tierAspd));
           t.recoil = 1;
           const tdmg = (isTotem ? (13.5 + wave * 1.65) : (9.5 + wave * 1.15)) * (1 + (t.tier - 1) * 0.5) * effDmg * techMul * (isTotem ? Math.sqrt(elemMul) : 1) * cMul;
           const tSpd = isTotem ? 640 : 690;
@@ -3090,7 +3105,7 @@ function update(dt) {
         beep(720, 0.14, 'triangle', 0.065);
         if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 145, color: '#72efdd', t: 0.34, maxT: 0.34, kind: 'hex' });
         addText(e.x, e.y - e.r - 24, '✨ 临死挣扎结束 · 不灭金身瓦解!', '#72efdd', 16, 1.65, true);
-        announce('✨ 首领 10 秒临死挣扎结束！无敌状态已解除，速速斩杀！', '#72efdd', 3.2);
+        announce('✨ 首领 10 秒临死挣扎结束！恐惧威压消散，无敌状态已解除，速速斩杀！', '#72efdd', 3.2);
       }
     }
 
@@ -5106,9 +5121,12 @@ function update(dt) {
     const dMax = Math.max(0.5, player.dashMaxCd || 3.2);
     const dashCooling = dCd > 0.02;
     const dashPct = dashCooling ? Math.max(0, Math.min(100, (1 - dCd / dMax) * 100)) : 100;
+    const hudFearActive = typeof isBossLastStandFearActive === 'function' && isBossLastStandFearActive();
     setHudWidth('hudDashFill', dashPct.toFixed(1) + '%');
-    setHudText('hudDashText', dashCooling ? `瞬步冷却 ${dCd.toFixed(1)}s` : '◆ 瞬步就绪 [Space]');
-    setHudText('dashTouchLabel', dashCooling ? `${dCd.toFixed(1)}s` : '瞬步');
+    setHudText('hudDashText', dashCooling
+      ? (hudFearActive ? `恐惧冷却 ${dCd.toFixed(1)}s (+50%)` : `瞬步冷却 ${dCd.toFixed(1)}s`)
+      : (hudFearActive ? '😱 瞬步就绪 [恐惧+50%CD]' : '◆ 瞬步就绪 [Space]'));
+    setHudText('dashTouchLabel', dashCooling ? `${dCd.toFixed(1)}s` : (hudFearActive ? '瞬步!' : '瞬步'));
     if (hudCache.dashCooling !== dashCooling) {
       hudCache.dashCooling = dashCooling;
       const dwEl = hudEls.hudDashWrap || (hudEls.hudDashWrap = document.getElementById('hudDashWrap'));
@@ -5127,7 +5145,7 @@ function update(dt) {
         if (e.mythicPhase2) anyMythicBoss = true;
         if ((e.d5LastStandT || 0) > 0) {
           anyMythicBoss = true;
-          activeCastLabel = `🩸 临死挣扎 · 无敌 ${e.d5LastStandT.toFixed(1)}s（攻速+20% · 命中回血10%）`;
+          activeCastLabel = `🩸 临死挣扎 · 无敌 ${e.d5LastStandT.toFixed(1)}s（恐惧：移速-15% · 瞬步冷却+50% · 伤敌汲血10%）`;
         } else if (!activeCastLabel) {
           if ((e.p2WindupT || 0) > 0 && e.p2Label) {
             activeCastLabel = `⚠️ 二阶终式蓄力 · ${e.p2Label}`;
