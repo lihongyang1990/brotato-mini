@@ -4192,7 +4192,7 @@ function update(dt) {
         const xpScale = wave === 1 ? 0.68 : (wave >= 7 ? 0.58 : 0.54);
         const rawXp = v * (d.xpMul || 1) * xpScale * player.harvest;
         const xpGain = Math.floor(rawXp) + (Math.random() < (rawXp % 1) ? 1 : 0);
-        const matRate = typeof getWaveMatRate === 'function' ? getWaveMatRate(wave) : (0.92 / (1 + Math.min(5, Math.max(0, wave - 1)) * 0.14 + Math.max(0, wave - 6) * 0.075));
+        const matRate = typeof getWaveMatRate === 'function' ? getWaveMatRate(wave) : ((0.92 * 0.77) / (1 + Math.min(5, Math.max(0, wave - 1)) * 0.14 + Math.max(0, wave - 6) * 0.075));
         const rawMat = v * player.harvest * matRate;
         const matGain = Math.floor(rawMat) + (Math.random() < (rawMat % 1) ? 1 : 0);
         player.mats += matGain; player.xp += xpGain;
@@ -4234,7 +4234,7 @@ function update(dt) {
           }
           beep(880, 0.11, 'triangle', 0.06);
         } else {
-          const yieldMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+          const yieldMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
           const bonusMat = Math.max(8, Math.round((16 + wave * 3) * yieldMul));
           player.mats += bonusMat;
           player.hp = Math.min(player.maxHp, player.hp + 6);

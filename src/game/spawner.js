@@ -1411,8 +1411,10 @@ function spawnWarning(x, y, type, variant = '') {
 const RANGED_ENEMY_TYPES = new Set(['shooter', 'sniper_bug', 'mortar', 'spinner', 'rad_scorpion', 'frost_wisp', 'spore_mother', 'summoner']);
 const NEEDLE_RANGED_TYPES = new Set(['frost_wisp', 'shooter', 'rad_scorpion', 'sniper_bug']);
 const NEEDLE_RANGED_MUL = 0.70;
-const YELLOW_ARROW_MOB_MUL = 0.80;
-const ELITE_MOB_COUNT_MUL = 0.80;
+// 黄色箭头/金黄弹幕怪在原 -20% 基础上再减少 20%（0.80 * 0.80 = 0.64；同时黄色回旋弹幕怪 spinner 同步减少 20%）
+const YELLOW_ARROW_MOB_MUL = 0.64;
+const YELLOW_RANGED_SPINNER_MUL = 0.80;
+const ELITE_MOB_COUNT_MUL = 0.64;
 const TANK_MELEE_TYPES = new Set(['shielder', 'brute', 'juggernaut', 'iron_guard', 'charger', 'splitter']);
 const BASIC_FODDER_MELEE_TYPES = new Set(['chaser', 'stalker', 'swarmer', 'magma_imp']);
 const EARLY_TANK_MELEE_MUL = 0.85;
@@ -1451,9 +1453,11 @@ function pickWaveEnemyType(wv) {
   const isExclRanged = !!(curScene.exclMob && RANGED_ENEMY_TYPES.has(curScene.exclMob));
   const isExclNeedle = !!(curScene.exclMob && NEEDLE_RANGED_TYPES.has(curScene.exclMob));
   const isExclWorm = curScene.exclMob === 'sand_worm';
+  const isExclSpinner = curScene.exclMob === 'spinner';
   const exclProb = (isExclRanged ? (0.14 * rangedCountMul) : 0.20)
     * (isExclNeedle ? NEEDLE_RANGED_MUL : 1.0)
-    * (isExclWorm ? YELLOW_ARROW_MOB_MUL : 1.0);
+    * (isExclWorm ? YELLOW_ARROW_MOB_MUL : 1.0)
+    * (isExclSpinner ? YELLOW_RANGED_SPINNER_MUL : 1.0);
   if (sceneMobEnabled && curScene.exclMob && Math.random() < exclProb) {
     if (!isExclRanged || allowRanged) {
       return curScene.exclMob;
@@ -1510,11 +1514,15 @@ function pickWaveEnemyType(wv) {
     rangedTable.push(['spore_mother', 4.3]);
   }
 
-  // 白芯针梭类远程怪数量减少 30% + 黄色小箭头怪（潜渊骨蛇 sand_worm）数量减少 20%，空出权重 1:1 等额补充至常规近战怪（怪物总量 100% 不变）
+  // 白芯针梭类远程怪数量减少 30% + 黄色小箭头怪（潜渊骨蛇 sand_worm）再减少 20% + 黄色回旋弹幕远程怪（spinner）减少 20%，空出权重 1:1 等额补充至常规近战怪（怪物总量 100% 不变）
   let freedToAgileW = 0;
   for (let i = 0; i < rangedTable.length; i++) {
     if (NEEDLE_RANGED_TYPES.has(rangedTable[i][0])) {
       const cut = rangedTable[i][1] * (1 - NEEDLE_RANGED_MUL);
+      rangedTable[i][1] -= cut;
+      freedToAgileW += cut;
+    } else if (rangedTable[i][0] === 'spinner') {
+      const cut = rangedTable[i][1] * (1 - YELLOW_RANGED_SPINNER_MUL);
       rangedTable[i][1] -= cut;
       freedToAgileW += cut;
     }
@@ -1604,6 +1612,10 @@ function spawnHazard(x, y, r, dmg, delay = 1.22, extra = {}) {
     srcX: extra.srcX,
     srcY: extra.srcY,
     srcKey: autoSrcKey,
+    chainStep: extra.chainStep || 0,
+    chainTotal: extra.chainTotal || 0,
+    prevX: extra.prevX,
+    prevY: extra.prevY,
     shrapnel: extra.shrapnel || 0,
     innerSafeR: extra.innerSafeR || 0,
     dmg: Math.max(3, Math.round(dmg)),
@@ -1615,22 +1627,57 @@ function spawnHazard(x, y, r, dmg, delay = 1.22, extra = {}) {
 }
 
 // ============================================================================
-// 🕯️ 蚀界生存试炼（40秒高密度渡劫：七类天外弹道与地形裂隙 · 密度+50% · 陷阱伤害+20%）
+// 🕯️ 蚀界生存试炼（40秒高密度渡劫：多形态差异化预警体系 · 密度+50% · 陷阱伤害+20%）
 // ============================================================================
 const SURVIVAL_TRAP_DMG_MUL = 1.20;
 
+// 六大类生存陷阱采用高对比度色相与几何符号分离，杜绝预警混同：
+// 1. 天外贯星剑梭 (lance): 绯红虚线流光飞矢 (#ff4d6d)
+// 2. 平行天罚光栅 (corridor_beam): 曜金双轨斜纹激光走廊 (#fbbf24)
+// 3. 地脉撕裂裂谷 (fissure): 赤橙锯齿分叉断层 (#ff7b29)
+// 4. 旋星十字裂光 (cross_beam): 紫电顺/逆时针导引十字 (#c084fc)
+// 5. 天外连环坠星 (trap_meteor): 冰青步进星链 (#38bdf8) -> 末发金星破片 (#f59e0b)
+// 6. 游弋冥渊雷涡 (vortex_orb): 青碧/紫晶双色漩涡球 (#2dd4bf / #a855f7)
 function getSurvivalTrialTheme() {
   const scId = (curScene && curScene.id) || 'foundry';
   if (scId === 'foundry') {
-    return { lanceName: '赤铁贯星剑梭', fissureName: '熔火地脉裂隙', lanceCol: '#fb7185', lanceCore: '#fff1f2', fissureCol: '#ff6b35', fissureDeep: '#2b090e', sigilStyle: 'flame_pillar' };
+    return {
+      lanceName: '赤铁贯星剑梭', fissureName: '熔火地脉裂隙',
+      lanceCol: '#ff4d6d', lanceCore: '#ffe4e6',
+      corridorCol: '#fbbf24', corridorCore: '#fef9c3',
+      fissureCol: '#ff7b29', fissureDeep: '#2b090e',
+      crossCol: '#c084fc', meteorCol: '#38bdf8', vortexCol: '#2dd4bf',
+      sigilStyle: 'flame_pillar'
+    };
   }
   if (scId === 'glacier') {
-    return { lanceName: '极光破界冰矛', fissureName: '永冻冰渊裂谷', lanceCol: '#38bdf8', lanceCore: '#f0f9ff', fissureCol: '#72efdd', fissureDeep: '#071b2c', sigilStyle: 'frost_hex' };
+    return {
+      lanceName: '极光破界冰矛', fissureName: '永冻冰渊裂谷',
+      lanceCol: '#ff4d6d', lanceCore: '#ffe4e6',
+      corridorCol: '#fbbf24', corridorCore: '#fef9c3',
+      fissureCol: '#ff7b29', fissureDeep: '#071b2c',
+      crossCol: '#c084fc', meteorCol: '#38bdf8', vortexCol: '#2dd4bf',
+      sigilStyle: 'frost_hex'
+    };
   }
   if (scId === 'wasteland') {
-    return { lanceName: '逆钟紫电星梭', fissureName: '时空断层裂隙', lanceCol: '#c084fc', lanceCore: '#faf5ff', fissureCol: '#fde68a', fissureDeep: '#1a0b2e', sigilStyle: 'thunder_sigil' };
+    return {
+      lanceName: '逆钟紫电星梭', fissureName: '时空断层裂隙',
+      lanceCol: '#ff4d6d', lanceCore: '#ffe4e6',
+      corridorCol: '#fbbf24', corridorCore: '#fef9c3',
+      fissureCol: '#ff7b29', fissureDeep: '#1a0b2e',
+      crossCol: '#c084fc', meteorCol: '#38bdf8', vortexCol: '#2dd4bf',
+      sigilStyle: 'thunder_sigil'
+    };
   }
-  return { lanceName: '日蚀裁决圣枪', fissureName: '归墟圣所裂痕', lanceCol: '#f6d379', lanceCore: '#fffbeb', fissureCol: '#f43f5e', fissureDeep: '#1c0816', sigilStyle: 'thunder_sigil' };
+  return {
+    lanceName: '日蚀裁决圣枪', fissureName: '归墟圣所裂痕',
+    lanceCol: '#ff4d6d', lanceCore: '#ffe4e6',
+    corridorCol: '#fbbf24', corridorCore: '#fef9c3',
+    fissureCol: '#ff7b29', fissureDeep: '#1c0816',
+    crossCol: '#c084fc', meteorCol: '#38bdf8', vortexCol: '#2dd4bf',
+    sigilStyle: 'thunder_sigil'
+  };
 }
 
 function getSurvivalHazardBaseDmg() {
@@ -1770,8 +1817,8 @@ function spawnSurvivalCorridor(phase) {
       ang, halfW,
       windupT: windup, maxWindup: windup,
       dmg: baseDmg,
-      color: theme.lanceCol,
-      coreColor: theme.lanceCore
+      color: theme.corridorCol || '#fbbf24',
+      coreColor: theme.corridorCore || '#fef9c3'
     });
   }
   beep(480, 0.07, 'sawtooth', 0.035);
@@ -1794,7 +1841,7 @@ function spawnSurvivalCrossJudgment(phase) {
     rotSpd: rotDir * (phase >= 3 ? 0.52 : 0.40),
     halfLen: phase >= 3 ? 215 : 190,
     halfW: 16,
-    color: theme.fissureCol,
+    color: theme.crossCol || '#c084fc',
     srcKey: 'trap_cross_star'
   });
 }
@@ -1808,6 +1855,7 @@ function spawnSurvivalMeteorChain(phase) {
   const dirA = mvLen > 24 ? Math.atan2(player.vy, player.vx) : (Math.random() * Math.PI * 2);
   const steps = phase >= 3 ? 4 : 3;
   const stepDist = 74;
+  let lastMX = NaN, lastMY = NaN;
   for (let s = 0; s < steps; s++) {
     const jitterA = dirA + (s - 1) * 0.16;
     const dist = 38 + s * stepDist;
@@ -1817,9 +1865,15 @@ function spawnSurvivalMeteorChain(phase) {
     spawnHazard(mx, my, isLast ? 74 : 64, baseDmg, 0.84 + s * 0.22, {
       style: isLast ? 'mortar_shell' : (theme.sigilStyle || 'thunder_sigil'),
       shrapnel: isLast ? 4 : 0,
-      color: isLast ? '#ffd166' : theme.lanceCol,
+      chainStep: s + 1,
+      chainTotal: steps,
+      prevX: s > 0 ? lastMX : undefined,
+      prevY: s > 0 ? lastMY : undefined,
+      color: isLast ? '#f59e0b' : (theme.meteorCol || '#38bdf8'),
       srcKey: 'trap_meteor'
     });
+    lastMX = mx;
+    lastMY = my;
   }
 }
 
@@ -1844,7 +1898,7 @@ function spawnSurvivalAbyssVortex(phase) {
       life: 4.8,
       dmg: baseDmg,
       r: 10.6, hitR: 8.8,
-      color: k % 2 === 0 ? '#c084fc' : theme.fissureCol,
+      color: k % 2 === 0 ? (theme.vortexCol || '#2dd4bf') : '#a855f7',
       shape: 'orb',
       rot: Math.random() * 6.28,
       isCelestial: true,
@@ -1880,6 +1934,9 @@ function createEnemy(x, y, type, variant = '') {
   const clampedStoryIdx = Math.min(15, wIdx);
   const s = hpBaseMul * (1 + wIdx * hpLinearSlope) * midLateHpMul * earlyMobHpMul * endlessMul * diff.hpMul;
   const dm = (1 + clampedStoryIdx * 0.105 + Math.max(0, Math.min(16, wave) - 7) * 0.048) * midLateDmgMul * (wave > MAX_WAVE ? Math.pow(1.10, wave - MAX_WAVE) : 1) * diff.dmgMul * monsterDmgMul;
+  // 普通与特异小怪（非 Boss / 非统领 / 非奇遇首领）攻击力整体下调 10%（MOB_DMG_MUL = 0.90）
+  const mobDmgMul = typeof MOB_DMG_MUL === 'number' ? MOB_DMG_MUL : 0.90;
+  const mobDm = dm * mobDmgMul;
   const monsterSpdMul = typeof MONSTER_SPD_MUL === 'number' ? MONSTER_SPD_MUL : 0.80;
   const sm = (1 + Math.min(0.18, wIdx * 0.012)) * diff.spdMul * monsterSpdMul;
   const base = {
@@ -1896,7 +1953,7 @@ function createEnemy(x, y, type, variant = '') {
     for (let k = 0; k < swCnt; k++) {
       const ox = x + (Math.random() - 0.5) * 54, oy = y + (Math.random() - 0.5) * 54;
       const swMat = +((k === 0 ? 0.90 : 0.45) * lateCoinMul * trialCoinMul).toFixed(2);
-      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * dm)), color: '#ffbe0b', type, mat: swMat });
+      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * mobDm)), color: '#ffbe0b', type, mat: swMat });
     }
     addBurst(x, y, '#ff4d6d', 5, 85);
     return;
@@ -1957,59 +2014,59 @@ function createEnemy(x, y, type, variant = '') {
       mat: relDef.bossId === 'golden_golem' ? 48 : (relDef.bossId === 'crimson_lord' ? 30 : 26)
     };
   } else if (type === 'stalker') {
-    ent = { ...base, r: 21, hp: 20.0 * s, maxHp: 20.0 * s, spd: 138 * sm, dmg: Math.round(5.0 * dm), color: '#06d6a0', type, slashCd: 0.7, stepCd: 2.0 + Math.random(), zigT: 0.35 + Math.random() * 0.25, zigDir: Math.random() < 0.5 ? 1 : -1, mat: 2 };
+    ent = { ...base, r: 21, hp: 20.0 * s, maxHp: 20.0 * s, spd: 138 * sm, dmg: Math.round(5.0 * mobDm), color: '#06d6a0', type, slashCd: 0.7, stepCd: 2.0 + Math.random(), zigT: 0.35 + Math.random() * 0.25, zigDir: Math.random() < 0.5 ? 1 : -1, mat: 2 };
   } else if (type === 'iron_guard') {
-    ent = { ...base, r: 29, hp: 60 * s, maxHp: 60 * s, spd: 66 * sm, dmg: Math.round(6.6 * dm), color: '#e11d48', type, cleaveCd: 2.0 + Math.random() * 0.6, cleaveWindup: 0, mat: 3 };
+    ent = { ...base, r: 29, hp: 60 * s, maxHp: 60 * s, spd: 66 * sm, dmg: Math.round(6.6 * mobDm), color: '#e11d48', type, cleaveCd: 2.0 + Math.random() * 0.6, cleaveWindup: 0, mat: 3 };
   } else if (type === 'frost_knight') {
-    ent = { ...base, r: 26, hp: 46 * s, maxHp: 46 * s, spd: 106 * sm, dmg: Math.round(6.2 * dm), color: '#38bdf8', type, thrustCd: 1.85 + Math.random() * 0.6, thrustWindup: 0, mat: 3 };
+    ent = { ...base, r: 26, hp: 46 * s, maxHp: 46 * s, spd: 106 * sm, dmg: Math.round(6.2 * mobDm), color: '#38bdf8', type, thrustCd: 1.85 + Math.random() * 0.6, thrustWindup: 0, mat: 3 };
   } else if (type === 'blade_duelist') {
-    ent = { ...base, r: 20, hp: 24 * s, maxHp: 24 * s, spd: 132 * sm, dmg: Math.round(5.4 * dm), color: '#f59e0b', type, whirlCd: 2.1 + Math.random() * 0.6, whirlT: 0, whirlSpin: 0, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
+    ent = { ...base, r: 20, hp: 24 * s, maxHp: 24 * s, spd: 132 * sm, dmg: Math.round(5.4 * mobDm), color: '#f59e0b', type, whirlCd: 2.1 + Math.random() * 0.6, whirlT: 0, whirlSpin: 0, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'shadow_reaper') {
-    ent = { ...base, r: 25, hp: 38 * s, maxHp: 38 * s, spd: 94 * sm, dmg: Math.round(6.8 * dm), color: '#a855f7', type, blinkCd: 2.6 + Math.random() * 0.8, reapWindup: 0, mat: 4 };
+    ent = { ...base, r: 25, hp: 38 * s, maxHp: 38 * s, spd: 94 * sm, dmg: Math.round(6.8 * mobDm), color: '#a855f7', type, blinkCd: 2.6 + Math.random() * 0.8, reapWindup: 0, mat: 4 };
   } else if (type === 'sniper_bug') {
-    ent = { ...base, r: 22, hp: 13.0 * s, maxHp: 13.0 * s, spd: 54 * sm, dmg: Math.round(6.8 * dm), color: '#ef233c', type, shotT: 2.1 + Math.random() * 0.8, aimA: undefined, aimMaxT: 0.72, recoilT: 0, mat: 3 };
+    ent = { ...base, r: 22, hp: 13.0 * s, maxHp: 13.0 * s, spd: 54 * sm, dmg: Math.round(6.8 * mobDm), color: '#ef233c', type, shotT: 2.1 + Math.random() * 0.8, aimA: undefined, aimMaxT: 0.72, recoilT: 0, mat: 3 };
   } else if (type === 'spinner') {
-    ent = { ...base, r: 26, hp: 28 * s, maxHp: 28 * s, spd: 74 * sm, dmg: Math.round(5.0 * dm), color: '#f59e0b', type, shotT: 2.1 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
+    ent = { ...base, r: 26, hp: 28 * s, maxHp: 28 * s, spd: 74 * sm, dmg: Math.round(5.0 * mobDm), color: '#f59e0b', type, shotT: 2.1 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'juggernaut') {
     // 泰坦超巨型血牛（r=54 山岳体型，极沉缓霸体推进 spd=34，十字四向地裂震波）
-    ent = { ...base, r: 54, hp: 340 * s, maxHp: 340 * s, spd: 34 * sm, dmg: Math.round(11.6 * dm), color: '#475569', type, slamCd: 3.1, slamWindup: 0, mat: 7 };
+    ent = { ...base, r: 54, hp: 340 * s, maxHp: 340 * s, spd: 34 * sm, dmg: Math.round(11.6 * mobDm), color: '#475569', type, slamCd: 3.1, slamWindup: 0, mat: 7 };
   } else if (type === 'rad_scorpion') {
-    ent = { ...base, r: 28, hp: 36 * s, maxHp: 36 * s, spd: 70 * sm, dmg: Math.round(5.5 * dm), color: '#a3e635', type, shotT: 2.0 + Math.random() * 0.8, mat: 3 };
+    ent = { ...base, r: 28, hp: 36 * s, maxHp: 36 * s, spd: 70 * sm, dmg: Math.round(5.5 * mobDm), color: '#a3e635', type, shotT: 2.0 + Math.random() * 0.8, mat: 3 };
   } else if (type === 'sand_worm') {
     // 潜渊遁地奇袭怪（钻入地底化作高速黑水潜影突进，破土震爆并迸射斜十字骨刺）
-    ent = { ...base, r: 26, hp: 48 * s, maxHp: 48 * s, spd: 104 * sm, dmg: Math.round(6.0 * dm), color: '#f4a261', type, burrowCd: 2.0 + Math.random() * 0.7, burrowWindup: 0, burrowT: 0, mat: 3 };
+    ent = { ...base, r: 26, hp: 48 * s, maxHp: 48 * s, spd: 104 * sm, dmg: Math.round(6.0 * mobDm), color: '#f4a261', type, burrowCd: 2.0 + Math.random() * 0.7, burrowWindup: 0, burrowT: 0, mat: 3 };
   } else if (type === 'frost_wisp') {
-    ent = { ...base, r: 22, hp: 17 * s, maxHp: 17 * s, spd: 82 * sm, dmg: Math.round(4.6 * dm), color: '#48cae4', type, shotT: 1.8 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
+    ent = { ...base, r: 22, hp: 17 * s, maxHp: 17 * s, spd: 82 * sm, dmg: Math.round(4.6 * mobDm), color: '#48cae4', type, shotT: 1.8 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'magma_imp') {
-    ent = { ...base, r: 21, hp: 20 * s, maxHp: 20 * s, spd: 118 * sm, dmg: Math.round(5.8 * dm), color: '#fb5607', type, mat: 3 };
+    ent = { ...base, r: 21, hp: 20 * s, maxHp: 20 * s, spd: 118 * sm, dmg: Math.round(5.8 * mobDm), color: '#fb5607', type, mat: 3 };
   } else if (type === 'spore_mother') {
-    ent = { ...base, r: 35, hp: 56 * s, maxHp: 56 * s, spd: 48 * sm, dmg: Math.round(5.8 * dm), color: '#c77dff', type, shotT: 2.4 + Math.random() * 0.9, mat: 4 };
+    ent = { ...base, r: 35, hp: 56 * s, maxHp: 56 * s, spd: 48 * sm, dmg: Math.round(5.8 * mobDm), color: '#c77dff', type, shotT: 2.4 + Math.random() * 0.9, mat: 4 };
   } else if (type === 'charger') {
     // 健硕重骑（r=31，快步 spd=92，尖角楔阵冲锋 + 收招前挑弧斩）
-    ent = { ...base, r: 31, hp: 68 * s, maxHp: 68 * s, spd: 92 * sm, dmg: Math.round(6.8 * dm), color: '#f77f00', type, dashT: 1.85 + Math.random() * 0.75, mat: 3 };
+    ent = { ...base, r: 31, hp: 68 * s, maxHp: 68 * s, spd: 92 * sm, dmg: Math.round(6.8 * mobDm), color: '#f77f00', type, dashT: 1.85 + Math.random() * 0.75, mat: 3 };
   } else if (type === 'shooter') {
-    ent = { ...base, r: 23, hp: 13.5 * s, maxHp: 13.5 * s, spd: 62 * sm, dmg: Math.round(4.2 * dm), color: '#00b4d8', type, shotT: 1.6 + Math.random() * 0.9, mat: 2 };
+    ent = { ...base, r: 23, hp: 13.5 * s, maxHp: 13.5 * s, spd: 62 * sm, dmg: Math.round(4.2 * mobDm), color: '#00b4d8', type, shotT: 1.6 + Math.random() * 0.9, mat: 2 };
   } else if (type === 'mortar') {
-    ent = { ...base, r: 27, hp: 24 * s, maxHp: 24 * s, spd: 52 * sm, dmg: Math.round(7.8 * dm), color: '#ff9f1c', type, shotT: 2.0 + Math.random() * 1.0, mat: 3 };
+    ent = { ...base, r: 27, hp: 24 * s, maxHp: 24 * s, spd: 52 * sm, dmg: Math.round(7.8 * mobDm), color: '#ff9f1c', type, shotT: 2.0 + Math.random() * 1.0, mat: 3 };
   } else if (type === 'bomber') {
-    ent = { ...base, r: 22, hp: 18 * s, maxHp: 18 * s, spd: 114 * sm, dmg: Math.round(8.8 * dm), color: '#ff4d6d', type, primed: false, fuseT: 1.25, maxFuseT: 1.25, blastR: 86, mat: 2 };
+    ent = { ...base, r: 22, hp: 18 * s, maxHp: 18 * s, spd: 114 * sm, dmg: Math.round(8.8 * mobDm), color: '#ff4d6d', type, primed: false, fuseT: 1.25, maxFuseT: 1.25, blastR: 86, mat: 2 };
   } else if (type === 'splitter') {
     // 宽大弹性软泥（r=34，蓄蹲停顿—猛然蛙跃逼近，纯近战不射子弹）
-    ent = { ...base, r: 34, hp: 58 * s, maxHp: 58 * s, spd: 68 * sm, dmg: Math.round(5.0 * dm), color: '#52b788', type, hopT: 0.9 + Math.random() * 0.5, mat: 3 };
+    ent = { ...base, r: 34, hp: 58 * s, maxHp: 58 * s, spd: 68 * sm, dmg: Math.round(5.0 * mobDm), color: '#52b788', type, hopT: 0.9 + Math.random() * 0.5, mat: 3 };
   } else if (type === 'mini_slime') {
-    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 140 * sm, dmg: Math.max(2, Math.round(2.6 * dm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
+    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 140 * sm, dmg: Math.max(2, Math.round(2.6 * mobDm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
   } else if (type === 'shielder') {
     // 紧凑高甲塔盾卫（r=28，稳健 spd=54，近身发动重盾猛击震波）
-    ent = { ...base, r: 28, hp: 94 * s, maxHp: 94 * s, spd: 54 * sm, dmg: Math.round(6.2 * dm), color: '#5c677d', type, bashCd: 2.1 + Math.random() * 0.5, bashWindup: 0, mat: 4 };
+    ent = { ...base, r: 28, hp: 94 * s, maxHp: 94 * s, spd: 54 * sm, dmg: Math.round(6.2 * mobDm), color: '#5c677d', type, bashCd: 2.1 + Math.random() * 0.5, bashWindup: 0, mat: 4 };
   } else if (type === 'summoner') {
-    ent = { ...base, r: 25, hp: 22 * s, maxHp: 22 * s, spd: 54 * sm, dmg: Math.round(3.5 * dm), color: '#7209b7', type, sumT: 3.1 + Math.random(), boltT: 2.4, mat: 4 };
+    ent = { ...base, r: 25, hp: 22 * s, maxHp: 22 * s, spd: 54 * sm, dmg: Math.round(3.5 * mobDm), color: '#7209b7', type, sumT: 3.1 + Math.random(), boltT: 2.4, mat: 4 };
   } else if (type === 'healer') {
-    ent = { ...base, r: 24, hp: 28 * s, maxHp: 28 * s, spd: 62 * sm, dmg: Math.round(3.0 * dm), color: '#2ec4b6', type, healT: 2.5, mat: 4 };
+    ent = { ...base, r: 24, hp: 28 * s, maxHp: 28 * s, spd: 62 * sm, dmg: Math.round(3.0 * mobDm), color: '#2ec4b6', type, healT: 2.5, mat: 4 };
   } else if (type === 'brute') {
     // 高大狂暴重锤卫（r=39，残血 <65% 狂暴提速 + 前向 90° 扇形锥区裂地重锤）
-    ent = { ...base, r: 39, hp: 190 * s, maxHp: 190 * s, spd: 64 * sm, dmg: Math.round(9.4 * dm), color: '#9d4edd', type, slamCd: 2.5, slamWindup: 0, bargeCd: 2.1 + Math.random() * 0.7, bargeT: 0, mat: 5 };
+    ent = { ...base, r: 39, hp: 190 * s, maxHp: 190 * s, spd: 64 * sm, dmg: Math.round(9.4 * mobDm), color: '#9d4edd', type, slamCd: 2.5, slamWindup: 0, bargeCd: 2.1 + Math.random() * 0.7, bargeT: 0, mat: 5 };
   } else {
-    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(3.8 * dm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
+    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(3.8 * mobDm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
   }
 
   // 中后期普通与特异小怪晶石产出下调约 20%（配合 dropCrystals 概率单枚掉落，不再爆大号金币堆；蚀界试炼小怪额外补偿晶石）

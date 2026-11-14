@@ -906,7 +906,7 @@ function draw() {
       ctx.restore();
     }
 
-    // 蚀界生存试炼：地脉撕裂裂缝（0.9s 震颤裂纹预警 -> 喷涌熔蚀裂谷）与天外贯星梭/平行剑阵走廊轨迹导引线（0渐变0模糊）
+    // 蚀界生存试炼差异化地面/弹道预警（地脉锯齿分叉裂谷 vs 曜金双轨斜纹激光走廊 vs 绯红虚线流光飞矢，0渐变0模糊）
     if (typeof survivalFissures !== 'undefined' && survivalFissures.length > 0) {
       const fNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.001;
       for (let i = 0; i < survivalFissures.length; i++) {
@@ -915,10 +915,11 @@ function draw() {
         const minFX = Math.min(f.x1, f.x2) - 48, maxFX = Math.max(f.x1, f.x2) + 48;
         const minFY = Math.min(f.y1, f.y2) - 48, maxFY = Math.max(f.y1, f.y2) + 48;
         if (maxFX < vL || minFX > vR || maxFY < vT || minFY > vB) continue;
-        const fCol = f.color || '#ff6b35';
+        const fCol = f.color || '#ff7b29';
         const deepCol = f.deepColor || '#450a0a';
         const dx = f.x2 - f.x1, dy = f.y2 - f.y1;
         const len = Math.max(1, Math.hypot(dx, dy));
+        const ux = dx / len, uy = dy / len;
         const nx = -dy / len, ny = dx / len;
         const hw = Math.max(8, f.halfW || 20);
         const jags = f.jags;
@@ -929,18 +930,54 @@ function draw() {
         ctx.lineJoin = 'round';
         if (f.windupT > 0) {
           const p = Math.max(0, Math.min(1, 1 - f.windupT / Math.max(0.05, f.maxWindup || 0.9)));
-          const trem = Math.sin(fNow * 38 + i) * 2.2 * p;
-          ctx.globalAlpha = 0.14 + p * 0.24;
-          ctx.strokeStyle = fCol;
-          ctx.lineWidth = hw * 2;
+          const trem = Math.sin(fNow * 42 + i) * 2.4 * p;
+          const rimW = hw * (0.55 + p * 0.45);
+          // 1) 不规则锯齿断层包络带（绝非笔直激光条，呈现大地崩裂边缘）
+          ctx.globalAlpha = 0.16 + p * 0.22;
+          ctx.fillStyle = deepCol;
           ctx.beginPath();
           ctx.moveTo(f.x1 + nx * trem, f.y1 + ny * trem);
+          for (let k = 0; k < jagCnt; k++) {
+            const t = (k + 1) / (jagCnt + 1);
+            const off = jags[k] * hw * 0.42 + rimW;
+            ctx.lineTo(f.x1 + dx * t + nx * (off + trem), f.y1 + dy * t + ny * (off + trem));
+          }
           ctx.lineTo(f.x2 + nx * trem, f.y2 + ny * trem);
+          for (let k = jagCnt - 1; k >= 0; k--) {
+            const t = (k + 1) / (jagCnt + 1);
+            const off = jags[k] * hw * 0.42 - rimW;
+            ctx.lineTo(f.x1 + dx * t + nx * (off + trem), f.y1 + dy * t + ny * (off + trem));
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.globalAlpha = 0.56 + p * 0.30;
+          ctx.strokeStyle = fCol;
+          ctx.lineWidth = 1.9;
+          ctx.setLineDash([7, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // 2) 横向蔓延碎地支脉裂纹（清晰区分于平滑飞矢与走廊光栅）
+          ctx.globalAlpha = 0.62 + p * 0.30;
+          ctx.strokeStyle = fCol;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          for (let k = 0; k < jagCnt; k++) {
+            const t = (k + 1) / (jagCnt + 1);
+            const cOff = jags[k] * hw * 0.52 + trem;
+            const bx = f.x1 + dx * t + nx * cOff;
+            const by = f.y1 + dy * t + ny * cOff;
+            const side = k % 2 === 0 ? 1 : -1;
+            const ribLen = hw * (0.62 + p * 0.52);
+            ctx.moveTo(bx, by);
+            ctx.lineTo(bx + (nx * side + ux * 0.36) * ribLen, by + (ny * side + uy * 0.36) * ribLen);
+          }
           ctx.stroke();
 
-          ctx.globalAlpha = 0.72 + p * 0.26;
-          ctx.strokeStyle = '#fde68a';
-          ctx.lineWidth = 2.4 + p * 1.6;
+          // 3) 中央硫黄地脉主锯齿裂痕 + 首尾震源菱桩
+          ctx.globalAlpha = 0.80 + p * 0.20;
+          ctx.strokeStyle = '#fde047';
+          ctx.lineWidth = 2.4 + p * 1.8;
           ctx.beginPath();
           ctx.moveTo(f.x1, f.y1);
           for (let k = 0; k < jagCnt; k++) {
@@ -950,6 +987,20 @@ function draw() {
           }
           ctx.lineTo(f.x2, f.y2);
           ctx.stroke();
+
+          const stakeR = 5.5 + p * 2.5;
+          ctx.fillStyle = '#fde047';
+          for (let ep = 0; ep < 2; ep++) {
+            const ex = ep === 0 ? f.x1 : f.x2;
+            const ey = ep === 0 ? f.y1 : f.y2;
+            ctx.beginPath();
+            ctx.moveTo(ex + ux * stakeR, ey + uy * stakeR);
+            ctx.lineTo(ex + nx * stakeR * 0.72, ey + ny * stakeR * 0.72);
+            ctx.lineTo(ex - ux * stakeR, ey - uy * stakeR);
+            ctx.lineTo(ex - nx * stakeR * 0.72, ey - ny * stakeR * 0.72);
+            ctx.closePath();
+            ctx.fill();
+          }
         } else {
           const remP = Math.max(0, Math.min(1, (f.activeT || 0) / Math.max(0.1, f.maxActive || 3.8)));
           const fade = remP < 0.18 ? (remP / 0.18) : 1;
@@ -986,6 +1037,7 @@ function draw() {
     }
 
     if (typeof survivalSkyVolleys !== 'undefined' && survivalSkyVolleys.length > 0) {
+      const svNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.001;
       for (let i = 0; i < survivalSkyVolleys.length; i++) {
         const v = survivalSkyVolleys[i];
         if (!v) continue;
@@ -993,28 +1045,79 @@ function draw() {
         const minVY = Math.min(v.sy, v.ey) - 36, maxVY = Math.max(v.sy, v.ey) + 36;
         if (maxVX < vL || minVX > vR || maxVY < vT || minVY > vB) continue;
         const p = Math.max(0, Math.min(1, 1 - (v.windupT || 0) / Math.max(0.05, v.maxWindup || 0.8)));
-        const vCol = v.color || '#fb7185';
+        const dx = v.ex - v.sx, dy = v.ey - v.sy;
+        const len = Math.max(1, Math.hypot(dx, dy));
+        const ux = dx / len, uy = dy / len;
+        const nx = -uy, ny = ux;
         ctx.save();
-        ctx.lineCap = 'round';
         if (v.kind === 'corridor_beam') {
-          const bw = Math.max(10, (v.halfW || 17) * 2);
-          ctx.globalAlpha = 0.12 + p * 0.24;
+          // 【平行天罚光栅走廊】：曜金双实线硬边界 + 斜向封锁警示条纹 + 向心充能快门（瞬爆宽激光墙）
+          const vCol = v.color || '#fbbf24';
+          const hw = Math.max(8, v.halfW || 18);
+          ctx.lineCap = 'butt';
+          ctx.globalAlpha = 0.09 + p * 0.16;
           ctx.strokeStyle = vCol;
-          ctx.lineWidth = bw;
+          ctx.lineWidth = hw * 2;
           ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
-          ctx.globalAlpha = 0.55 + p * 0.42;
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.6 + p * 2.0;
+
+          // 向心收拢快门能量芯（p->1 时填满整个走廊宽度）
+          ctx.globalAlpha = 0.22 + p * 0.34;
+          ctx.strokeStyle = v.coreColor || '#fef9c3';
+          ctx.lineWidth = Math.max(2, hw * 2 * p);
           ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
+
+          // 两侧实线封锁导轨（精确标示安全走廊边界）
+          ctx.globalAlpha = 0.72 + p * 0.26;
+          ctx.strokeStyle = '#fde68a';
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.moveTo(v.sx + nx * hw, v.sy + ny * hw);
+          ctx.lineTo(v.ex + nx * hw, v.ey + ny * hw);
+          ctx.moveTo(v.sx - nx * hw, v.sy - ny * hw);
+          ctx.lineTo(v.ex - nx * hw, v.ey - ny * hw);
+          ctx.stroke();
+
+          // 视野内斜向警示斑马纹（一眼区分于弹道飞矛）
+          const step = 64;
+          ctx.globalAlpha = 0.34 + p * 0.24;
+          ctx.strokeStyle = vCol;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          for (let d = 32; d < len - 32; d += step) {
+            const cx = v.sx + ux * d, cy = v.sy + uy * d;
+            if (cx < vL - 50 || cx > vR + 50 || cy < vT - 50 || cy > vB + 50) continue;
+            ctx.moveTo(cx - nx * hw * 0.85 - ux * 11, cy - ny * hw * 0.85 - uy * 11);
+            ctx.lineTo(cx + nx * hw * 0.85 + ux * 11, cy + ny * hw * 0.85 + uy * 11);
+          }
+          ctx.stroke();
         } else {
-          ctx.globalAlpha = 0.14 + p * 0.26;
+          // 【天外贯星剑梭】：绯红窄虚线弹道轨 + 顺向推进流光尖矢（提示飞矛即将沿此方向高速射过）
+          const vCol = v.color || '#ff4d6d';
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.globalAlpha = 0.48 + p * 0.42;
           ctx.strokeStyle = vCol;
-          ctx.lineWidth = 12 * (1 - p * 0.35);
+          ctx.lineWidth = 2.1;
+          ctx.setLineDash([12, 9]);
           ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
-          ctx.globalAlpha = 0.58 + p * 0.38;
-          ctx.strokeStyle = v.coreColor || '#ffffff';
-          ctx.lineWidth = 1.5 + p * 1.4;
-          ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
+          ctx.setLineDash([]);
+
+          // 沿飞行方向动态推进的流光尖矢 › › ›
+          const chevSpacing = 98;
+          const travel = (svNow * 250) % chevSpacing;
+          const wingBack = 9.5, wingW = 6.2;
+          ctx.globalAlpha = 0.58 + p * 0.40;
+          ctx.strokeStyle = v.coreColor || '#ffe4e6';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          for (let d = travel + 24; d < len - 24; d += chevSpacing) {
+            const tipX = v.sx + ux * d, tipY = v.sy + uy * d;
+            if (tipX < vL - 30 || tipX > vR + 30 || tipY < vT - 30 || tipY > vB + 30) continue;
+            ctx.moveTo(tipX - ux * wingBack + nx * wingW, tipY - uy * wingBack + ny * wingW);
+            ctx.lineTo(tipX, tipY);
+            ctx.lineTo(tipX - ux * wingBack - nx * wingW, tipY - uy * wingBack - ny * wingW);
+          }
+          ctx.stroke();
         }
         ctx.restore();
       }
@@ -1081,6 +1184,31 @@ function draw() {
           ctx.moveTo(-hLen, 0); ctx.lineTo(hLen, 0);
           ctx.stroke();
           ctx.restore();
+        }
+        if (Math.abs(h.rotSpd || 0) > 0.01) {
+          const rotDir = h.rotSpd > 0 ? 1 : -1;
+          const arcR = Math.min(hLen * 0.46, 76);
+          ctx.globalAlpha = 0.62 + p * 0.32;
+          ctx.strokeStyle = '#e9d5ff';
+          ctx.fillStyle = '#f3e8ff';
+          ctx.lineWidth = 1.8;
+          for (let q = 0; q < 4; q++) {
+            const qa = baseAng + q * Math.PI * 0.5 + Math.PI * 0.25;
+            const a0 = qa - rotDir * 0.24;
+            const a1 = qa + rotDir * 0.24;
+            ctx.beginPath();
+            ctx.arc(0, 0, arcR, a0, a1, rotDir < 0);
+            ctx.stroke();
+            const tx = Math.cos(a1) * arcR, ty = Math.sin(a1) * arcR;
+            const tanA = a1 + rotDir * Math.PI * 0.5;
+            const pxA = -Math.sin(tanA), pyA = Math.cos(tanA);
+            ctx.beginPath();
+            ctx.moveTo(tx + Math.cos(tanA) * 6.5, ty + Math.sin(tanA) * 6.5);
+            ctx.lineTo(tx - Math.cos(tanA) * 3.5 + pxA * 4.0, ty - Math.sin(tanA) * 3.5 + pyA * 4.0);
+            ctx.lineTo(tx - Math.cos(tanA) * 3.5 - pxA * 4.0, ty - Math.sin(tanA) * 3.5 - pyA * 4.0);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
         ctx.rotate(baseAng + Math.PI * 0.25);
         const cSz = 9 + p * 6;
@@ -1325,6 +1453,57 @@ function draw() {
         ctx.strokeStyle = hCol;
         ctx.lineWidth = 2.4;
         ctx.beginPath(); ctx.arc(h.x, h.y, hr, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (h.chainStep > 0) {
+        ctx.save();
+        if (Number.isFinite(h.prevX) && Number.isFinite(h.prevY)) {
+          ctx.globalAlpha = 0.52 + p * 0.30;
+          ctx.strokeStyle = hCol;
+          ctx.lineWidth = 1.8;
+          ctx.setLineDash([7, 6]);
+          ctx.beginPath();
+          ctx.moveTo(h.prevX, h.prevY);
+          ctx.lineTo(h.x, h.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        const fallRem = Math.max(0, 1 - p);
+        const fallX = h.x + fallRem * 36;
+        const fallY = h.y - fallRem * 92;
+        ctx.globalAlpha = 0.45 + p * 0.48;
+        ctx.strokeStyle = h.shrapnel > 0 ? '#fef08a' : '#bae6fd';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(fallX + 14, fallY - 34);
+        ctx.lineTo(fallX, fallY);
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(fallX, fallY, 3.2 + p * 2.0, 0, Math.PI * 2);
+        ctx.fill();
+        if (h.shrapnel > 0) {
+          ctx.globalAlpha = 0.86;
+          ctx.strokeStyle = '#fde047';
+          ctx.lineWidth = 2.4;
+          for (let sk = 0; sk < 4; sk++) {
+            const sa = sk * Math.PI * 0.5;
+            ctx.beginPath();
+            ctx.moveTo(h.x + Math.cos(sa) * (hr + 2), h.y + Math.sin(sa) * (hr + 2));
+            ctx.lineTo(h.x + Math.cos(sa) * (hr + 13), h.y + Math.sin(sa) * (hr + 13));
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 0.92;
+        ctx.font = '800 13px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#090d16';
+        ctx.lineWidth = 3.2;
+        const stepTxt = h.shrapnel > 0 ? `★${h.chainStep}` : `${h.chainStep}`;
+        ctx.strokeText(stepTxt, h.x, h.y);
+        ctx.fillStyle = h.shrapnel > 0 ? '#fef08a' : '#e0f2fe';
+        ctx.fillText(stepTxt, h.x, h.y);
+        ctx.restore();
       }
     }
     ctx.globalAlpha = 1;
@@ -2083,7 +2262,7 @@ function draw() {
     // 角色浅浅的收集（磁吸拾取）范围地面光圈（仅显示轻量细线收集圈，零实心填充过绘，不显示攻击射程圈）
     if (state === 'wave' && player && player.hp > 0) {
       const pulseActive = (player.magnetPulseT || 0) > 0;
-      const targetMagR = Math.max(28, (player.magnet || 130) + (pulseActive ? 135 : 0));
+      const targetMagR = Math.max(28, (player.magnet || 143) + (pulseActive ? 135 : 0));
       player._visMagR = player._visMagR === undefined
         ? targetMagR
         : player._visMagR + (targetMagR - player._visMagR) * 0.20;
@@ -2947,7 +3126,7 @@ function draw() {
     ctx.arc(lx, ly, r0, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 迷雾机关幽芒预警：仅让天外剑轨、地脉裂缝与旋转十字棱镜透出微光，绝不透出任何怪物！
+    // 迷雾机关幽芒预警：差异化透出锯齿地脉裂谷、双轨光栅、虚线剑梭与旋转紫晶十字，绝不透出任何怪物！
     if (typeof survivalFissures !== 'undefined' && survivalFissures.length > 0) {
       ctx.lineCap = 'round';
       for (let i = 0; i < survivalFissures.length; i++) {
@@ -2957,10 +3136,25 @@ function draw() {
         const sy1 = viewH * 0.5 + sy + (f.y1 - cam.y) * camZoom;
         const sx2 = viewW * 0.5 + sx + (f.x2 - cam.x) * camZoom;
         const sy2 = viewH * 0.5 + sy + (f.y2 - cam.y) * camZoom;
-        ctx.globalAlpha = (f.windupT > 0 ? 0.40 : 0.34) * introP;
-        ctx.strokeStyle = f.color || '#ff6b35';
-        ctx.lineWidth = Math.max(2.2, (f.windupT > 0 ? 2.6 : 4.2) * camZoom);
-        ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+        const dxs = sx2 - sx1, dys = sy2 - sy1;
+        const slen = Math.hypot(dxs, dys) || 1;
+        const snx = -dys / slen, sny = dxs / slen;
+        const jags = f.jags;
+        ctx.globalAlpha = (f.windupT > 0 ? 0.44 : 0.38) * introP;
+        ctx.strokeStyle = f.color || '#ff7b29';
+        ctx.lineWidth = Math.max(2.2, (f.windupT > 0 ? 2.8 : 4.2) * camZoom);
+        ctx.beginPath();
+        ctx.moveTo(sx1, sy1);
+        if (jags && jags.length > 2) {
+          const nPts = jags.length;
+          for (let k = 1; k < nPts - 1; k++) {
+            const t = k / (nPts - 1);
+            const off = jags[k] * 11 * camZoom;
+            ctx.lineTo(sx1 + dxs * t + snx * off, sy1 + dys * t + sny * off);
+          }
+        }
+        ctx.lineTo(sx2, sy2);
+        ctx.stroke();
       }
     }
     if (typeof survivalSkyVolleys !== 'undefined' && survivalSkyVolleys.length > 0) {
@@ -2973,10 +3167,24 @@ function draw() {
         const sx2 = viewW * 0.5 + sx + (v.ex - cam.x) * camZoom;
         const sy2 = viewH * 0.5 + sy + (v.ey - cam.y) * camZoom;
         const vp = Math.max(0, Math.min(1, 1 - (v.windupT || 0) / Math.max(0.05, v.maxWindup || 0.8)));
-        ctx.globalAlpha = (0.26 + vp * 0.26) * introP;
-        ctx.strokeStyle = v.color || '#fde68a';
-        ctx.lineWidth = v.kind === 'corridor_beam' ? Math.max(2.0, 3.2 * camZoom) : 2.0;
-        ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+        ctx.globalAlpha = (0.28 + vp * 0.28) * introP;
+        ctx.strokeStyle = v.color || (v.kind === 'corridor_beam' ? '#fbbf24' : '#ff4d6d');
+        if (v.kind === 'corridor_beam') {
+          const dxs = sx2 - sx1, dys = sy2 - sy1;
+          const slen = Math.hypot(dxs, dys) || 1;
+          const hwPx = Math.max(4, (v.halfW || 25) * camZoom);
+          const ox = (-dys / slen) * hwPx, oy = (dxs / slen) * hwPx;
+          ctx.lineWidth = Math.max(1.8, 2.4 * camZoom);
+          ctx.beginPath();
+          ctx.moveTo(sx1 + ox, sy1 + oy); ctx.lineTo(sx2 + ox, sy2 + oy);
+          ctx.moveTo(sx1 - ox, sy1 - oy); ctx.lineTo(sx2 - ox, sy2 - oy);
+          ctx.stroke();
+        } else {
+          ctx.lineWidth = 2.1;
+          ctx.setLineDash([8, 7]);
+          ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
     }
     if (typeof hazards !== 'undefined' && hazards.length > 0) {
@@ -2987,8 +3195,8 @@ function draw() {
         const hcx = viewW * 0.5 + sx + (h.x - cam.x) * camZoom;
         const hcy = viewH * 0.5 + sy + (h.y - cam.y) * camZoom;
         const spanPx = (h.halfLen || 190) * camZoom;
-        ctx.globalAlpha = 0.34 * introP;
-        ctx.strokeStyle = h.color || '#f43f5e';
+        ctx.globalAlpha = 0.36 * introP;
+        ctx.strokeStyle = h.color || '#c084fc';
         ctx.lineWidth = Math.max(1.8, 2.4 * camZoom);
         for (let k = 0; k < 2; k++) {
           const la = (h.angle || 0) + k * Math.PI * 0.5;
@@ -3000,7 +3208,7 @@ function draw() {
       }
     }
 
-    // 提灯灯圈边缘来袭方位箭头（▲ 金色=屏外蓄力瞄准中，绯红=天外贯星梭逼近，紫电=冥渊雷涡切入）
+    // 提灯灯圈边缘差异化来袭标识（▲ 绯红燕尾梭=天外贯星剑梭，❖ 青紫旋涡星芒=游弋冥渊雷涡）
     const chevR = Math.max(28, r0 - 10);
     if (typeof survivalSkyVolleys !== 'undefined' && survivalSkyVolleys.length > 0) {
       for (let i = 0; i < survivalSkyVolleys.length; i++) {
@@ -3014,15 +3222,15 @@ function draw() {
         ctx.save();
         ctx.translate(cxA, cyA);
         ctx.rotate(angToSrc);
-        ctx.globalAlpha = (0.56 + vp * 0.40) * introP;
-        ctx.fillStyle = '#fde68a';
-        ctx.strokeStyle = '#120d18';
+        ctx.globalAlpha = (0.58 + vp * 0.38) * introP;
+        ctx.fillStyle = '#fda4af';
+        ctx.strokeStyle = '#4c0519';
         ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.moveTo(8.5, 0);
-        ctx.lineTo(-4.5, -5.2);
-        ctx.lineTo(-2.2, 0);
-        ctx.lineTo(-4.5, 5.2);
+        ctx.moveTo(8.8, 0);
+        ctx.lineTo(-4.6, -5.0);
+        ctx.lineTo(-2.0, 0);
+        ctx.lineTo(-4.6, 5.0);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -3031,6 +3239,7 @@ function draw() {
     }
     if (typeof eBullets !== 'undefined' && eBullets.length > 0) {
       const worldClearR = r0 / Math.max(0.25, camZoom);
+      const spinT = ((typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.0045);
       for (let i = 0; i < eBullets.length; i++) {
         const b = eBullets[i];
         if (!b || !b.isCelestial) continue;
@@ -3044,19 +3253,41 @@ function draw() {
         const cyB = ly + Math.sin(angToB) * chevR;
         ctx.save();
         ctx.translate(cxB, cyB);
-        ctx.rotate(angToB);
-        ctx.globalAlpha = 0.92 * introP;
-        ctx.fillStyle = b.isVortexTrap ? '#c084fc' : '#fb7185';
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.3;
-        ctx.beginPath();
-        ctx.moveTo(10.0, 0);
-        ctx.lineTo(-5.0, -6.0);
-        ctx.lineTo(-2.4, 0);
-        ctx.lineTo(-5.0, 6.0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        ctx.globalAlpha = 0.94 * introP;
+        if (b.isVortexTrap) {
+          ctx.strokeStyle = '#2dd4bf';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, 7.6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.rotate(spinT + i * 0.9);
+          ctx.fillStyle = '#a855f7';
+          ctx.strokeStyle = '#f0fdfa';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          for (let k = 0; k < 8; k++) {
+            const kr = (k % 2 === 0) ? 7.2 : 2.6;
+            const ka = (Math.PI * k) / 4;
+            if (k === 0) ctx.moveTo(Math.cos(ka) * kr, Math.sin(ka) * kr);
+            else ctx.lineTo(Math.cos(ka) * kr, Math.sin(ka) * kr);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.rotate(angToB);
+          ctx.fillStyle = '#ff4d6d';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.moveTo(10.5, 0);
+          ctx.lineTo(-5.0, -5.8);
+          ctx.lineTo(-2.2, 0);
+          ctx.lineTo(-5.0, 5.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
         ctx.restore();
       }
     }

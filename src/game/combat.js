@@ -620,10 +620,10 @@ function triggerSoulDash() {
     _activeWeaponId = prevWpnId;
   }
 }
-// 对齐中后期 <=80 同屏怪上限后的单怪晶石购买力曲线（全局金币/晶石产出下调 30%）
+// 对齐中后期 <=80 同屏怪上限后的单怪晶石购买力曲线（全局晶石/金币获取上调 +10%，CRYSTAL_YIELD_MUL=0.77）
 function getWaveMatRate(w) {
   const wv = Math.max(1, w || 1);
-  const yieldMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const yieldMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   return (0.92 * yieldMul) / (1 + Math.min(5, Math.max(0, wv - 1)) * 0.14 + Math.max(0, wv - 6) * 0.075);
 }
 

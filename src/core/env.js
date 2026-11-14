@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.10 蚀界试炼金币补偿提升 + 赛后结算兵装/魔物/遗物点击详情弹窗 + 流派隐藏爆率提升至+20% + 1~5层小怪血量下调15%）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.11 6~10层怪物血量-10% + D2~D5难度加成等比下调20% + 生存试炼预警视觉全面差异化 + 金币与远程伤害+10% + 启动路径修复）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,13 +16,24 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.10';
+const APP_VERSION = 'v2.1.11';
 const APP_BUILD_DATE = '2026-11-14';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.10', date: '2026-11-14', tag: '当前版本 · 蚀界试炼金币补偿翻倍 · 赛后结算点击查看详情 · 流派隐藏+20%爆率 · 1~5层小怪血量-15%',
+    ver: 'v2.1.11', date: '2026-11-14', tag: '当前版本 · 6~10层血量-10% · D2~D5难度下调20% · 生存试炼预警差异化 · 金币与远程伤害+10%',
+    title: '⚔️ 6~10层怪物血量整体降低 10% + ⚖️ D5 难度加成下调 20%（D2~D4 等比调低 / D1 不变） + ⚡ 生存试炼六大机关预警全面差异化 + 💎 金币获取与远程伤害 +10%',
+    items: [
+      '⚔️ 第 6~10 层中盘怪物血量整体降低 10%（MID_WAVE_6_10_HP_MUL = 0.90）：第 6~10 层全种类普通魔物、精英、中层统领与第 8 层首领生命倍率统一乘算 0.90x，平滑第二幕至第三幕前段过渡（第 1~5 层与第 11~16+ 层保持不变）！',
+      '⚖️ 高难契约梯度平滑（D1【守誓】完全不变，D5【蚀日】各项难度加成降低 20%，D2~D4 等比例调低）：D5 魔物生命/伤害/商税加成由 +104%/+78%/+14% 下调至 +83%/+62%/+11%，D2~D4 按同比例平滑过渡！',
+      '⚡ 蚀界生存试炼六大机关预警视觉全面差异化：天外贯星剑梭（绯红虚线+流动燕尾导向标）、平行天罚光栅（琥珀金双轨矩形封锁墙+斜纹警戒带）、地脉撕裂裂谷（熔岩橙不规则锯齿断层+横向裂纹与震源桩）、旋星十字裂光（紫晶双轴+四角顺逆时针旋转箭头）、天外连环坠星（冰蓝至琥珀金 1→2→3→★4 虚线星轨串联+斜降拖尾）、游弋冥渊雷涡（提灯边缘专属青紫四芒旋涡标），一眼秒辨来袭机关！',
+      '🧲 经济与小怪弹幕减负：角色初始收集磁吸范围提升 +10%（130 → 143），波次结束未拾取晶石回收结算比例由 50% 提升至 70%；黄色箭头/金黄弹幕怪（潜渊骨蛇、狂化精英亡语金梭、旋刃陀螺偶）刷出率再降低 20%，且全体普通与特异小怪攻击力下调 10%！',
+      '💎 全局晶石/金币获取提高 +10%（CRYSTAL_YIELD_MUL 0.70 → 0.77），全系 21 把远程射击兵装基础伤害统一提高 +10%，并修复网页端首幕地面贴图启动校验路径（scene_1_arena.jpg）！'
+    ]
+  },
+  {
+    ver: 'v2.1.10', date: '2026-11-14', tag: '蚀界试炼金币补偿翻倍 · 赛后结算点击查看详情 · 流派隐藏+20%爆率 · 1~5层小怪血量-15%',
     title: '💎 蚀界生存试炼金币补偿大幅上调 + 🔍 赛后结算支持点击查看武器/魔物/遗物详情 + 🎯 流派隐藏爆率提升至最高 +20% + ⚔️ 第 1~5 层小怪血量降低 15%',
     items: [
       '💎 蚀界生存试炼金币补偿大幅提升：上调 40 秒渡劫通关保底晶石津贴（随层数与收获成长，且无论受击几次均享有保底渡劫赏金），试炼期间刷出的 30% 追猎小怪晶石掉落同步提高 +40%，并在行商契约栏实时展示本层保底补偿区间！',
@@ -515,7 +526,7 @@ const SpireBootGate = (function () {
       ['主角立绘档案', 'assets/spire/port_zero.jpg'],
       ['风语行商立绘', 'assets/spire/port_qingyu.jpg'],
       ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png'],
-      ['首幕地面石板贴图', 'assets/spire/arena_1_foundry.jpg']
+      ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg']
     ];
     const total = criticalList.length;
     let doneCount = 0;

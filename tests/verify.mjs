@@ -1616,7 +1616,69 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     closeEndSummaryDetail();
     const detailClosed = document.getElementById('endDetailModal').classList.contains('hidden');
     const postGameSummaryOk = (!!bmSprite && endSumHtml.includes('赤烬魂灯杖') && endSumHtml.includes('伽蓝') && endSumHtml.includes('openEndSummaryDetail') && detailWpnOpened && detailMobOpened && detailClosed);
-    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk);
+    const goldAndRangedBoostOk = (
+      Math.abs(CRYSTAL_YIELD_MUL - 0.77) < 1e-9 &&
+      Math.abs(getWaveMatRate(1) - 0.92 * 0.77) < 1e-9 &&
+      Math.abs(WEAPONS.pistol.dmg - 22.55) < 1e-9 &&
+      Math.abs(WEAPONS.smg.dmg - 8.58) < 1e-9 &&
+      Math.abs(WEAPONS.sniper.dmg - 57.2) < 1e-9 &&
+      Math.abs(WEAPONS.rocket.dmg - 46.2) < 1e-9 &&
+      Math.abs(WEAPONS.emp_cannon.dmg - 41.8) < 1e-9 &&
+      Math.abs(WEAPONS.stick.dmg - 18.0) < 1e-9 &&
+      Math.abs(WEAPONS.ember_staff.dmg - 23.0) < 1e-9
+    );
+    // Floor 6-10 monster HP -10% overall (W5 & W11..16 unchanged)
+    const midWave6To10HpOk = (
+      Math.abs(getMidLateWaveHpMul(5) - 0.95) < 1e-9 &&
+      Math.abs(getMidLateWaveHpMul(6) - 1.062) < 1e-9 &&
+      Math.abs(getMidLateWaveHpMul(10) - 1.728) < 1e-9 &&
+      getMidLateWaveHpMul(11) > 1.92 &&
+      Math.abs(getMidLateWaveHpMul(16) - 3.00) < 1e-9
+    );
+    // D1 unchanged, D5 bonus -20%, D2-D4 scaled down proportionally & strictly monotonic
+    const diffRebalanceOk = (
+      DIFFS[1].hpMul === 1.14 && DIFFS[1].dmgMul === 1.15 && DIFFS[1].spdMul === 0.98 && DIFFS[1].spawnMul === 1.05 && DIFFS[1].eliteRate === 0.05 && DIFFS[1].shopTax === 1.00 &&
+      DIFFS[5].hpMul === 1.83 && DIFFS[5].dmgMul === 1.62 && DIFFS[5].spdMul === 1.08 && DIFFS[5].spawnMul === 1.27 && DIFFS[5].eliteRate === 0.144 && DIFFS[5].shopTax === 1.11 &&
+      DIFFS[1].hpMul < DIFFS[2].hpMul && DIFFS[2].hpMul < DIFFS[3].hpMul && DIFFS[3].hpMul < DIFFS[4].hpMul && DIFFS[4].hpMul < DIFFS[5].hpMul &&
+      DIFFS[1].dmgMul < DIFFS[2].dmgMul && DIFFS[2].dmgMul < DIFFS[3].dmgMul && DIFFS[3].dmgMul < DIFFS[4].dmgMul && DIFFS[4].dmgMul < DIFFS[5].dmgMul
+    );
+    // Differentiated Survival Trial telegraphs (distinct colors, chainStep metadata, full mist+world render pass)
+    state = 'wave';
+    survivalTrialWave = true;
+    survivalSkyVolleys.length = 0;
+    survivalFissures.length = 0;
+    hazards.length = 0;
+    eBullets.length = 0;
+    const svTheme = getSurvivalTrialTheme();
+    spawnSurvivalCelestialVolley(svTheme, 24);
+    spawnSurvivalCorridor(svTheme, 24);
+    spawnSurvivalFissure(svTheme, 24);
+    spawnSurvivalCrossJudgment(svTheme, 24);
+    spawnSurvivalMeteorChain(svTheme, 24);
+    spawnSurvivalAbyssVortex(svTheme, 24);
+    // Add an active incoming celestial lance bullet outside Soul Lantern rim to test both rim icon branches
+    eBullets.push({ x: player.x + 360, y: player.y, vx: -420, vy: 0, r: 8, dmg: 18, color: svTheme.lanceCol, shape: 'celestial_lance', isCelestial: true, life: 2.5 });
+    const lanceVolley = survivalSkyVolleys.find(v => v.kind === 'lance');
+    const corridorVolley = survivalSkyVolleys.find(v => v.kind === 'corridor_beam');
+    const crossHaz = hazards.find(h => h.style === 'cross_beam');
+    const meteorChainHaz = hazards.filter(h => h.chainStep > 0);
+    draw();
+    survivalTrialWave = false;
+    const distinctTelegraphsOk = Boolean(
+      lanceVolley && corridorVolley && survivalFissures.length > 0 && crossHaz && meteorChainHaz.length >= 3 &&
+      lanceVolley.color !== corridorVolley.color &&
+      crossHaz.color !== survivalFissures[0].color &&
+      meteorChainHaz.some(h => h.chainStep >= 2 && Number.isFinite(h.prevX) && Number.isFinite(h.prevY))
+    );
+    const pickupSweepMobBalanceOk = (
+      BASE_PICKUP_MAGNET === 143 &&
+      Math.abs(UNCOLLECTED_MAT_SWEEP_RATE - 0.70) < 1e-9 &&
+      Math.abs(MOB_DMG_MUL - 0.90) < 1e-9 &&
+      Math.abs(YELLOW_ARROW_MOB_MUL - 0.64) < 1e-9 &&
+      Math.abs(ELITE_MOB_COUNT_MUL - 0.64) < 1e-9 &&
+      Math.abs(YELLOW_RANGED_SPINNER_MUL - 0.80) < 1e-9
+    );
+    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,
@@ -1700,6 +1762,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       "assets/spire/port_jialan.jpg", "assets/spire/port_qingyu.jpg", "assets/spire/port_eclipse.jpg",
       "assets/spire/hero_zero_sheet.png", "assets/spire/hero_jinyu_sheet.png", "assets/spire/hero_astria_sheet.png",
       "assets/spire/hero_jialan_sheet.png", "assets/spire/hero_qingyu_sheet.png", "assets/spire/hero_eclipse_sheet.png",
+      "assets/spire/scene_1_arena.jpg", "assets/spire/scene_2_arena.jpg", "assets/spire/scene_3_arena.jpg", "assets/spire/scene_4_arena.jpg",
       "assets/spire/cut_intro_1.jpg", "assets/spire/cut_intro_2.jpg", "assets/spire/cut_intro_3.jpg",
       "assets/spire/cut_defeat_act1_1.jpg", "assets/spire/cut_defeat_act4_2.jpg",
       "assets/spire/v2/title-clean.png", "assets/spire/v2/wind-pavilion.png", "assets/spire/v2/player-defeat-clean.png",
@@ -1711,6 +1774,27 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     assert(typeof map["assets/audio/scene_foundry_rain.wav"] === "string" && map["assets/audio/scene_foundry_rain.wav"].startsWith("data:audio/"), "Single-file bundle must inline scene audio WAV assets");
   } finally {
     if (tempBuilt && fs.existsSync(singlePath)) fs.unlinkSync(singlePath);
+  }
+}
+
+// Ensure every static assets/... literal in HTML, manifest, CSS, and JS modules exists on disk
+{
+  const scanFiles = [
+    path.join(ROOT, "index.html"),
+    path.join(ROOT, "manifest.json"),
+    ...cssFiles.map(f => path.join(ROOT, f)),
+    ...jsFiles.map(f => path.join(ROOT, f))
+  ];
+  for (const fp of scanFiles) {
+    const raw = fs.readFileSync(fp, "utf8");
+    const clean = fp.endsWith(".js")
+      ? raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1")
+      : raw;
+    for (const m of clean.matchAll(/["'`](assets\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+)(?:\?[^"'`]*)?["'`]/g)) {
+      const relAsset = m[1];
+      const absAsset = path.join(ROOT, relAsset);
+      assert(fs.existsSync(absAsset) && fs.statSync(absAsset).size > 0, `Referenced asset missing on disk in ${path.relative(ROOT, fp)}: ${relAsset}`);
+    }
   }
 }
 

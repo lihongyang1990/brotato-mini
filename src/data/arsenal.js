@@ -4,10 +4,10 @@ if (typeof globalThis !== 'undefined') globalThis.MAX_WAVE = MAX_WAVE;
 const DIFFS = [
   { id: 0, code: 'D0', roman: 'I',   short: '寻光', tone: 'jade',    badge: 'D0 · 寻光', name: '寻光序章', hpMul: 0.88, dmgMul: 0.86, spdMul: 0.92, spawnMul: 0.90, eliteRate: 0.03, shopTax: 0.92, matBonus: 15, midElite: false, dualElite: false, doubleBoss: false, desc: '怪血量 -12%  ·  怪量 -10%  ·  行商 92 折  ·  开局赠 15 晶石，从容体验十六层四幕救赎剧情' },
   { id: 1, code: 'D1', roman: 'II',  short: '守誓', tone: 'gold',    badge: 'D1 · 守誓', name: '守誓试炼', hpMul: 1.14, dmgMul: 1.15, spdMul: 0.98, spawnMul: 1.05, eliteRate: 0.05, shopTax: 1.00, matBonus: 4,  midElite: true,  dualElite: false, doubleBoss: false, desc: '标准基准试炼：怪血量 +14%  ·  伤害 +15%  ·  第 4 / 8 / 12 / 16 层迎战四幕固定守誓主宰' },
-  { id: 2, code: 'D2', roman: 'III', short: '残响', tone: 'amber',   badge: 'D2 · 残响', name: '残响危局', hpMul: 1.35, dmgMul: 1.32, spdMul: 1.01, spawnMul: 1.13, eliteRate: 0.08, shopTax: 1.04, matBonus: 0,  midElite: true,  dualElite: false, doubleBoss: false, desc: '怪血量 +35%  ·  伤害 +32%  ·  怪量 +13%  ·  第 6 / 10 / 14 层增派守誓先锋统领镇守' },
-  { id: 3, code: 'D3', roman: 'IV',  short: '蚀月', tone: 'rose',    badge: 'D3 · 蚀月', name: '蚀月狂厄', hpMul: 1.56, dmgMul: 1.48, spdMul: 1.04, spawnMul: 1.20, eliteRate: 0.11, shopTax: 1.08, matBonus: 0,  midElite: true,  dualElite: true,  doubleBoss: false, desc: '怪血量 +56%  ·  伤害 +48%  ·  高阶机关苏醒，第 10 / 14 层双先锋统领同台夹击' },
-  { id: 4, code: 'D4', roman: 'V',   short: '逆钟', tone: 'violet',  badge: 'D4 · 逆钟', name: '逆钟深渊', hpMul: 1.78, dmgMul: 1.63, spdMul: 1.07, spawnMul: 1.27, eliteRate: 0.14, shopTax: 1.11, matBonus: 0,  midElite: true,  dualElite: true,  doubleBoss: true,  desc: '怪血量 +78%  ·  伤害 +63%  ·  主线首领固定双阶段，无尽层域解锁双王同临' },
-  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 2.04, dmgMul: 1.78, spdMul: 1.10, spawnMul: 1.34, eliteRate: 0.18, shopTax: 1.14, matBonus: 0,  midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +104%  ·  伤害 +78%  ·  行商物价 +14%  ·  十六层终局弑神试炼' }
+  { id: 2, code: 'D2', roman: 'III', short: '残响', tone: 'amber',   badge: 'D2 · 残响', name: '残响危局', hpMul: 1.30, dmgMul: 1.28, spdMul: 1.00, spawnMul: 1.11, eliteRate: 0.072, shopTax: 1.03, matBonus: 0, midElite: true,  dualElite: false, doubleBoss: false, desc: '怪血量 +30%  ·  伤害 +28%  ·  怪量 +11%  ·  第 6 / 10 / 14 层增派守誓先锋统领镇守' },
+  { id: 3, code: 'D3', roman: 'IV',  short: '蚀月', tone: 'rose',    badge: 'D3 · 蚀月', name: '蚀月狂厄', hpMul: 1.46, dmgMul: 1.40, spdMul: 1.03, spawnMul: 1.16, eliteRate: 0.093, shopTax: 1.06, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: false, desc: '怪血量 +46%  ·  伤害 +40%  ·  高阶机关苏醒，第 10 / 14 层双先锋统领同台夹击' },
+  { id: 4, code: 'D4', roman: 'V',   short: '逆钟', tone: 'violet',  badge: 'D4 · 逆钟', name: '逆钟深渊', hpMul: 1.63, dmgMul: 1.51, spdMul: 1.06, spawnMul: 1.22, eliteRate: 0.115, shopTax: 1.09, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '怪血量 +63%  ·  伤害 +51%  ·  主线首领固定双阶段，无尽层域解锁双王同临' },
+  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 1.83, dmgMul: 1.62, spdMul: 1.08, spawnMul: 1.27, eliteRate: 0.144, shopTax: 1.11, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +83%  ·  伤害 +62%  ·  行商物价 +11%  ·  十六层终局弑神试炼' }
 ];
 let selectedDiff = 1;
 
@@ -119,13 +119,28 @@ function calcWeaponEffectiveRange(tpl, tier, evo, totalRange) {
   const rangeAdd = Math.round((totalRange || 0) * 0.56 + sweepAdd);
   return Math.max(74, scaledBase + rangeAdd + evoAdd);
 }
-const CRYSTAL_YIELD_MUL = 0.70;
+const CRYSTAL_YIELD_MUL = 0.77;
+const BASE_PICKUP_MAGNET = 143;
+const UNCOLLECTED_MAT_SWEEP_RATE = 0.70;
+const MOB_DMG_MUL = 0.90;
+if (typeof globalThis !== 'undefined') {
+  globalThis.BASE_PICKUP_MAGNET = BASE_PICKUP_MAGNET;
+  globalThis.UNCOLLECTED_MAT_SWEEP_RATE = UNCOLLECTED_MAT_SWEEP_RATE;
+  globalThis.MOB_DMG_MUL = MOB_DMG_MUL;
+}
 const BOSS_HP_MUL = 4.80;
 const LATE_BOSS_HP_MUL = 9.60;
 const MID_LATE_HP_MAX_MUL = 3.00;
 const MID_LATE_DMG_MAX_MUL = 2.45;
+const MID_WAVE_6_10_HP_MUL = 0.90;
 
-// 随波数递增的压力曲线：前 5 层进一步温和减压，第 6~9 波稳步攀升，第 10 波起大幅拉升终局高压（第 16 波达 3.00x 血量 / 2.45x 伤害，无尽继续指数突破！）
+function getMidWave6To10HpMul(w) {
+  const wv = Math.max(1, Number(w) || 1);
+  return (wv >= 6 && wv <= 10) ? MID_WAVE_6_10_HP_MUL : 1.00;
+}
+if (typeof globalThis !== 'undefined') globalThis.getMidWave6To10HpMul = getMidWave6To10HpMul;
+
+// 随波数递增的压力曲线：前 5 层进一步温和减压，第 6~10 层怪物整体血量降低 10% 平滑中段坡度，第 11~16 波拉升终局高压（第 16 波达 3.00x 血量 / 2.45x 伤害，无尽继续指数突破！）
 function getMidLateWaveHpMul(w) {
   const wv = Math.max(1, Number(w) || 1);
   if (wv === 1) return 0.64;
@@ -133,13 +148,14 @@ function getMidLateWaveHpMul(w) {
   if (wv === 3) return 0.76;
   if (wv === 4) return 0.85;
   if (wv === 5) return 0.95;
+  const mid6To10Mul = getMidWave6To10HpMul(wv);
   if (wv <= 9) {
     const t = Math.max(0, (wv - 6) / 3);
-    return 1.18 + (1.58 - 1.18) * t;
+    return +((1.18 + (1.58 - 1.18) * t) * mid6To10Mul).toFixed(4);
   }
   if (wv <= MAX_WAVE) {
     const t10 = Math.max(0, (wv - 10) / 6);
-    return 1.92 + (MID_LATE_HP_MAX_MUL - 1.92) * Math.pow(t10, 0.88);
+    return +((1.92 + (MID_LATE_HP_MAX_MUL - 1.92) * Math.pow(t10, 0.88)) * mid6To10Mul).toFixed(4);
   }
   return MID_LATE_HP_MAX_MUL * Math.pow(1.13, wv - MAX_WAVE);
 }
@@ -199,7 +215,7 @@ const WEAPONS = {
     ]
   },
   slingshot: {
-    name: '回响灵石索', icon: '🪃', set: 'primitive', melee: false, dmg: 16.5, cd: 0.56, range: 276, spd: 660, bounce: 2, isPebble: true, cost: 15,
+    name: '回响灵石索', icon: '🪃', set: 'primitive', melee: false, dmg: 18.15, cd: 0.56, range: 276, spd: 660, bounce: 2, isPebble: true, cost: 15,
     desc: '发射共鸣灵石，在怪物之间清脆连续弹射 2 次（配合弹射增伤遗物威力倍增）',
     evos: [
       { id: 'sling_star',    name: '群星回响弹弓',   tag: '双发星石 · 六连弹射', color: '#67e8f9', dmgMul: 1.22, pelletsAdd: 1, bounceAdd: 3, desc: '单次齐射 2 颗星辰灵石，弹射次数额外 +3（满屏清脆连锁弹射），伤害 +22%！' },
@@ -207,7 +223,7 @@ const WEAPONS = {
     ]
   },
   blowgun: {
-    name: '风语毒羽筒', icon: '🎋', set: 'primitive', melee: false, dmg: 14.5, cd: 0.43, range: 280, spd: 725, pierce: 2, poisonHit: 1.0, hpScale: 0.08, isDart: true, cost: 15,
+    name: '风语毒羽筒', icon: '🎋', set: 'primitive', melee: false, dmg: 15.95, cd: 0.43, range: 280, spd: 725, pierce: 2, poisonHit: 1.0, hpScale: 0.08, isDart: true, cost: 15,
     desc: '青羽秘传风毒吹箭！自带 2 穿透且命中必叠【风蚀剧毒】，受最大生命加成伤害',
     evos: [
       { id: 'blow_hydra',   name: '万蛊千羽暴雨筒', tag: '三矢齐发 · 剧毒暴雨', color: '#84cc16', dmgMul: 1.18, cdMul: 0.82, pelletsAdd: 2, pierceAdd: 1, forcePoison: true, desc: '间隔 -18%，每次扇形齐射 3 枚穿刺毒羽（穿透+1），瞬间叠满全场风蚀剧毒！' },
@@ -241,7 +257,7 @@ const WEAPONS = {
     ]
   },
   crossbow: {
-    name: '观星猎魔弩', icon: '🏹', set: 'precise', melee: false, dmg: 23.0, cd: 0.72, range: 332, spd: 780, pierce: 1, rangeScale: 0.055, critBonus: 0.12, cost: 17,
+    name: '观星猎魔弩', icon: '🏹', set: 'precise', melee: false, dmg: 25.3, cd: 0.72, range: 332, spd: 780, pierce: 1, rangeScale: 0.055, critBonus: 0.12, cost: 17,
     desc: '攻击范围越高伤害越高！暴击时星矢穿透次数额外 +2',
     evos: [
       { id: 'xbow_astral',  name: '万象星轨连发神弩', tag: '三星齐射 · 弹射星矢', color: '#60a5fa', dmgMul: 1.24, cdMul: 0.80, pelletsAdd: 2, bounceAdd: 1, desc: '间隔 -20%、伤害 +24%，每次齐射 3 支观星圣矢并自带 +1 次自动星轨弹射！' },
@@ -249,7 +265,7 @@ const WEAPONS = {
     ]
   },
   shuriken: {
-    name: '苍翠旋风翎', icon: '💠', set: 'precise', melee: false, dmg: 15.5, cd: 0.45, range: 266, spd: 665, bounce: 2, critBonus: 0.10, isStar: true, poisonHit: 0.35, cost: 17,
+    name: '苍翠旋风翎', icon: '💠', set: 'precise', melee: false, dmg: 17.05, cd: 0.45, range: 266, spd: 665, bounce: 2, critBonus: 0.10, isStar: true, poisonHit: 0.35, cost: 17,
     desc: '高速旋转的魔女风翎，命中自动弹射 2 次（暴击+1次）并概率叠风毒',
     evos: [
       { id: 'shuri_tempest', name: '青岚万刃风魔手里剑', tag: '三枚齐掷 · 无尽弹射', color: '#2dd4bf', dmgMul: 1.20, pelletsAdd: 2, bounceAdd: 2, desc: '每次同时掷出 3 枚巨型风魔轮，弹射次数 +2，在怪群中掀起青岚刃暴！' },
@@ -257,7 +273,7 @@ const WEAPONS = {
     ]
   },
   sniper: {
-    name: '贯星裁决狙', icon: '🔭', set: 'precise', melee: false, dmg: 52.0, cd: 1.28, range: 452, isSniper: true, pierce: 3, rangeScale: 0.045, critBonus: 0.16, critMult: 2.30, cost: 23,
+    name: '贯星裁决狙', icon: '🔭', set: 'precise', melee: false, dmg: 57.2, cd: 1.28, range: 452, isSniper: true, pierce: 3, rangeScale: 0.045, critBonus: 0.16, critMult: 2.30, cost: 23,
     desc: '超远程瞬发贯星圣弹，享受攻击范围增伤并贯穿 3 名敌人',
     evos: [
       { id: 'sniper_thanatos', name: '弑神星陨反器材重狙', tag: '十敌贯通 · 星陨轰爆', color: '#ffd166', dmgMul: 1.68, rangeAdd: 110, pierceAdd: 6, critMultAdd: 0.70, blastAdd: 92, desc: '伤害 +68%、穿透 +6、暴伤 +70%，轨线终点引爆大范围【弑神星陨核爆】！' },
@@ -267,7 +283,7 @@ const WEAPONS = {
 
   // --- 🔫 封魂铳套装 (5 把) ---
   pistol: {
-    name: '封魂短铳', icon: '🔫', set: 'gun', melee: false, dmg: 20.5, cd: 0.51, range: 294, spd: 725, pierce: 1, cost: 13,
+    name: '封魂短铳', icon: '🔫', set: 'gun', melee: false, dmg: 22.55, cd: 0.51, range: 294, spd: 725, pierce: 1, cost: 13,
     desc: '均衡青焰魂弹点射，自带 1 次穿透，受远程增伤全面强化',
     evos: [
       { id: 'pistol_twins',   name: '双生白鸦青焰双铳', tag: '双弹齐发 · 灵巧弹射', color: '#4cc9f0', dmgMul: 1.22, cdMul: 0.78, pelletsAdd: 1, bounceAdd: 1, desc: '化为黑白双生魂铳：间隔 -22%、每次齐射 2 枚青焰弹并附带 +1 弹射！' },
@@ -275,7 +291,7 @@ const WEAPONS = {
     ]
   },
   revolver: {
-    name: '六道断罪轮', icon: '🤠', set: 'gun', melee: false, dmg: 28.5, cd: 0.65, range: 310, spd: 790, pierce: 1, critMult: 2.15, knockMult: 1.7, sixthCrit: true, cost: 17,
+    name: '六道断罪轮', icon: '🤠', set: 'gun', melee: false, dmg: 31.35, cd: 0.65, range: 310, spd: 790, pierce: 1, critMult: 2.15, knockMult: 1.7, sixthCrit: true, cost: 17,
     desc: '暗金六连左轮！单发重创强击退，每第 6 发魂弹必定暴击且穿透额外 +2',
     evos: [
       { id: 'rev_highnoon',  name: '午时断罪·黄金双轮', tag: '扇射速射 · 高频必暴', color: '#fbbf24', dmgMul: 1.26, cdMul: 0.70, pelletsAdd: 1, pierceAdd: 1, desc: '间隔 -30%、每次连扣 2 发黄金魂弹，极速触发第六发必暴裁决！' },
@@ -283,7 +299,7 @@ const WEAPONS = {
     ]
   },
   smg: {
-    name: '疾风连发铳', icon: '💨', set: 'gun', melee: false, dmg: 7.8, cd: 0.152, range: 258, spd: 755, pierce: 1, spread: 0.15, cost: 16,
+    name: '疾风连发铳', icon: '💨', set: 'gun', melee: false, dmg: 8.58, cd: 0.152, range: 258, spd: 755, pierce: 1, spread: 0.15, cost: 16,
     desc: '倾泻高密度青蓝魂弹雨，高频触发命中特效与元素附着',
     evos: [
       { id: 'smg_typhoon', name: '苍岚幻影风暴双冲锋', tag: '双倍弹幕 · 极速倾泻', color: '#38bdf8', dmgMul: 1.18, cdMul: 0.76, pelletsAdd: 1, pierceAdd: 1, desc: '射速再提 -24%、单发双弹头（弹幕量翻倍！）且穿透 +1，织就密不透风弹雨！' },
@@ -291,7 +307,7 @@ const WEAPONS = {
     ]
   },
   shotgun: {
-    name: '余烬散弹铳', icon: '💥', set: 'gun', melee: false, dmg: 12.2, cd: 0.84, range: 226, spd: 665, pellets: 5, pierce: 1, spread: 0.34, cost: 18,
+    name: '余烬散弹铳', icon: '💥', set: 'gun', melee: false, dmg: 13.42, cd: 0.84, range: 226, spd: 665, pellets: 5, pierce: 1, spread: 0.34, cost: 18,
     desc: '一次轰出 5 颗穿透余烬散弹，中近距粉碎成片敌群',
     evos: [
       { id: 'shot_dragon',   name: '红莲龙息十联重喷', tag: '九颗龙息 · 烈焰焚城', color: '#fb923c', dmgMul: 1.28, pelletsAdd: 4, pierceAdd: 1, forceBurn: true, desc: '单次轰出 9 颗炽热龙息铁砂（穿透+1，伤害+28%），瞬间引燃整片扇面敌潮！' },
@@ -299,7 +315,7 @@ const WEAPONS = {
     ]
   },
   shredder: {
-    name: '裂魂爆破铳', icon: '🧨', set: 'gun', melee: false, dmg: 19.0, cd: 0.74, range: 302, spd: 695, pierce: 1, shredBlast: 0.65, blastR: 80, cost: 19,
+    name: '裂魂爆破铳', icon: '🧨', set: 'gun', melee: false, dmg: 20.9, cd: 0.74, range: 302, spd: 695, pierce: 1, shredBlast: 0.65, blastR: 80, cost: 19,
     desc: '封魂铳与爆破跨界利器！贯穿弹头命中 65% 概率引爆赤金冲击波',
     evos: [
       { id: 'shred_cataclysm', name: '赤金天罚连环爆裂铳', tag: '双发必爆 · 连锁轰炸', color: '#f97316', dmgMul: 1.32, pelletsAdd: 1, pierceAdd: 1, blastAdd: 28, forceBurn: true, desc: '每次齐射 2 枚高爆裂魂弹，穿透 +1、爆炸半径扩大且引燃全场！' },
@@ -325,7 +341,7 @@ const WEAPONS = {
     ]
   },
   grenade_launcher: {
-    name: '余烬榴弹炮', icon: '💣', set: 'heavy', melee: false, dmg: 30, cd: 1.05, range: 298, spd: 515, bounce: 1, isGrenade: true, blastR: 92, cost: 20,
+    name: '余烬榴弹炮', icon: '💣', set: 'heavy', melee: false, dmg: 33.0, cd: 1.05, range: 298, spd: 515, bounce: 1, isGrenade: true, blastR: 92, cost: 20,
     desc: '抛射弹跳余烬火雷，弹跳 1 次并在每次落点引发大范围轰炸！',
     evos: [
       { id: 'gren_carpet',  name: '焦土轰炸·三联集束炮', tag: '三发齐抛 · 地毯轰炸', color: '#fb923c', dmgMul: 1.24, pelletsAdd: 2, bounceAdd: 1, forceBurn: true, desc: '单次扇形抛射 3 枚集束火雷且弹跳次数 +1，每次弹跳皆引发烈焰地毯轰炸！' },
@@ -333,7 +349,7 @@ const WEAPONS = {
     ]
   },
   minigun: {
-    name: '钟楼六管机炮', icon: '⚙️', set: 'heavy', melee: false, dmg: 6.4, cd: 0.106, range: 282, spd: 785, pierce: 1, spread: 0.18, minTier: 2, cost: 25,
+    name: '钟楼六管机炮', icon: '⚙️', set: 'heavy', melee: false, dmg: 7.04, cd: 0.106, range: 282, spd: 785, pierce: 1, spread: 0.18, minTier: 2, cost: 25,
     desc: '倒悬钟楼重装六管火神炮，狂暴倾泻穿甲魂弹幕',
     evos: [
       { id: 'mini_vulcan',  name: '炼狱火神·十二管机炮', tag: '双流金属风暴 · 炽火穿甲', color: '#f97316', dmgMul: 1.25, cdMul: 0.82, pelletsAdd: 1, pierceAdd: 1, forceBurn: true, desc: '升级双联十二管：射速再提、单次双发穿甲炎弹，化身移动金属火海！' },
@@ -341,7 +357,7 @@ const WEAPONS = {
     ]
   },
   rocket: {
-    name: '陨星重炮', icon: '🚀', set: 'heavy', melee: false, dmg: 42, cd: 1.34, range: 352, spd: 485, isRocket: true, blastR: 106, cost: 25,
+    name: '陨星重炮', icon: '🚀', set: 'heavy', melee: false, dmg: 46.2, cd: 1.34, range: 352, spd: 485, isRocket: true, blastR: 106, cost: 25,
     desc: '发射拖尾陨星重弹，命中引发毁灭级范围轰炸与焦痕',
     evos: [
       { id: 'rocket_salvo', name: '苍穹蜂群·三联导弹巢', tag: '三枚齐射 · 饱和覆盖', color: '#fb7185', dmgMul: 1.22, cdMul: 0.84, pelletsAdd: 2, forceBurn: true, desc: '间隔 -16%，每次齐射 3 枚拖尾陨星飞弹，饱和火力覆盖整片战场！' },
@@ -359,7 +375,7 @@ const WEAPONS = {
     ]
   },
   icicle: {
-    name: '碎冕寒冰棱', icon: '🧊', set: 'elemental', melee: false, dmg: 22.0, cd: 0.66, range: 300, spd: 730, pierce: 2, isIce: true, freezeHit: 0.32, cost: 18,
+    name: '碎冕寒冰棱', icon: '🧊', set: 'elemental', melee: false, dmg: 24.2, cd: 0.66, range: 300, spd: 730, pierce: 2, isIce: true, freezeHit: 0.32, cost: 18,
     desc: '艾丝特莉亚的极寒冰棱，贯穿 2 敌必挂冰缓且 32% 概率直接冰冻定身！',
     evos: [
       { id: 'ice_blizzard', name: '永冻王冠·五联冰星刺', tag: '三棱齐发 · 弹射冰封', color: '#72efdd', dmgMul: 1.24, pelletsAdd: 2, bounceAdd: 1, forceFreeze: 0.45, desc: '每次扇形齐射 3 枚碎冕冰枪且附带 +1 弹射，45% 概率直接冻结敌群！' },
@@ -367,7 +383,7 @@ const WEAPONS = {
     ]
   },
   laser: {
-    name: '魂灯贯日束', icon: '⚡', set: 'elemental', melee: false, dmg: 33, cd: 1.02, range: 368, pierce: 4, isBeam: true, cost: 22,
+    name: '魂灯贯日束', icon: '⚡', set: 'elemental', melee: false, dmg: 36.3, cd: 1.02, range: 368, pierce: 4, isBeam: true, cost: 22,
     desc: '提灯迸发青白贯日光束，无视正面盾牌瞬间穿透 4 名目标',
     evos: [
       { id: 'laser_prism',  name: '破晓三棱镜·极光圣束', tag: '三束齐发 · 极光扫荡', color: '#72efdd', dmgMul: 1.24, cdMul: 0.82, pelletsAdd: 2, pierceAdd: 2, desc: '折射出左中右【3 道破晓贯日光束】同时横扫战场，间隔 -18%、穿透 +2！' },
@@ -375,7 +391,7 @@ const WEAPONS = {
     ]
   },
   flamer: {
-    name: '红莲提灯火', icon: '🔥', set: 'elemental', melee: false, dmg: 6.2, cd: 0.142, range: 196, spd: 420, pierce: 4, spread: 0.26, isFlame: true, cost: 20,
+    name: '红莲提灯火', icon: '🔥', set: 'elemental', melee: false, dmg: 6.82, cd: 0.142, range: 196, spd: 420, pierce: 4, spread: 0.26, isFlame: true, cost: 20,
     desc: '持续喷吐绯红魂焰火流，大范围引燃怪物触发高频灼烧与融毁反应',
     evos: [
       { id: 'flame_hell',   name: '业火红莲·双龙焚天炬', tag: '双倍火流 · 远距火海', color: '#ff6b35', dmgMul: 1.32, rangeAdd: 56, pelletsAdd: 1, pierceAdd: 2, forceBurn: true, desc: '火流射程 +56、双喷口双倍烈焰吐息、伤害 +32%，化作焚尽长夜的火海！' },
@@ -383,7 +399,7 @@ const WEAPONS = {
     ]
   },
   taser: {
-    name: '伽蓝紫电弧', icon: '🌩️', set: 'elemental', melee: false, dmg: 21.5, cd: 0.66, range: 256, chains: 4, isChain: true, cost: 21,
+    name: '伽蓝紫电弧', icon: '🌩️', set: 'elemental', melee: false, dmg: 23.65, cd: 0.66, range: 256, chains: 4, isChain: true, cost: 21,
     desc: '释放跳跃紫电弧连续劈向 4 名敌人，必附冰缓极易触发四象元素反应',
     evos: [
       { id: 'taser_storm',  name: '万雷天牢·紫电神罚网', tag: '十连跳跃 · 高频雷网', color: '#c77dff', dmgMul: 1.34, cdMul: 0.72, chainsAdd: 5, desc: '间隔 -28%、伤害 +34%，闪电链跳跃次数暴增 +5（高达 10 连跳全屏电疗）！' },
@@ -391,7 +407,7 @@ const WEAPONS = {
     ]
   },
   plasma: {
-    name: '日蚀黑阳球', icon: '🔮', set: 'elemental', melee: false, dmg: 31, cd: 1.12, range: 316, spd: 390, pierce: 5, isPlasma: true, blastR: 90, minTier: 2, cost: 25,
+    name: '日蚀黑阳球', icon: '🔮', set: 'elemental', melee: false, dmg: 34.1, cd: 1.12, range: 316, spd: 390, pierce: 5, isPlasma: true, blastR: 90, minTier: 2, cost: 25,
     desc: '发射高能日蚀暗耀法球，贯穿 5 敌并在终点引爆大范围元素坍缩',
     evos: [
       { id: 'plasma_binary', name: '双生黑日·蚀月星云球', tag: '双球齐发 · 连环坍缩', color: '#c084fc', dmgMul: 1.28, cdMul: 0.84, pelletsAdd: 1, pierceAdd: 2, desc: '间隔 -16%，每次同时推出 2 颗高能日蚀黑阳球，双重元素坍缩清扫全场！' },
@@ -417,7 +433,7 @@ const WEAPONS = {
     ]
   },
   nailgun: {
-    name: '发条连射钉铳', icon: '🔩', set: 'tech', melee: false, dmg: 10.8, cd: 0.21, range: 270, spd: 765, pierce: 1, spread: 0.10, techScale: 0.65, isNail: true, cost: 16,
+    name: '发条连射钉铳', icon: '🔩', set: 'tech', melee: false, dmg: 11.88, cd: 0.21, range: 270, spd: 765, pierce: 1, spread: 0.10, techScale: 0.65, isNail: true, cost: 16,
     desc: '钟楼高速齿轮钉铳！自带 1 穿透，额外享受 65%【工程伤害】联动增伤',
     evos: [
       { id: 'nail_storm',   name: '暴雨梨花·双轨穿甲钉铳', tag: '双钉齐射 · 弹射钢雨', color: '#38bdf8', dmgMul: 1.22, cdMul: 0.80, pelletsAdd: 1, bounceAdd: 1, desc: '射速提升 -20%，单次齐射 2 枚高速齿轮钢钉且每枚钢钉附带 +1 弹射！' },
@@ -425,7 +441,7 @@ const WEAPONS = {
     ]
   },
   drone_bay: {
-    name: '浮游魂灯枢', icon: '🛸', set: 'tech', melee: false, dmg: 18.0, cd: 0.66, range: 290, spd: 705, bounce: 1, techScale: 0.55, deploysLaserTurret: true, cost: 21,
+    name: '浮游魂灯枢', icon: '🛸', set: 'tech', melee: false, dmg: 19.8, cd: 0.66, range: 290, spd: 705, bounce: 1, techScale: 0.55, deploysLaserTurret: true, cost: 21,
     desc: '发射弹射星芒弹，且每装备 1 具额外部署 1 座【浮游贯日激光塔】！',
     evos: [
       { id: 'drone_armada', name: '天穹母舰·双生浮游灯枢', tag: '双座激光塔 · 双星弹射', color: '#c77dff', dmgMul: 1.28, pelletsAdd: 1, bounceAdd: 1, extraLaserTurret: 1, desc: '本体齐射 2 枚弹射星芒弹，且额外部署 +1 座高阶【浮游贯日激光塔】（共 2 座）！' },
@@ -433,7 +449,7 @@ const WEAPONS = {
     ]
   },
   emp_cannon: {
-    name: '逆钟磁轨炮', icon: '📡', set: 'tech', melee: false, dmg: 38, cd: 1.12, range: 380, pierce: 4, isBeam: true, isEmpBeam: true, techScale: 0.70, minTier: 2, cost: 24,
+    name: '逆钟磁轨炮', icon: '📡', set: 'tech', melee: false, dmg: 41.8, cd: 1.12, range: 380, pierce: 4, isBeam: true, isEmpBeam: true, techScale: 0.70, minTier: 2, cost: 24,
     desc: '倒悬钟楼重型磁轨炮！瞬发贯穿光束并在首目标处引爆【时滞脉冲】',
     evos: [
       { id: 'emp_chrono',   name: '时停星晷·三轨磁暴主炮', tag: '三束磁轨 · 全场冰封', color: '#38bdf8', dmgMul: 1.30, cdMul: 0.82, pelletsAdd: 2, forceFreeze: 0.65, desc: '同时轰出 3 道磁轨贯穿光束，时滞脉冲升级为 65% 概率【绝对时停冰封】！' },

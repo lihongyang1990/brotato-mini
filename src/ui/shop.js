@@ -187,7 +187,7 @@ function settleSpireFloor(flow) {
         pendingCrates++;
         if (drop.isMythic) player.mythicCratesQueued = (player.mythicCratesQueued || 0) + 1;
         else if (drop.isBoss) player.bossCratesQueued = (player.bossCratesQueued || 0) + 1;
-      } else player.mats += 16 + wave * 3;
+      } else player.mats += Math.round((16 + wave * 3) * 1.10);
     }
   }
   settleWaveRewards();
@@ -375,7 +375,7 @@ function toggleSurvivalTrial() {
 }
 
 function calcSurvivalTrialGoldComp(waveNum, hits = 0, p = player) {
-  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const wv = Math.max(1, Number(waveNum) || 1);
   const harvestMul = Math.max(1, Math.min(2.2, (p && p.harvest) || 1));
   // 丰厚渡劫金币补偿：足额弥补 40 秒 70% 刷怪削减与器物缺口，并额外发放身法评级赏金
@@ -482,10 +482,11 @@ function settleWaveRewards() {
   for (let i = 0; i < drops.length; i++) {
     if (drops[i].kind === 'mat') leftoverMats += (drops[i].val || 1);
   }
-  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const matRate = typeof getWaveMatRate === 'function' ? getWaveMatRate(wave) : (0.92 * crystalMul / (1 + Math.min(5, Math.max(0, wave - 1)) * 0.14 + Math.max(0, wave - 6) * 0.075));
-  // 自动回收地上 50% 未拾取晶石 + 适度通关津贴 + 【收获】成长分红 + 【理财冠】利息（整体晶石产出下调 30%）
-  const leftover = Math.round(leftoverMats * matRate * 0.50);
+  const sweepRate = typeof UNCOLLECTED_MAT_SWEEP_RATE === 'number' ? UNCOLLECTED_MAT_SWEEP_RATE : 0.70;
+  // 自动回收地上 70% 未拾取晶石（由 50% 上调至 70%） + 适度通关津贴 + 【收获】成长分红 + 【理财冠】利息
+  const leftover = Math.round(leftoverMats * matRate * sweepRate);
   const interestCap = Math.round((24 + wave * 9) * crystalMul);
   const interestGain = player.interest > 0 ? Math.min(interestCap, Math.round(player.mats * player.interest)) : 0;
   const clearBonus = Math.max(2, Math.round((4 + Math.floor(wave * 1.5)) * crystalMul));
@@ -751,7 +752,7 @@ function buildCrateWeaponChoice(isBossCrate, forcedTier = 0, minTierFloor = 1) {
   const tpl = WEAPONS[pickedId];
   const effTier = Math.min(4, Math.max(floorT, wTier, tpl.minTier || 1));
   const tierMul = WEAPON_TIER_COST_MUL[effTier] || 4.4;
-  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const recycleVal = Math.max(6, Math.round(tpl.cost * tierMul * getShopScale() * 0.48 * crystalMul));
   const canMergeNow = player.weapons.some(w => w.id === pickedId && w.tier === effTier && w.tier < 5);
   return { kind: 'weapon', id: pickedId, tpl, tier: effTier, recycleVal, canMergeNow, autoReplaceLowest };
@@ -782,7 +783,7 @@ function showCrateMenu() {
 
   const luck = player.luck || 0;
   const luckF = Math.min(1, Math.max(0, luck) / 95);
-  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const excludeIds = new Set();
   const choices = [];
 
