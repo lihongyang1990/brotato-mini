@@ -1344,9 +1344,11 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       typeof NEEDLE_RANGED_MUL === 'number' &&
       Math.abs(NEEDLE_RANGED_MUL - 0.70) < 1e-6 &&
       typeof YELLOW_ARROW_MOB_MUL === 'number' &&
-      Math.abs(YELLOW_ARROW_MOB_MUL - 0.64) < 1e-6 &&
+      Math.abs(YELLOW_ARROW_MOB_MUL - 1.00) < 1e-6 &&
+      typeof YELLOW_RANGED_SPINNER_MUL === 'number' &&
+      Math.abs(YELLOW_RANGED_SPINNER_MUL - 1.00) < 1e-6 &&
       typeof ELITE_MOB_COUNT_MUL === 'number' &&
-      Math.abs(ELITE_MOB_COUNT_MUL - 0.64) < 1e-6 &&
+      Math.abs(ELITE_MOB_COUNT_MUL - 0.70) < 1e-6 &&
       NEEDLE_RANGED_TYPES.has('frost_wisp') &&
       NEEDLE_RANGED_TYPES.has('shooter') &&
       NEEDLE_RANGED_TYPES.has('rad_scorpion') &&
@@ -1394,13 +1396,23 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
 
     nextWave();
     __drainDirector();
+    const trialDurLadderOk = (
+      typeof getSurvivalTrialDuration === 'function' &&
+      getSurvivalTrialDuration(DIFFS[0]) === 30 &&
+      getSurvivalTrialDuration(DIFFS[1]) === 30 &&
+      getSurvivalTrialDuration(DIFFS[2]) === 34 &&
+      getSurvivalTrialDuration(DIFFS[3]) === 38 &&
+      getSurvivalTrialDuration(DIFFS[4]) === 41 &&
+      getSurvivalTrialDuration(DIFFS[5]) === 45
+    );
     const startedTrialOk = (
+      trialDurLadderOk &&
       state === 'wave' &&
       survivalTrialWave === true &&
       survivalTrialQueued === false &&
       wave === 2 &&
-      waveTime === 40 &&
-      waveMaxTime === 40 &&
+      waveTime === 34 &&
+      waveMaxTime === 34 &&
       player.r >= 24
     );
 
@@ -1642,10 +1654,13 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       getMidLateWaveHpMul(11) > 1.92 &&
       Math.abs(getMidLateWaveHpMul(16) - 3.00) < 1e-9
     );
-    // D1 unchanged, D5 bonus -20%, D2-D4 scaled down proportionally & strictly monotonic
+    // D1 unchanged (1.14 / 1.15), D5 tuned to +65% HP (1.65) & +40% DMG (1.40), D2-D4 scaled proportionally & strictly monotonic
     const diffRebalanceOk = (
       DIFFS[1].hpMul === 1.14 && DIFFS[1].dmgMul === 1.15 && DIFFS[1].spdMul === 0.98 && DIFFS[1].spawnMul === 1.05 && DIFFS[1].eliteRate === 0.05 && DIFFS[1].shopTax === 1.00 &&
-      DIFFS[5].hpMul === 1.83 && DIFFS[5].dmgMul === 1.62 && DIFFS[5].spdMul === 1.08 && DIFFS[5].spawnMul === 1.27 && DIFFS[5].eliteRate === 0.144 && DIFFS[5].shopTax === 1.11 &&
+      DIFFS[2].hpMul === 1.27 && DIFFS[2].dmgMul === 1.21 &&
+      DIFFS[3].hpMul === 1.40 && DIFFS[3].dmgMul === 1.28 &&
+      DIFFS[4].hpMul === 1.52 && DIFFS[4].dmgMul === 1.34 &&
+      DIFFS[5].hpMul === 1.65 && DIFFS[5].dmgMul === 1.40 && DIFFS[5].spdMul === 1.08 && DIFFS[5].spawnMul === 1.27 && DIFFS[5].eliteRate === 0.144 && DIFFS[5].shopTax === 1.11 &&
       DIFFS[1].hpMul < DIFFS[2].hpMul && DIFFS[2].hpMul < DIFFS[3].hpMul && DIFFS[3].hpMul < DIFFS[4].hpMul && DIFFS[4].hpMul < DIFFS[5].hpMul &&
       DIFFS[1].dmgMul < DIFFS[2].dmgMul && DIFFS[2].dmgMul < DIFFS[3].dmgMul && DIFFS[3].dmgMul < DIFFS[4].dmgMul && DIFFS[4].dmgMul < DIFFS[5].dmgMul
     );
@@ -1920,7 +1935,14 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       if (getGroundHealCrowdFactor() !== 0) return false;
       drops.length = 0;
 
-      // Floor 16 Boss 25% dodge verification
+      // Floor 16 Boss stepped dodge verification: D0/D1 = 0%, D2..D5 -> 6.25% / 12.5% / 18.75% / 25%
+      if (typeof getFloor16BossDodge !== 'function') return false;
+      if (getFloor16BossDodge(DIFFS[0]) !== 0 || getFloor16BossDodge(DIFFS[1]) !== 0) return false;
+      if (Math.abs(getFloor16BossDodge(DIFFS[2]) - 0.0625) > 1e-9) return false;
+      if (Math.abs(getFloor16BossDodge(DIFFS[3]) - 0.1250) > 1e-9) return false;
+      if (Math.abs(getFloor16BossDodge(DIFFS[4]) - 0.1875) > 1e-9) return false;
+      if (Math.abs(getFloor16BossDodge(DIFFS[5]) - 0.2500) > 1e-9) return false;
+
       state = 'wave'; endlessMode = false; diff = DIFFS[1]; selectedDiff = 1;
       enemies.length = 0; texts.length = 0;
       wave = 8;
@@ -1928,6 +1950,10 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       if ((b8.dodge || 0) !== 0) return false;
       enemies.length = 0;
       wave = 16;
+      const b16D1 = createEnemy(1320, 900, 'boss', 'solar_seraph');
+      if ((b16D1.dodge || 0) !== 0) return false;
+      enemies.length = 0;
+      diff = DIFFS[5]; selectedDiff = 5;
       const b16 = createEnemy(1320, 900, 'boss', 'solar_seraph');
       if (Math.abs((b16.dodge || 0) - 0.25) > 1e-9) return false;
       enemies.push(b16);

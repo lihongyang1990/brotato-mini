@@ -916,7 +916,7 @@ function update(dt) {
     player.swampTick = 0;
   }
 
-  // 🕯️ 蚀界生存试炼（40秒七类机关高密渡劫：陷阱密度提升 +50%、伤害提升 +20%）
+  // 🕯️ 蚀界生存试炼（D1=30s -> D5=45s 阶梯渡劫：七类机关陷阱密度提升 +50%、伤害提升 +20%）
   if (typeof survivalTrialWave !== 'undefined' && survivalTrialWave && !overtime) {
     const st = survivalTrialState || (survivalTrialState = {
       fogIntroP: 0, lanternBoostT: 0,
@@ -928,13 +928,18 @@ function update(dt) {
     if ((player._fissureHitCd || 0) > 0) player._fissureHitCd = Math.max(0, player._fissureHitCd - dt);
     if ((player._fissureLeapHintCd || 0) > 0) player._fissureLeapHintCd = Math.max(0, player._fissureLeapHintCd - dt);
 
-    const phase = waveTime > 27 ? 1 : (waveTime > 13 ? 2 : 3);
+    const trialTotal = (typeof waveMaxTime === 'number' && waveMaxTime > 0)
+      ? waveMaxTime
+      : (typeof getSurvivalTrialDuration === 'function' ? getSurvivalTrialDuration(diff) : 30);
+    const p1Cut = trialTotal * (2 / 3);
+    const p2Cut = trialTotal * (1 / 3);
+    const phase = waveTime > p1Cut ? 1 : (waveTime > p2Cut ? 2 : 3);
     if (phase >= 2 && !st.phase2Announced) {
       st.phase2Announced = true;
       announce('⚡ 蚀界裂变加剧 · 旋星十字裂光、连环坠星与交错裂隙降临！', '#c084fc', 2.8);
     } else if (phase >= 3 && !st.phase3Announced) {
       st.phase3Announced = true;
-      announce('🔥 最后 13 秒终末渡劫 · 剑阵走廊与冥渊雷涡全面狂暴！', '#ffd166', 3.0);
+      announce(`🔥 最后 ${Math.max(8, Math.round(p2Cut))} 秒终末渡劫 · 剑阵走廊与冥渊雷涡全面狂暴！`, '#ffd166', 3.0);
     }
 
     if (waveTime > 0.85) {
@@ -963,7 +968,7 @@ function update(dt) {
         st.vortexCd = phase === 1 ? 5.6 : (phase === 2 ? 4.4 : 3.6);
         if (typeof spawnSurvivalAbyssVortex === 'function') spawnSurvivalAbyssVortex(phase);
       }
-      if (waveTime <= 33) {
+      if (waveTime <= trialTotal - 5.5) {
         st.corridorCd = (st.corridorCd !== undefined ? st.corridorCd : 4.2) - dt;
         if (st.corridorCd <= 0) {
           st.corridorCd = phase === 1 ? 6.4 : (phase === 2 ? 5.2 : 4.2);

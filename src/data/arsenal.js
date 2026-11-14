@@ -4,10 +4,10 @@ if (typeof globalThis !== 'undefined') globalThis.MAX_WAVE = MAX_WAVE;
 const DIFFS = [
   { id: 0, code: 'D0', roman: 'I',   short: '寻光', tone: 'jade',    badge: 'D0 · 寻光', name: '寻光序章', hpMul: 0.88, dmgMul: 0.86, spdMul: 0.92, spawnMul: 0.90, eliteRate: 0.03, shopTax: 0.92, matBonus: 15, midElite: false, dualElite: false, doubleBoss: false, desc: '怪血量 -12%  ·  怪量 -10%  ·  行商 92 折  ·  开局赠 15 晶石，从容体验十六层四幕救赎剧情' },
   { id: 1, code: 'D1', roman: 'II',  short: '守誓', tone: 'gold',    badge: 'D1 · 守誓', name: '守誓试炼', hpMul: 1.14, dmgMul: 1.15, spdMul: 0.98, spawnMul: 1.05, eliteRate: 0.05, shopTax: 1.00, matBonus: 4,  midElite: true,  dualElite: false, doubleBoss: false, desc: '标准基准试炼：怪血量 +14%  ·  伤害 +15%  ·  第 4 / 8 / 12 / 16 层迎战四幕固定守誓主宰' },
-  { id: 2, code: 'D2', roman: 'III', short: '残响', tone: 'amber',   badge: 'D2 · 残响', name: '残响危局', hpMul: 1.30, dmgMul: 1.28, spdMul: 1.00, spawnMul: 1.11, eliteRate: 0.072, shopTax: 1.03, matBonus: 0, midElite: true,  dualElite: false, doubleBoss: false, desc: '怪血量 +30%  ·  伤害 +28%  ·  地形规模 +12.5% / 侵蚀 +7.5%  ·  第 6 / 10 / 14 层增派先锋统领' },
-  { id: 3, code: 'D3', roman: 'IV',  short: '蚀月', tone: 'rose',    badge: 'D3 · 蚀月', name: '蚀月狂厄', hpMul: 1.46, dmgMul: 1.40, spdMul: 1.03, spawnMul: 1.16, eliteRate: 0.093, shopTax: 1.06, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: false, desc: '怪血量 +46%  ·  伤害 +40%  ·  地形规模 +25% / 侵蚀 +15%  ·  第 10 / 14 层双先锋统领夹击' },
-  { id: 4, code: 'D4', roman: 'V',   short: '逆钟', tone: 'violet',  badge: 'D4 · 逆钟', name: '逆钟深渊', hpMul: 1.63, dmgMul: 1.51, spdMul: 1.06, spawnMul: 1.22, eliteRate: 0.115, shopTax: 1.09, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '怪血量 +63%  ·  伤害 +51%  ·  地形规模 +37.5% / 侵蚀 +22.5%  ·  无尽层域解锁双王同临' },
-  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 1.83, dmgMul: 1.62, spdMul: 1.08, spawnMul: 1.27, eliteRate: 0.144, shopTax: 1.11, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +83%  ·  伤害 +62%  ·  地形规模 +50% / 侵蚀 +30%  ·  二阶首领独享10秒临死挣扎' }
+  { id: 2, code: 'D2', roman: 'III', short: '残响', tone: 'amber',   badge: 'D2 · 残响', name: '残响危局', hpMul: 1.27, dmgMul: 1.21, spdMul: 1.00, spawnMul: 1.11, eliteRate: 0.072, shopTax: 1.03, matBonus: 0, midElite: true,  dualElite: false, doubleBoss: false, desc: '怪血量 +27%  ·  伤害 +21%  ·  地形规模 +12.5% / 侵蚀 +7.5%  ·  第 6 / 10 / 14 层增派先锋统领' },
+  { id: 3, code: 'D3', roman: 'IV',  short: '蚀月', tone: 'rose',    badge: 'D3 · 蚀月', name: '蚀月狂厄', hpMul: 1.40, dmgMul: 1.28, spdMul: 1.03, spawnMul: 1.16, eliteRate: 0.093, shopTax: 1.06, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: false, desc: '怪血量 +40%  ·  伤害 +28%  ·  地形规模 +25% / 侵蚀 +15%  ·  第 10 / 14 层双先锋统领夹击' },
+  { id: 4, code: 'D4', roman: 'V',   short: '逆钟', tone: 'violet',  badge: 'D4 · 逆钟', name: '逆钟深渊', hpMul: 1.52, dmgMul: 1.34, spdMul: 1.06, spawnMul: 1.22, eliteRate: 0.115, shopTax: 1.09, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '怪血量 +52%  ·  伤害 +34%  ·  地形规模 +37.5% / 侵蚀 +22.5%  ·  无尽层域解锁双王同临' },
+  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 1.65, dmgMul: 1.40, spdMul: 1.08, spawnMul: 1.27, eliteRate: 0.144, shopTax: 1.11, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +65%  ·  伤害 +40%  ·  地形规模 +50% / 侵蚀 +30%  ·  二阶首领独享10秒临死挣扎' }
 ];
 let selectedDiff = 1;
 
@@ -52,6 +52,32 @@ if (typeof globalThis !== 'undefined') {
   globalThis.DIFF_LATE_HEAL_DROP_MAX_REDUCTION = DIFF_LATE_HEAL_DROP_MAX_REDUCTION;
   globalThis.getDiffHealDropMul = getDiffHealDropMul;
   globalThis.getEffectiveHealDropMul = getEffectiveHealDropMul;
+}
+
+// 第 16 层终幕首领【日蚀圣女】镜影闪避阶梯：D0/D1 不加闪避（0%），D2~D5 线性递增至最高 25%（6.25% / 12.5% / 18.75% / 25%）
+const FLOOR16_BOSS_MAX_DODGE = 0.25;
+function getFloor16BossDodge(d = (typeof diff !== 'undefined' ? diff : null)) {
+  const id = (d && Number.isFinite(d.id)) ? d.id : (typeof d === 'number' && Number.isFinite(d) ? d : 1);
+  if (id <= 1) return 0;
+  const step = Math.min(4, Math.max(0, id - 1)) / 4;
+  return +(step * FLOOR16_BOSS_MAX_DODGE).toFixed(4);
+}
+
+// 【蚀界生存试炼】时长按难度阶梯变化：D0/D1 为 30 秒，D2~D4 等比例递增（34 / 38 / 41 秒），D5 为 45 秒
+const SURVIVAL_TRIAL_BASE_SEC = 30;
+const SURVIVAL_TRIAL_MAX_SEC = 45;
+function getSurvivalTrialDuration(d = (typeof diff !== 'undefined' ? diff : null)) {
+  const id = (d && Number.isFinite(d.id)) ? d.id : (typeof d === 'number' && Number.isFinite(d) ? d : 1);
+  if (id <= 1) return SURVIVAL_TRIAL_BASE_SEC;
+  const step = Math.min(4, Math.max(0, id - 1)) / 4;
+  return Math.round(SURVIVAL_TRIAL_BASE_SEC + step * (SURVIVAL_TRIAL_MAX_SEC - SURVIVAL_TRIAL_BASE_SEC));
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.FLOOR16_BOSS_MAX_DODGE = FLOOR16_BOSS_MAX_DODGE;
+  globalThis.getFloor16BossDodge = getFloor16BossDodge;
+  globalThis.SURVIVAL_TRIAL_BASE_SEC = SURVIVAL_TRIAL_BASE_SEC;
+  globalThis.SURVIVAL_TRIAL_MAX_SEC = SURVIVAL_TRIAL_MAX_SEC;
+  globalThis.getSurvivalTrialDuration = getSurvivalTrialDuration;
 }
 
 // 6 位《烬塔残响：第999次救赎》设定集正统登塔角色（配备设定集左侧半身立绘 + Q版二头身实机精灵 + 专属【青焰瞬步】主动残响战技）

@@ -1249,8 +1249,9 @@ function beginWave(retryMeta = null) {
   }
   if (typeof SpireAudio !== 'undefined') SpireAudio.syncScene(curScene.id);
   syncArenaAndZoom(true);
-  // 回合时长：蚀界生存试炼恒定 40 秒；常规层从第 1 层 30 秒起步，每层递增 +5 秒，最高封顶 60 秒
-  waveTime = survivalTrialWave ? 40 : getWaveDuration(wave);
+  // 回合时长：蚀界生存试炼按厄度阶梯递进（D1=30s -> D2=34s -> D3=38s -> D4=41s -> D5=45s）；常规层从第 1 层 30 秒起步，每层递增 +5 秒，最高封顶 60 秒
+  const trialDur = typeof getSurvivalTrialDuration === 'function' ? getSurvivalTrialDuration(diff) : 30;
+  waveTime = survivalTrialWave ? trialDur : getWaveDuration(wave);
   waveMaxTime = waveTime;
   lastUrgentSec = -1;
   spawnAcc = survivalTrialWave ? 0.85 : 0.25;
@@ -1329,8 +1330,8 @@ function beginWave(retryMeta = null) {
 
   if (survivalTrialWave) {
     const sTheme = getSurvivalTrialTheme();
-    logInfo('WAVE', `进入第 ${wave} 层【蚀界生存试炼】(40s · 怪物30% · 七类机关) · 场景=${curScene.name}(${curScene.id}) · 地图=${WORLD.w}x${WORLD.h}`);
-    announce(`🕯️ 蚀界生存试炼（40秒）· 浓雾提灯下躲避${sTheme.lanceName}、${sTheme.fissureName}与旋星裂光！`, '#72efdd', 4.2);
+    logInfo('WAVE', `进入第 ${wave} 层【蚀界生存试炼】(${trialDur}s · 怪物30% · 七类机关) · 场景=${curScene.name}(${curScene.id}) · 地图=${WORLD.w}x${WORLD.h}`);
+    announce(`🕯️ 蚀界生存试炼（${trialDur}秒）· 浓雾提灯下躲避${sTheme.lanceName}、${sTheme.fissureName}与旋星裂光！`, '#72efdd', 4.2);
   } else {
     const portalNote = portals.length >= 2 ? ' · 🌀双生晶裂门已开启' : '';
     const waveIntro = `${curScene.icon} 第 ${wave} 层：${curScene.name}${activeSceneEvent ? ' · ' + curScene.eventIcon + curScene.eventName : ''}${portalNote}`;
@@ -2075,7 +2076,9 @@ function createEnemy(x, y, type, variant = '') {
     const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.6 : (wave <= 12 ? 11.2 : 12.6));
     // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；无尽保留随机神话觉醒。
     const phase2Chance = isStoryBoss ? 1 : mythicRate;
-    const bossDodge = (wave === 16 || bKey === 'solar_seraph') ? FLOOR16_BOSS_DODGE : 0;
+    const bossDodge = (wave === 16 || bKey === 'solar_seraph')
+      ? (typeof getFloor16BossDodge === 'function' ? getFloor16BossDodge(diff) : 0)
+      : 0;
     ent = {
       ...base, r: 56, hp: bhp, maxHp: bhp, spd: bDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
       dodge: bossDodge,

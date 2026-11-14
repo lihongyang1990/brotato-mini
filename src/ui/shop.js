@@ -1255,6 +1255,7 @@ function renderShop() {
   }
   const canTrial = canOfferSurvivalTrialForWave(nextFloorNum);
   if (!canTrial) survivalTrialQueued = false;
+  const trialSec = typeof getSurvivalTrialDuration === 'function' ? getSurvivalTrialDuration(diff) : 30;
   const trialBar = document.getElementById('shopTrialBar');
   if (trialBar) {
     if (!canTrial) {
@@ -1269,8 +1270,8 @@ function renderShop() {
       const minGoldComp = calcSurvivalTrialGoldComp(nextFloorNum, 3, player).total;
       const maxGoldComp = calcSurvivalTrialGoldComp(nextFloorNum, 0, player).total;
       const titleTxt = survivalTrialQueued
-        ? `🕯️ 已缔结蚀界契约 · 第 ${nextFloorNum} 层化为 40 秒绝境渡劫`
-        : `🕯️ 蚀界生存试炼 · 将第 ${nextFloorNum} 层改为 40 秒身法躲避关`;
+        ? `🕯️ 已缔结蚀界契约 · 第 ${nextFloorNum} 层化为 ${trialSec} 秒绝境渡劫`
+        : `🕯️ 蚀界生存试炼 · 将第 ${nextFloorNum} 层改为 ${trialSec} 秒身法躲避关`;
       const btnTxt = survivalTrialQueued ? '✓ 已开启试炼（点击取消）' : '🕯️ 踏入蚀界试炼';
       trialBar.innerHTML = `
         <div class="shop-trial-info">
@@ -1279,14 +1280,14 @@ function renderShop() {
             <span class="shop-trial-pill">${actLabel}</span>
             <span class="shop-trial-pill gold">保底补偿 ◇${minGoldComp}~${maxGoldComp} & 必得紫/金秘匣</span>
           </div>
-          <div class="shop-trial-desc">七类天外弹道与蚀界裂隙来袭 · 怪物仅留 <b>30%</b>（掉落晶石提升） · 浓雾提灯视野 · 撑满 <b>40秒</b> 补偿 <b>◇${minGoldComp}~${maxGoldComp}</b> 晶石并必出<b>紫/金武器与道具</b>！</div>
+          <div class="shop-trial-desc">七类天外弹道与蚀界裂隙来袭 · 怪物仅留 <b>30%</b>（掉落晶石提升） · 浓雾提灯视野 · 撑满 <b>${trialSec}秒</b> 补偿 <b>◇${minGoldComp}~${maxGoldComp}</b> 晶石并必出<b>紫/金武器与道具</b>！</div>
         </div>
         <button type="button" id="shopTrialToggleBtn" class="shop-trial-toggle${survivalTrialQueued ? ' is-armed' : ''}" onclick="toggleSurvivalTrial()">${btnTxt}</button>`;
     }
   }
 
   const nextLabel = (canTrial && survivalTrialQueued)
-    ? `🕯️ 踏入第 ${nextFloorNum} 层 · 蚀界试炼 (40s) →`
+    ? `🕯️ 踏入第 ${nextFloorNum} 层 · 蚀界试炼 (${trialSec}s) →`
     : (!endlessMode && nextFloorNum === 16 ? '准备好了，推开终门 →' : nextIsBoss
         ? `◆ 迎战第 ${nextFloorNum} 层守誓首领 →`
         : `◆ 登往第 ${nextFloorNum} 层 →`);
