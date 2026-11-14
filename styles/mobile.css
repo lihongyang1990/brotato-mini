@@ -204,7 +204,28 @@ body.m-ui .mob-drawer-pill {
 body.m-ui #shopMenu:not(.drawer-open) #statsRow,
 body.m-ui #shopMenu:not(.drawer-open) #setRow { display: none; }
 body.m-ui #shopMenu.drawer-open #shopCards,
+body.m-ui #shopMenu.drawer-open #shopTrialBar,
 body.m-ui #shopMenu.drawer-open .shop-bottom { display: none; }
+body.m-ui #shopTrialBar {
+  padding: 6px 9px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+body.m-ui .shop-trial-title { font-size: 12px; }
+body.m-ui .shop-trial-pill { font-size: 9.5px; padding: 1px 5px; }
+body.m-ui .shop-trial-desc {
+  font-size: 10.5px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+body.m-ui .shop-trial-toggle {
+  min-height: 31px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+}
 body.m-ui #shopMenu.drawer-open #statsRow { flex-shrink: 0; }
 body.m-ui #shopMenu.drawer-open #setRow { flex: 1; min-height: 0; overflow-y: auto; align-content: flex-start; }
 
@@ -371,6 +392,14 @@ body.m-ui .pause-actions .btn-go,
 body.m-ui .end-actions .btn-go,
 body.m-ui #endlessBtn,
 body.m-ui .pause-actions .btn:last-child { grid-column: 1 / -1; min-height: 44px; font-size: 14.5px; }
+body.m-ui .end-summary-panel { padding: 9px 10px; gap: 8px; }
+body.m-ui .end-sum-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+body.m-ui .end-sum-list { max-height: 150px; }
+body.m-ui .end-sum-kpis { font-size: 11px; gap: 4px 10px; }
+body.m-ui .end-sum-tabs { flex-wrap: wrap; }
+body.m-ui .end-detail-box { height: auto; max-height: calc(100dvh - 24px); }
+body.m-ui .end-detail-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.m-ui .end-detail-evo-grid { grid-template-columns: minmax(0, 1fr); }
 
 body.m-ui .codex-box,
 body.m-ui .log-box {
@@ -564,6 +593,10 @@ body.m-ui #shopMenu.drawer-open #setRow { flex: 0 0 auto; overflow: visible; }
 body.m-ui #shopMenu.drawer-open .mob-shop-bar { position: sticky; bottom: 0; z-index: 2; }
 body.m-ui #levelMenu,
 body.m-ui #crateMenu { overflow-y: auto; justify-content: flex-start; }
+body.m-ui #levelMenu::before,
+body.m-ui #levelMenu::after,
+body.m-ui #crateMenu::before,
+body.m-ui #crateMenu::after { display: block; }
 body.m-ui #lvlCards { flex-shrink: 0; }
 body.m-ui #lvlCards .card-actions .btn,
 body.m-ui .crate-btns .btn { min-height: 44px; height: auto; }

@@ -91,13 +91,15 @@ function renderCodex() {
       { id: 'all', label: '全部兵装' },
       { id: 'melee', label: '近战斩击' },
       { id: 'ranged', label: '远程魂弹' },
+      { id: 'staff', label: '🪄秘术法杖' },
       ...Object.entries(SET_DEFS).map(([k, v]) => ({ id: k, label: v.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '') }))
     ]);
     bannerEl.innerHTML = Object.values(SET_DEFS)
       .map(s => `<span class="set-pill"><b>${s.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')}</b> ${s.desc}</span>`).join('');
     Object.entries(WEAPONS).forEach(([id, w]) => {
       if (codexFilter === 'melee' && !w.melee) return;
-      if (codexFilter === 'ranged' && w.melee) return;
+      if (codexFilter === 'ranged' && (w.melee || w.isStaff)) return;
+      if (codexFilter === 'staff' && !w.isStaff) return;
       if (SET_DEFS[codexFilter] && w.set !== codexFilter) return;
       const minT = w.minTier || 1;
       const wpnArt = (typeof renderWeaponEmblemHtml === 'function')
@@ -122,7 +124,7 @@ function renderCodex() {
             <div class="codex-card-title">${w.name}</div>
             <div class="card-badges">
               <span class="tag">${SET_DEFS[w.set].label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')}</span>
-              <span class="tag">${w.melee ? '近战挥砍' : '远程射击'}</span>
+              <span class="tag">${w.melee ? '近战挥砍' : (w.isStaff ? '🪄秘术法杖' : '远程射击')}</span>
               <span class="tag t5">可升5阶</span>
               ${minT > 1 ? `<span class="tag t${minT}">最低${['','普通','精良','史诗','传说','神话'][minT]}</span>` : ''}
             </div>

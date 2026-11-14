@@ -491,7 +491,9 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
   // boosted melee base damage, MONSTER_SPD_MUL = 0.80, RANGED_ENEMY_COUNT_MUL = 0.80, stick range >= 130, and Retina floorBakeScale >= 1.60
   const v140Audit = vm.runInContext(`(() => {
     const wIds = Object.keys(WEAPONS);
-    if (wIds.length !== 32) return { ok: false, reason: 'Expected 32 weapons, got ' + wIds.length };
+    if (wIds.length !== 36) return { ok: false, reason: 'Expected 36 weapons, got ' + wIds.length };
+    const staffIds = wIds.filter(k => WEAPONS[k].isStaff);
+    if (staffIds.length !== 4) return { ok: false, reason: 'Expected 4 staff weapons, got ' + staffIds.length };
     const evoIds = new Set();
     for (const id of wIds) {
       const w = WEAPONS[id];
@@ -503,7 +505,7 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
         if (!cv || cv.width !== 192 || cv.height !== 192) return { ok: false, reason: 'Failed HD sprite bake for ' + id };
       }
     }
-    if (evoIds.size !== 64) return { ok: false, reason: 'Expected 64 unique evolutions, got ' + evoIds.size };
+    if (evoIds.size !== 72) return { ok: false, reason: 'Expected 72 unique evolutions, got ' + evoIds.size };
     if (!(getMidLateWaveHpMul(1) < 0.80 && getMidLateWaveHpMul(4) < 1.0 && getMidLateWaveHpMul(8) > 1.3 && getMidLateWaveHpMul(10) >= 1.90 && Math.abs(getMidLateWaveHpMul(16) - 3.0) <= 1e-6)) {
       return { ok: false, reason: 'Bad midLateHpMul curve' };
     }
@@ -570,10 +572,12 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
     const modalClosed = document.getElementById('evoModal').classList.contains('hidden');
     const evolvedOk = player.weapons[0].tier === 5 && player.weapons[0].evo === WEAPONS.katana.evos[1].id;
 
-    // Touchscreen desktop laptop should keep crisp Retina floorBakeScale >= 1.60 while strictly capping floorCanvas <= 3840px (<4096 GPU texture limit, zero flicker!)
+    // Touchscreen / pen-driver desktop laptop (1280x720 @ 150% DPI) must stay in desktop UI mode under 'auto' AND keep crisp Retina floorBakeScale >= 1.35 on the +20% enlarged 2640x1800 arena while strictly capping floorCanvas <= 3840px (<4096 GPU texture limit, zero flicker!)
     isTouch = true;
+    setUIPref('auto');
+    const autoTouchDesktopOk = uiMode === 'desktop';
     setUIPref('desktop');
-    const touchDesktopSharp = uiMode === 'desktop' && floorBakeScale >= 1.60 && floorCanvas.width <= 3840 && floorCanvas.height <= 3840;
+    const touchDesktopSharp = autoTouchDesktopOk && uiMode === 'desktop' && WORLD.w === 2640 && WORLD.h === 1800 && camZoom >= 1.14 && floorBakeScale >= 1.35 && floorCanvas.width <= 3840 && floorCanvas.height <= 3840;
     isTouch = false;
     setUIPref('auto');
 
@@ -1343,6 +1347,277 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       rangedEarly < (tankEarly + basicEarly)
     );
 
+    // 7. 蚀界生存试炼（30s · 30% 怪物 · 沉浸提灯视野 · 天外贯星梭/地脉裂隙 · 必出紫色及以上武器+遗物秘匣）全链路回归测试
+    selectedDiff = 2; // diff.midElite === true (Floor 6/10/14 为固定精英副官层)
+    SpireSave.clear();
+    startStoryMode();
+    __drainDirector();
+    wave = 1;
+    pendingLevels = 0;
+    pendingCrates = 0;
+    finishWave();
+    __drainDirector();
+    while (state === 'levelup') {
+      const b0 = document.getElementById('lvlBox').children[0];
+      if (!b0) break;
+      b0.click();
+    }
+    while (state === 'crate') {
+      const c0 = document.getElementById('crateBox').children[0];
+      const takeBtn = c0 && c0.querySelector('.take-btn');
+      if (!takeBtn) break;
+      takeBtn.click();
+    }
+    if (state !== 'shop') openShop(true);
+    const eligOk = (
+      canOfferSurvivalTrialForWave(2) === true &&
+      canOfferSurvivalTrialForWave(3) === true &&
+      canOfferSurvivalTrialForWave(4) === false &&
+      canOfferSurvivalTrialForWave(5) === true &&
+      canOfferSurvivalTrialForWave(6) === false &&
+      canOfferSurvivalTrialForWave(8) === false &&
+      canOfferSurvivalTrialForWave(10) === false &&
+      canOfferSurvivalTrialForWave(12) === false
+    );
+    const barEl = document.getElementById('shopTrialBar');
+    const barShownInShop = !!(barEl && !barEl.classList.contains('hidden'));
+    survivalTrialQueued = false;
+    toggleSurvivalTrial();
+    const armedInShop = (survivalTrialQueued === true && barEl.classList.contains('is-armed'));
+
+    nextWave();
+    __drainDirector();
+    const startedTrialOk = (
+      state === 'wave' &&
+      survivalTrialWave === true &&
+      survivalTrialQueued === false &&
+      wave === 2 &&
+      waveTime === 40 &&
+      waveMaxTime === 40 &&
+      player.r >= 24
+    );
+
+    // 验证怪物池仅限轻敏追猎怪（0 重装肉盾 / 0 远程弹幕怪 / 0 狂化精英），且迷雾外圈怪物 100% 被剔除不可透视
+    const allowedTrialMobs = new Set(['chaser', 'stalker', 'swarmer', 'blade_duelist', 'magma_imp']);
+    let trialPoolClean = true;
+    for (let k = 0; k < 200; k++) {
+      const tp = pickWaveEnemyType(8);
+      if (!allowedTrialMobs.has(tp)) { trialPoolClean = false; break; }
+    }
+    const sampleE = createEnemy(player.x + 220, player.y, 'stalker');
+    const noTrialElite = !!(sampleE && sampleE.elite === false);
+    if (survivalTrialState) survivalTrialState.fogIntroP = 1.0;
+    const farFogMob = createEnemy(Math.min(WORLD.w - 80, player.x + 620), player.y, 'chaser');
+    draw();
+    const fogOuterMobCulled = !!(farFogMob && !renderList.includes(farFogMob));
+
+    // 验证魂灯瞬步扩圈、地脉裂缝瞬步无伤跨越、7类天外弹道与裂隙生成渲染、以及单次受击 <=31% 生命防秒杀保护
+    player.maxHp = 100;
+    player.hp = 100;
+    player.shield = 0;
+    player.armor = 0;
+    player.dodge = 0;
+    player.dashCd = 0;
+    player.dashT = 0;
+    triggerSoulDash();
+    const boostTriggered = !!(survivalTrialState && survivalTrialState.lanternBoostT > 1.0);
+    spawnSurvivalFissure(2);
+    const fis0 = survivalFissures[0];
+    if (fis0) {
+      fis0.windupT = 0;
+      fis0.activeT = 3.0;
+      fis0.x1 = player.x - 90; fis0.y1 = player.y;
+      fis0.x2 = player.x + 90; fis0.y2 = player.y;
+    }
+    player.dashT = 0.20;
+    update(0.05);
+    const dashLeapSafe = (player.hp === 100);
+    spawnSurvivalCelestialVolley(2);
+    spawnSurvivalCorridor(2);
+    spawnSurvivalCrossJudgment(2);
+    spawnSurvivalMeteorChain(2);
+    spawnSurvivalAbyssVortex(2);
+    draw();
+    for (let step = 0; step < 24; step++) {
+      update(0.05);
+      draw();
+    }
+    const hasCelestialBullet = eBullets.some(b => b && b.isCelestial && (b.shape === 'celestial_lance' || b.isVortexTrap));
+    // 验证敌方弹道尺寸与命中圈放大 +20%，且射向角色上半身躯干 (player.y - 22) 的弹道精准命中扣血（不再穿模不掉血）
+    player.hp = 100;
+    player.dashT = 0;
+    player.dodge = 0;
+    eBullets.push({
+      x: player.x - 18, y: player.y - 22, px: player.x - 18, py: player.y - 22,
+      vx: 420, vy: 0, life: 1.0, dmg: 12, r: 5.5, hitR: 4.8, color: '#ff3b6b', shape: 'orb'
+    });
+    const testUpperBullet = eBullets[eBullets.length - 1];
+    update(0.06);
+    const upperTorsoBulletHitOk = (player.hp < 100 && !eBullets.includes(testUpperBullet) && testUpperBullet._ebScaled === true && testUpperBullet.hitR > 5.7);
+
+    player.hp = 100;
+    player.dashT = 0;
+    hurtPlayer(999, true);
+    const antiOneshotTrialOk = (player.hp >= 69 && survivalTrialHits >= 1);
+
+    // 结算生存试炼并验证同幕锁定 1 次 + 试炼秘匣 100% 必出紫色(T3)/金色(T4)遗物与武器
+    const matsBeforeComplete = player.mats;
+    waveTime = 0;
+    finishWave();
+    const queuedBeforeDrain = ((player.survivalGoldCratesQueued || 0) + (player.survivalCratesQueued || 0)) >= 1;
+    const matsAfterComplete = player.mats;
+    __drainDirector();
+    const actSealedOk = (
+      player.survivalActsCleared &&
+      player.survivalActsCleared[0] === true &&
+      canOfferSurvivalTrialForWave(3) === false &&
+      canOfferSurvivalTrialForWave(5) === true &&
+      matsAfterComplete > matsBeforeComplete &&
+      queuedBeforeDrain
+    );
+
+    let crateGuaranteeOk = true;
+    for (let rollIdx = 0; rollIdx < 20; rollIdx++) {
+      if (rollIdx === 10) {
+        // 后 10 次测试满 6 把 1 阶白板武器槽位时的保底紫/金武器替换升级逻辑
+        player.weapons = [
+          { id: 'pistol', tier: 1, cd: 0, angle: 0, recoil: 0, thrust: 0 },
+          { id: 'smg', tier: 1, cd: 0, angle: 0, recoil: 0, thrust: 0 },
+          { id: 'shotgun', tier: 1, cd: 0, angle: 0, recoil: 0, thrust: 0 },
+          { id: 'knife', tier: 1, cd: 0, angle: 0, recoil: 0, thrust: 0 },
+          { id: 'stick', tier: 1, cd: 0, angle: 0, recoil: 0, thrust: 0 },
+          { id: 'spear', tier: 1, cd: 0, angle: 0, recoil: 0, thrust: 0 }
+        ];
+      }
+      pendingCrates = 1;
+      player.mythicCratesQueued = 0;
+      player.survivalGoldCratesQueued = (rollIdx % 2 === 0) ? 1 : 0;
+      player.survivalCratesQueued = (rollIdx % 2 === 1) ? 1 : 0;
+      showCrateMenu();
+      const cards = document.getElementById('crateBox').children;
+      if (cards.length < 2) { crateGuaranteeOk = false; break; }
+      const c1Cls = cards[0].className || '';
+      const c2Cls = cards[1].className || '';
+      const c1Html = cards[0].innerHTML || '';
+      const c2Html = cards[1].innerHTML || '';
+      const c1PurplePlusItem = (/\bt[34]\b/.test(c1Cls) && c1Html.includes('遗物'));
+      const c2PurplePlusWpn = (/\bt[34]\b/.test(c2Cls) && c2Html.includes('兵装'));
+      if (!c1PurplePlusItem || !c2PurplePlusWpn) { crateGuaranteeOk = false; break; }
+      if (rollIdx === 19) {
+        const takeWpnBtn = cards[1].querySelector('.take-btn');
+        if (takeWpnBtn) takeWpnBtn.click();
+        if (!player.weapons.some(w => w && w.tier >= 3)) { crateGuaranteeOk = false; break; }
+      }
+    }
+    // 验证行商木牌 (coupon) 购买后立即实时重算当轮剩余商店卡与刷新花费，以及近战高等级射程显著短于远程武器
+    player.shopDiscount = 0;
+    player.mats = 9999;
+    openShop(true);
+    const couponDef = ITEMS.find(it => it && it.id === 'coupon');
+    if (couponDef && shopOffers.length >= 2) {
+      shopOffers[0] = { kind: 'item', item: couponDef, rawCost: 30, cost: 30, locked: false, sold: false };
+      shopOffers[1] = { kind: 'item', item: ITEMS[0], rawCost: 50, cost: 50, locked: false, sold: false };
+      rerollRawCost = 20;
+      rerollCost = 20;
+      buyOffer(0);
+    }
+    const liveShopDiscountOk = (
+      player.shopDiscount >= 0.10 &&
+      shopOffers[1] && shopOffers[1].cost === 45 &&
+      rerollCost === 18
+    );
+    const meleeT4Range = calcWeaponEffectiveRange(WEAPONS.katana, 4, null, 80);
+    const rangedT4Range = calcWeaponEffectiveRange(WEAPONS.rifle || WEAPONS.pistol, 4, null, 80);
+    const meleeRangeGapOk = (meleeT4Range < 195 && rangedT4Range - meleeT4Range >= 150);
+
+    const survivalTrialOk = (
+      eligOk && barShownInShop && armedInShop && startedTrialOk &&
+      trialPoolClean && noTrialElite && fogOuterMobCulled && boostTriggered && dashLeapSafe &&
+      hasCelestialBullet && upperTorsoBulletHitOk && antiOneshotTrialOk && actSealedOk && crateGuaranteeOk &&
+      liveShopDiscountOk && meleeRangeGapOk
+    );
+
+    // v2.1.9 ~ v2.1.10 专项校验：法杖与新道具 + 20%隐藏爆率封顶 + 试炼金币补偿翻倍 + 1~5层小怪血量-15% + 八荒血月斩预烘焙 + 赛后总结与点击详情 + 10/12层传送预警(D5=50%D1) + 护甲/吸血原版化 + 后期金币概率掉落
+    const neutralP = { cls: 'allrounder', weapons: [{ id: 'pistol', tier: 1 }] };
+    const neutralBoost = getArchetypeAffinityBoosts(neutralP);
+    const committedStaffP = {
+      cls: 'allrounder',
+      weapons: [{ id: 'ember_staff', tier: 3 }, { id: 'frost_scepter', tier: 3 }, { id: 'storm_rod', tier: 3 }],
+      staffVolley: 1, staffHaste: 0.25, elemBonus: 0.45, archmageMeteor: true
+    };
+    const staffBoost = getArchetypeAffinityBoosts(committedStaffP);
+    const staffWpnMul = getWeaponArchetypeWeightMul('chrono_staff', staffBoost);
+    const staffItemMul = getItemArchetypeWeightMul(ITEMS.find(x => x.id === 'arcane_focus_orb'), staffBoost);
+    const hiddenBoostOk = (
+      neutralBoost.staff === 0 &&
+      staffBoost.staff > 0.16 &&
+      staffBoost.staff <= 0.20 + 1e-9 &&
+      staffWpnMul > 1.16 && staffWpnMul <= 1.20 + 1e-9 &&
+      staffItemMul > 1.16 && staffItemMul <= 1.20 + 1e-9
+    );
+
+    // 验证 1~5 层小怪血量降低 15%（0.85x），第 6 层起恢复 1.00x
+    const earlyMobHpOk = (
+      typeof getEarlyMobHpMul === 'function' &&
+      Math.abs(getEarlyMobHpMul(1) - 0.85) < 1e-9 &&
+      Math.abs(getEarlyMobHpMul(3) - 0.85) < 1e-9 &&
+      Math.abs(getEarlyMobHpMul(5) - 0.85) < 1e-9 &&
+      Math.abs(getEarlyMobHpMul(6) - 1.00) < 1e-9 &&
+      Math.abs(getEarlyMobHpMul(12) - 1.00) < 1e-9
+    );
+
+    // 验证蚀界生存试炼金币补偿大幅上调且受击 >=3 次仍有保底赏金
+    const trialCompLow = typeof calcSurvivalTrialGoldComp === 'function' ? calcSurvivalTrialGoldComp(3, 4, { harvest: 1 }) : { total: 0 };
+    const trialCompFlawless = typeof calcSurvivalTrialGoldComp === 'function' ? calcSurvivalTrialGoldComp(3, 0, { harvest: 1 }) : { total: 0 };
+    const trialGoldCompOk = (trialCompLow.total >= 50 && trialCompFlawless.total > trialCompLow.total);
+
+    const wD1 = getBossTeleportWarnSec(1), wD2 = getBossTeleportWarnSec(2), wD3 = getBossTeleportWarnSec(3), wD4 = getBossTeleportWarnSec(4), wD5 = getBossTeleportWarnSec(5);
+    const tpWarnLadderOk = (wD1 > wD2 && wD2 > wD3 && wD3 > wD4 && wD4 > wD5 && Math.abs(wD5 - wD1 * 0.50) < 1e-6);
+
+    const armorCurveOk = (
+      Math.abs(calcBrotatoArmorMitigation(0) - 0) < 1e-6 &&
+      Math.abs(calcBrotatoArmorMitigation(20) - 0.50) < 1e-6 &&
+      Math.abs(calcBrotatoArmorMitigation(100) - 0.60) < 1e-6 &&
+      calcBrotatoArmorMitigation(-5) < 0
+    );
+
+    // 验证吸血仅直接攻击触发且受 0.12s ICD 限制
+    player.hp = 10; player.maxHp = 50; player.lifesteal = 1.0; player._lifestealCd = 0;
+    const dummyE = createEnemy(player.x + 120, player.y, 'chaser');
+    dummyE.hp = dummyE.maxHp = 9999;
+    hurtEnemy(dummyE, 10, false, null, true, { isTurret: true, srcId: 'turret_gun' });
+    const turretNoLs = (player.hp === 10);
+    hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
+    const directLsHealed = (player.hp === 11 && player._lifestealCd > 0.10);
+    hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
+    const icdBlockedSecond = (player.hp === 11);
+    const lifestealRuleOk = (turretNoLs && directLsHealed && icdBlockedSecond);
+
+    // 验证小怪不爆 bigCoin 金色大钻，而首领可爆 bigCoin
+    drops.length = 0;
+    wave = 10;
+    for (let di = 0; di < 40; di++) dropCrystals(300, 300, 8, false);
+    const mobNeverBigCoin = drops.every(d => d.kind !== 'mat' || d.bigCoin === false);
+    drops.length = 0;
+    dropCrystals(300, 300, 30, true);
+    const bossHasBigCoin = drops.some(d => d.kind === 'mat' && d.bigCoin === true);
+
+    // 验证八荒血月斩预烘焙精灵存在 & 赛后总结渲染双栏数据及点击查看武器/魔物详情弹窗
+    const bmSprite = getBloodMoonWaveSprite();
+    hurtPlayer(12, true, 'void_weaver');
+    renderEndRunSummary(false);
+    const endSumHtml = document.getElementById('endSummaryPanel').innerHTML || '';
+    const detailWpnOpened = openEndSummaryDetail('dealt', 'ember_staff') &&
+      !document.getElementById('endDetailModal').classList.contains('hidden') &&
+      (document.getElementById('endDetailBody').innerHTML || '').includes('赤烬魂灯杖');
+    const detailMobOpened = openEndSummaryDetail('taken', 'void_weaver') &&
+      !document.getElementById('endDetailModal').classList.contains('hidden') &&
+      (document.getElementById('endDetailBody').innerHTML || '').includes('伽蓝');
+    closeEndSummaryDetail();
+    const detailClosed = document.getElementById('endDetailModal').classList.contains('hidden');
+    const postGameSummaryOk = (!!bmSprite && endSumHtml.includes('赤烬魂灯杖') && endSumHtml.includes('伽蓝') && endSumHtml.includes('openEndSummaryDetail') && detailWpnOpened && detailMobOpened && detailClosed);
+    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk);
+
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,
       endlessRosterCount, diffBtnsCount, sceneBtnsCount,
@@ -1351,7 +1626,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       endlessRangerOk, endlessShopTitle,
       hpAfterBossNuke, invulnAfterHit, consecutiveHitRegistered,
       wCnt, iCnt, hCnt, mCnt, sCnt, diedCleanly, retryOk,
-      singleTerrainOk, frostTerrainOk, bossVenomAndP2Ok, midBulletBossKillOk, earlyTankShiftOk, needleShiftOk
+      singleTerrainOk, frostTerrainOk, bossVenomAndP2Ok, midBulletBossKillOk, earlyTankShiftOk, needleShiftOk,
+      survivalTrialOk, v219Ok
     };
   })()`, s);
 
@@ -1374,8 +1650,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert(coreCheck.hpAfterBossNuke >= 58, `Boss floor one-shot protection must cap single hit at <=42% maxHp (HP left: ${coreCheck.hpAfterBossNuke})`);
   assert.strictEqual(coreCheck.invulnAfterHit, 0, "Player must have ZERO invulnerability frames after taking damage");
   assert.strictEqual(coreCheck.consecutiveHitRegistered, true, "Back-to-back hits must immediately register damage without i-frame immunity");
-  assert.strictEqual(coreCheck.wCnt, 32, "Codex must render 32 weapons");
-  assert.strictEqual(coreCheck.iCnt, 75, "Codex must render 75 items");
+  assert.strictEqual(coreCheck.wCnt, 36, "Codex must render 36 weapons (including 4 new Staffs)");
+  assert.strictEqual(coreCheck.iCnt, 92, "Codex must render 92 items");
   assert.strictEqual(coreCheck.hCnt, 6, "Codex must render 6 Spire heroes");
   assert.strictEqual(coreCheck.mCnt, 41, "Codex must render all 41 unique Spire monsters, commanders & bosses");
   assert.strictEqual(coreCheck.sCnt, 4, "Codex must render 4 Spire scenes");
@@ -1387,6 +1663,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(coreCheck.midBulletBossKillOk, true, "Killing Story Boss mid-bullet-loop must transition cleanly to story state without undefined.x crash");
   assert.strictEqual(coreCheck.earlyTankShiftOk, true, "Waves 1..10 must reduce tanky melee by 15%, keep ranged unchanged, and increase ordinary fodder mobs");
   assert.strictEqual(coreCheck.needleShiftOk, true, "White-needle ranged monsters must be reduced by 30% with freed weight transferred 1:1 to melee");
+  assert.strictEqual(coreCheck.survivalTrialOk, true, "Survival Trial must enforce 40s duration, 7 trap types (+50% density/+20% dmg), opaque mist Soul Lantern culling 100% outer mobs, live coupon discount, upper-torso bullet hits, and Purple+ crates");
+  assert.strictEqual(coreCheck.v219Ok, true, "v2.1.9 Staffs, +10% hidden boost cap, D1->D5 teleport warning (D5=50% D1), Brotato Armor/Lifesteal, coin probability, Blood-Moon sprite, and Post-Game Summary must all pass");
   assert(els.retryWaveBtn.textContent.includes("重试"), "Player defeat must offer a floor retry control");
   assert.strictEqual(stats.radialGradients, 0, "Mobile combat & UI suite must create ZERO per-frame radial gradients");
   assert.strictEqual(stats.shadowBlurs, 0, "Mobile combat & UI suite must use ZERO shadowBlur");
