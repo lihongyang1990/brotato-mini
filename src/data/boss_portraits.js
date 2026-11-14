@@ -654,7 +654,10 @@ function preloadAllBossCutoutPortraits() {
     }
   });
 }
-// Alpha cutouts are decoded lazily by getBossAnimePortrait; no eager 64-image startup burst.
+// 后台空闲分帧预热首领与奇遇魔神立绘抠像缓存，杜绝血月魔君等立绘/贴图首次触发未就绪
+if (typeof Image !== 'undefined' && typeof document !== 'undefined') {
+  preloadAllBossCutoutPortraits();
+}
 
 function getSpireCutscenePack(variant) {
   return SpireAssets.getCutscene(variant);

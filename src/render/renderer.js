@@ -718,6 +718,17 @@ function draw() {
   drawCrispArenaBalustrade(vL, vR, vT, vB, activeSceneId);
 
   if (state !== 'menu') {
+    // 蚀界生存试炼 · 魂灯迷雾世界空间视野半径（严密剔除雾外全部怪物、怪血条、刷怪红叉与普通敌弹，外圈浓雾 100% 不可透视怪物！）
+    const _stFog = (typeof survivalTrialWave !== 'undefined' && survivalTrialWave && player && typeof survivalTrialState === 'object' && survivalTrialState) ? survivalTrialState : null;
+    const _fogIntroP = _stFog ? Math.max(0.05, Math.min(1, _stFog.fogIntroP || 0)) : ((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) ? 1 : 0);
+    const _fogBoostP = (_stFog && _stFog.lanternBoostT > 0) ? Math.min(1, _stFog.lanternBoostT / 1.25) : 0;
+    const _fogTargetWorldR = (238 + _fogBoostP * 70) + Math.sin(now * 0.0042) * 3.5;
+    const _fogScreenClearR = Math.max(64, (Math.hypot(viewW, viewH) * (1 - _fogIntroP)) + (_fogTargetWorldR * camZoom) * _fogIntroP);
+    const fogEffWorldR = _fogScreenClearR / Math.max(0.25, camZoom);
+    const fogCullActive = !!(typeof survivalTrialWave !== 'undefined' && survivalTrialWave && player && _fogIntroP > 0.35);
+    const fogWorldInnerR = fogEffWorldR * 0.90;
+    const fogWorldCutR = fogEffWorldR * 1.25;
+
     for (let i = 0; i < stains.length; i++) {
       const st = stains[i];
       if (st.x < vL || st.x > vR || st.y < vT || st.y > vB) continue;
@@ -893,6 +904,120 @@ function draw() {
       ctx.fillStyle = prog > 0.03 ? '#ffd166' : '#f8f5ff';
       ctx.fillText(lbl, 0, -rr - 12);
       ctx.restore();
+    }
+
+    // 蚀界生存试炼：地脉撕裂裂缝（0.9s 震颤裂纹预警 -> 喷涌熔蚀裂谷）与天外贯星梭/平行剑阵走廊轨迹导引线（0渐变0模糊）
+    if (typeof survivalFissures !== 'undefined' && survivalFissures.length > 0) {
+      const fNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.001;
+      for (let i = 0; i < survivalFissures.length; i++) {
+        const f = survivalFissures[i];
+        if (!f) continue;
+        const minFX = Math.min(f.x1, f.x2) - 48, maxFX = Math.max(f.x1, f.x2) + 48;
+        const minFY = Math.min(f.y1, f.y2) - 48, maxFY = Math.max(f.y1, f.y2) + 48;
+        if (maxFX < vL || minFX > vR || maxFY < vT || minFY > vB) continue;
+        const fCol = f.color || '#ff6b35';
+        const deepCol = f.deepColor || '#450a0a';
+        const dx = f.x2 - f.x1, dy = f.y2 - f.y1;
+        const len = Math.max(1, Math.hypot(dx, dy));
+        const nx = -dy / len, ny = dx / len;
+        const hw = Math.max(8, f.halfW || 20);
+        const jags = f.jags;
+        const jagCnt = Array.isArray(jags) ? jags.length : 0;
+
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        if (f.windupT > 0) {
+          const p = Math.max(0, Math.min(1, 1 - f.windupT / Math.max(0.05, f.maxWindup || 0.9)));
+          const trem = Math.sin(fNow * 38 + i) * 2.2 * p;
+          ctx.globalAlpha = 0.14 + p * 0.24;
+          ctx.strokeStyle = fCol;
+          ctx.lineWidth = hw * 2;
+          ctx.beginPath();
+          ctx.moveTo(f.x1 + nx * trem, f.y1 + ny * trem);
+          ctx.lineTo(f.x2 + nx * trem, f.y2 + ny * trem);
+          ctx.stroke();
+
+          ctx.globalAlpha = 0.72 + p * 0.26;
+          ctx.strokeStyle = '#fde68a';
+          ctx.lineWidth = 2.4 + p * 1.6;
+          ctx.beginPath();
+          ctx.moveTo(f.x1, f.y1);
+          for (let k = 0; k < jagCnt; k++) {
+            const t = (k + 1) / (jagCnt + 1);
+            const off = jags[k] * hw * 0.55;
+            ctx.lineTo(f.x1 + dx * t + nx * (off + trem), f.y1 + dy * t + ny * (off + trem));
+          }
+          ctx.lineTo(f.x2, f.y2);
+          ctx.stroke();
+        } else {
+          const remP = Math.max(0, Math.min(1, (f.activeT || 0) / Math.max(0.1, f.maxActive || 3.8)));
+          const fade = remP < 0.18 ? (remP / 0.18) : 1;
+          const pulse = 0.92 + Math.sin(fNow * 9.5 + i * 1.7) * 0.08;
+          ctx.globalAlpha = 0.28 * fade;
+          ctx.strokeStyle = fCol;
+          ctx.lineWidth = hw * 2.35 * pulse;
+          ctx.beginPath(); ctx.moveTo(f.x1, f.y1); ctx.lineTo(f.x2, f.y2); ctx.stroke();
+
+          ctx.globalAlpha = 0.92 * fade;
+          ctx.strokeStyle = deepCol;
+          ctx.lineWidth = hw * 1.52;
+          ctx.beginPath(); ctx.moveTo(f.x1, f.y1); ctx.lineTo(f.x2, f.y2); ctx.stroke();
+
+          ctx.globalAlpha = 0.94 * fade;
+          ctx.strokeStyle = fCol;
+          ctx.lineWidth = 5.4 * pulse;
+          ctx.beginPath();
+          ctx.moveTo(f.x1, f.y1);
+          for (let k = 0; k < jagCnt; k++) {
+            const t = (k + 1) / (jagCnt + 1);
+            const off = jags[k] * hw * 0.48;
+            ctx.lineTo(f.x1 + dx * t + nx * off, f.y1 + dy * t + ny * off);
+          }
+          ctx.lineTo(f.x2, f.y2);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#fff7ed';
+          ctx.lineWidth = 2.0;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    if (typeof survivalSkyVolleys !== 'undefined' && survivalSkyVolleys.length > 0) {
+      for (let i = 0; i < survivalSkyVolleys.length; i++) {
+        const v = survivalSkyVolleys[i];
+        if (!v) continue;
+        const minVX = Math.min(v.sx, v.ex) - 36, maxVX = Math.max(v.sx, v.ex) + 36;
+        const minVY = Math.min(v.sy, v.ey) - 36, maxVY = Math.max(v.sy, v.ey) + 36;
+        if (maxVX < vL || minVX > vR || maxVY < vT || minVY > vB) continue;
+        const p = Math.max(0, Math.min(1, 1 - (v.windupT || 0) / Math.max(0.05, v.maxWindup || 0.8)));
+        const vCol = v.color || '#fb7185';
+        ctx.save();
+        ctx.lineCap = 'round';
+        if (v.kind === 'corridor_beam') {
+          const bw = Math.max(10, (v.halfW || 17) * 2);
+          ctx.globalAlpha = 0.12 + p * 0.24;
+          ctx.strokeStyle = vCol;
+          ctx.lineWidth = bw;
+          ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
+          ctx.globalAlpha = 0.55 + p * 0.42;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.6 + p * 2.0;
+          ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
+        } else {
+          ctx.globalAlpha = 0.14 + p * 0.26;
+          ctx.strokeStyle = vCol;
+          ctx.lineWidth = 12 * (1 - p * 0.35);
+          ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
+          ctx.globalAlpha = 0.58 + p * 0.38;
+          ctx.strokeStyle = v.coreColor || '#ffffff';
+          ctx.lineWidth = 1.5 + p * 1.4;
+          ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
+        }
+        ctx.restore();
+      }
     }
 
     // 差异化多形态地面预警与弹着点特效（十字棱镜光轨 / 次元裂空斩痕 / 高抛榴弹八角准星 / 冰晶六棱 / 烈阳八芒 / 天雷菱印 / 腐殖毒蕾 / 首领风眼）
@@ -1206,6 +1331,7 @@ function draw() {
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
       if (e.hp <= 0) continue;
+      if (fogCullActive && Math.hypot(e.x - player.x, e.y - player.y) - (e.r || 0) >= fogWorldCutR) continue;
       if (e.type === 'bomber' && e.primed) {
         const br = Math.max(12, e.blastR || 86);
         const p = Math.max(0, Math.min(1, 1 - e.fuseT / Math.max(0.05, e.maxFuseT || 1.25)));
@@ -1356,6 +1482,54 @@ function draw() {
             ctx.setLineDash([]);
           }
         }
+        ctx.restore();
+      }
+      // 第 10 层幽影雷刃统领 & 第 12 层逆时星晷主宰：相位传送落点预警法阵（D1->D5 阶梯紧缩倒计时星环 + 虚线跃迁轨 + 幻影锚点）
+      if ((e.tpWindupT || 0) > 0 && Number.isFinite(e.tpDestX) && Number.isFinite(e.tpDestY)) {
+        const tpMax = Math.max(0.15, e.tpWindupMax || 0.85);
+        const tpRem = Math.max(0, Math.min(1, e.tpWindupT / tpMax));
+        const tpProg = 1 - tpRem;
+        const tpCol = e.tpWarnColor || '#c77dff';
+        const tx = e.tpDestX, ty = e.tpDestY;
+        const destR = Math.max(30, (e.r || 28) * 1.18);
+        ctx.save();
+        ctx.lineCap = 'round';
+        // 1) 起跳点残相坍缩环与跃迁牵引虚线
+        ctx.globalAlpha = 0.45 + tpProg * 0.35;
+        ctx.strokeStyle = tpCol;
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([7, 6]);
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, (e.r || 28) * (0.95 + tpRem * 0.35), 0, Math.PI * 2);
+        ctx.moveTo(e.x, e.y);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // 2) 落点底盘警示暗圈 + 随剩余预警时间快速收束的倒计时外环
+        ctx.globalAlpha = 0.16 + tpProg * 0.22;
+        ctx.fillStyle = tpCol;
+        ctx.beginPath(); ctx.arc(tx, ty, destR, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.90;
+        ctx.strokeStyle = tpCol;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath(); ctx.arc(tx, ty, destR, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = '#fde68a';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.arc(tx, ty, destR * (1 + tpRem * 0.85), 0, Math.PI * 2); ctx.stroke();
+        // 3) 落点旋转星晷十字准星与半透明虚影轮廓
+        ctx.translate(tx, ty);
+        ctx.rotate(now * 0.0055 * (e.variant === 'void_weaver' ? -1 : 1));
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.9;
+        for (let k = 0; k < 4; k++) {
+          const ka = k * Math.PI * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(ka) * (destR * 0.35), Math.sin(ka) * (destR * 0.35));
+          ctx.lineTo(Math.cos(ka) * (destR * 0.92), Math.sin(ka) * (destR * 0.92));
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(0, 0, 4.2 + tpProg * 2.2, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
       }
       // 艾丝特莉亚 / 凛霜统领先导轨预警后缓旋的双翼/四翼极光冰束（内圈发射口外移 + 匹配精准窄光柱判定）
@@ -1890,6 +2064,7 @@ function draw() {
     for (let i = 0; i < spawns.length; i++) {
       const s = spawns[i];
       if (s.x < vL || s.x > vR || s.y < vT || s.y > vB) continue;
+      if (fogCullActive && Math.hypot(s.x - player.x, s.y - player.y) >= fogWorldCutR) continue;
       const p = Math.max(0, Math.min(1, 1 - s.t / Math.max(0.01, s.maxT)));
       const isBig = s.type === 'boss' || s.type === 'mini_boss' || s.type === 'special_boss';
       const sz = Math.max(4, (isBig ? 26 : 13) * (0.8 + Math.sin(p * Math.PI * 4) * 0.15));
@@ -1931,11 +2106,12 @@ function draw() {
       const by = Math.sin(d.bob) * 2.2;
       if (d.kind === 'mat') {
         const v = d.val || 1;
-        const sz = v >= 5 ? 8.5 : (v >= 2 ? 7.4 : 6.5);
+        const isBig = !!d.bigCoin;
+        const sz = isBig ? 8.5 : (v >= 2 ? 7.2 : 6.4);
         const gx = d.x, gy = d.y + by;
         ctx.fillStyle = 'rgba(0,0,0,0.28)';
         ctx.fillRect(gx - 4, d.y + 6, 8, 3);
-        ctx.fillStyle = v >= 5 ? '#ffd166' : (v >= 2 ? '#4cc9f0' : '#52b788');
+        ctx.fillStyle = isBig ? '#ffd166' : (v >= 2 ? '#4cc9f0' : '#52b788');
         ctx.beginPath();
         ctx.moveTo(gx, gy - sz); ctx.lineTo(gx + sz * 0.85, gy); ctx.lineTo(gx, gy + sz); ctx.lineTo(gx - sz * 0.85, gy);
         ctx.closePath();
@@ -1981,12 +2157,20 @@ function draw() {
       const e = enemies[i];
       const padR = e.r + 36;
       if (e.x + padR < vL || e.x - padR > vR || e.y + padR < vT || e.y - padR > vB) continue;
+      if (fogCullActive) {
+        const dFog = Math.hypot(e.x - player.x, e.y - player.y) - (e.r || 0) * 0.40;
+        if (dFog >= fogWorldCutR) continue;
+        e._fogAlpha = dFog <= fogWorldInnerR ? 1 : Math.max(0, 1 - (dFog - fogWorldInnerR) / Math.max(12, fogWorldCutR - fogWorldInnerR));
+      } else {
+        e._fogAlpha = 1;
+      }
       e._rk = 0;
       renderList.push(e);
     }
     for (let i = 0; i < turrets.length; i++) {
       const t = turrets[i];
-      if (t.x + 36 < vL || t.x - 36 > vR || t.y + 36 < vT || t.y - 36 > vB) continue;
+      const tPad = t.kind === 'totem' ? 170 : 36;
+      if (t.x + tPad < vL || t.x - tPad > vR || t.y + tPad < vT || t.y - tPad > vB) continue;
       t._rk = 1;
       renderList.push(t);
     }
@@ -1997,7 +2181,16 @@ function draw() {
     renderList.sort((a, b) => a.y - b.y);
     for (let i = 0; i < renderList.length; i++) {
       const it = renderList[i];
-      if (it._rk === 0) drawEnemySprite(it);
+      if (it._rk === 0) {
+        if (it._fogAlpha !== undefined && it._fogAlpha < 0.995) {
+          ctx.save();
+          ctx.globalAlpha = it._fogAlpha;
+          drawEnemySprite(it);
+          ctx.restore();
+        } else {
+          drawEnemySprite(it);
+        }
+      }
       else if (it._rk === 1) drawTurretSprite(it);
       else if (it._rk === 3) drawTreeSprite(it);
       else drawPotatoHero();
@@ -2049,6 +2242,20 @@ function draw() {
         ctx.strokeStyle = '#fff3b0';
         ctx.lineWidth = 2.6 * alpha;
         ctx.beginPath(); ctx.arc(-10, 0, rad + 3.5 * alpha, -0.60, 0.60); ctx.stroke();
+      } else if (sl.mode === 'blood_moon') {
+        // 首领专属【八荒血月斩】近身巨幅赤月斩弧：外层绯红血气 + 鎏金内刃 + 纯白锋脊
+        const rad = Math.max(24, sl.r * 0.86);
+        const inR = Math.max(10, rad - 13 * alpha);
+        const outR = rad + 11 * alpha;
+        ctx.fillStyle = sl.color || '#fb7185';
+        ctx.beginPath();
+        ctx.arc(-14, 0, outR, -0.96, 0.96);
+        ctx.arc(-4, 0, inR, 0.96, -0.96, true);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 3.8 * alpha;
+        ctx.beginPath(); ctx.arc(-12, 0, rad + 4 * alpha, -0.82, 0.82); ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.0 * alpha;
+        ctx.beginPath(); ctx.arc(-11, 0, rad + 6 * alpha, -0.58, 0.58); ctx.stroke();
       } else {
         const span = sl.mode === 'crescent' ? 1.05 : 0.82;
         const rad = Math.max(12, sl.r * (sl.mode === 'crescent' ? 0.86 : 0.82));
@@ -2070,17 +2277,18 @@ function draw() {
       const bm = beams[i];
       if ((bm.x1 < vL && bm.x2 < vL) || (bm.x1 > vR && bm.x2 > vR) || (bm.y1 < vT && bm.y2 < vT) || (bm.y1 > vB && bm.y2 > vB)) continue;
       const alpha = Math.max(0.04, bm.t / Math.max(0.01, bm.maxT));
+      const baseW = bm.width ? bm.width : (bm.thin ? 9 : 18);
       ctx.save();
       ctx.lineCap = 'round';
       ctx.globalAlpha = alpha * 0.38;
       ctx.strokeStyle = bm.color;
-      ctx.lineWidth = (bm.thin ? 9 : 18) * alpha;
+      ctx.lineWidth = baseW * alpha;
       ctx.beginPath(); ctx.moveTo(bm.x1, bm.y1); ctx.lineTo(bm.x2, bm.y2); ctx.stroke();
       ctx.globalAlpha = alpha;
-      ctx.lineWidth = (bm.thin ? 4 : 9) * alpha;
+      ctx.lineWidth = baseW * 0.48 * alpha;
       ctx.stroke();
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = (bm.thin ? 1.8 : 3.5) * alpha;
+      ctx.lineWidth = Math.max(1.6, baseW * 0.20) * alpha;
       ctx.stroke();
       ctx.restore();
     }
@@ -2128,6 +2336,24 @@ function draw() {
         ctx.beginPath(); ctx.arc(b.x, b.y, br, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         ctx.fillStyle = '#ffffff';
         ctx.beginPath(); ctx.arc(b.x, b.y, br * 0.45, 0, Math.PI * 2); ctx.fill();
+      } else if (b.isStaffOrb) {
+        // 法杖秘术奥术星弹：柔彩元素法环 + 旋转四芒符文核 + 纯白星芯
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.globalAlpha = 0.30;
+        ctx.fillStyle = b.color || '#ffd166';
+        ctx.beginPath(); ctx.arc(0, 0, br * 1.75, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = b.color || '#ffd166';
+        ctx.strokeStyle = '#1e1b4b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(0, 0, br, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.rotate(now * 0.009 + i);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(br * 0.95, 0); ctx.lineTo(0, -br * 0.42); ctx.lineTo(-br * 0.95, 0); ctx.lineTo(0, br * 0.42);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
       } else if (b.isIce) {
         ctx.save();
         ctx.translate(b.x, b.y); ctx.rotate(b.angle);
@@ -2201,12 +2427,56 @@ function draw() {
     const rimCol = 'rgba(7, 9, 16, 0.72)';
     for (let i = 0; i < eBullets.length; i++) {
       const b = eBullets[i];
-      if (b.x < vL - 30 || b.x > vR + 30 || b.y < vT - 30 || b.y > vB + 30) continue;
+      if (typeof ensureEnemyBulletScale === 'function') ensureEnemyBulletScale(b);
+      const cullPad = b.isCelestial ? 86 : 36;
+      if (b.x < vL - cullPad || b.x > vR + cullPad || b.y < vT - cullPad || b.y > vB + cullPad) continue;
+      if (fogCullActive && !b.isCelestial && Math.hypot(b.x - player.x, b.y - player.y) >= fogWorldCutR * 1.06) continue;
       const bCol = b.color || '#ff3b6b';
       const br = Math.max(2.2, b.r || 5.8);
       const vr = Math.max(5.8, br * 1.08);
       const shp = b.shape;
-      if (shp === 'stinger') {
+      if (shp === 'celestial_lance') {
+        // 蚀界生存试炼：【天外贯星梭】修长彗尾光羽 + 锋锐菱枪主体 + 白炽星核（高辨识度屏外破空巨梭）
+        const ang = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(ang);
+        ctx.globalAlpha = 0.28;
+        ctx.fillStyle = bCol;
+        ctx.beginPath();
+        ctx.moveTo(-vr * 5.2, 0);
+        ctx.lineTo(vr * 0.4, -vr * 1.45);
+        ctx.lineTo(vr * 2.55, 0);
+        ctx.lineTo(vr * 0.4, vr * 1.45);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = bCol;
+        ctx.strokeStyle = rimCol;
+        ctx.lineWidth = 1.45;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(vr * 2.4, 0);
+        ctx.lineTo(vr * 0.45, -vr * 0.92);
+        ctx.lineTo(-vr * 2.15, -vr * 0.34);
+        ctx.lineTo(-vr * 1.35, 0);
+        ctx.lineTo(-vr * 2.15, vr * 0.34);
+        ctx.lineTo(vr * 0.45, vr * 0.92);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = b.coreColor || '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(vr * 1.92, 0);
+        ctx.lineTo(vr * 0.36, -vr * 0.38);
+        ctx.lineTo(-vr * 1.10, 0);
+        ctx.lineTo(vr * 0.36, vr * 0.38);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      } else if (shp === 'stinger') {
         // 发条毒蝎 & 万蛊花刺：【翠毒流光弯钩刺】柔绿丝带尾迹 + 流线弧面毒牙 + 亮白萤芯
         const ang = Math.atan2(b.vy, b.vx);
         ctx.save();
@@ -2291,6 +2561,23 @@ function draw() {
         ctx.beginPath();
         ctx.moveTo(vr * 1.68, 0); ctx.lineTo(vr * 0.25, -vr * 0.25); ctx.lineTo(-vr * 0.55, 0); ctx.lineTo(vr * 0.25, vr * 0.25);
         ctx.closePath(); ctx.fill();
+        ctx.restore();
+      } else if (shp === 'blood_crescent') {
+        // 烬羽【断刃·八荒血月斩】预烘焙刀波精灵：首帧即现、零异步贴图缺失、高辨识度绯红鎏金新月斩波
+        const ang = Math.atan2(b.vy, b.vx);
+        const bmSpr = typeof getBloodMoonWaveSprite === 'function' ? getBloodMoonWaveSprite() : null;
+        const sz = Math.max(30, vr * 4.2);
+        ctx.save();
+        ctx.translate(b.x, b.y); ctx.rotate(ang);
+        if (bmSpr) {
+          ctx.drawImage(bmSpr, -sz * 0.5, -sz * 0.5, sz, sz);
+        } else {
+          ctx.fillStyle = bCol; ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.arc(-vr * 0.35, 0, vr * 1.95, -1.14, 1.14, false);
+          ctx.arc(-vr * 0.95, 0, vr * 1.62, 0.96, -0.96, true);
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
         ctx.restore();
       } else if (shp === 'crescent') {
         // 蚀月流光弯刀波：柔紫刀气外晕 + 锐利渐收新月刃弧 + 亮白刃口高光
@@ -2439,6 +2726,31 @@ function draw() {
         ctx.quadraticCurveTo(vr * 0.34, vr * 0.48, -vr * 0.65, 0);
         ctx.closePath(); ctx.fill();
         ctx.restore();
+      } else if (b.isVortexTrap) {
+        // 蚀界生存试炼：【游弋冥渊雷涡】自转三叶暗雷星涡弧翼 + 渊紫旋环 + 炽白雷核
+        const spin = (b.rot || 0) + now * 0.0052;
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.globalAlpha = 0.25;
+        ctx.fillStyle = bCol;
+        ctx.beginPath(); ctx.arc(0, 0, vr * 1.72, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.88;
+        ctx.strokeStyle = bCol;
+        ctx.lineWidth = 2.0;
+        for (let k = 0; k < 3; k++) {
+          const sa = spin + k * ((Math.PI * 2) / 3);
+          ctx.beginPath();
+          ctx.arc(0, 0, vr * 1.32, sa, sa + 1.25);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = bCol;
+        ctx.strokeStyle = rimCol;
+        ctx.lineWidth = 1.45;
+        ctx.beginPath(); ctx.arc(0, 0, vr * 0.92, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(0, 0, Math.max(2.4, vr * 0.44), 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
       } else {
         // 默认高净度弹幕宝珠：柔和同色光晕 + 纤细衬边弹体 + 纯白高光核
         ctx.globalAlpha = 0.22;
@@ -2545,6 +2857,211 @@ function draw() {
   }
 
   ctx.restore();
+
+  // 蚀界生存试炼 · 沉浸浓雾提灯视野系统（预烘焙 100% 纯黑不透怪外圈遮罩 + 动态翻涌迷雾云团 + 机关幽芒预警与灯圈来袭箭头，战斗帧 0 createRadialGradient / 0 shadowBlur）
+  if (typeof survivalTrialWave !== 'undefined' && survivalTrialWave && player && state !== 'menu' && viewW > 40 && viewH > 40) {
+    const st = (typeof survivalTrialState === 'object' && survivalTrialState) ? survivalTrialState : null;
+    const introP = st ? Math.max(0.05, Math.min(1, st.fogIntroP || 0)) : 1;
+    const boostP = (st && st.lanternBoostT > 0) ? Math.min(1, st.lanternBoostT / 1.25) : 0;
+    const fNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.001;
+    const lx = viewW * 0.5 + sx + (player.x - cam.x) * camZoom;
+    const ly = viewH * 0.5 + sy + (player.y - cam.y) * camZoom;
+    const diag = Math.hypot(viewW, viewH);
+    const targetWorldR = (238 + boostP * 70) + Math.sin(fNow * 4.2) * 3.5;
+    const clearR = Math.max(64, (diag * (1 - introP)) + (targetWorldR * camZoom) * introP);
+    const scId = (curScene && curScene.id) || 'foundry';
+    const fogRgb = (typeof SOUL_FOG_PALETTE !== 'undefined' && SOUL_FOG_PALETTE[scId]) || [5, 8, 15];
+    const mr = fogRgb[0], mg = fogRgb[1], mb = fogRgb[2];
+    const solidFogFill = `rgb(${mr}, ${mg}, ${mb})`;
+    const fogTex = (typeof soulFogMaps !== 'undefined' && soulFogMaps) ? (soulFogMaps[scId] || soulFogMaps.foundry) : null;
+    const rimAccent = boostP > 0.05 ? '#72efdd' : (scId === 'glacier' ? '#7dd3fc' : '#f6d379');
+
+    ctx.save();
+    const r0 = Math.max(48, clearR);
+    // soulFogMaps 中心半径占比 138/256 ≈ 0.539，外圈 ≥ 212/256 为 alpha=1.0 100% 纯实心浓雾，外圈彻底不透任何底图或怪物！
+    const apHalf = Math.max(92, r0 / 0.5390625);
+    const ax0 = lx - apHalf, ay0 = ly - apHalf;
+    const ax1 = lx + apHalf, ay1 = ly + apHalf;
+    ctx.globalAlpha = introP;
+    ctx.fillStyle = solidFogFill;
+    if (fogTex) {
+      // 四周屏外扩展纯实心遮挡矩形 + 中央预烘焙柔化浓雾贴图无缝拼接
+      if (ay0 > -8) ctx.fillRect(-8, -8, viewW + 16, ay0 + 9);
+      if (ay1 < viewH + 8) ctx.fillRect(-8, ay1 - 1, viewW + 16, viewH + 10 - ay1);
+      const midTop = Math.max(-8, ay0);
+      const midH = Math.max(0, Math.min(viewH + 8, ay1) - midTop);
+      if (midH > 0) {
+        if (ax0 > -8) ctx.fillRect(-8, midTop, ax0 + 9, midH);
+        if (ax1 < viewW + 8) ctx.fillRect(ax1 - 1, midTop, viewW + 10 - ax1, midH);
+      }
+      ctx.drawImage(fogTex, ax0, ay0, apHalf * 2, apHalf * 2);
+    } else {
+      // 无离屏贴图兜底（如单元测试 Mock 环境）：内层羽化过渡 + 外圈 100% 纯实心完全遮蔽
+      const rMid = r0 * 1.18;
+      const rSolid = r0 * 1.38;
+      ctx.globalAlpha = 0.52 * introP;
+      ctx.beginPath(); ctx.rect(-8, -8, viewW + 16, viewH + 16); ctx.arc(lx, ly, r0, 0, Math.PI * 2, true); ctx.fill('evenodd');
+      ctx.globalAlpha = 0.78 * introP;
+      ctx.beginPath(); ctx.rect(-8, -8, viewW + 16, viewH + 16); ctx.arc(lx, ly, rMid, 0, Math.PI * 2, true); ctx.fill('evenodd');
+      ctx.globalAlpha = introP;
+      ctx.beginPath(); ctx.rect(-8, -8, viewW + 16, viewH + 16); ctx.arc(lx, ly, rSolid, 0, Math.PI * 2, true); ctx.fill('evenodd');
+    }
+
+    // 动态翻涌迷雾效果（双层逆向漂移暗雾云团 + 魂灯边缘游丝雾霭，0 渐变 0 分配，营造真实流动迷雾质感）
+    const cloudFillOuter = `rgb(${Math.min(255, mr + 16)}, ${Math.min(255, mg + 22)}, ${Math.min(255, mb + 36)})`;
+    const cloudFillInner = scId === 'glacier'
+      ? 'rgb(125, 211, 252)'
+      : (scId === 'wasteland' ? 'rgb(192, 132, 252)' : 'rgb(226, 214, 192)');
+    ctx.fillStyle = cloudFillOuter;
+    for (let k = 0; k < 14; k++) {
+      const dir = (k & 1) === 0 ? 1 : -1;
+      const ang = (k / 14) * Math.PI * 2 + fNow * (0.14 + (k % 3) * 0.04) * dir;
+      const breath = Math.sin(fNow * 1.35 + k * 1.7) * (r0 * 0.045);
+      const dist = r0 * (1.10 + (k % 4) * 0.065) + breath;
+      const cx = lx + Math.cos(ang) * dist;
+      const cy = ly + Math.sin(ang) * dist;
+      const rx = r0 * (0.28 + (k % 3) * 0.055);
+      const ry = r0 * (0.14 + ((k + 1) % 3) * 0.032);
+      ctx.globalAlpha = (0.24 + 0.08 * Math.sin(fNow * 1.8 + k)) * introP;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, ang + Math.PI * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = cloudFillInner;
+    for (let k = 0; k < 9; k++) {
+      const ang = (k / 9) * Math.PI * 2 - fNow * (0.21 + (k % 2) * 0.06);
+      const dist = r0 * (0.98 + (k % 3) * 0.055) + Math.cos(fNow * 1.6 + k * 2.1) * (r0 * 0.03);
+      const cx = lx + Math.cos(ang) * dist;
+      const cy = ly + Math.sin(ang) * dist;
+      ctx.globalAlpha = (0.065 + boostP * 0.045 + 0.025 * Math.sin(fNow * 2.3 + k)) * introP;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r0 * 0.21, r0 * 0.075, ang + Math.PI * 0.48, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 魂灯微光刻度环（清晰标示照明安全圈边界）
+    ctx.globalAlpha = (0.36 + boostP * 0.26) * introP;
+    ctx.strokeStyle = rimAccent;
+    ctx.lineWidth = 1.6 + boostP * 0.9;
+    ctx.beginPath();
+    ctx.arc(lx, ly, r0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 迷雾机关幽芒预警：仅让天外剑轨、地脉裂缝与旋转十字棱镜透出微光，绝不透出任何怪物！
+    if (typeof survivalFissures !== 'undefined' && survivalFissures.length > 0) {
+      ctx.lineCap = 'round';
+      for (let i = 0; i < survivalFissures.length; i++) {
+        const f = survivalFissures[i];
+        if (!f) continue;
+        const sx1 = viewW * 0.5 + sx + (f.x1 - cam.x) * camZoom;
+        const sy1 = viewH * 0.5 + sy + (f.y1 - cam.y) * camZoom;
+        const sx2 = viewW * 0.5 + sx + (f.x2 - cam.x) * camZoom;
+        const sy2 = viewH * 0.5 + sy + (f.y2 - cam.y) * camZoom;
+        ctx.globalAlpha = (f.windupT > 0 ? 0.40 : 0.34) * introP;
+        ctx.strokeStyle = f.color || '#ff6b35';
+        ctx.lineWidth = Math.max(2.2, (f.windupT > 0 ? 2.6 : 4.2) * camZoom);
+        ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+      }
+    }
+    if (typeof survivalSkyVolleys !== 'undefined' && survivalSkyVolleys.length > 0) {
+      ctx.lineCap = 'round';
+      for (let i = 0; i < survivalSkyVolleys.length; i++) {
+        const v = survivalSkyVolleys[i];
+        if (!v) continue;
+        const sx1 = viewW * 0.5 + sx + (v.sx - cam.x) * camZoom;
+        const sy1 = viewH * 0.5 + sy + (v.sy - cam.y) * camZoom;
+        const sx2 = viewW * 0.5 + sx + (v.ex - cam.x) * camZoom;
+        const sy2 = viewH * 0.5 + sy + (v.ey - cam.y) * camZoom;
+        const vp = Math.max(0, Math.min(1, 1 - (v.windupT || 0) / Math.max(0.05, v.maxWindup || 0.8)));
+        ctx.globalAlpha = (0.26 + vp * 0.26) * introP;
+        ctx.strokeStyle = v.color || '#fde68a';
+        ctx.lineWidth = v.kind === 'corridor_beam' ? Math.max(2.0, 3.2 * camZoom) : 2.0;
+        ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+      }
+    }
+    if (typeof hazards !== 'undefined' && hazards.length > 0) {
+      ctx.lineCap = 'round';
+      for (let i = 0; i < hazards.length; i++) {
+        const h = hazards[i];
+        if (!h || h.style !== 'cross_beam') continue;
+        const hcx = viewW * 0.5 + sx + (h.x - cam.x) * camZoom;
+        const hcy = viewH * 0.5 + sy + (h.y - cam.y) * camZoom;
+        const spanPx = (h.halfLen || 190) * camZoom;
+        ctx.globalAlpha = 0.34 * introP;
+        ctx.strokeStyle = h.color || '#f43f5e';
+        ctx.lineWidth = Math.max(1.8, 2.4 * camZoom);
+        for (let k = 0; k < 2; k++) {
+          const la = (h.angle || 0) + k * Math.PI * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(hcx - Math.cos(la) * spanPx, hcy - Math.sin(la) * spanPx);
+          ctx.lineTo(hcx + Math.cos(la) * spanPx, hcy + Math.sin(la) * spanPx);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 提灯灯圈边缘来袭方位箭头（▲ 金色=屏外蓄力瞄准中，绯红=天外贯星梭逼近，紫电=冥渊雷涡切入）
+    const chevR = Math.max(28, r0 - 10);
+    if (typeof survivalSkyVolleys !== 'undefined' && survivalSkyVolleys.length > 0) {
+      for (let i = 0; i < survivalSkyVolleys.length; i++) {
+        const v = survivalSkyVolleys[i];
+        if (!v || v.kind === 'corridor_beam') continue;
+        const dxV = v.sx - player.x, dyV = v.sy - player.y;
+        const angToSrc = Math.atan2(dyV, dxV);
+        const cxA = lx + Math.cos(angToSrc) * chevR;
+        const cyA = ly + Math.sin(angToSrc) * chevR;
+        const vp = Math.max(0, Math.min(1, 1 - (v.windupT || 0) / Math.max(0.05, v.maxWindup || 0.8)));
+        ctx.save();
+        ctx.translate(cxA, cyA);
+        ctx.rotate(angToSrc);
+        ctx.globalAlpha = (0.56 + vp * 0.40) * introP;
+        ctx.fillStyle = '#fde68a';
+        ctx.strokeStyle = '#120d18';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(8.5, 0);
+        ctx.lineTo(-4.5, -5.2);
+        ctx.lineTo(-2.2, 0);
+        ctx.lineTo(-4.5, 5.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    if (typeof eBullets !== 'undefined' && eBullets.length > 0) {
+      const worldClearR = r0 / Math.max(0.25, camZoom);
+      for (let i = 0; i < eBullets.length; i++) {
+        const b = eBullets[i];
+        if (!b || !b.isCelestial) continue;
+        const dxB = b.x - player.x, dyB = b.y - player.y;
+        const distB = Math.hypot(dxB, dyB);
+        if (distB <= worldClearR * 0.92 || distB > 660) continue;
+        // 仅提示朝向玩家半平面逼近的屏外天外弹道与冥渊雷涡
+        if (dxB * b.vx + dyB * b.vy >= 0) continue;
+        const angToB = Math.atan2(dyB, dxB);
+        const cxB = lx + Math.cos(angToB) * chevR;
+        const cyB = ly + Math.sin(angToB) * chevR;
+        ctx.save();
+        ctx.translate(cxB, cyB);
+        ctx.rotate(angToB);
+        ctx.globalAlpha = 0.92 * introP;
+        ctx.fillStyle = b.isVortexTrap ? '#c084fc' : '#fb7185';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(10.0, 0);
+        ctx.lineTo(-5.0, -6.0);
+        ctx.lineTo(-2.4, 0);
+        ctx.lineTo(-5.0, 6.0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
 
   // v2.5.0 四幕层域实时动态微粒音景氛围层（黑铁雨丝 / 极光飘雪 / 发条金尘 / 日蚀余烬，0分配0渐变）
   if (state === 'wave' && viewW > 40 && viewH > 40) {

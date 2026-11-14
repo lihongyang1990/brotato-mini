@@ -93,13 +93,15 @@ function _chamferAndRotatePoly(localPts, chamfer, cx, cy, ca, sa) {
 }
 
 // 生成五大嵌地石砌真地形块局部正交多边形与碰撞矩形盒组（细长矩石槽 rect_strip / 折角L型石槽 l_block / T型拼接槽 t_block / 错位阶梯双拼块 stepped_block / 重型方砖池 square_slab）
+const TERRAIN_SIZE_MUL = 1.05;
+
 function _buildBlockLocalSpec(tr) {
   const form = tr.form || 'rect_strip';
   const s = tr.seed !== undefined ? tr.seed : 2.3;
   if (form === 'l_block') {
-    const W = Math.max(176, tr.w || (196 + ((s * 23) % 48)));
-    const H = Math.max(158, tr.h || (172 + ((s * 19) % 42)));
-    const T = Math.max(70, Math.min(Math.min(W, H) * 0.48, tr.thick || (74 + ((s * 7) % 14))));
+    const W = Math.max(124, tr.w || Math.round((196 + ((s * 23) % 48)) * TERRAIN_SIZE_MUL));
+    const H = Math.max(110, tr.h || Math.round((172 + ((s * 19) % 42)) * TERRAIN_SIZE_MUL));
+    const T = Math.max(50, Math.min(Math.min(W, H) * 0.48, tr.thick || Math.round((74 + ((s * 7) % 14)) * TERRAIN_SIZE_MUL)));
     const flipU = (Math.floor(s * 11) % 2 === 0) ? 1 : -1;
     // 以视觉重心微调局部原点，使旋转与外接圆更均衡
     const ox = -W * 0.34, oy = -H * 0.34;
@@ -126,9 +128,9 @@ function _buildBlockLocalSpec(tr) {
     return { pts, boxes, minThick: T };
   }
   if (form === 't_block') {
-    const W = Math.max(186, tr.w || (206 + ((s * 29) % 48)));
-    const H = Math.max(152, tr.h || (166 + ((s * 17) % 38)));
-    const T = Math.max(70, Math.min(W * 0.44, tr.thick || (74 + ((s * 5) % 12))));
+    const W = Math.max(130, tr.w || Math.round((206 + ((s * 29) % 48)) * TERRAIN_SIZE_MUL));
+    const H = Math.max(106, tr.h || Math.round((166 + ((s * 17) % 38)) * TERRAIN_SIZE_MUL));
+    const T = Math.max(50, Math.min(W * 0.44, tr.thick || Math.round((74 + ((s * 5) % 12)) * TERRAIN_SIZE_MUL)));
     const hw = W * 0.5, st = T * 0.5;
     const topY = -H * 0.42, botY = topY + H;
     const pts = [
@@ -148,12 +150,12 @@ function _buildBlockLocalSpec(tr) {
     return { pts, boxes, minThick: T };
   }
   if (form === 'stepped_block') {
-    const W = Math.max(210, tr.w || (228 + ((s * 31) % 52)));
-    const T = Math.max(72, tr.thick || (74 + ((s * 9) % 12)));
+    const W = Math.max(147, tr.w || Math.round((228 + ((s * 31) % 52)) * TERRAIN_SIZE_MUL));
+    const T = Math.max(50, tr.thick || Math.round((74 + ((s * 9) % 12)) * TERRAIN_SIZE_MUL));
     const overlapY = Math.round(T * 0.74);
     const H = T * 2 - overlapY;
     const hw = W * 0.5, hh = H * 0.5;
-    const ox = Math.max(36, Math.min(hw - 42, Math.round(W * 0.21)));
+    const ox = Math.max(25, Math.min(hw - 30, Math.round(W * 0.21)));
     const flipU = (Math.floor(s * 13) % 2 === 0) ? 1 : -1;
     const rawPts = [
       { x: -hw, y: -hh },
@@ -180,8 +182,8 @@ function _buildBlockLocalSpec(tr) {
     return { pts, boxes, minThick: overlapY };
   }
   if (form === 'square_slab') {
-    const W = Math.max(138, tr.w || (150 + ((s * 21) % 36)));
-    const H = Math.max(122, tr.h || (130 + ((s * 15) % 32)));
+    const W = Math.max(97, tr.w || Math.round((150 + ((s * 21) % 36)) * TERRAIN_SIZE_MUL));
+    const H = Math.max(85, tr.h || Math.round((130 + ((s * 15) % 32)) * TERRAIN_SIZE_MUL));
     const hw = W * 0.5, hh = H * 0.5;
     return {
       pts: [
@@ -195,8 +197,8 @@ function _buildBlockLocalSpec(tr) {
     };
   }
   // 默认 rect_strip：细长嵌地矩石长槽块（长宽比 ~3.0:1 ~ 4.2:1，横纵斜切皆极利落）
-  const W = Math.max(196, tr.len || tr.w || (236 + ((s * 37) % 92)));
-  const H = Math.max(70, tr.wid || (tr.r ? tr.r * 2.2 : 0) || (74 + ((s * 11) % 18)));
+  const W = Math.max(137, tr.len || tr.w || Math.round((236 + ((s * 37) % 92)) * TERRAIN_SIZE_MUL));
+  const H = Math.max(50, tr.wid || (tr.r ? tr.r * 2.2 : 0) || Math.round((74 + ((s * 11) % 18)) * TERRAIN_SIZE_MUL));
   const hw = W * 0.5, hh = H * 0.5;
   return {
     pts: [
@@ -220,8 +222,8 @@ function ensureTerrainGeometry(tr) {
   tr._cosR = ca0; tr._sinR = sa0;
 
   if (tr.kind === 'chasm') {
-    const halfL = Math.max(78, tr.halfLen || 108);
-    const baseW = Math.max(24, tr.r || 30);
+    const halfL = Math.max(55, tr.halfLen || 76);
+    const baseW = Math.max(18, tr.r || 24);
     const isElbow = tr.chasmElbow !== undefined ? tr.chasmElbow : (Math.floor(s * 7) % 5 >= 3);
     tr.chasmElbow = isElbow;
     let localOrtho, spine;
@@ -609,11 +611,11 @@ function _canPlaceTerrainBlock(cand, cx, cy, minGap = 82) {
     if (p.x < wallPad - 2 || p.x > WORLD.w - wallPad + 2 || p.y < wallPad - 2 || p.y > WORLD.h - wallPad + 2) return false;
   }
   const discs = _terrainSampleDiscs(cand);
-  const centerClear = cand.kind === 'chasm' ? 205 : 138;
+  const centerClear = cand.kind === 'chasm' ? 225 : 162;
   for (let i = 0; i < discs.length; i++) {
     const d = discs[i];
     if (Math.hypot(d.x - cx, d.y - cy) < d.r + centerClear) return false;
-    if (cand.kind === 'chasm' && Math.hypot(d.x - (cx + 120), d.y - cy) < d.r + 75) return false;
+    if (cand.kind === 'chasm' && Math.hypot(d.x - (cx + 135), d.y - cy) < d.r + 82) return false;
     for (let pIdx = 0; pIdx < portals.length; pIdx++) {
       const pt = portals[pIdx];
       if (Math.hypot(d.x - pt.x, d.y - pt.y) < d.r + (pt.r || 36) + 95) return false;
@@ -622,7 +624,7 @@ function _canPlaceTerrainBlock(cand, cx, cy, minGap = 82) {
   for (let tIdx = 0; tIdx < terrains.length; tIdx++) {
     const other = terrains[tIdx];
     const oDiscs = other._sampleDiscs || (other._sampleDiscs = _terrainSampleDiscs(other));
-    const reqGap = (cand.kind === 'chasm' && other.kind === 'chasm') ? 135 : minGap;
+    const reqGap = (cand.kind === 'chasm' && other.kind === 'chasm') ? 145 : minGap;
     for (let i = 0; i < discs.length; i++) {
       const a = discs[i];
       for (let j = 0; j < oDiscs.length; j++) {
@@ -707,13 +709,14 @@ function spawnArenaTerrains() {
   };
 
   const placeChasmBlock = (lenScale = 1.0) => {
-    for (let tries = 0; tries < 44; tries++) {
-      const pt = tries < 28
-        ? sampleArenaPoint(185, 175)
-        : { x: 185 + Math.random() * Math.max(120, WORLD.w - 370), y: 175 + Math.random() * Math.max(120, WORLD.h - 350) };
+    for (let tries = 0; tries < 52; tries++) {
+      const pt = tries < 30
+        ? sampleArenaPoint(215, 200)
+        : { x: 210 + Math.random() * Math.max(140, WORLD.w - 420), y: 200 + Math.random() * Math.max(140, WORLD.h - 400) };
       const ang = _pickObliqueAngle();
-      const halfLen = (92 + Math.random() * 54) * lenScale * (compactArena ? 0.84 : 1.0);
-      const r = 26 + Math.round(Math.random() * 7);
+      const fallScale = tries > 36 ? 0.84 : 1.0;
+      const halfLen = (92 + Math.random() * 54) * TERRAIN_SIZE_MUL * lenScale * fallScale * (compactArena ? 0.84 : 1.0);
+      const r = Math.round((26 + Math.random() * 7) * TERRAIN_SIZE_MUL * fallScale);
       const cand = {
         kind: 'chasm',
         x: pt.x, y: pt.y,
@@ -721,7 +724,7 @@ function spawnArenaTerrains() {
         chasmElbow: Math.random() < 0.38,
         seed: 1.1 + Math.random() * 80
       };
-      if (_canPlaceTerrainBlock(cand, cx, cy, 90)) {
+      if (_canPlaceTerrainBlock(cand, cx, cy, tries > 36 ? 68 : 88)) {
         terrains.push(cand);
         return true;
       }
@@ -732,50 +735,50 @@ function spawnArenaTerrains() {
   const makeBlockSpec = (kind, form, pt, scale = 1.0) => {
     const rot = _pickObliqueAngle();
     const seed = 1.3 + Math.random() * 90;
-    const sc = scale * (compactArena ? 0.86 : 1.0);
+    const sc = scale * TERRAIN_SIZE_MUL * (compactArena ? 0.86 : 1.0);
     if (form === 'rect_strip') {
       return {
         kind, form, x: pt.x, y: pt.y, rot, seed,
         len: Math.round((225 + Math.random() * 105) * sc),
-        wid: Math.max(70, Math.round((74 + Math.random() * 20) * sc)),
-        r: 42,
+        wid: Math.max(71, Math.round((74 + Math.random() * 20) * sc)),
+        r: Math.round(42 * TERRAIN_SIZE_MUL),
         pulse: Math.random() * 6.28
       };
     }
     if (form === 'l_block') {
       return {
         kind, form, x: pt.x, y: pt.y, rot, seed,
-        w: Math.max(176, Math.round((192 + Math.random() * 54) * sc)),
-        h: Math.max(158, Math.round((168 + Math.random() * 46) * sc)),
-        thick: Math.max(70, Math.round((74 + Math.random() * 14) * sc)),
-        r: 46,
+        w: Math.max(178, Math.round((192 + Math.random() * 54) * sc)),
+        h: Math.max(160, Math.round((168 + Math.random() * 46) * sc)),
+        thick: Math.max(71, Math.round((74 + Math.random() * 14) * sc)),
+        r: Math.round(46 * TERRAIN_SIZE_MUL),
         pulse: Math.random() * 6.28
       };
     }
     if (form === 't_block') {
       return {
         kind, form, x: pt.x, y: pt.y, rot, seed,
-        w: Math.max(186, Math.round((202 + Math.random() * 52) * sc)),
-        h: Math.max(152, Math.round((162 + Math.random() * 42) * sc)),
-        thick: Math.max(70, Math.round((74 + Math.random() * 12) * sc)),
-        r: 46,
+        w: Math.max(189, Math.round((202 + Math.random() * 52) * sc)),
+        h: Math.max(154, Math.round((162 + Math.random() * 42) * sc)),
+        thick: Math.max(71, Math.round((74 + Math.random() * 12) * sc)),
+        r: Math.round(46 * TERRAIN_SIZE_MUL),
         pulse: Math.random() * 6.28
       };
     }
     if (form === 'stepped_block') {
       return {
         kind, form, x: pt.x, y: pt.y, rot, seed,
-        w: Math.max(210, Math.round((224 + Math.random() * 58) * sc)),
-        thick: Math.max(72, Math.round((74 + Math.random() * 14) * sc)),
-        r: 46,
+        w: Math.max(214, Math.round((224 + Math.random() * 58) * sc)),
+        thick: Math.max(73, Math.round((74 + Math.random() * 14) * sc)),
+        r: Math.round(46 * TERRAIN_SIZE_MUL),
         pulse: Math.random() * 6.28
       };
     }
     return {
       kind, form: 'square_slab', x: pt.x, y: pt.y, rot, seed,
-      w: Math.max(138, Math.round((148 + Math.random() * 38) * sc)),
-      h: Math.max(122, Math.round((128 + Math.random() * 34) * sc)),
-      r: 52,
+      w: Math.max(140, Math.round((148 + Math.random() * 38) * sc)),
+      h: Math.max(125, Math.round((128 + Math.random() * 34) * sc)),
+      r: Math.round(52 * TERRAIN_SIZE_MUL),
       pulse: Math.random() * 6.28
     };
   };
@@ -784,15 +787,15 @@ function spawnArenaTerrains() {
     const formPool = preferredForm
       ? [preferredForm, 'rect_strip', 'l_block', 'square_slab']
       : shuffleArr(['rect_strip', 'l_block', 'stepped_block', 't_block', 'square_slab']);
-    for (let tries = 0; tries < 48; tries++) {
+    for (let tries = 0; tries < 56; tries++) {
       const form = formPool[tries % formPool.length];
-      const scale = tries > 30 ? 0.84 : 1.0;
-      const pt = tries < 27
-        ? sampleArenaPoint(148, 142)
-        : { x: 140 + Math.random() * Math.max(120, WORLD.w - 280), y: 140 + Math.random() * Math.max(120, WORLD.h - 280) };
+      const scale = tries > 34 ? 0.80 : (tries > 22 ? 0.90 : 1.0);
+      const pt = tries < 30
+        ? sampleArenaPoint(185, 175)
+        : { x: 175 + Math.random() * Math.max(140, WORLD.w - 350), y: 170 + Math.random() * Math.max(140, WORLD.h - 340) };
       const cand = makeBlockSpec(kind, form, pt, scale);
       if (seedHint) cand.seed += seedHint * 0.17;
-      if (_canPlaceTerrainBlock(cand, cx, cy, tries > 34 ? 64 : 82)) {
+      if (_canPlaceTerrainBlock(cand, cx, cy, tries > 36 ? 52 : 74)) {
         terrains.push(cand);
         return true;
       }
@@ -1029,10 +1032,10 @@ function spawnBossTerrain(kind, x, y, baseR = 74) {
       tx = Math.max(210, Math.min(WORLD.w - 210, player.x + Math.cos(pushA) * 155));
       ty = Math.max(210, Math.min(WORLD.h - 210, player.y + Math.sin(pushA) * 155));
     }
-    const halfLen = 88 + Math.random() * 34;
+    const halfLen = (88 + Math.random() * 34) * TERRAIN_SIZE_MUL;
     terrains.push(ensureTerrainGeometry({
       kind: 'chasm', x: tx, y: ty,
-      ang, rot: ang, halfLen, r: 28, chasmElbow: Math.random() < 0.35, seed: Math.random() * 100
+      ang, rot: ang, halfLen, r: Math.round(28 * TERRAIN_SIZE_MUL), chasmElbow: Math.random() < 0.35, seed: Math.random() * 100
     }));
     if (rings.length < 40) rings.push({ x: tx, y: ty, r: 95, color: '#c77dff', t: 0.35, maxT: 0.35, kind: 'hex' });
     announce('🕳️ 首领震塌石板！战场新增【石砌断层深渊】', '#c77dff', 2.6);
@@ -1041,14 +1044,14 @@ function spawnBossTerrain(kind, x, y, baseR = 74) {
     const bossForms = ['rect_strip', 'l_block', 'stepped_block', 'square_slab'];
     const form = bossForms[Math.floor(Math.random() * bossForms.length)];
     const spec = form === 'rect_strip'
-      ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, len: 220 + Math.round(Math.random() * 75), wid: 76, r: 42, pulse: 0, seed: Math.random() * 100 }
+      ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, len: Math.round((220 + Math.random() * 75) * TERRAIN_SIZE_MUL), wid: Math.round(76 * TERRAIN_SIZE_MUL), r: Math.round(42 * TERRAIN_SIZE_MUL), pulse: 0, seed: Math.random() * 100 }
       : (form === 'l_block'
-        ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, w: 196, h: 174, thick: 74, r: 46, pulse: 0, seed: Math.random() * 100 }
+        ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, w: Math.round(196 * TERRAIN_SIZE_MUL), h: Math.round(174 * TERRAIN_SIZE_MUL), thick: Math.round(74 * TERRAIN_SIZE_MUL), r: Math.round(46 * TERRAIN_SIZE_MUL), pulse: 0, seed: Math.random() * 100 }
         : (form === 'stepped_block'
-          ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, w: 228, thick: 74, r: 46, pulse: 0, seed: Math.random() * 100 }
-          : { kind: sceneKind, form: 'square_slab', x: cx, y: cy, rot: ang, w: 156, h: 138, r: 52, pulse: 0, seed: Math.random() * 100 }));
+          ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, w: Math.round(228 * TERRAIN_SIZE_MUL), thick: Math.round(74 * TERRAIN_SIZE_MUL), r: Math.round(46 * TERRAIN_SIZE_MUL), pulse: 0, seed: Math.random() * 100 }
+          : { kind: sceneKind, form: 'square_slab', x: cx, y: cy, rot: ang, w: Math.round(156 * TERRAIN_SIZE_MUL), h: Math.round(138 * TERRAIN_SIZE_MUL), r: Math.round(52 * TERRAIN_SIZE_MUL), pulse: 0, seed: Math.random() * 100 }));
     terrains.push(ensureTerrainGeometry(spec));
-    if (rings.length < 40) rings.push({ x: cx, y: cy, r: baseR + 24, color: col, t: 0.35, maxT: 0.35, kind: 'star' });
+    if (rings.length < 40) rings.push({ x: cx, y: cy, r: Math.round((baseR + 24) * TERRAIN_SIZE_MUL), color: col, t: 0.35, maxT: 0.35, kind: 'star' });
     const nameMap = { lava: '🌋 首领震裂石砖！新增【嵌石熔火槽】封锁走位！', swamp: '🧪 首领灌注秘毒！新增【翡翠秘毒方渠】污染地面！', ice_sheet: '🧊 首领凝结地砖！新增【寒晶方砖台】改造战场！' };
     if (nameMap[sceneKind]) announce(nameMap[sceneKind], col, 2.6);
   }
@@ -1123,7 +1126,30 @@ function beginWave(retryMeta = null) {
     (isStoryClimb && (wave === 6 || wave === 10 || wave === 14)) ||
     (endlessMode && wave >= 6 && wave % 4 === 2)
   );
-  hordeWave = !isBossWave && !isEliteWave && (
+  const wantSurvivalTrial = !isBossWave && !isEliteWave && (
+    (retryMeta && retryMeta.isSurvivalTrial !== undefined)
+      ? !!retryMeta.isSurvivalTrial
+      : (typeof survivalTrialQueued !== 'undefined' && !!survivalTrialQueued)
+  );
+  survivalTrialQueued = false;
+  survivalTrialWave = wantSurvivalTrial;
+  survivalTrialHits = 0;
+  survivalFissures = [];
+  survivalSkyVolleys = [];
+  survivalTrialState = {
+    fogIntroP: 0,
+    lanternBoostT: 0,
+    volleyCd: 0.85,
+    fissureCd: 1.55,
+    corridorCd: 6.4,
+    meteorCd: 11.5,
+    crossCd: 3.4,
+    chainCd: 4.8,
+    vortexCd: 2.8,
+    phase2Announced: false,
+    phase3Announced: false
+  };
+  hordeWave = !isBossWave && !isEliteWave && !survivalTrialWave && (
     (isStoryClimb && (wave === 3 || wave === 7 || wave === 11 || wave === 15)) ||
     (endlessMode && wave >= 3 && wave % 4 === 3)
   );
@@ -1137,15 +1163,16 @@ function beginWave(retryMeta = null) {
   }
   if (typeof SpireAudio !== 'undefined') SpireAudio.syncScene(curScene.id);
   syncArenaAndZoom(true);
-  // 回合时长：从第 1 层 30 秒起步，每层递增 +5 秒，最高封顶 60 秒（第 7 层起恒为 60 秒；首领层提前击杀可续刷晶石，超时未杀则转入死战）
-  waveTime = getWaveDuration(wave);
+  // 回合时长：蚀界生存试炼恒定 40 秒；常规层从第 1 层 30 秒起步，每层递增 +5 秒，最高封顶 60 秒
+  waveTime = survivalTrialWave ? 40 : getWaveDuration(wave);
   waveMaxTime = waveTime;
   lastUrgentSec = -1;
-  spawnAcc = 0.25;
+  spawnAcc = survivalTrialWave ? 0.85 : 0.25;
   hudAcc = 1;
   player.x = WORLD.w / 2; player.y = WORLD.h / 2;
   player.chillSlowT = 0; player.inSpore = false;
   player.lavaExposure = 0; player.lavaTick = 0; player.terrainHintT = 0; player.terrainSpdMul = 1;
+  player._fissureHitCd = 0; player._fissureLeapHintCd = 0;
   player.frostGauge = 0; player.frostLeaveGrace = 0; player.iceFreezeT = 0; player.frostThawImmT = 0;
   player.waveMythicAwakened = false;
   cam.x = player.x; cam.y = player.y;
@@ -1177,8 +1204,12 @@ function beginWave(retryMeta = null) {
   const initTrees = 1 + Math.min(2, player.bonusTrees || 0);
   for (let i = 0; i < initTrees; i++) spawnTree();
 
-  // 第 2 层起解锁【场景专属怪物】，第 5 层起概率触发【场景专属环境异象】（前 5 层降低复合压力，中后期异象概率补偿）
-  if (wave >= 2) {
+  // 第 2 层起解锁【场景专属怪物】，第 5 层起概率触发【场景专属环境异象】（蚀界生存试炼期间由试炼天外弹道与地脉裂隙独占舞台）
+  if (survivalTrialWave) {
+    sceneMobEnabled = false;
+    activeSceneEvent = null;
+    sceneEventT = 999;
+  } else if (wave >= 2) {
     sceneMobEnabled = hordeWave || Math.random() < Math.min(0.88, (wave <= 5 ? 0.42 : 0.54) + (wave - 1) * 0.05);
     const sceneEvtProb = wave === 5 ? 0.18 : Math.min(0.68, 0.34 + (wave - 5) * 0.065);
     activeSceneEvent = (wave >= 5 && !isBossWave && Math.random() < sceneEvtProb) ? curScene.eventId : null;
@@ -1189,12 +1220,16 @@ function beginWave(retryMeta = null) {
     sceneEventT = 999;
   }
 
-  // 非首领层开场立即刷出合围前锋群（前 5 层开场合围数量与距离适度放宽，降低前期开荒贴脸压迫）
+  // 非首领层开场立即刷出合围前锋群（蚀界生存试炼严格只保留 30% 怪物数量！）
   if (!isBossWave) {
     const earlyOpenMul = wave <= 2 ? 0.62 : (wave <= 4 ? 0.70 : (wave === 5 ? 0.80 : (wave === 6 ? 0.94 : 1.0)));
-    const openCnt = Math.max(2, Math.round((wave === 1 ? 5 : 4) * earlyOpenMul * diff.spawnMul));
+    const baseOpen = Math.max(2, Math.round((wave === 1 ? 5 : 4) * earlyOpenMul * diff.spawnMul));
+    const rawOpen = survivalTrialWave ? (baseOpen * 0.30) : baseOpen;
+    const openCnt = survivalTrialWave
+      ? (Math.floor(rawOpen) + (Math.random() < (rawOpen - Math.floor(rawOpen)) ? 1 : 0))
+      : baseOpen;
     for (let oi = 0; oi < openCnt; oi++) {
-      const oa = (oi / openCnt) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
+      const oa = (oi / Math.max(1, openCnt)) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
       const od = (wave <= 5 ? 325 : 265) + Math.random() * 125;
       const ox = Math.max(60, Math.min(WORLD.w - 60, player.x + Math.cos(oa) * od));
       const oy = Math.max(60, Math.min(WORLD.h - 60, player.y + Math.sin(oa) * od));
@@ -1202,51 +1237,63 @@ function beginWave(retryMeta = null) {
     }
   }
 
-  // 1~16 层主线剧情攀登期间禁用随机奇遇首领祭坛（确保首领 100% 仅在第 4/8/12/16 层固定登场，无尽模式提高大型召唤法阵刷新率）
-  const relicChance = (endlessMode && wave >= 2 && !isBossWave) ? Math.min(0.45, 0.25 + (player.luck || 0) * 0.0025) : 0;
+  // 1~16 层主线剧情攀登与蚀界生存试炼期间禁用随机奇遇首领祭坛
+  const relicChance = (!survivalTrialWave && endlessMode && wave >= 2 && !isBossWave) ? Math.min(0.45, 0.25 + (player.luck || 0) * 0.0025) : 0;
   relicSpawnT = Math.random() < relicChance ? (3.2 + Math.random() * 3.0) : -1;
 
-  const portalNote = portals.length >= 2 ? ' · 🌀双生晶裂门已开启' : '';
-  const waveIntro = `${curScene.icon} 第 ${wave} 层：${curScene.name}${activeSceneEvent ? ' · ' + curScene.eventIcon + curScene.eventName : ''}${portalNote}`;
-  logInfo('WAVE', `进入第 ${wave} 层 (${waveTime}s) · 场景=${curScene.name}(${curScene.id}) · 首领层=${isBossWave} · 地形=${terrains.length}处+传送门=${portals.length} · 专属怪=${sceneMobEnabled} · 异象=${activeSceneEvent || '无'} · 地图=${WORLD.w}x${WORLD.h}`);
-  announce(waveIntro, curScene.accent2 || '#ffd166', 3.4);
+  if (survivalTrialWave) {
+    const sTheme = getSurvivalTrialTheme();
+    logInfo('WAVE', `进入第 ${wave} 层【蚀界生存试炼】(40s · 怪物30% · 七类机关) · 场景=${curScene.name}(${curScene.id}) · 地图=${WORLD.w}x${WORLD.h}`);
+    announce(`🕯️ 蚀界生存试炼（40秒）· 浓雾提灯下躲避${sTheme.lanceName}、${sTheme.fissureName}与旋星裂光！`, '#72efdd', 4.2);
+  } else {
+    const portalNote = portals.length >= 2 ? ' · 🌀双生晶裂门已开启' : '';
+    const waveIntro = `${curScene.icon} 第 ${wave} 层：${curScene.name}${activeSceneEvent ? ' · ' + curScene.eventIcon + curScene.eventName : ''}${portalNote}`;
+    logInfo('WAVE', `进入第 ${wave} 层 (${waveTime}s) · 场景=${curScene.name}(${curScene.id}) · 首领层=${isBossWave} · 地形=${terrains.length}处+传送门=${portals.length} · 专属怪=${sceneMobEnabled} · 异象=${activeSceneEvent || '无'} · 地图=${WORLD.w}x${WORLD.h}`);
+    announce(waveIntro, curScene.accent2 || '#ffd166', 3.4);
+  }
 
-  // 部署自动防御炮台与浮游激光塔（机械师天赋 + 扳手 + 无人机舱 + 工程装备 + 5阶进化额外炮台！）
-  const bulletTurretTiers = [];
-  const laserTurretTiers = [];
-  for (let i = 0; i < (player.bonusTurrets || 0); i++) bulletTurretTiers.push(2);
-  for (let i = 0; i < (player.laserTurrets || 0); i++) laserTurretTiers.push(2);
+  // 部署自动防御炮台、浮游激光塔、紫电震波塔与秘法共鸣图腾塔（机械师天赋 + 构筑遗物 + 扳手/无人机/共鸣法杖 + 5阶进化额外塔）
+  const turretSpecs = [];
+  for (let i = 0; i < (player.bonusTurrets || 0); i++) turretSpecs.push({ kind: 'bullet', tier: 2 });
+  for (let i = 0; i < (player.laserTurrets || 0); i++) turretSpecs.push({ kind: 'laser', tier: 2 });
+  for (let i = 0; i < (player.shockTurrets || 0); i++) turretSpecs.push({ kind: 'shock', tier: 3 });
+  for (let i = 0; i < (player.totemTurrets || 0); i++) turretSpecs.push({ kind: 'totem', tier: 3 });
   for (let wi = 0; wi < player.weapons.length; wi++) {
     const w = player.weapons[wi];
     if (!w) continue;
+    const tpl = WEAPONS[w.id];
     const ev = typeof getWeaponEvo === 'function' ? getWeaponEvo(w) : null;
     if (w.id === 'wrench') {
-      bulletTurretTiers.push(w.tier);
+      turretSpecs.push({ kind: 'bullet', tier: w.tier });
       if (ev && ev.extraTurret) {
-        for (let k = 0; k < ev.extraTurret; k++) bulletTurretTiers.push(w.tier);
+        for (let k = 0; k < ev.extraTurret; k++) turretSpecs.push({ kind: 'bullet', tier: w.tier });
       }
       if (ev && ev.extraLaserTurret) {
-        for (let k = 0; k < ev.extraLaserTurret; k++) laserTurretTiers.push(w.tier);
+        for (let k = 0; k < ev.extraLaserTurret; k++) turretSpecs.push({ kind: 'laser', tier: w.tier });
       }
     } else if (w.id === 'drone_bay') {
-      laserTurretTiers.push(w.tier);
+      turretSpecs.push({ kind: 'laser', tier: w.tier });
       if (ev && ev.extraLaserTurret) {
-        for (let k = 0; k < ev.extraLaserTurret; k++) laserTurretTiers.push(w.tier);
+        for (let k = 0; k < ev.extraLaserTurret; k++) turretSpecs.push({ kind: 'laser', tier: w.tier });
+      }
+    } else if (tpl && tpl.deploysTotem) {
+      turretSpecs.push({ kind: 'totem', tier: w.tier });
+      if (ev && ev.extraTotem) {
+        for (let k = 0; k < ev.extraTotem; k++) turretSpecs.push({ kind: 'totem', tier: w.tier });
       }
     }
   }
-  const bulletTurrets = bulletTurretTiers.length;
-  const laserTurrets = laserTurretTiers.length;
-  const totalT = bulletTurrets + laserTurrets;
+  const totalT = turretSpecs.length;
   for (let i = 0; i < totalT; i++) {
     const a = (i / Math.max(1, totalT)) * Math.PI * 2;
-    const dist = 115 + (i % 2) * 52;
-    const isLaser = i >= bulletTurrets;
-    const tier = isLaser ? laserTurretTiers[i - bulletTurrets] : bulletTurretTiers[i];
+    const dist = 115 + (i % 3) * 44;
+    const spec = turretSpecs[i];
+    const initCd = spec.kind === 'shock' ? (0.75 + Math.random() * 0.35)
+      : (spec.kind === 'totem' ? (0.40 + Math.random() * 0.28) : (0.25 + Math.random() * 0.3));
     turrets.push({
       x: WORLD.w / 2 + Math.cos(a) * dist, y: WORLD.h / 2 + Math.sin(a) * dist,
-      kind: isLaser ? 'laser' : 'bullet',
-      tier, cd: 0.25 + Math.random() * 0.3, angle: 0, recoil: 0
+      kind: spec.kind,
+      tier: spec.tier, cd: initCd, angle: 0, recoil: 0, pulsePhase: Math.random() * 6.28
     });
   }
 
@@ -1350,6 +1397,13 @@ function spawnWarning(x, y, type, variant = '') {
     pushOutOfChasms(dummy);
     sx = Math.max(60, Math.min(WORLD.w - 60, dummy.x));
     sy = Math.max(60, Math.min(WORLD.h - 60, dummy.y));
+  } else if (variant && typeof SpireAssets !== 'undefined' && SpireAssets) {
+    // 提前 0.9s 预热首领四帧精灵表与双形态立绘抠像，杜绝血月魔君等降临时首帧贴图未就绪
+    if (typeof SpireAssets.getBossSheet === 'function') SpireAssets.getBossSheet(variant, false);
+    if (typeof getBossAnimePortrait === 'function') {
+      getBossAnimePortrait(variant, false);
+      getBossAnimePortrait(variant, true);
+    }
   }
   spawns.push({ x: sx, y: sy, type, variant, t: 0.90, maxT: 0.90 });
 }
@@ -1376,6 +1430,20 @@ function countActiveRangedEnemies() {
 
 // 生态多样化权重刷怪表（怪物总量保持 100% 不变；飞针/冰梭类远程怪刷新数量精准减少 30% 并 1:1 补充到近战怪上）
 function pickWaveEnemyType(wv) {
+  if (typeof survivalTrialWave !== 'undefined' && survivalTrialWave) {
+    // 蚀界生存试炼专属精简怪池：仅刷新轻型敏捷追猎怪（无盾卫/泰坦挡路，无自爆，无飞针海），供近战/吸血适度续航
+    const lightPool = [['chaser', 10], ['stalker', 8], ['swarmer', 5]];
+    if (wv >= 3) lightPool.push(['blade_duelist', 5]);
+    if (wv >= 4) lightPool.push(['magma_imp', 4]);
+    let tw = 0;
+    for (let i = 0; i < lightPool.length; i++) tw += lightPool[i][1];
+    let rw = Math.random() * tw;
+    for (let i = 0; i < lightPool.length; i++) {
+      rw -= lightPool[i][1];
+      if (rw <= 0) return lightPool[i][0];
+    }
+    return 'chaser';
+  }
   const rangedCountMul = typeof RANGED_ENEMY_COUNT_MUL === 'number' ? RANGED_ENEMY_COUNT_MUL : 0.80;
   const maxRanged = Math.max(2, Math.round(Math.min(12, 3 + Math.floor(wave * 0.85)) * rangedCountMul));
   const allowRanged = countActiveRangedEnemies() < maxRanged;
@@ -1520,10 +1588,12 @@ function pickWaveEnemyType(wv) {
 
 // 多形态地面与空间高危预警机关（支持十字棱镜光轨 cross_beam、次元裂空斩痕 void_slash、高抛榴弹准星 mortar_shell、六棱冰晶 frost_hex、熔火曜轮 flame_pillar、落雷星印 thunder_sigil、毒沼花苞 venom_mire 及外环风眼 innerSafeR）
 function spawnHazard(x, y, r, dmg, delay = 1.22, extra = {}) {
-  if (hazards.length >= 34 && !extra.innerSafeR) return;
+  const cap = (typeof survivalTrialWave !== 'undefined' && survivalTrialWave) ? 46 : 34;
+  if (hazards.length >= cap && !extra.innerSafeR) return;
   const pad = extra.style === 'cross_beam' || extra.style === 'void_slash' ? 56 : (r + 12);
   const cx = Math.max(pad, Math.min(WORLD.w - pad, x));
   const cy = Math.max(pad, Math.min(WORLD.h - pad, y));
+  const autoSrcKey = extra.srcKey || ((typeof _activeEnemyActor !== 'undefined' && _activeEnemyActor) ? (_activeEnemyActor.variant || _activeEnemyActor.type) : 'hazard');
   hazards.push({
     x: cx, y: cy, r,
     style: extra.style || 'circle',
@@ -1533,6 +1603,7 @@ function spawnHazard(x, y, r, dmg, delay = 1.22, extra = {}) {
     halfW: extra.halfW || 0,
     srcX: extra.srcX,
     srcY: extra.srcY,
+    srcKey: autoSrcKey,
     shrapnel: extra.shrapnel || 0,
     innerSafeR: extra.innerSafeR || 0,
     dmg: Math.max(3, Math.round(dmg)),
@@ -1541,6 +1612,246 @@ function spawnHazard(x, y, r, dmg, delay = 1.22, extra = {}) {
     color: extra.color || '#ff3b6b',
     t: delay, maxT: delay
   });
+}
+
+// ============================================================================
+// 🕯️ 蚀界生存试炼（40秒高密度渡劫：七类天外弹道与地形裂隙 · 密度+50% · 陷阱伤害+20%）
+// ============================================================================
+const SURVIVAL_TRAP_DMG_MUL = 1.20;
+
+function getSurvivalTrialTheme() {
+  const scId = (curScene && curScene.id) || 'foundry';
+  if (scId === 'foundry') {
+    return { lanceName: '赤铁贯星剑梭', fissureName: '熔火地脉裂隙', lanceCol: '#fb7185', lanceCore: '#fff1f2', fissureCol: '#ff6b35', fissureDeep: '#2b090e', sigilStyle: 'flame_pillar' };
+  }
+  if (scId === 'glacier') {
+    return { lanceName: '极光破界冰矛', fissureName: '永冻冰渊裂谷', lanceCol: '#38bdf8', lanceCore: '#f0f9ff', fissureCol: '#72efdd', fissureDeep: '#071b2c', sigilStyle: 'frost_hex' };
+  }
+  if (scId === 'wasteland') {
+    return { lanceName: '逆钟紫电星梭', fissureName: '时空断层裂隙', lanceCol: '#c084fc', lanceCore: '#faf5ff', fissureCol: '#fde68a', fissureDeep: '#1a0b2e', sigilStyle: 'thunder_sigil' };
+  }
+  return { lanceName: '日蚀裁决圣枪', fissureName: '归墟圣所裂痕', lanceCol: '#f6d379', lanceCore: '#fffbeb', fissureCol: '#f43f5e', fissureDeep: '#1c0816', sigilStyle: 'thunder_sigil' };
+}
+
+function getSurvivalHazardBaseDmg() {
+  const monsterDmgMul = typeof MONSTER_DMG_MUL === 'number' ? MONSTER_DMG_MUL : 1.20;
+  const midLateDmgMul = typeof getMidLateWaveDmgMul === 'function' ? getMidLateWaveDmgMul(wave) : 1.0;
+  const wIdx = Math.max(0, Math.min(15, wave - 1));
+  const endlessScale = wave > MAX_WAVE ? Math.pow(1.09, wave - MAX_WAVE) : 1;
+  return Math.max(5, Math.round((5.2 + wIdx * 0.72) * midLateDmgMul * endlessScale * (diff.dmgMul || 1) * monsterDmgMul * SURVIVAL_TRAP_DMG_MUL));
+}
+
+function spawnSurvivalCelestialVolley(phase) {
+  if (!player || survivalSkyVolleys.length >= 26) return;
+  const theme = getSurvivalTrialTheme();
+  const baseDmg = getSurvivalHazardBaseDmg();
+  const leadX = Math.max(90, Math.min(WORLD.w - 90, player.x + (player.vx || 0) * 0.18));
+  const leadY = Math.max(90, Math.min(WORLD.h - 90, player.y + (player.vy || 0) * 0.18));
+  const baseAng = Math.random() * Math.PI * 2;
+  const windup = phase === 1 ? 0.78 : (phase === 2 ? 0.72 : 0.68);
+  const spd = phase === 1 ? 580 : (phase === 2 ? 615 : 645);
+  const distOut = 540;
+  const spanLen = 1100;
+
+  const pushLance = (ang, latOffset, extraDelay) => {
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const nx = -sa, ny = ca;
+    const cx = leadX + nx * latOffset;
+    const cy = leadY + ny * latOffset;
+    const sx = cx - ca * distOut;
+    const sy = cy - sa * distOut;
+    const ex = sx + ca * spanLen;
+    const ey = sy + sa * spanLen;
+    const w = windup + (extraDelay || 0);
+    survivalSkyVolleys.push({
+      kind: 'lance',
+      sx, sy, ex, ey, ang, spd,
+      windupT: w, maxWindup: w,
+      dmg: baseDmg,
+      color: theme.lanceCol,
+      coreColor: theme.lanceCore
+    });
+  };
+
+  if (phase === 1) {
+    const roll = Math.random();
+    if (roll < 0.45) {
+      pushLance(baseAng, -54, 0);
+      pushLance(baseAng, 54, 0);
+    } else if (roll < 0.75) {
+      pushLance(baseAng, 0, 0);
+      pushLance(baseAng + (Math.random() < 0.5 ? 1.25 : -1.25), (Math.random() - 0.5) * 32, 0.16);
+    } else {
+      pushLance(baseAng, -88, 0);
+      pushLance(baseAng, 0, 0.06);
+      pushLance(baseAng, 88, 0);
+    }
+  } else if (phase === 2) {
+    if (Math.random() < 0.58) {
+      pushLance(baseAng, -92, 0);
+      pushLance(baseAng, 0, 0.05);
+      pushLance(baseAng, 92, 0);
+    } else {
+      pushLance(baseAng, -48, 0);
+      pushLance(baseAng, 48, 0);
+      pushLance(baseAng + (Math.random() < 0.5 ? 1.38 : -1.38), 0, 0.16);
+    }
+  } else {
+    pushLance(baseAng, -96, 0);
+    pushLance(baseAng, 0, 0.05);
+    pushLance(baseAng, 96, 0);
+    pushLance(baseAng + 1.45, -46, 0.20);
+    if (Math.random() < 0.65) {
+      pushLance(baseAng - 1.45, 46, 0.24);
+    }
+  }
+  beep(620, 0.04, 'sine', 0.025);
+}
+
+function spawnSurvivalFissure(phase) {
+  const maxFis = phase === 1 ? 3 : (phase === 2 ? 5 : 6);
+  if (!player || survivalFissures.length >= maxFis) return;
+  const theme = getSurvivalTrialTheme();
+  const baseDmg = Math.max(4, Math.round(getSurvivalHazardBaseDmg() * 0.88));
+  const cx = Math.max(155, Math.min(WORLD.w - 155, player.x + (Math.random() - 0.5) * 195));
+  const cy = Math.max(155, Math.min(WORLD.h - 155, player.y + (Math.random() - 0.5) * 195));
+  let ang = Math.random() * Math.PI;
+  if (survivalFissures.length > 0) {
+    const prev = survivalFissures[survivalFissures.length - 1];
+    ang = (prev.ang || 0) + Math.PI * 0.42 + (Math.random() - 0.5) * 0.35;
+  }
+  const halfLen = phase === 1 ? 195 : (phase === 2 ? 225 : 248);
+  const halfW = 21;
+  const ca = Math.cos(ang), sa = Math.sin(ang);
+  const x1 = Math.max(58, Math.min(WORLD.w - 58, cx - ca * halfLen));
+  const y1 = Math.max(58, Math.min(WORLD.h - 58, cy - sa * halfLen));
+  const x2 = Math.max(58, Math.min(WORLD.w - 58, cx + ca * halfLen));
+  const y2 = Math.max(58, Math.min(WORLD.h - 58, cy + sa * halfLen));
+  const jags = [];
+  for (let i = 0; i < 9; i++) {
+    jags.push((i % 2 === 0 ? 1 : -1) * (0.45 + Math.random() * 0.55));
+  }
+  const windup = 0.86;
+  const activeDur = phase === 1 ? 4.0 : 4.5;
+  survivalFissures.push({
+    x1, y1, x2, y2, ang, halfW,
+    windupT: windup, maxWindup: windup,
+    activeT: activeDur, maxActive: activeDur,
+    dmg: baseDmg,
+    color: theme.fissureCol,
+    deepColor: theme.fissureDeep,
+    jags
+  });
+  beep(240, 0.055, 'triangle', 0.03);
+}
+
+function spawnSurvivalCorridor(phase) {
+  if (!player || survivalSkyVolleys.length >= 26) return;
+  const theme = getSurvivalTrialTheme();
+  const baseDmg = Math.max(5, Math.round(getSurvivalHazardBaseDmg() * 0.96));
+  const ang = (Math.floor(Math.random() * 4) * Math.PI * 0.25) + (Math.random() - 0.5) * 0.14;
+  const ca = Math.cos(ang), sa = Math.sin(ang);
+  const nx = -sa, ny = ca;
+  const lanes = phase >= 3 ? 6 : (phase >= 2 ? 5 : 4);
+  const spacing = phase >= 3 ? 104 : 116;
+  const halfW = 18;
+  // 偏移半个走廊间距，确保玩家身边一步之遥就是宽敞安全走廊（绝不封死落脚点）
+  const centerShift = (Math.random() < 0.5 ? 0.5 : -0.5) * spacing;
+  const windup = 0.88;
+  const span = 660;
+  for (let i = 0; i < lanes; i++) {
+    const off = (i - (lanes - 1) * 0.5) * spacing + centerShift;
+    const lx = player.x + nx * off;
+    const ly = player.y + ny * off;
+    survivalSkyVolleys.push({
+      kind: 'corridor_beam',
+      sx: lx - ca * span, sy: ly - sa * span,
+      ex: lx + ca * span, ey: ly + sa * span,
+      ang, halfW,
+      windupT: windup, maxWindup: windup,
+      dmg: baseDmg,
+      color: theme.lanceCol,
+      coreColor: theme.lanceCore
+    });
+  }
+  beep(480, 0.07, 'sawtooth', 0.035);
+}
+
+// 新增陷阱种类 5：【蚀界旋星十字裂光】偏心旋转十字棱镜光翼，迫使玩家顺向切象限走位
+function spawnSurvivalCrossJudgment(phase) {
+  if (!player) return;
+  const theme = getSurvivalTrialTheme();
+  const baseDmg = Math.max(5, Math.round(getSurvivalHazardBaseDmg() * 0.94));
+  const offAng = Math.random() * Math.PI * 2;
+  const offDist = 78 + Math.random() * 52;
+  const hx = Math.max(120, Math.min(WORLD.w - 120, player.x + Math.cos(offAng) * offDist));
+  const hy = Math.max(120, Math.min(WORLD.h - 120, player.y + Math.sin(offAng) * offDist));
+  const aimA = Math.atan2(player.y - hy, player.x - hx) + Math.PI * 0.25;
+  const rotDir = Math.random() < 0.5 ? 1 : -1;
+  spawnHazard(hx, hy, 42, baseDmg, phase >= 3 ? 0.96 : 1.08, {
+    style: 'cross_beam',
+    angle: aimA,
+    rotSpd: rotDir * (phase >= 3 ? 0.52 : 0.40),
+    halfLen: phase >= 3 ? 215 : 190,
+    halfW: 16,
+    color: theme.fissureCol,
+    srcKey: 'trap_cross_star'
+  });
+}
+
+// 新增陷阱种类 6：【天外连环坠星阵】沿角色移动前路依次降下 3~4 连步进星陨法阵，末发迸射四向晶刺
+function spawnSurvivalMeteorChain(phase) {
+  if (!player) return;
+  const theme = getSurvivalTrialTheme();
+  const baseDmg = Math.max(5, Math.round(getSurvivalHazardBaseDmg() * 0.92));
+  const mvLen = Math.hypot(player.vx || 0, player.vy || 0);
+  const dirA = mvLen > 24 ? Math.atan2(player.vy, player.vx) : (Math.random() * Math.PI * 2);
+  const steps = phase >= 3 ? 4 : 3;
+  const stepDist = 74;
+  for (let s = 0; s < steps; s++) {
+    const jitterA = dirA + (s - 1) * 0.16;
+    const dist = 38 + s * stepDist;
+    const mx = Math.max(95, Math.min(WORLD.w - 95, player.x + Math.cos(jitterA) * dist));
+    const my = Math.max(95, Math.min(WORLD.h - 95, player.y + Math.sin(jitterA) * dist));
+    const isLast = s === steps - 1;
+    spawnHazard(mx, my, isLast ? 74 : 64, baseDmg, 0.84 + s * 0.22, {
+      style: isLast ? 'mortar_shell' : (theme.sigilStyle || 'thunder_sigil'),
+      shrapnel: isLast ? 4 : 0,
+      color: isLast ? '#ffd166' : theme.lanceCol,
+      srcKey: 'trap_meteor'
+    });
+  }
+}
+
+// 新增陷阱种类 7：【游弋冥渊雷涡】从魂灯雾缘缓缓弧线切入照明区的巨型自转暗雷星涡球
+function spawnSurvivalAbyssVortex(phase) {
+  if (!player || eBullets.length >= 175) return;
+  const theme = getSurvivalTrialTheme();
+  const baseDmg = Math.max(4, Math.round(getSurvivalHazardBaseDmg() * 0.86));
+  const count = phase >= 3 ? 3 : 2;
+  const baseA = Math.random() * Math.PI * 2;
+  const spawnDist = 335;
+  for (let k = 0; k < count && eBullets.length < 185; k++) {
+    const ang = baseA + (k / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+    const sx = player.x + Math.cos(ang) * spawnDist;
+    const sy = player.y + Math.sin(ang) * spawnDist;
+    const inAng = Math.atan2(player.y - sy, player.x - sx) + (k % 2 === 0 ? 0.28 : -0.28);
+    const spd = phase >= 3 ? 138 : 122;
+    eBullets.push({
+      x: sx, y: sy, px: sx, py: sy,
+      vx: Math.cos(inAng) * spd, vy: Math.sin(inAng) * spd,
+      curve: (k % 2 === 0 ? -1 : 1) * 0.28,
+      life: 4.8,
+      dmg: baseDmg,
+      r: 10.6, hitR: 8.8,
+      color: k % 2 === 0 ? '#c084fc' : theme.fissureCol,
+      shape: 'orb',
+      rot: Math.random() * 6.28,
+      isCelestial: true,
+      isVortexTrap: true,
+      srcKey: 'trap_void_orb'
+    });
+  }
 }
 
 // 全异星怪物、4 大新增特异兵种、5 大场景专属怪、随机精英统领、4 大主宰 Boss 与 3 大奇遇首领生成
@@ -1569,12 +1880,14 @@ function createEnemy(x, y, type, variant = '') {
     poisonT: 0, poisonTick: 0, poisonStacks: 0, exposeT: 0, _blkTxtCd: 0, elite: false
   };
 
+  const lateCoinMul = wave >= 6 ? 0.80 : (wave === 5 ? 0.90 : 1.00);
   if (type === 'swarmer') {
     const softCap = isTouch ? 64 : 80;
     const swCnt = Math.max(1, Math.min(wave >= 6 ? 3 : 2, softCap - (enemies.length + Math.max(0, spawns.length - 1))));
     for (let k = 0; k < swCnt; k++) {
       const ox = x + (Math.random() - 0.5) * 54, oy = y + (Math.random() - 0.5) * 54;
-      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * dm)), color: '#ffbe0b', type, mat: k === 0 ? 1 : (Math.random() < 0.55 ? 1 : 0) });
+      const swMat = +((k === 0 ? 0.90 : 0.45) * lateCoinMul).toFixed(2);
+      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * dm)), color: '#ffbe0b', type, mat: swMat });
     }
     addBurst(x, y, '#ff4d6d', 5, 85);
     return;
@@ -1690,9 +2003,13 @@ function createEnemy(x, y, type, variant = '') {
     ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(3.8 * dm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
   }
 
-  // 第 3 波起按难度刷出【狂化精英词缀怪】（前 5 层降低精英刷新率与压迫，第 10 轮及以后精英刷新率与狂化血伤倍率显著提升！）
+  // 中后期普通与特异小怪晶石产出下调约 20%（配合 dropCrystals 概率单枚掉落，不再爆大号金币堆）
   const isBossLike = type === 'boss' || type === 'mini_boss' || type === 'special_boss';
-  const canElite = wave >= 3 && !isBossLike && type !== 'mini_slime' && type !== 'bomber' && (type !== 'juggernaut' || wave >= 8);
+  if (!isBossLike) {
+    ent.mat = +((ent.mat || 0) * lateCoinMul).toFixed(2);
+  }
+  // 第 3 波起按难度刷出【狂化精英词缀怪】（蚀界生存试炼期间禁用狂化精英词缀，保持纯粹走位闪避节奏）
+  const canElite = !survivalTrialWave && wave >= 3 && !isBossLike && type !== 'mini_slime' && type !== 'bomber' && (type !== 'juggernaut' || wave >= 8);
   const rawEChance = (diff.eliteRate || 0.05) + Math.min(0.12, (wave - 3) * 0.011);
   const lateEliteAdd = wave >= 10 ? (0.045 + Math.min(0.085, (wave - 10) * 0.013)) : 0;
   const baseEChance = wave === 3 ? rawEChance * 0.40 : (wave === 4 ? rawEChance * 0.55 : (wave === 5 ? rawEChance * 0.72 : (rawEChance + lateEliteAdd)));
@@ -1704,7 +2021,7 @@ function createEnemy(x, y, type, variant = '') {
     ent.maxHp = ent.hp;
     ent.spd *= (wave >= 10 ? 1.09 : 1.05);
     ent.dmg = Math.round(ent.dmg * (wave >= 10 ? 1.32 : (wave <= 5 ? 1.15 : 1.22)));
-    ent.mat = Math.max(2, Math.round(ent.mat * 2));
+    ent.mat = +((ent.mat || 0) * 1.45).toFixed(2);
   }
 
   enemies.push(ent);

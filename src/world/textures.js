@@ -28,6 +28,13 @@ function pickSceneForWave(wNum) {
 const floorCanvas = document.createElement('canvas');
 const vigNormal = document.createElement('canvas');
 const vigLowHp = document.createElement('canvas');
+const soulFogMaps = {};
+const SOUL_FOG_PALETTE = {
+  foundry: [5, 8, 15],
+  glacier: [5, 11, 20],
+  wasteland: [8, 6, 14],
+  desert: [7, 5, 12]
+};
 
 function buildVignettes() {
   [ [vigNormal, 'rgba(6, 9, 16, 0.46)'], [vigLowHp, 'rgba(159, 18, 57, 0.44)'] ].forEach(([c, edge]) => {
@@ -38,6 +45,45 @@ function buildVignettes() {
     gr.addColorStop(1, edge);
     vg.fillStyle = gr;
     vg.fillRect(0, 0, 256, 256);
+  });
+
+  // 预烘焙【蚀界生存试炼 · 沉浸浓雾提灯遮罩】（离屏一次性生成，战斗帧 0 createRadialGradient / 0 shadowBlur，外圈 100% 纯黑不透怪）
+  Object.keys(SOUL_FOG_PALETTE).forEach(scId => {
+    const [mr, mg, mb] = SOUL_FOG_PALETTE[scId];
+    const fc = document.createElement('canvas');
+    fc.width = 512; fc.height = 512;
+    const fg = fc.getContext('2d');
+    if (fg) {
+      fg.fillStyle = `rgb(${mr}, ${mg}, ${mb})`;
+      fg.fillRect(0, 0, 512, 512);
+      fg.globalCompositeOperation = 'destination-out';
+      const cut = fg.createRadialGradient(256, 256, 138, 256, 256, 212);
+      cut.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      cut.addColorStop(0.24, 'rgba(0, 0, 0, 0.82)');
+      cut.addColorStop(0.52, 'rgba(0, 0, 0, 0.42)');
+      cut.addColorStop(0.78, 'rgba(0, 0, 0, 0.10)');
+      cut.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      fg.fillStyle = cut;
+      fg.fillRect(0, 0, 512, 512);
+      fg.globalCompositeOperation = 'source-over';
+      // 边缘叠烘焙一层团簇暗雾肌理，与实时流雾气旋融为一体
+      for (let i = 0; i < 20; i++) {
+        const ang = (i / 20) * Math.PI * 2 + (i % 3) * 0.19;
+        const dist = 176 + (i % 4) * 8;
+        const px = 256 + Math.cos(ang) * dist;
+        const py = 256 + Math.sin(ang) * dist;
+        const pr = 30 + (i % 3) * 9;
+        const pGr = fg.createRadialGradient(px, py, 2, px, py, pr);
+        pGr.addColorStop(0, `rgba(${mr}, ${mg}, ${mb}, 0.36)`);
+        pGr.addColorStop(0.65, `rgba(${mr}, ${mg}, ${mb}, 0.16)`);
+        pGr.addColorStop(1, `rgba(${mr}, ${mg}, ${mb}, 0)`);
+        fg.fillStyle = pGr;
+        fg.beginPath();
+        fg.arc(px, py, pr, 0, Math.PI * 2);
+        fg.fill();
+      }
+    }
+    soulFogMaps[scId] = fc;
   });
 }
 buildVignettes();

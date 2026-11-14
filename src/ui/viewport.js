@@ -1,15 +1,22 @@
 // 独立判定手机竖屏 / 手机横屏 / 电脑网页端 UI 模式 + Retina 高帧率填充率调优
 let uiMode = 'desktop', mobDrawerOpen = false, uiPref = 'auto';
 try {
-  const savedPref = typeof localStorage !== 'undefined' ? localStorage.getItem('brotato_mini_ui_pref') : null;
+  const savedPref = typeof localStorage !== 'undefined' ? localStorage.getItem('brotato_mini_ui_pref_v2') : null;
   if (savedPref === 'auto' || savedPref === 'mobile' || savedPref === 'desktop') uiPref = savedPref;
 } catch (_) {}
 
-function isMobileEnv() {
-  if (isTouch) return true;
+function isTrueMobileDevice() {
   if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
   const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
   return /Android|iPhone|iPad|iPod|Mobile|HarmonyOS|MicroMessenger/i.test(ua);
+}
+
+function isMobileEnv() {
+  if (isTrueMobileDevice()) return true;
+  // 触控笔记本 / 含手写笔驱动的 Windows 桌面端（maxTouchPoints > 0 但主指针为鼠标且非移动 UA）：
+  // 仅当视口本身缩小至手机级别尺寸时才切入触控布局，杜绝 1080p + 125%/150% 缩放误触发手机横屏导致 UI 错乱偏置！
+  if (isTouch && (Math.min(viewW, viewH) <= 540 || viewW <= 680)) return true;
+  return false;
 }
 
 function detectUIMode() {
@@ -73,7 +80,7 @@ function setUIPref(pref) {
   if (pref !== 'auto' && pref !== 'mobile' && pref !== 'desktop') return;
   uiPref = pref;
   try {
-    if (typeof localStorage !== 'undefined') localStorage.setItem('brotato_mini_ui_pref', pref);
+    if (typeof localStorage !== 'undefined') localStorage.setItem('brotato_mini_ui_pref_v2', pref);
   } catch (_) {}
   userZoomed = false;
   if (typeof bootReady !== 'undefined' && bootReady) {
@@ -107,8 +114,8 @@ function syncArenaAndZoom(forceBake = false) {
   syncUIMode();
   const portraitPhone = uiMode === 'mobile-portrait';
   const landscapePhone = uiMode === 'mobile-landscape';
-  let targetW = portraitPhone ? 1180 : (landscapePhone ? 1920 : 2200);
-  let targetH = portraitPhone ? 1960 : (landscapePhone ? 1220 : 1500);
+  let targetW = portraitPhone ? 1416 : (landscapePhone ? 2304 : 2640);
+  let targetH = portraitPhone ? 2352 : (landscapePhone ? 1464 : 1800);
   // Rotation changes the camera, not an active level's collision geometry.
   // Rescaling only some entities leaves bullets, portals and dash endpoints
   // in their old positions. A new player/run can choose a fresh arena size.
@@ -151,11 +158,11 @@ function syncArenaAndZoom(forceBake = false) {
 
   if (!userZoomed) {
     if (portraitPhone) {
-      camZoom = Math.max(0.50, Math.min(0.64, viewW / 700));
+      camZoom = Math.max(0.60, Math.min(0.76, viewW / 590));
     } else if (landscapePhone) {
-      camZoom = Math.max(0.48, Math.min(0.62, viewH / 700));
+      camZoom = Math.max(0.58, Math.min(0.74, viewH / 590));
     } else {
-      camZoom = Math.min(viewW, viewH) < 820 ? 0.96 : 1.06;
+      camZoom = Math.min(viewW, viewH) < 820 ? 1.14 : 1.24;
     }
   }
 }
@@ -254,6 +261,6 @@ window.addEventListener('wheel', e => {
   if (e.target !== cv || state !== 'wave' || !player || bossCutscene ||
       (typeof SpireDirector !== 'undefined' && SpireDirector.isBlockingGameplay())) return;
   userZoomed = true;
-  camZoom = Math.max(0.38, Math.min(1.75, camZoom - e.deltaY * 0.0005));
+  camZoom = Math.max(0.38, Math.min(1.95, camZoom - e.deltaY * 0.0005));
   if (bootReady) clampCam();
 }, { passive: true });

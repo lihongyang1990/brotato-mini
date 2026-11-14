@@ -80,7 +80,7 @@ const SET_DEFS = {
   primitive: { label: '🌿古誓', steps: [2, 4, 6], desc: '2/4/6把: 最大生命 +8/+18/+30' },
   precise:   { label: '🎯星芒', steps: [2, 3, 5], desc: '2/3/5把: 暴击率 +6%/+12%/+20%' },
   gun:       { label: '🔫封魂铳', steps: [2, 4, 6], desc: '2/4/6把: 攻击范围 +45/+95/+155 · 攻速 +8%/+16%/+25%' },
-  heavy:     { label: '🛡️黑曜重装', steps: [2, 3, 5], desc: '2/3/5把: 护甲 +3/+6/+10 · 爆破范围 +20%' },
+  heavy:     { label: '🛡️黑曜重装', steps: [2, 3, 5], desc: '2/3/5把: 护甲 +2/+5/+8 · 爆破范围 +20%' },
   elemental: { label: '🔥四象元素', steps: [2, 3, 5], desc: '2/3/5把: 元素与反应伤害 +18%/+38%/+62%' },
   tech:      { label: '⚙️发条机巧', steps: [2, 3, 5], desc: '2/3/5把: 发条机关攻速与伤害 +25%/+52%/+85%' }
 };
@@ -93,6 +93,32 @@ const MONSTER_HP_LINEAR_SLOPE = 0.72;
 const MONSTER_DMG_MUL = 1.20;
 const MONSTER_SPD_MUL = 0.80;
 const RANGED_ENEMY_COUNT_MUL = 0.80;
+const ENEMY_BULLET_SIZE_MUL = 1.20;
+
+function ensureEnemyBulletScale(b) {
+  if (!b || b._ebScaled) return b;
+  b._ebScaled = true;
+  const baseR = b.r || 5.8;
+  const baseHitR = b.hitR || baseR;
+  b.r = +(baseR * ENEMY_BULLET_SIZE_MUL).toFixed(2);
+  b.hitR = +(baseHitR * ENEMY_BULLET_SIZE_MUL).toFixed(2);
+  return b;
+}
+
+function calcWeaponEffectiveRange(tpl, tier, evo, totalRange) {
+  if (!tpl) return 90;
+  const t = Math.max(1, tier || 1);
+  const evoAdd = evo ? (evo.rangeAdd || 0) : 0;
+  if (!tpl.melee) {
+    const staffRng = (tpl.isStaff && typeof player !== 'undefined' && player) ? (player.staffRange || 0) : 0;
+    return Math.max(54, tpl.range + (totalRange || 0) + staffRng + evoAdd + (t - 1) * 13);
+  }
+  const highTierFactor = t >= 3 ? 0.92 : (t === 2 ? 0.96 : 1.0);
+  const scaledBase = Math.round((tpl.range + (t - 1) * 8) * highTierFactor);
+  const sweepAdd = (typeof player !== 'undefined' && player && player.meleeSweepBonus) ? player.meleeSweepBonus * 16 : 0;
+  const rangeAdd = Math.round((totalRange || 0) * 0.56 + sweepAdd);
+  return Math.max(74, scaledBase + rangeAdd + evoAdd);
+}
 const CRYSTAL_YIELD_MUL = 0.70;
 const BOSS_HP_MUL = 4.80;
 const LATE_BOSS_HP_MUL = 9.60;
@@ -152,24 +178,24 @@ const WEAPONS = {
     name: '守誓残杖', icon: '🪵', set: 'primitive', melee: true, dmg: 18.0, cd: 0.67, range: 132, cost: 12, mode: 'blunt', arcColor: '#72efdd',
     desc: '刻有旧王城铭文的修长古木残杖，大范围横扫，每多持一把基础伤害 +4.8（晋升 5 阶神话可觉醒 20% 概率斩弹）',
     evos: [
-      { id: 'stick_worldtree', name: '世界树镇魂神木', tag: '巨木震地 · 刚猛群伤', color: '#4ade80', dmgMul: 1.42, rangeAdd: 38, slam: true, slamScale: 1.25, desc: '伤害 +42%、挥击范围 +38，每次挥杖额外引发大范围【世界树震地波】！' },
-      { id: 'stick_banner',    name: '百誓共鸣灵幡',   tag: '疾速连舞 · 苍岚剑波', color: '#72efdd', dmgMul: 1.20, cdMul: 0.72, rangeAdd: 22, waveCount: 2, desc: '间隔 -28%、挥击范围 +22、伤害 +20%，每次挥击向前斩出 2 道穿透苍岚灵波！' }
+      { id: 'stick_worldtree', name: '世界树镇魂神木', tag: '巨木震地 · 刚猛群伤', color: '#4ade80', dmgMul: 1.42, rangeAdd: 30, slam: true, slamScale: 1.25, desc: '伤害 +42%、挥击范围 +30，每次挥杖额外引发大范围【世界树震地波】！' },
+      { id: 'stick_banner',    name: '百誓共鸣灵幡',   tag: '疾速连舞 · 苍岚剑波', color: '#72efdd', dmgMul: 1.20, cdMul: 0.72, rangeAdd: 18, waveCount: 2, desc: '间隔 -28%、挥击范围 +18、伤害 +20%，每次挥击向前斩出 2 道穿透苍岚灵波！' }
     ]
   },
   rock: {
-    name: '镇塔碑石', icon: '🪨', set: 'primitive', melee: true, dmg: 28.5, cd: 0.94, range: 102, cost: 14, knockMult: 2.2, armorScale: 1.8, mode: 'blunt', arcColor: '#cbd5e1',
+    name: '镇塔碑石', icon: '🪨', set: 'primitive', melee: true, dmg: 28.5, cd: 0.94, range: 92, cost: 14, knockMult: 2.2, armorScale: 1.8, mode: 'blunt', arcColor: '#cbd5e1',
     desc: '崩落的封印碑石重击，受护甲额外增伤，且每装备 1 块被动提供 +1护甲 与 +3生命',
     evos: [
-      { id: 'rock_monolith', name: '不朽黑曜镇界碑', tag: '山崩裂地 · 护甲倍增', color: '#fbbf24', dmgMul: 1.50, rangeAdd: 24, slam: true, slamScale: 1.40, desc: '伤害 +50%、范围 +24，重砸地面引发超大范围【镇界崩岩震波】并强力击退！' },
+      { id: 'rock_monolith', name: '不朽黑曜镇界碑', tag: '山崩裂地 · 护甲倍增', color: '#fbbf24', dmgMul: 1.50, rangeAdd: 18, slam: true, slamScale: 1.40, desc: '伤害 +50%、范围 +18，重砸地面引发超大范围【镇界崩岩震波】并强力击退！' },
       { id: 'rock_meteor',   name: '星陨碎空魔岩',   tag: '炽火崩裂 · 陨星飞石', color: '#fb7185', dmgMul: 1.28, cdMul: 0.76, forceBurn: true, waveCount: 3, desc: '间隔 -24%、伤害 +28%，挥砸必挂炽火并向扇形迸射 3 枚穿透星陨飞石！' }
     ]
   },
   spear: {
-    name: '银月长枪', icon: '🔱', set: 'primitive', melee: true, dmg: 25.0, cd: 0.79, range: 168, cost: 16, mode: 'spear', arcColor: '#f6d379',
-    desc: '王城守桥骑士长枪，超长直线突刺贯穿路径上所有目标（晋升 5 阶神话觉醒 20% 概率刺碎敌弹）',
+    name: '银月长枪', icon: '🔱', set: 'primitive', melee: true, dmg: 25.0, cd: 0.79, range: 144, cost: 16, mode: 'spear', arcColor: '#f6d379',
+    desc: '王城守桥骑士长枪，修长直线突刺贯穿路径上所有目标（晋升 5 阶神话觉醒 20% 概率刺碎敌弹）',
     evos: [
-      { id: 'spear_trident',  name: '沧溟破浪三叉戟', tag: '三戟齐刺 · 扇面清潮', color: '#38bdf8', dmgMul: 1.28, rangeAdd: 26, tridentThrust: true, forceFreeze: 0.35, desc: '化为寒渊三叉圣戟：每次突刺同时刺出【左中右三道超长枪芒】，35% 概率冰封目标！' },
-      { id: 'spear_gungnir',  name: '贯日神枪·冈格尼尔', tag: '超距雷霆 · 必暴神罚', color: '#fde047', dmgMul: 1.52, rangeAdd: 68, critAdd: 0.20, chainOnHit: 4, desc: '突刺射程暴增 +68、伤害 +52%、暴击率 +20%，枪尖贯穿触发 4 跳黄金雷霆！' }
+      { id: 'spear_trident',  name: '沧溟破浪三叉戟', tag: '三戟齐刺 · 扇面清潮', color: '#38bdf8', dmgMul: 1.28, rangeAdd: 20, tridentThrust: true, forceFreeze: 0.35, desc: '化为寒渊三叉圣戟：每次突刺同时刺出【左中右三道超长枪芒】，35% 概率冰封目标！' },
+      { id: 'spear_gungnir',  name: '贯日神枪·冈格尼尔', tag: '超距雷霆 · 必暴神罚', color: '#fde047', dmgMul: 1.52, rangeAdd: 48, critAdd: 0.20, chainOnHit: 4, desc: '突刺射程扩张 +48、伤害 +52%、暴击率 +20%，枪尖贯穿触发 4 跳黄金雷霆！' }
     ]
   },
   slingshot: {
@@ -191,7 +217,7 @@ const WEAPONS = {
 
   // --- 🎯 星芒套装 (6 把) ---
   knife: {
-    name: '泣血短刃', icon: '🗡️', set: 'precise', melee: true, dmg: 14.2, cd: 0.45, range: 100, cost: 14, critBonus: 0.14, critMult: 2.20, mode: 'stab', arcColor: '#72efdd',
+    name: '泣血短刃', icon: '🗡️', set: 'precise', melee: true, dmg: 14.2, cd: 0.45, range: 90, cost: 14, critBonus: 0.14, critMult: 2.20, mode: 'stab', arcColor: '#72efdd',
     desc: '极速寒芒突刺，自带 +14% 暴击率与 220% 暴击伤害',
     evos: [
       { id: 'knife_phantom', name: '千影幻杀双短刃', tag: '超速乱舞 · 残影飞刀', color: '#67e8f9', dmgMul: 1.24, cdMul: 0.64, waveCount: 2, desc: '攻击间隔锐减 -36%、伤害 +24%，每次突刺同步射出 2 枚穿透幻影飞刀！' },
@@ -199,19 +225,19 @@ const WEAPONS = {
     ]
   },
   claws: {
-    name: '白狐裂影爪', icon: '🐾', set: 'precise', melee: true, dmg: 14.2, cd: 0.36, range: 104, cost: 18, critBonus: 0.14, critMult: 2.12, aspdScale: true, mode: 'claw', arcColor: '#fb7185',
+    name: '白狐裂影爪', icon: '🐾', set: 'precise', melee: true, dmg: 14.2, cd: 0.36, range: 92, cost: 18, critBonus: 0.14, critMult: 2.12, aspdScale: true, mode: 'claw', arcColor: '#fb7185',
     desc: '三道绯红撕裂爪痕，额外受攻击速度加成基础伤害',
     evos: [
       { id: 'claws_ninetail', name: '九尾天狐绯炎爪', tag: '三道狐火 · 炽焰撕裂', color: '#fb7185', dmgMul: 1.30, cdMul: 0.78, forceBurn: true, waveCount: 3, desc: '间隔 -22%、伤害 +30%，挥爪必燃绯红狐火并向前扇形斩出 3 道穿透爪芒！' },
-      { id: 'claws_fenrir',   name: '霜狼王裂空凶爪', tag: '极寒扩域 · 碎冰暴杀', color: '#38bdf8', dmgMul: 1.48, rangeAdd: 36, critMultAdd: 0.50, forceFreeze: 0.38, desc: '撕裂范围 +36、伤害 +48%、暴伤 +50%，38% 概率直接冰封猎物触发碎冰暴杀！' }
+      { id: 'claws_fenrir',   name: '霜狼王裂空凶爪', tag: '极寒扩域 · 碎冰暴杀', color: '#38bdf8', dmgMul: 1.48, rangeAdd: 28, critMultAdd: 0.50, forceFreeze: 0.38, desc: '撕裂范围 +28、伤害 +48%、暴伤 +50%，38% 概率直接冰封猎物触发碎冰暴杀！' }
     ]
   },
   katana: {
-    name: '绯红断刃太刀', icon: '⚔️', set: 'precise', melee: true, dmg: 30.0, cd: 0.72, range: 134, cost: 20, critBonus: 0.12, critMult: 2.22, mode: 'crescent', arcColor: '#fda4af',
+    name: '绯红断刃太刀', icon: '⚔️', set: 'precise', melee: true, dmg: 30.0, cd: 0.72, range: 116, cost: 20, critBonus: 0.12, critMult: 2.22, mode: 'crescent', arcColor: '#fda4af',
     desc: '烬羽同款居合残刃，暴击伤害高达 222%（晋升 5 阶神话或佩戴【断刃狐月鞘】可概率斩碎敌弹）',
     evos: [
       { id: 'katana_sakura',    name: '千本绯樱·妖刀村正', tag: '三连月轮 · 居合剑岚', color: '#ff4d6d', dmgMul: 1.28, cdMul: 0.78, waveCount: 3, desc: '间隔 -22%、伤害 +28%，每次拔刀向前扇形斩出【3 道绯樱穿透月轮剑气】！' },
-      { id: 'katana_dimension', name: '断空次元·阎魔真打', tag: '次元大斩 · 紫电崩界', color: '#c084fc', dmgMul: 1.58, rangeAdd: 48, critAdd: 0.18, slam: true, chainOnHit: 4, desc: '刀域扩大 +48、伤害 +58%、暴击 +18%，挥刀引发次元震爆并迸发 4 跳紫电斩！' }
+      { id: 'katana_dimension', name: '断空次元·阎魔真打', tag: '次元大斩 · 紫电崩界', color: '#c084fc', dmgMul: 1.58, rangeAdd: 36, critAdd: 0.18, slam: true, chainOnHit: 4, desc: '刀域扩大 +36、伤害 +58%、暴击 +18%，挥刀引发次元震爆并迸发 4 跳紫电斩！' }
     ]
   },
   crossbow: {
@@ -283,18 +309,18 @@ const WEAPONS = {
 
   // --- 🛡️ 黑曜重装套装 (5 把) ---
   hammer: {
-    name: '碎星重锤', icon: '🔨', set: 'heavy', melee: true, dmg: 46, cd: 1.04, range: 124, cost: 19, knockMult: 2.5, hpScale: 0.08, slam: true, mode: 'blunt', arcColor: '#f6d379',
+    name: '碎星重锤', icon: '🔨', set: 'heavy', melee: true, dmg: 46, cd: 1.04, range: 108, cost: 19, knockMult: 2.5, hpScale: 0.08, slam: true, mode: 'blunt', arcColor: '#f6d379',
     desc: '重击震出暗金裂地冲击圈，受最大生命加成伤害并震伤成片敌人',
     evos: [
-      { id: 'hammer_titan',   name: '诸神黄昏·陨星巨神锤', tag: '超大震波 · 毁天灭地', color: '#fbbf24', dmgMul: 1.56, rangeAdd: 34, slam: true, slamScale: 1.55, forceBurn: true, desc: '伤害 +56%、锤域 +34，重锤砸落掀起 155% 巨型熔金裂地波并引燃全场！' },
+      { id: 'hammer_titan',   name: '诸神黄昏·陨星巨神锤', tag: '超大震波 · 毁天灭地', color: '#fbbf24', dmgMul: 1.56, rangeAdd: 26, slam: true, slamScale: 1.55, forceBurn: true, desc: '伤害 +56%、锤域 +26，重锤砸落掀起 155% 巨型熔金裂地波并引燃全场！' },
       { id: 'hammer_mjolnir', name: '苍雷神锤·妙尔尼尔',   tag: '雷霆风暴 · 剑波迸射', color: '#60a5fa', dmgMul: 1.32, cdMul: 0.74, chainOnHit: 5, waveCount: 3, desc: '攻速提升（间隔 -26%），重击释放 5 跳苍雷闪电并震出 3 道雷霆冲击波！' }
     ]
   },
   spiked_shield: {
-    name: '黑曜棱刺盾', icon: '🛡️', set: 'heavy', melee: true, dmg: 27.5, cd: 0.80, range: 112, cost: 17, knockMult: 2.5, armorScale: 3.5, slam: true, mode: 'blunt', arcColor: '#94a3b8',
+    name: '黑曜棱刺盾', icon: '🛡️', set: 'heavy', melee: true, dmg: 27.5, cd: 0.80, range: 98, cost: 17, knockMult: 2.5, armorScale: 3.5, slam: true, mode: 'blunt', arcColor: '#94a3b8',
     desc: '攻防一体盾击震波！每拥有 1 点【护甲】直接额外提升 +3.5 基础伤害',
     evos: [
-      { id: 'shield_bastion', name: '不动明王·黑曜神盾壁', tag: '巨型盾震 · 极寒壁垒', color: '#38bdf8', dmgMul: 1.48, rangeAdd: 30, slam: true, slamScale: 1.50, forceFreeze: 0.42, desc: '伤害 +48%、盾域 +30，盾击震波扩大 50% 且 42% 概率直接冰封周围怪物！' },
+      { id: 'shield_bastion', name: '不动明王·黑曜神盾壁', tag: '巨型盾震 · 极寒壁垒', color: '#38bdf8', dmgMul: 1.48, rangeAdd: 24, slam: true, slamScale: 1.50, forceFreeze: 0.42, desc: '伤害 +48%、盾域 +24，盾击震波扩大 50% 且 42% 概率直接冰封周围怪物！' },
       { id: 'shield_saw',     name: '断罪齿轮·旋刃重装盾', tag: '高速盾击 · 飞刃迸射', color: '#f59e0b', dmgMul: 1.28, cdMul: 0.72, waveCount: 3, desc: '间隔 -28%、伤害 +28%，每次猛击向前方扇面飞射 3 枚穿透黑曜旋刃！' }
     ]
   },
@@ -325,10 +351,10 @@ const WEAPONS = {
 
   // --- 🔥 四象元素套装 (6 把) ---
   magma_blade: {
-    name: '劫火紫电刃', icon: '🌋', set: 'elemental', melee: true, dmg: 33.0, cd: 0.66, range: 130, cost: 19, burnSlash: true, slam: true, mode: 'crescent', arcColor: '#fb923c',
+    name: '劫火紫电刃', icon: '🌋', set: 'elemental', melee: true, dmg: 33.0, cd: 0.66, range: 114, cost: 19, burnSlash: true, slam: true, mode: 'crescent', arcColor: '#fb923c',
     desc: '火雷双象魔刃！享【近战+元素】双增伤，挥砍必挂炽火并震出熔火冲击圈',
     evos: [
-      { id: 'magma_surtr',   name: '焚世炎魔剑·苏尔特尔', tag: '三道炎浪 · 熔岩崩界', color: '#ff6b35', dmgMul: 1.38, rangeAdd: 30, slam: true, slamScale: 1.35, waveCount: 3, forceBurn: true, desc: '挥砍震出超大熔火圈，并向前扇形斩出 3 道高伤穿透红莲炎浪！' },
+      { id: 'magma_surtr',   name: '焚世炎魔剑·苏尔特尔', tag: '三道炎浪 · 熔岩崩界', color: '#ff6b35', dmgMul: 1.38, rangeAdd: 24, slam: true, slamScale: 1.35, waveCount: 3, forceBurn: true, desc: '挥砍震出超大熔火圈，并向前扇形斩出 3 道高伤穿透红莲炎浪！' },
       { id: 'magma_indra',   name: '雷火神裁·帝释天魔刃', tag: '极速雷火 · 七重紫电', color: '#c084fc', dmgMul: 1.36, cdMul: 0.72, chainOnHit: 6, forceBurn: true, desc: '间隔 -28%、伤害 +36%，每刀必迸发 6 跳超导紫电链引爆雷火融毁！' }
     ]
   },
@@ -375,7 +401,7 @@ const WEAPONS = {
 
   // --- ⚙️ 发条机巧套装 (5 把) ---
   wrench: {
-    name: '黄金发条扳手', icon: '🔧', set: 'tech', melee: true, dmg: 24.0, cd: 0.76, range: 106, cost: 16, techScale: 0.45, mode: 'blunt', arcColor: '#f6d379',
+    name: '黄金发条扳手', icon: '🔧', set: 'tech', melee: true, dmg: 24.0, cd: 0.76, range: 94, cost: 16, techScale: 0.45, mode: 'blunt', arcColor: '#f6d379',
     desc: '享受工程增伤重击，每持一把在战场上额外部署 1 座自动发条机炮塔',
     evos: [
       { id: 'wrench_fortress', name: '钟楼巨匠·双联机炮神扳', tag: '双座重炮塔 · 裂地重击', color: '#fbbf24', dmgMul: 1.40, slam: true, extraTurret: 1, desc: '重击附带齿轮震地波，且该武器部署的【自律发条机炮塔数量翻倍（+1座高阶塔）】！' },
@@ -383,11 +409,11 @@ const WEAPONS = {
     ]
   },
   screwdriver: {
-    name: '星晷磁暴针', icon: '🪛', set: 'tech', melee: true, dmg: 22.0, cd: 0.48, range: 103, cost: 15, techScale: 0.45, spawnsMine: true, mode: 'stab', arcColor: '#56cfe1',
+    name: '星晷磁暴针', icon: '🪛', set: 'tech', melee: true, dmg: 22.0, cd: 0.48, range: 92, cost: 15, techScale: 0.45, spawnsMine: true, mode: 'stab', arcColor: '#56cfe1',
     desc: '极速星晷突刺（享工程增伤），每把周期在战场自动布设高爆【发条感应地雷】！',
     evos: [
       { id: 'screw_minefield', name: '万象星盘·子母星雷针', tag: '双倍布雷 · 极速磁刺', color: '#4cc9f0', dmgMul: 1.34, cdMul: 0.72, doubleMine: true, desc: '突刺间隔 -28%，且布雷时一次性投下【双生高爆星雷】迅速铺满雷区！' },
-      { id: 'screw_lance',     name: '次元探针·超导雷霆刺', tag: '超距雷刺 · 剑波连射', color: '#a855f7', dmgMul: 1.45, rangeAdd: 36, chainOnHit: 4, waveCount: 2, desc: '突刺距离 +36、伤害 +45%，每次出针射出 2 道磁暴刃波并释放 4 跳闪电！' }
+      { id: 'screw_lance',     name: '次元探针·超导雷霆刺', tag: '超距雷刺 · 剑波连射', color: '#a855f7', dmgMul: 1.45, rangeAdd: 28, chainOnHit: 4, waveCount: 2, desc: '突刺距离 +28、伤害 +45%，每次出针射出 2 道磁暴刃波并释放 4 跳闪电！' }
     ]
   },
   nailgun: {
@@ -413,10 +439,44 @@ const WEAPONS = {
       { id: 'emp_chrono',   name: '时停星晷·三轨磁暴主炮', tag: '三束磁轨 · 全场冰封', color: '#38bdf8', dmgMul: 1.30, cdMul: 0.82, pelletsAdd: 2, forceFreeze: 0.65, desc: '同时轰出 3 道磁轨贯穿光束，时滞脉冲升级为 65% 概率【绝对时停冰封】！' },
       { id: 'emp_omega',    name: '欧米茄·终焉歼星轨道炮', tag: '巨型电磁爆 · 万钧雷霆', color: '#f472b6', dmgMul: 1.70, rangeAdd: 110, pierceAdd: 5, blastAdd: 96, chainOnHit: 6, desc: '伤害 +70%、射程 +110、穿透 +5，引爆超大歼星电磁震波并劈出 6 跳紫电！' }
     ]
+  },
+
+  // --- 🪄 秘术法杖谱系 (4 把 · 独立纯粹元素/构筑吟唱体系，不依赖远程枪械加成) ---
+  ember_staff: {
+    name: '赤烬魂灯杖', icon: '🪄', set: 'elemental', melee: false, isStaff: true, isEmberStaff: true, dmg: 23.0, cd: 0.68, range: 335, spd: 560, pierce: 1, blastR: 58, elemScale: 1.30, cost: 19,
+    desc: '【秘术法杖】纯享 130% 元素增幅（不吃枪械加成），吟唱赤烬火球命中必挂灼烧并绽放余烬炎阵！',
+    evos: [
+      { id: 'staff_solar',     name: '日冕焚世圣杖·赫利俄斯', tag: '双阳齐吟 · 巨型熔阵', color: '#ff6b35', dmgMul: 1.36, pelletsAdd: 1, blastAdd: 36, forceBurn: true, desc: '每次同时吟唱 2 颗日冕炎阳，落点熔火法阵扩大 +36 并持续灼烧全场！' },
+      { id: 'staff_purgatory', name: '九幽冥灯魔杖·青焰引渡', tag: '极速贯穿 · 连环魂爆', color: '#72efdd', dmgMul: 1.34, cdMul: 0.72, pierceAdd: 2, forcePoison: true, forceBurn: true, desc: '吟唱冷却 -28%、穿透 +2，贯穿敌群同时引爆青焰毒火双相反应！' }
+    ]
+  },
+  frost_scepter: {
+    name: '永冻星辉杖', icon: '❄️', set: 'elemental', melee: false, isStaff: true, isFrostStaff: true, dmg: 21.0, cd: 0.72, range: 365, spd: 630, pierce: 1, frostShards: 3, elemScale: 1.30, cost: 20,
+    desc: '【秘术法杖】纯享 130% 元素增幅，发射寒星秘弹必附冰缓，命中首目标向扇形迸裂 3 枚碎冰星屑！',
+    evos: [
+      { id: 'staff_glacier',   name: '碎冕极光帝杖·凛冬神座', tag: '五棱迸裂 · 极寒冰封', color: '#38bdf8', dmgMul: 1.38, frostShardsAdd: 2, forceFreeze: 0.38, blastAdd: 54, desc: '碎冰星屑增至 5 枚，命中高达 38% 概率冻结敌群并引爆极光霜环！' },
+      { id: 'staff_comet',     name: '白夜彗星秘杖·星轨贯穿', tag: '双星连珠 · 万里冰河', color: '#a5f3fc', dmgMul: 1.30, cdMul: 0.78, pelletsAdd: 1, pierceAdd: 2, desc: '冷却 -22%，每次齐射 2 枚贯穿寒星秘弹，铺开扇形碎冰弹幕！' }
+    ]
+  },
+  storm_rod: {
+    name: '紫电星轨杖', icon: '⚡', set: 'elemental', melee: false, isStaff: true, isStormStaff: true, dmg: 18.5, cd: 0.56, range: 345, spd: 710, pierce: 0, chainOnHit: 3, elemScale: 1.25, minTier: 2, cost: 22,
+    desc: '【秘术法杖】高频吟唱紫电秘球（享 125% 元素增幅），命中敌躯瞬发 3 跳超导奥术连锁雷弧！',
+    evos: [
+      { id: 'staff_thunder',   name: '万雷天引神杖·建御雷',   tag: '七重雷链 · 天罚麻痹', color: '#c084fc', dmgMul: 1.40, cdMul: 0.78, chainsAdd: 4, forceFreeze: 0.24, desc: '吟唱加速 -22%、伤害 +40%，奥术雷链跃迁增至 7 跳并 24% 概率麻痹定身！' },
+      { id: 'staff_void',      name: '虚空磁暴星杖·次元坍缩', tag: '双球磁暴 · 雷火聚变', color: '#f472b6', dmgMul: 1.32, pelletsAdd: 1, blastAdd: 62, forceBurn: true, desc: '双球齐发并在命中点引爆虚空雷火磁场，同时触发超导与融毁！' }
+    ]
+  },
+  chrono_staff: {
+    name: '发条共鸣法杖', icon: '🔮', set: 'tech', melee: false, isStaff: true, isChronoStaff: true, deploysTotem: true, dmg: 20.5, cd: 0.68, range: 340, spd: 620, pierce: 1, techScale: 0.90, elemScale: 0.90, minTier: 2, cost: 23,
+    desc: '【建筑×秘术法杖】同时享 90% 工程与 90% 元素增幅！额外部署 1 座【秘法共鸣图腾塔】增幅周围机关攻速！',
+    evos: [
+      { id: 'staff_orrery',    name: '浑天星晷圣杖·万塔齐鸣', tag: '双座图腾 · 协同飞弹', color: '#fbbf24', dmgMul: 1.36, cdMul: 0.80, extraTotem: 1, commandSalvo: true, desc: '额外部署 +1 座星晷图腾塔（共 2 座），法杖每第 2 次吟唱号令全场建筑齐射星导飞弹！' },
+      { id: 'staff_obelisk',   name: '以太方尖碑主杖·神匠核', tag: '超距雷柱 · 双修极境', color: '#38bdf8', dmgMul: 1.52, pierceAdd: 2, blastAdd: 68, chainOnHit: 4, desc: '伤害 +52%、穿透 +2，秘弹命中劈落 4 跳以太雷柱并引发大范围奥术震波！' }
+    ]
   }
 };
 
-// 74 件守誓圣遗物与被动装备（大幅压降暴击率词条泛滥，重做无敌帧遗物并新增远程弹射/护盾脉冲/瞬步残影/机关齐射/元素聚变/重装裂地六大流派核心遗物）
+// 92 件守誓圣遗物与被动装备（重点扩充【建筑机巧流】与【法杖/元素秘术流】，并参照《土豆兄弟》调优护甲递减与吸血内置冷却平衡）
 const ITEMS = [
   // --- T1 普通遗物 ---
   { id: 'worm',       name: '微光萤火蛹',   icon: '🪱', cost: 14, tier: 1, tags: ['tank'], desc: '最大生命 +6，生命再生 +1.2/秒',                  apply: p => { p.maxHp += 6; p.hp += 6; if (!p.noRegen) p.regen += 1.2; } },
@@ -427,14 +487,18 @@ const ITEMS = [
   { id: 'hedgehog',   name: '白骨棘刺护腕', icon: '🦔', cost: 15, tier: 1, tags: ['melee', 'tank'], desc: '近战加成 +15%，全体伤害 +6%，护甲 +1，闪避 -4%', apply: p => { p.meleeBonus += 0.15; p.dmgMul += 0.06; p.armor += 1; p.dodge = Math.max(0, p.dodge - 0.04); } },
   { id: 'whetstone',  name: '守桥砺剑石',   icon: '🪓', cost: 15, tier: 1, maxCount: 4, tags: ['melee'], desc: '近战伤害 +18%；近战命中撕裂护甲使目标易伤 +12%（持续3.2s）', apply: p => { p.meleeBonus += 0.18; p.meleeSunder = true; } },
   { id: 'toolbox',    name: '伽蓝发条匣',   icon: '🧰', cost: 15, tier: 1, maxCount: 4, tags: ['tech'], desc: '发条机巧（炮台与地雷）伤害 +18%，再生 +0.8/秒', apply: p => { p.techBonus = (p.techBonus || 0) + 0.18; if (!p.noRegen) p.regen += 0.8; } },
+  { id: 'gear_oil',   name: '钟楼高纯润滑脂', icon: '🛢️', cost: 15, tier: 1, maxCount: 4, tags: ['tech'], desc: '所有友方炮台与图腾攻速 +16%，工程伤害 +10%', apply: p => { p.turretAspdBonus = (p.turretAspdBonus || 0) + 0.16; p.techBonus = (p.techBonus || 0) + 0.10; } },
+  { id: 'blueprint_scroll', name: '筑城机关草图', icon: '📜', cost: 16, tier: 1, maxCount: 3, tags: ['tech', 'tank'], desc: '战场上每存在 1 座友方建筑，提供 +0.8/秒 生命再生与 +6% 工程增幅（最多计 5 座）', apply: p => { p.turretBastion = (p.turretBastion || 0) + 1; } },
+  { id: 'mana_wick',  name: '青焰秘杖灯芯', icon: '🕯️', cost: 15, tier: 1, maxCount: 4, tags: ['staff', 'elemental'], desc: '元素伤害 +14%，【法杖】类兵装吟唱冷却缩短 10%', apply: p => { p.elemBonus += 0.14; p.staffHaste = (p.staffHaste || 0) + 0.10; } },
+  { id: 'heavy_greaves', name: '黑曜镇步胫甲', icon: '🥾', cost: 15, tier: 1, maxCount: 4, tags: ['tank', 'melee'], desc: '最大生命 +9，近战震退力度 +18%，移速 -3%', apply: p => { p.maxHp += 9; p.hp += 9; p.meleeKnockBonus = (p.meleeKnockBonus || 0) + 0.18; p.spdMul = Math.max(0.68, p.spdMul - 0.03); } },
   { id: 'gunpowder',  name: '余烬火药瓮',   icon: '🛢️', cost: 15, tier: 1, maxCount: 4, tags: ['explosive', 'elemental'], desc: '爆炸范围 +16%，元素与爆炸伤害 +12%', apply: p => { p.explosionScale += 0.16; p.elemBonus += 0.12; } },
-  { id: 'spiked_collar', name: '封魔黄金锁环', icon: '⛓️', cost: 15, tier: 1, maxCount: 4, tags: ['tank', 'melee'], desc: '最大生命 +8，护甲 +2，再生 +1.0/秒，移速 +4%', apply: p => { p.maxHp += 8; p.hp += 8; p.armor += 2; if (!p.noRegen) p.regen += 1.0; p.spdMul += 0.04; } },
-  { id: 'leech_fang', name: '泣血红玉坠',   icon: '🩸', cost: 14, tier: 1, maxCount: 5, tags: ['vampire'], desc: '生命窃取 +5%，攻击速度 +6%，生命再生 -0.5/秒', apply: p => { p.lifesteal += 0.05; p.atkSpd += 0.06; p.regen = Math.max(0, p.regen - 0.5); } },
-  { id: 'coupon',     name: '风语行商木牌', icon: '🏷️', cost: 16, tier: 1, maxCount: 4, tags: ['econ'], desc: '青羽行商价格永久 -7%（最多叠 4 枚），幸运 +3', apply: p => { p.shopDiscount = Math.min(0.28, p.shopDiscount + 0.07); p.luck += 3; } },
+  { id: 'spiked_collar', name: '封魔黄金锁环', icon: '⛓️', cost: 15, tier: 1, maxCount: 4, tags: ['tank', 'melee'], desc: '最大生命 +8，护甲 +1，再生 +1.0/秒，移速 +3%', apply: p => { p.maxHp += 8; p.hp += 8; p.armor += 1; if (!p.noRegen) p.regen += 1.0; p.spdMul += 0.03; } },
+  { id: 'leech_fang', name: '泣血红玉坠',   icon: '🩸', cost: 15, tier: 1, maxCount: 4, tags: ['vampire'], desc: '生命窃取 +3%（受汲血内置冷却限制），攻速 +5%，生命再生 -0.5/秒', apply: p => { p.lifesteal += 0.03; p.atkSpd += 0.05; p.regen = Math.max(0, p.regen - 0.5); } },
+  { id: 'coupon',     name: '风语行商木牌', icon: '🏷️', cost: 16, tier: 1, maxCount: 4, tags: ['econ'], desc: '青羽行商商品与刷新价格永久 -10%（最多叠 4 枚，购买即刻降价），幸运 +3', apply: p => { p.shopDiscount = Math.min(0.40, (p.shopDiscount || 0) + 0.10); p.luck += 3; } },
   { id: 'recycler',   name: '回溯沙漏坠',   icon: '♻️', cost: 15, tier: 1, maxCount: 3, tags: ['econ'], desc: '每波进入行商赠送 1 次免费刷新！收获 +3',      apply: p => { p.freeRerolls += 1; p.harvestFlat += 3; } },
   { id: 'lumber',     name: '守林人斗篷',   icon: '🪓', cost: 15, tier: 1, maxCount: 3, tags: ['econ'], desc: '每波战场额外生成 +1 座层域封魂器物，幸运 +4',  apply: p => { p.bonusTrees += 1; p.luck += 4; } },
   { id: 'magnet',     name: '引魂提灯芯',   icon: '🧲', cost: 14, tier: 1, maxCount: 4, tags: ['econ'], desc: '提灯拾取范围 +70，晶石采集效率 +10%',         apply: p => { p.magnet += 70; p.harvest += 0.10; } },
-  { id: 'plate',      name: '黑曜胸甲片',   icon: '🪨', cost: 15, tier: 1, tags: ['tank'], desc: '护甲 +3（减免受击伤害），最大生命 +3',            apply: p => { p.armor += 3; p.maxHp += 3; p.hp += 3; } },
+  { id: 'plate',      name: '黑曜胸甲片',   icon: '🪨', cost: 15, tier: 1, maxCount: 5, tags: ['tank'], desc: '护甲 +2（线性等效生命减伤），最大生命 +4，移速 -2%', apply: p => { p.armor += 2; p.maxHp += 4; p.hp += 4; p.spdMul = Math.max(0.68, p.spdMul - 0.02); } },
   { id: 'clover',     name: '第998号铭牌',  icon: '🍀', cost: 14, tier: 1, maxCount: 5, tags: ['econ'], desc: '前代寻光者遗留的铭牌：幸运 +7，闪避 +2%',  apply: p => { p.luck += 7; p.healDropBonus += 0.018; p.dodge = Math.min(p.dodgeCap, p.dodge + 0.02); } },
   { id: 'boots',      name: '巡夜轻羽靴',   icon: '🥾', cost: 15, tier: 1, tags: ['dodge'], desc: '移动速度 +10%，闪避率 +4%（上限80%）',            apply: p => { p.spdMul += 0.10; p.dodge = Math.min(p.dodgeCap, p.dodge + 0.04); } },
   { id: 'hawk_eye',   name: '星瞳棱镜片',   icon: '🦅', cost: 15, tier: 1, maxCount: 3, tags: ['crit'], desc: '暴击伤害 +26%，暴击率 +4%',               apply: p => { p.critDmg = (p.critDmg || 0) + 0.26; p.crit += 0.04; } },
@@ -442,17 +506,23 @@ const ITEMS = [
 
   // --- T2 精良遗物 ---
   { id: 'scope',      name: '星晷准星仪',   icon: '🎯', cost: 24, tier: 2, maxCount: 3, tags: ['ranged', 'crit'], desc: '攻击范围 +60，暴击率 +7%，攻速 -4%',   apply: p => { p.rangeBonus += 60; p.crit += 0.07; p.atkSpd -= 0.04; } },
+  { id: 'hawkeye_quiver', name: '追风穿云箭袋', icon: '🏹', cost: 26, tier: 2, maxCount: 3, tags: ['ranged'], desc: '远程兵装伤害 +16%；投射物命中距离 >180 的远端目标时额外增伤 +15%！', apply: p => { p.rangedBonus = (p.rangedBonus || 0) + 0.16; p.farShotBonus = (p.farShotBonus || 0) + 0.15; } },
   { id: 'crit_gauntlet', name: '断刃剑姬手甲', icon: '🥊', cost: 27, tier: 2, maxCount: 2, tags: ['crit', 'melee'], desc: '暴击伤害 +42%，暴击率 +5%，攻速 -3%', apply: p => { p.critDmg = (p.critDmg || 0) + 0.42; p.crit += 0.05; p.atkSpd -= 0.03; } },
-  { id: 'brawler_pauldron', name: '守誓重肩铠', icon: '🛡️', cost: 26, tier: 2, maxCount: 3, tags: ['melee', 'tank'], desc: '近战伤害 +19%，护甲 +3；持近战兵装贴身抗首领伤 +12%', apply: p => { p.meleeBonus += 0.19; p.armor += 3; p.meleeBossGuard = (p.meleeBossGuard || 0) + 0.12; } },
+  { id: 'brawler_pauldron', name: '守誓重肩铠', icon: '🛡️', cost: 26, tier: 2, maxCount: 3, tags: ['melee', 'tank'], desc: '近战伤害 +19%，护甲 +2；持近战兵装贴身抗首领伤 +8%', apply: p => { p.meleeBonus += 0.19; p.armor += 2; p.meleeBossGuard = (p.meleeBossGuard || 0) + 0.08; } },
   { id: 'landmine_pack', name: '发条星雷匣', icon: '💣', cost: 25, tier: 2, maxCount: 3, tags: ['tech', 'explosive'], desc: '每 4.0 秒自动在身旁布设 1 枚高爆【发条星雷】（享工程与爆破加成）', apply: p => { p.mineLayers = (p.mineLayers || 0) + 1; p.techBonus = (p.techBonus || 0) + 0.12; } },
-  { id: 'shrapnel_vest', name: '赤金火铳带', icon: '🧨', cost: 26, tier: 2, maxCount: 3, tags: ['explosive', 'tank'], desc: '所有攻击 15% 概率触发微型爆破，爆炸范围 +16%，护甲 +2', apply: p => { p.blastChance += 0.15; p.explosionScale += 0.16; p.armor += 2; } },
-  { id: 'crimson_pact',  name: '褪色的红剑穗', icon: '🥀', cost: 27, tier: 2, maxCount: 2, tags: ['vampire', 'melee'], desc: '烬羽遗物：生命窃取 +8%，全伤 +12%；汲血回生时迸发绯红剑气波！', apply: p => { p.lifesteal += 0.08; p.dmgMul += 0.12; p.bloodNova = true; } },
+  { id: 'mine_magnet', name: '引力星雷导芯', icon: '🧲', cost: 26, tier: 2, maxCount: 3, tags: ['tech', 'explosive'], desc: '布设星雷冷却缩短 22%，星雷感应与爆炸半径扩大 +25%，工程伤害 +14%', apply: p => { p.mineHaste = (p.mineHaste || 0) + 0.22; p.mineRadiusBonus = (p.mineRadiusBonus || 0) + 0.25; p.techBonus = (p.techBonus || 0) + 0.14; } },
+  { id: 'repair_drone', name: '巡弋修缮机蜂', icon: '🐝', cost: 27, tier: 2, maxCount: 3, tags: ['tech', 'tank'], desc: '处于任意友方建筑 170 范围内时，自身攻速 +14% 且每秒额外恢复 1.5 点生命！', apply: p => { p.turretAuraHeal = (p.turretAuraHeal || 0) + 1; p.techBonus = (p.techBonus || 0) + 0.10; } },
+  { id: 'shock_pylon', name: '紫电震波塔桩', icon: '🗼', cost: 29, tier: 2, maxCount: 3, tags: ['tech', 'elemental'], desc: '每波额外部署 1 座【电磁震波塔】（周期释放脉冲震退并冰缓感电周围魔物），工程 +12%', apply: p => { p.shockTurrets = (p.shockTurrets || 0) + 1; p.techBonus = (p.techBonus || 0) + 0.12; } },
+  { id: 'astrologer_hat', name: '观星秘术尖帽', icon: '🧙', cost: 27, tier: 2, maxCount: 3, tags: ['staff', 'elemental'], desc: '元素伤害 +20%，【法杖】秘弹穿透 +1 且射程 +42', apply: p => { p.elemBonus += 0.20; p.staffPierce = (p.staffPierce || 0) + 1; p.staffRange = (p.staffRange || 0) + 42; } },
+  { id: 'elemental_ring', name: '四象流转指环', icon: '💍', cost: 26, tier: 2, maxCount: 3, tags: ['elemental', 'staff'], desc: '灼烧与风毒持续伤害结算频率加快 25%，元素伤害 +16%', apply: p => { p.dotHaste = (p.dotHaste || 0) + 0.25; p.elemBonus += 0.16; } },
+  { id: 'shrapnel_vest', name: '赤金火铳带', icon: '🧨', cost: 26, tier: 2, maxCount: 3, tags: ['explosive', 'tank'], desc: '所有攻击 15% 概率触发微型爆破，爆炸范围 +16%，护甲 +1', apply: p => { p.blastChance += 0.15; p.explosionScale += 0.16; p.armor += 1; } },
+  { id: 'crimson_pact',  name: '褪色的红剑穗', icon: '🥀', cost: 27, tier: 2, maxCount: 2, tags: ['vampire', 'melee'], desc: '烬羽遗物：生命窃取 +5%，全伤 +12%，护甲 -2；汲血回生时迸发绯红剑气波！', apply: p => { p.lifesteal += 0.05; p.dmgMul += 0.12; p.armor -= 2; p.bloodNova = true; } },
   { id: 'butterfly',  name: '苍翠记忆风翎', icon: '🦋', cost: 25, tier: 2, tags: ['dodge', 'elemental'], desc: '青羽帽檐风翎：闪避率 +6%，元素伤害 +18%，范围 -20', apply: p => { p.dodge = Math.min(p.dodgeCap, p.dodge + 0.06); p.elemBonus += 0.18; p.rangeBonus -= 20; } },
   { id: 'snail',      name: '凝滞钟摆锤',   icon: '🐌', cost: 25, tier: 2, maxCount: 3, tags: ['tank'], desc: '全场敌人移速永久 -6%（最多叠 3 枚），自身移速 -2%', apply: p => { p.enemySlow = Math.min(0.18, p.enemySlow + 0.06); p.spdMul = Math.max(0.72, p.spdMul - 0.02); } },
   { id: 'jetpack',    name: '青岚风语披肩', icon: '🚀', cost: 26, tier: 2, maxCount: 3, tags: ['dodge'], desc: '移动速度 +12%，闪避率 +5%（上限80%），护甲 -1', apply: p => { p.spdMul += 0.12; p.dodge = Math.min(p.dodgeCap, p.dodge + 0.05); p.armor -= 1; } },
-  { id: 'thorns',     name: '黑棘断罪铠',   icon: '🌵', cost: 26, tier: 2, maxCount: 3, tags: ['tank'], desc: '护甲 +4；受击或闪避时向四周迸射护甲加成棱刺新星', apply: p => { p.armor += 4; p.thorns += 1; } },
+  { id: 'thorns',     name: '黑棘断罪铠',   icon: '🌵', cost: 26, tier: 2, maxCount: 3, tags: ['tank'], desc: '护甲 +3，移速 -2%；受击或闪避时向四周迸射护甲加成棱刺新星', apply: p => { p.armor += 3; p.thorns += 1; p.spdMul = Math.max(0.68, p.spdMul - 0.02); } },
   { id: 'cyberball',  name: '共鸣紫电珠',   icon: '🎱', cost: 26, tier: 2, maxCount: 3, tags: ['econ', 'elemental'], desc: '幸运 +6；拾取封魂晶石有概率降下紫电轰击随机敌人', apply: p => { p.luck += 6; p.cyberball += 1; } },
-  { id: 'bat',        name: '夜鸦暗羽披风', icon: '🦇', cost: 26, tier: 2, tags: ['vampire'], desc: '生命窃取 +7%，最大生命 +4，收获 -3',             apply: p => { p.lifesteal += 0.07; p.maxHp += 4; p.hp += 4; p.harvestFlat = Math.max(0, p.harvestFlat - 3); } },
+  { id: 'bat',        name: '夜鸦暗羽披风', icon: '🦇', cost: 26, tier: 2, maxCount: 3, tags: ['vampire'], desc: '生命窃取 +4%，最大生命 +4，生命再生 -0.5/秒，收获 -3', apply: p => { p.lifesteal += 0.04; p.maxHp += 4; p.hp += 4; p.regen = Math.max(0, p.regen - 0.5); p.harvestFlat = Math.max(0, p.harvestFlat - 3); } },
   { id: 'medkit',     name: '魂灯温养瓶',   icon: '❤️‍🩹', cost: 26, tier: 2, tags: ['tank'], desc: '生命再生 +2.6/秒，最大生命 +5',                  apply: p => { if (!p.noRegen) p.regen += 2.6; p.maxHp += 5; p.hp += 5; } },
   { id: 'turret',     name: '自律发条塔枢', icon: '🛰️', cost: 29, tier: 2, maxCount: 4, tags: ['tech'], desc: '每波在战场上额外部署 1 座自律发条机炮塔',        apply: p => { p.bonusTurrets += 1; } },
   { id: 'adren',      name: '狂厄心音弦',   icon: '💉', cost: 28, tier: 2, tags: ['dodge', 'general'], desc: '闪避率 +6%（上限80%），攻击速度 +12%',   apply: p => { p.dodge = Math.min(p.dodgeCap, p.dodge + 0.06); p.atkSpd += 0.12; } },
@@ -467,37 +537,44 @@ const ITEMS = [
   // --- T3 史诗圣遗物 ---
   { id: 'bandana',       name: '绯红守桥额带',   icon: '🧣', cost: 40, tier: 3, maxCount: 2, weaponOnly: true, tags: ['ranged'], desc: '所有远程魂弹穿透 +1，远程兵装伤害 +16%', apply: p => { p.pierceBonus += 1; p.rangedBonus = (p.rangedBonus || 0) + 0.16; } },
   { id: 'prism',         name: '折光星冰棱镜',   icon: '🔷', cost: 41, tier: 3, maxCount: 2, weaponOnly: true, tags: ['ranged'], desc: '所有远程魂弹弹射次数 +1，攻击范围 +45，远程伤害 +10%', apply: p => { p.bounceBonus += 1; p.rangeBonus += 45; p.rangedBonus = (p.rangedBonus || 0) + 0.10; } },
-  { id: 'tentacle',      name: '噬影汲魂触须',   icon: '🦑', cost: 41, tier: 3, maxCount: 2, tags: ['vampire', 'elemental'], desc: '生命窃取 +9%；攻击命中灼烧/冰缓/剧毒状态的敌人时额外 +14% 概率回 1 生命！', apply: p => { p.lifesteal += 0.09; p.ailmentLeech = (p.ailmentLeech || 0) + 0.14; } },
+  { id: 'tentacle',      name: '噬影汲魂触须',   icon: '🦑', cost: 41, tier: 3, maxCount: 2, tags: ['vampire', 'elemental'], desc: '生命窃取 +5%；直接攻击命中灼烧/冰缓/剧毒敌人时额外 +7% 概率回 1 生命（共享汲血冷却）', apply: p => { p.lifesteal += 0.05; p.ailmentLeech = (p.ailmentLeech || 0) + 0.07; } },
   { id: 'sniper_cloak',  name: '永冻观星披风',   icon: '🦅', cost: 42, tier: 3, maxCount: 1, tags: ['ranged'], desc: '【唯一】攻击范围 +95，远程伤害 +15%；每 12 范围转化 +1% 全体伤害！', apply: p => { p.rangeBonus += 95; p.rangedBonus = (p.rangedBonus || 0) + 0.15; p.rangeToDmg = true; } },
   { id: 'overseer_chip', name: '逆转黄金发条',   icon: '📡', cost: 42, tier: 3, maxCount: 2, tags: ['tech'], desc: '伽蓝核心遗物：部署 1 座【贯日激光塔】，所有炮台穿透+1且可暴击，工程+24%', apply: p => { p.laserTurrets = (p.laserTurrets || 0) + 1; p.turretCrit = true; p.techBonus = (p.techBonus || 0) + 0.24; } },
-  { id: 'whirlwind_belt',name: '剑姬绯夜腰封',   icon: '🌪️', cost: 41, tier: 3, maxCount: 2, weaponOnly: true, tags: ['melee'], desc: '近战伤害 +24%，攻速 +10%；近战挥砍弧度与突刺范围扩大 +22%！', apply: p => { p.meleeBonus += 0.24; p.atkSpd += 0.10; p.meleeSweepBonus = (p.meleeSweepBonus || 0) + 0.22; } },
+  { id: 'arcane_conduit', name: '秘法导流塔座',  icon: '💠', cost: 43, tier: 3, maxCount: 1, tags: ['tech', 'staff', 'elemental'], desc: '【唯一】所有友方炮台与机关继承自身 55% 元素伤害加成，且射击附带灼烧或冰缓！', apply: p => { p.turretElemInherit = true; p.turretElem = true; p.elemBonus += 0.16; p.techBonus = (p.techBonus || 0) + 0.16; } },
+  { id: 'clockwork_citadel', name: '移动齿轮要塞', icon: '🏰', cost: 45, tier: 3, maxCount: 2, tags: ['tech', 'tank'], desc: '每波同时部署 +1 座发条机炮塔与 +1 座贯日激光塔，建筑攻速 +18%，自身移速 -4%', apply: p => { p.bonusTurrets += 1; p.laserTurrets = (p.laserTurrets || 0) + 1; p.turretAspdBonus = (p.turretAspdBonus || 0) + 0.18; p.spdMul = Math.max(0.65, p.spdMul - 0.04); } },
+  { id: 'grimoire_ash',  name: '灰烬四象魔导书', icon: '📕', cost: 43, tier: 3, maxCount: 2, tags: ['staff', 'elemental'], desc: '元素伤害 +24%；【法杖】每第 3 次吟唱自动追加齐射 2 枚追踪秘法飞弹！', apply: p => { p.elemBonus += 0.24; p.staffVolley = (p.staffVolley || 0) + 1; } },
+  { id: 'absolute_zero_orb', name: '凛冬碎冰魔眼', icon: '🧿', cost: 42, tier: 3, maxCount: 1, tags: ['elemental', 'crit', 'staff'], desc: '【唯一】灼烧/风毒跳字可享受暴击增幅，对异常状态敌人暴击率 +10%，元素伤害 +18%', apply: p => { p.elemCrit = true; p.crit += 0.06; p.elemBonus += 0.18; } },
+  { id: 'blood_thorn_heart', name: '棘血共生魔核', icon: '🫀', cost: 42, tier: 3, maxCount: 1, tags: ['tank'], desc: '【唯一】生命再生 +3.6/秒；每 1.0/秒 生命再生额外转化为 +2.5% 全体伤害（最大生命 -6）', apply: p => { if (!p.noRegen) p.regen += 3.6; p.regenToDmg = true; p.maxHp = Math.max(8, p.maxHp - 6); p.hp = Math.min(p.hp, p.maxHp); } },
+  { id: 'whirlwind_belt',name: '剑姬绯夜腰封',   icon: '🌪️', cost: 41, tier: 3, maxCount: 2, weaponOnly: true, tags: ['melee'], desc: '近战伤害 +24%，攻速 +10%；近战挥砍弧度与突刺范围扩大 +16%！', apply: p => { p.meleeBonus += 0.24; p.atkSpd += 0.10; p.meleeSweepBonus = (p.meleeSweepBonus || 0) + 0.16; } },
   { id: 'titan_heart',   name: '不灭熔炉魔心',   icon: '🫀', cost: 42, tier: 3, maxCount: 2, tags: ['tank', 'melee'], desc: '最大生命 +16，再生 +2.5/秒；每 5 点最大生命额外转化 +2% 全体伤害！', apply: p => { p.maxHp += 16; p.hp += 16; if (!p.noRegen) p.regen += 2.5; p.hpToDmg = (p.hpToDmg || 0) + 1; } },
-  { id: 'fortress_plate',name: '断罪黑曜重铠',   icon: '🏰', cost: 41, tier: 3, maxCount: 2, tags: ['tank'], desc: '护甲 +6，棱刺反伤等级 +2；每拥有 1 点护甲额外转化 +1.5% 全体伤害！', apply: p => { p.armor += 6; p.thorns += 2; p.armorToDmg = (p.armorToDmg || 0) + 1; } },
+  { id: 'fortress_plate',name: '断罪黑曜重铠',   icon: '🏰', cost: 41, tier: 3, maxCount: 2, tags: ['tank'], desc: '护甲 +4，棱刺反伤等级 +2，移速 -3%；每拥有 1 点护甲额外转化 +1.5% 全体伤害！', apply: p => { p.armor += 4; p.thorns += 2; p.spdMul = Math.max(0.65, p.spdMul - 0.03); p.armorToDmg = (p.armorToDmg || 0) + 1; } },
   { id: 'tesla',         name: '弦月紫电音叉',   icon: '⚡', cost: 44, tier: 3, maxCount: 3, tags: ['elemental', 'tech'], desc: '每 1.6 秒自动释放紫电连锁电弧劈向周围怪物',         apply: p => { p.teslaCount += 1; } },
   { id: 'warhead',       name: '赤金裂塔火核',   icon: '🧨', cost: 43, tier: 3, maxCount: 2, tags: ['explosive'], desc: '攻击 22% 概率引发爆破，爆炸范围与伤害 +20%',      apply: p => { p.blastChance += 0.22; p.explosionScale += 0.20; } },
   { id: 'berserk',       name: '狂厄断刃契约',   icon: '🩸', cost: 39, tier: 3, maxCount: 2, tags: ['general', 'melee'], desc: '全体伤害 +26%，攻速 +11%，但护甲 -3',  apply: p => { p.dmgMul += 0.26; p.atkSpd += 0.11; p.armor -= 3; } },
-  { id: 'blood_chalice', name: '灰烬圣餐杯',     icon: '🍷', cost: 42, tier: 3, maxCount: 2, tags: ['vampire'], desc: '生命窃取 +9%，最大生命 +8，魂血瓶治疗量 +2',       apply: p => { p.lifesteal += 0.09; p.maxHp += 8; p.hp += 8; p.healBonus += 2; } },
+  { id: 'blood_chalice', name: '灰烬圣餐杯',     icon: '🍷', cost: 42, tier: 3, maxCount: 2, tags: ['vampire'], desc: '生命窃取 +6%，最大生命 +8，魂血瓶治疗量 +2',       apply: p => { p.lifesteal += 0.06; p.maxHp += 8; p.hp += 8; p.healBonus += 2; } },
   { id: 'chrono_watch',  name: '冻停的银怀表',   icon: '⏱️', cost: 43, tier: 3, maxCount: 2, tags: ['dodge', 'elemental'], desc: '停在灾难夜的怀表：【青焰瞬步】冷却缩短 22%，移速 +10%，瞬步起跳瞬间冰封近身追兵！', apply: p => { p.dashCdMul = (p.dashCdMul || 1) * 0.78; p.spdMul += 0.10; p.dashFreezeNova = true; } },
   { id: 'overclock_core',name: '超频发条心核',   icon: '🔋', cost: 43, tier: 3, maxCount: 2, tags: ['elemental', 'tech'], desc: '元素与工程伤害各 +24%，攻击范围 +45，护甲 -2', apply: p => { p.elemBonus += 0.24; p.techBonus = (p.techBonus || 0) + 0.24; p.rangeBonus += 45; p.armor -= 2; } },
   { id: 'frost_prism',   name: '碎冕冰封星核',   icon: '💎', cost: 42, tier: 3, maxCount: 2, tags: ['elemental'], desc: '攻击 25% 概率【冰冻】定身怪物 1.2s，元素伤害 +22%；冰冻/冰缓怪阵亡时炸裂 6 枚寒霜冰刺！', apply: p => { p.freezeChance = (p.freezeChance || 0) + 0.25; p.chillChance += 0.25; p.elemBonus += 0.22; p.freezeDeathNova = true; } },
   { id: 'plague_flask',  name: '风蚀扩散圣瓶',   icon: '⚗️', cost: 43, tier: 3, maxCount: 2, tags: ['elemental'], desc: '攻击必叠【风蚀剧毒】（上限12层），击杀时向四周扩散毒火风暴！', apply: p => { p.poisonChance = (p.poisonChance || 0) + 1.0; p.maxPoisonStacks = Math.max(p.maxPoisonStacks || 8, 12); p.plagueSpread = true; p.elemBonus += 0.20; } },
-  { id: 'assassin_crest',name: '白狐守誓面具',   icon: '🗡️', cost: 42, tier: 3, maxCount: 2, tags: ['crit', 'melee'], desc: '暴击伤害 +55%，暴击率 +7%；近战暴击时 35% 概率回 1 生命', apply: p => { p.critDmg = (p.critDmg || 0) + 0.55; p.crit += 0.07; p.critMeleeHeal = true; } },
+  { id: 'assassin_crest',name: '白狐守誓面具',   icon: '🗡️', cost: 42, tier: 3, maxCount: 2, tags: ['crit', 'melee'], desc: '暴击伤害 +55%，暴击率 +7%；近战暴击时 20% 概率回 1 生命（共享汲血冷却）', apply: p => { p.critDmg = (p.critDmg || 0) + 0.55; p.crit += 0.07; p.critMeleeHeal = true; } },
   { id: 'turret_link_core', name: '钟楼蜂群矩阵', icon: '🛸', cost: 43, tier: 3, maxCount: 2, tags: ['tech'], desc: '部署 1 座发条机炮塔，工程伤害 +24%；每次施放瞬步或触发元素反应时全场机关齐射超载飞弹！', apply: p => { p.bonusTurrets += 1; p.techBonus = (p.techBonus || 0) + 0.24; p.turretSalvo = true; } },
   { id: 'alchemist_reactor',name: '四象聚变炉心', icon: '⚛️', cost: 43, tier: 3, maxCount: 2, tags: ['elemental', 'explosive'], desc: '元素伤害 +24%；触发【融毁/超导/扩散】元素反应时在目标处引爆高伤四象聚变新星！', apply: p => { p.elemBonus += 0.24; p.reactionBlast = true; } },
-  { id: 'juggernaut_pauldron', name: '黑曜裂地重铠', icon: '🪨', cost: 42, tier: 3, maxCount: 2, tags: ['tank', 'melee'], desc: '护甲 +5，最大生命 +12；每累计移动 175 距离自动踏出【黑曜裂地波】（受护甲与最大生命加成）！', apply: p => { p.armor += 5; p.maxHp += 12; p.hp += 12; p.strideQuake = true; } },
+  { id: 'juggernaut_pauldron', name: '黑曜裂地重铠', icon: '🪨', cost: 42, tier: 3, maxCount: 2, tags: ['tank', 'melee'], desc: '护甲 +3，最大生命 +12；每累计移动 175 距离自动踏出【黑曜裂地波】（受护甲与最大生命加成）！', apply: p => { p.armor += 3; p.maxHp += 12; p.hp += 12; p.strideQuake = true; } },
 
   // --- T4 传说终极圣遗物 ---
   { id: 'reactor',          name: '第一千道破晓核', icon: '☀️', cost: 68, tier: 4, maxCount: 2, tags: ['general', 'tank'], desc: '【传说】全伤 +24%，攻速 +16%，护盾 +14，再生 +2/s', apply: p => { p.dmgMul += 0.24; p.atkSpd += 0.16; p.maxShield += 14; p.shield += 14; if (!p.noRegen) p.regen += 2; } },
-  { id: 'anvil',            name: '锻魂神砧',       icon: '⚒️', cost: 70, tier: 4, maxCount: 1, weaponOnly: true, tags: ['general'], desc: '【传说·唯一】每波进店免费升阶 1 把随机兵装！护甲 +4，移速 -3%', apply: p => { p.hasAnvil = true; p.armor += 4; p.spdMul = Math.max(0.72, p.spdMul - 0.03); } },
+  { id: 'anvil',            name: '锻魂神砧',       icon: '⚒️', cost: 70, tier: 4, maxCount: 1, weaponOnly: true, tags: ['general'], desc: '【传说·唯一】每波进店免费升阶 1 把随机兵装！护甲 +3，移速 -3%', apply: p => { p.hasAnvil = true; p.armor += 3; p.spdMul = Math.max(0.72, p.spdMul - 0.03); } },
   { id: 'cornucopia',       name: '记忆丰饶圣爵',   icon: '🏺', cost: 66, tier: 4, maxCount: 1, tags: ['econ'], desc: '【传说·唯一】收获 +20，幸运 +12，治疗 +3，拾取范围 +60', apply: p => { p.harvestFlat += 20; p.luck += 12; p.healBonus += 3; p.magnet += 60; } },
   { id: 'soul_harvester',   name: '断罪冥魂镰',     icon: '💀', cost: 72, tier: 4, maxCount: 1, tags: ['general'], desc: '【传说·唯一】全伤 +26%；直接斩杀生命低于 12% 的非首领魔物，且击杀 28% 概率迸射连锁冥魂雷！', apply: p => { p.dmgMul += 0.26; p.executeLowHp = 0.12; p.soulBolt = true; } },
-  { id: 'aegis_core',       name: '不灭魂灯圣匣',   icon: '💠', cost: 68, tier: 4, maxCount: 1, tags: ['tank'], desc: '【传说·唯一】魂灯护盾 +22，护甲 +5，护盾回充速度加快 35%', apply: p => { p.maxShield += 22; p.shield += 22; p.armor += 5; p.fastShield = true; } },
+  { id: 'aegis_core',       name: '不灭魂灯圣匣',   icon: '💠', cost: 68, tier: 4, maxCount: 1, tags: ['tank'], desc: '【传说·唯一】魂灯护盾 +22，护甲 +4，护盾回充速度加快 35%', apply: p => { p.maxShield += 22; p.shield += 22; p.armor += 4; p.fastShield = true; } },
   { id: 'hermes_wings',     name: '青羽的苍翠风翼', icon: '🪽', cost: 68, tier: 4, maxCount: 1, tags: ['dodge'], desc: '【传说·唯一】移速 +22%，闪避上限升至 85%（闪避+8%），免疫移速惩罚与冰缓', apply: p => { p.noSlow = true; p.dodgeCap = Math.max(p.dodgeCap, 0.85); p.dodge = Math.min(p.dodgeCap, p.dodge + 0.08); p.spdMul = Math.max(1.0, p.spdMul) + 0.22; } },
   { id: 'star_crown',       name: '永冻星使王冠',   icon: '🌟', cost: 70, tier: 4, maxCount: 1, tags: ['general', 'econ'], desc: '【传说·唯一】全伤 +18%，攻击速度 +12%，拾取范围 +100，幸运 +10', apply: p => { p.dmgMul += 0.18; p.atkSpd += 0.12; p.magnet += 100; p.luck += 10; } },
   { id: 'doom_edge',        name: '弑神镜片·真我', icon: '☄️', cost: 72, tier: 4, maxCount: 1, tags: ['crit'], desc: '【传说·唯一】斩碎黑曜镜的残片：暴击伤害 +85%，暴击率 +10%，全伤 +18%', apply: p => { p.critDmg = (p.critDmg || 0) + 0.85; p.crit += 0.10; p.dmgMul += 0.18; } },
   { id: 'omega_factory',    name: '倒悬钟楼母枢',   icon: '🏭', cost: 70, tier: 4, maxCount: 1, tags: ['tech'], desc: '【传说·唯一】每波额外部署 2 座发条炮台，工程伤害 +45%，炮台附带灼烧与冰缓！', apply: p => { p.bonusTurrets += 2; p.techBonus = (p.techBonus || 0) + 0.45; p.turretElem = true; } },
+  { id: 'architect_soul',   name: '大匠师的永恒发条', icon: '⚙️', cost: 72, tier: 4, maxCount: 1, tags: ['tech'], desc: '【传说·唯一】每波额外部署 2 座【秘法共鸣图腾塔】，工程 +34%，所有友方建筑射击 28% 概率协同发射追踪星导飞弹！', apply: p => { p.totemTurrets = (p.totemTurrets || 0) + 2; p.techBonus = (p.techBonus || 0) + 0.34; p.turretMissile = true; } },
+  { id: 'archmage_crown',   name: '星穹大魔导圣冕', icon: '🌌', cost: 72, tier: 4, maxCount: 1, tags: ['staff', 'elemental'], desc: '【传说·唯一】元素伤害 +42%，法杖吟唱冷却缩短 20%；每触发 4 次元素反应自动降下【星穹天陨】轰击强敌！', apply: p => { p.elemBonus += 0.42; p.staffHaste = (p.staffHaste || 0) + 0.20; p.archmageMeteor = true; } },
   { id: 'doomsday_warhead', name: '日蚀黑炎核',     icon: '☢️', cost: 70, tier: 4, maxCount: 1, tags: ['explosive', 'elemental'], desc: '【传说·唯一】爆炸范围 +35%，攻击爆破率 +25%，所有爆炸引燃敌人造成高额灼烧！', apply: p => { p.explosionScale += 0.35; p.blastChance += 0.25; p.elemBonus += 0.22; p.napalmBlast = true; } },
-  { id: 'titan_breaker',    name: '绯红九百九十九斩',icon: '⚔️', cost: 70, tier: 4, maxCount: 1, weaponOnly: true, tags: ['melee', 'tank'], desc: '【传说·唯一】近战伤害 +42%，生命 +14，护甲 +4；近战挥砍额外震出破军剑气波！', apply: p => { p.meleeBonus += 0.42; p.maxHp += 14; p.hp += 14; p.armor += 4; p.meleeShockwave = true; } },
+  { id: 'titan_breaker',    name: '绯红九百九十九斩',icon: '⚔️', cost: 70, tier: 4, maxCount: 1, weaponOnly: true, tags: ['melee', 'tank'], desc: '【传说·唯一】近战伤害 +42%，生命 +14，护甲 +3；近战挥砍额外震出破军剑气波！', apply: p => { p.meleeBonus += 0.42; p.maxHp += 14; p.hp += 14; p.armor += 3; p.meleeShockwave = true; } },
   { id: 'fox_parry_sheath', name: '断刃狐月鞘',     icon: '🦊', cost: 70, tier: 4, maxCount: 1, weaponOnly: true, tags: ['melee', 'dodge'], desc: '【传说·唯一】近战伤害 +28%，攻速 +12%，闪避 +6%；近战挥击获得 17.5% 概率斩碎触及的敌方弹道！', apply: p => { p.meleeBonus += 0.28; p.atkSpd += 0.12; p.dodge = Math.min(p.dodgeCap, p.dodge + 0.06); p.meleeBulletCutChance = Math.max(p.meleeBulletCutChance || 0, 0.175); } },
   { id: 'trinity_orb',      name: '四象共鸣魂枢',   icon: '🔮', cost: 72, tier: 4, maxCount: 1, tags: ['elemental'], desc: '【传说·唯一】元素伤害 +40%，火/冰/风毒触发率全面提升；目标每带1种异常易伤+12%！', apply: p => { p.elemBonus += 0.40; p.burnChance += 0.22; p.freezeChance = (p.freezeChance || 0) + 0.18; p.poisonChance = (p.poisonChance || 0) + 0.25; p.elemSynergy = true; } }
 ];
@@ -505,20 +582,21 @@ const ITEMS = [
 const CRATE_SUPPLIES = [
   { id: 'sup_titan', name: '守誓圣泉原液', icon: '🧬', tier: 2, cost: 28, desc: '最大生命永久 +9，并立即恢复全部损失生命值！', apply: p => { p.maxHp += 9; p.hp = p.maxHp; } },
   { id: 'sup_hyper', name: '疾风发条心弦', icon: '⚡', tier: 2, cost: 28, desc: '攻击速度永久 +10%，移动速度永久 +9%', apply: p => { p.atkSpd += 0.10; p.spdMul += 0.09; } },
-  { id: 'sup_aegis', name: '黑曜结界镀层', icon: '🛡️', tier: 2, cost: 28, desc: '护甲永久 +3，魂灯护盾上限 +8', apply: p => { p.armor += 3; p.maxShield += 8; p.shield += 8; } },
+  { id: 'sup_aegis', name: '黑曜结界镀层', icon: '🛡️', tier: 2, cost: 28, desc: '护甲永久 +2，魂灯护盾上限 +8', apply: p => { p.armor += 2; p.maxShield += 8; p.shield += 8; } },
   { id: 'sup_gems',  name: '高纯封魂母晶', icon: '💎', tier: 3, cost: 40, desc: '立即提炼一笔封魂晶石，且幸运永久 +6', apply: (p, w) => { const gain = Math.max(12, Math.round((28 + w * 7) * CRYSTAL_YIELD_MUL)); p.mats += gain; p.luck += 6; } }
 ];
 
 const UPGRADES = [
   { name: '不灭体魄', icon: '❤️', desc: '最大生命 +8',                       apply: p => { p.maxHp += 8; p.hp += 8; } },
-  { name: '提灯温养', icon: '🌿', desc: '每秒生命再生 +1.6',                 apply: p => { if (!p.noRegen) p.regen += 1.6; else p.lifesteal += 0.04; } },
+  { name: '提灯温养', icon: '🌿', desc: '每秒生命再生 +1.6',                 apply: p => { if (!p.noRegen) p.regen += 1.6; else p.lifesteal += 0.03; } },
   { name: '魂焰增幅', icon: '💪', desc: '全体伤害 +14%',                     apply: p => { p.dmgMul += 0.14; } },
   { name: '断刃剑意', icon: '⚔️', desc: '近战伤害 +21%，最大生命 +5',         apply: p => { p.meleeBonus += 0.21; p.maxHp += 5; p.hp += 5; } },
   { name: '鹰眼强铳', icon: '🔫', desc: '远程兵装伤害 +18%，攻击范围 +32',   apply: p => { p.rangedBonus = (p.rangedBonus || 0) + 0.18; p.rangeBonus += 32; } },
-  { name: '发条专精', icon: '🔧', desc: '发条机巧（炮台/星雷）伤害 +24%，护甲 +2', apply: p => { p.techBonus = (p.techBonus || 0) + 0.24; p.armor += 2; } },
+  { name: '秘杖吟唱', icon: '🪄', desc: '元素伤害 +20%，法杖冷却缩短 8%',     apply: p => { p.elemBonus += 0.20; p.staffHaste = (p.staffHaste || 0) + 0.08; } },
+  { name: '发条专精', icon: '🔧', desc: '发条机巧（炮台/星雷）伤害 +24%，护甲 +1', apply: p => { p.techBonus = (p.techBonus || 0) + 0.24; p.armor += 1; } },
   { name: '疾速扣击', icon: '⚡', desc: '攻击速度 +12%',                     apply: p => { p.atkSpd += 0.12; } },
   { name: '星瞳扩距', icon: '📏', desc: '攻击范围 +55，全体伤害 +6%',         apply: p => { p.rangeBonus += 55; p.dmgMul += 0.06; } },
-  { name: '黑曜铭甲', icon: '🪨', desc: '护甲 +3，最大生命 +4',               apply: p => { p.armor += 3; p.maxHp += 4; p.hp += 4; } },
+  { name: '黑曜铭甲', icon: '🪨', desc: '护甲 +2，最大生命 +5',               apply: p => { p.armor += 2; p.maxHp += 5; p.hp += 5; } },
   { name: '铁壁反震', icon: '🌵', desc: '护甲 +2，棱刺反伤等级 +1',           apply: p => { p.armor += 2; p.thorns += 1; } },
   { name: '风翎轻步', icon: '👟', desc: '移动速度 +9%，瞬步冷却缩短 10%',     apply: p => { p.spdMul += 0.09; p.dashCdMul = (p.dashCdMul || 1) * 0.90; } },
   { name: '破绽洞悉', icon: '🎯', desc: '暴击率 +6%',                        apply: p => { p.crit += 0.06; } },

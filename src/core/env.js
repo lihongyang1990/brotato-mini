@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.7 立绘展示缩短至4秒 & 近战挥砍斩弹几率下调50%）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.9 新增【秘术法杖】4把武器与17件流派遗物 + 10%流派隐藏爆率 + 赛后输出/承伤总结 + 第10/12层首领传送预警 + 护甲/吸血/后期金币调优）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -12,17 +12,37 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   };
 }
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d', { alpha: false });
-let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.06, userZoomed = false;
+let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.24, userZoomed = false;
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.7';
+const APP_VERSION = 'v2.1.9';
 const APP_BUILD_DATE = '2026-11-14';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.7', date: '2026-11-14', tag: '当前版本 · 立绘缩短至4秒 · 近战砍弹道几率-50% · 黄色小箭头怪-20%且弹道伤/体+10%',
+    ver: 'v2.1.9', date: '2026-11-14', tag: '当前版本 · 新增【秘术法杖】&17件遗物 · 流派隐藏+10%爆率 · 赛后输出/承伤总结 · 10/12层传送预警 · 护甲/吸血/后期金币调优',
+    title: '🪄 新增 4 把【秘术法杖】与 17 件构装/法杖遗物 + 流派倾向最高 +10% 隐藏爆率 + 赛后输出/承伤总结 + 第10/12层首领传送预警（D1→D5 递减至 50%） + 护甲/吸血原版化重做与中后期金币概率化精简',
+    items: [
+      '🪄 全新【秘术法杖】体系 & 92 件记忆遗物扩编（流派隐藏爆率最高 +10%）：新增【赤烬魂灯杖】【永冻星辉杖】【紫电星轨杖】【发条共鸣法杖】（共 36 把兵装，均含五阶神话双分支）及 17 件建筑构装流/元素法杖流新道具（磁暴线圈塔、奥术共鸣方尖碑、星陨王冠、炮台装甲力场、元素继承等）；当主角明显走某一流派时，对应兵装与遗物刷新爆率暗增，最高封顶 +10%！',
+      '📊 赛后战绩总结面板 & 🩸 八荒血月斩反馈修复：败北或通关结算界面新增【兵装整局输出排行】与【魔物与机关承伤明细】双栏统计；修复【断刃·八荒血月斩】血量分界不一致及刀光/刀波精灵被对象池挤占漏渲染的 Bug（新增离屏预烘焙赤月刀波，首帧 100% 稳定显现）！',
+      '⏳ 第 10 层与第 12 层首领传送落点预警（D1→D5 阶梯递减，D5 为 D1 的 50%）：【幽影雷刃统领】瞬影侧袭与【逆时星晷主宰·伽蓝】双生相位折跃新增跃迁牵引线与收束星环预警，预警时长由 D1(1.08s) → D2(0.945s) → D3(0.81s) → D4(0.675s) → D5(0.54s，恰为 D1 的 50%) 逐级紧缩！',
+      '🛡️ 调研《土豆兄弟》重做护甲与生命窃取 + 💎 中后期小怪金币概率掉落（-20%） + 🧱 元素地形尺寸精简 -30%：护甲升级为线性等效生命曲线 a/(a+20)（20甲=50%减伤，上限60%）；吸血改为仅直接攻击触发、内置 0.12s 全局冷却且削减吸血遗物数值；第 6 层起小怪晶石收益下调约 20%，取消普通怪满地爆大号金币，改为概率掉落单枚小晶石；全图元素地形与断层深渊尺寸整体缩减 30%（走位空间更开阔）！'
+    ]
+  },
+  {
+    ver: 'v2.1.8', date: '2026-11-14', tag: '40秒【蚀界生存试炼】扩编增难 · 浓雾提灯完全遮蔽 · 视角拉近&地图+20%/地形+50% · 近战射程收束&行商木牌实时打折',
+    title: '🕯️ 40秒【蚀界生存试炼】全面升维（7类天外弹道与裂隙 +50% 密度 / +20% 伤害） + 浓雾提灯视野完全遮蔽雾外魔物 + 视角拉近、地图扩大20%与元素地形扩大50%',
+    items: [
+      '🕯️ 风语行商自选挑战契约（40秒绝境渡劫）：在青羽行商界面可自主开启【踏入蚀界试炼 · 40秒绝境生存】，陷阱密度提升 50%、伤害提升 20%，集结【天外贯星梭】【蚀界地形裂缝】【平行剑阵走廊】【终末风眼环爆】【蚀界旋星十字裂光】【天外连环坠星阵】【游弋冥渊雷涡】七大机关试炼！',
+      '🏮 真实浓雾提灯视野（雾外魔物 100% 不可见）：重做离屏烘焙翻涌迷雾遮罩与双层动态流雾气旋，雾圈外侧彻底遮蔽且剔除雾外魔物与血条显示，仅在提灯边缘保留方位罗盘预警与裂隙微光（零径向渐变、零模糊滤镜满帧渲染）！',
+      '🗺️ 初始镜头视角拉低贴近 + 竞技场地图扩大 20% + 嵌地元素地形块扩大 50% + 主角体型/受击判定 +15% & 敌方弹道大小/伤害范围 +20%（修复角色上半身受弹漏判）。',
+      '⚖️ 近战高阶武器与射程增益道具缩距约 15%（拉开远近战交战距离梯度），修复并强化【风语行商木牌】购买后当场实时刷新全部货架、锁定商品与重掷价格（每枚永久 -10%，最多叠 4 枚）！'
+    ]
+  },
+  {
+    ver: 'v2.1.7', date: '2026-11-14', tag: '立绘缩短至4秒 · 近战砍弹道几率-50% · 黄色小箭头怪-20%且弹道伤/体+10%',
     title: '🎬 首领立绘展示缩短（5s → 4s） + ⚔️ 近战挥击斩弹几率下调 50% + 🏹 后期黄色小箭头怪数目 -20%（对应弹道伤害与大小 +10%）',
     items: [
       '🎬 首领破框立绘展示时长紧凑化（BOSS_CUTSCENE_SHOW_SEC: 5.0s → 4.0s）：将一阶段登场特写与二阶段神话觉醒换装立绘横幅的停留展示时间由 5 秒缩短为 4 秒（配 0.85 秒丝滑上浮消逝），减少对高速战斗心流的打断！',
@@ -296,7 +316,7 @@ const CHANGELOG_HISTORY = [
   }
 ];
 const FLOOR_PAD = 64;
-const WORLD = { w: 2200, h: 1500, pad: 90 };
+const WORLD = { w: 2640, h: 1800, pad: 90 };
 let curFloorScale = 1.0;
 let floorBakeScale = 1.64;
 const MAX_WEAPON_TIER = 5;
@@ -430,7 +450,7 @@ const SpireBootGate = (function () {
       ['05/textures', () => typeof buildFloorTexture === 'function'],
       ['06/viewport', () => typeof resize === 'function' && typeof clampCam === 'function'],
       ['07/audio', () => typeof SpireAudio === 'object' && typeof beep === 'function'],
-      ['08/arsenal', () => typeof WEAPONS === 'object' && WEAPONS !== null && Object.keys(WEAPONS).length === 32 && Array.isArray(ITEMS) && ITEMS.length >= 20 && Array.isArray(CLASSES) && CLASSES.length >= 6],
+      ['08/arsenal', () => typeof WEAPONS === 'object' && WEAPONS !== null && Object.keys(WEAPONS).length === 36 && Array.isArray(ITEMS) && ITEMS.length >= 90 && Array.isArray(CLASSES) && CLASSES.length >= 6],
       ['09/monsters', () => typeof BOSS_DEFS === 'object' && BOSS_DEFS !== null && Object.keys(BOSS_DEFS).length >= 6],
       ['10/codex', () => typeof openCodex === 'function'],
       ['11/story-v2', () => typeof SpireStoryV2 === 'object' && SpireStoryV2 !== null && !!SpireStoryV2.opening],

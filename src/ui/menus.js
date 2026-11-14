@@ -473,7 +473,7 @@ if (cv.addEventListener) {
       const d = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
       if (pinchDist > 10) {
         userZoomed = true;
-        camZoom = Math.max(0.38, Math.min(1.75, camZoom * (d / pinchDist)));
+        camZoom = Math.max(0.38, Math.min(1.95, camZoom * (d / pinchDist)));
         if (bootReady) clampCam();
       }
       joy.id = null; joy.active = false; joy.dx = 0; joy.dy = 0; joy.mag = 0;
@@ -524,6 +524,14 @@ if (cv.addEventListener) {
 
 let state = 'menu', wave = 1, waveTime = 30, waveMaxTime = 30, lastUrgentSec = -1, spawnAcc = 0, shake = 0, diff = DIFFS[1];
 let endlessMode = false, overtime = false, overtimeMeteorT = 1.6, hordeWave = false;
+let survivalTrialQueued = false, survivalTrialWave = false, survivalTrialHits = 0;
+let survivalFissures = [], survivalSkyVolleys = [];
+let survivalTrialState = {
+  fogIntroP: 0, lanternBoostT: 0,
+  volleyCd: 0.95, fissureCd: 1.75, corridorCd: 8.2, meteorCd: 13.8,
+  crossCd: 6.2, chainCd: 9.8, vortexCd: 4.8,
+  phase2Announced: false, phase3Announced: false
+};
 let cam = { x: WORLD.w / 2, y: WORLD.h / 2 };
 let player, enemies = [], bullets = [], eBullets = [], hazards = [], drops = [], spawns = [], turrets = [], mines = [], rings = [], trees = [];
 let relics = [], sporeZones = [], terrains = [], portals = [], portalPairCd = 0, banners = [], bossCutscene = null;
@@ -562,12 +570,12 @@ function makeWeapon(id, tier = 1) {
 const _EMPTY_SET_BONUSES = {
   counts: { primitive: 0, precise: 0, gun: 0, heavy: 0, elemental: 0, tech: 0 },
   hp: 0, crit: 0, range: 0, aspd: 0, armor: 0, blast: 0, elem: 0, tech: 0,
-  rocks: 0, sticks: 0, meleeCnt: 0, screwdrivers: 0, maxMineTier: 1, doubleMines: 0
+  rocks: 0, sticks: 0, meleeCnt: 0, staffCnt: 0, totemCnt: 0, screwdrivers: 0, maxMineTier: 1, doubleMines: 0
 };
 const _PRIM_STEPS = [2, 4, 6], _PREC_STEPS = [2, 3, 5], _GUN_STEPS = [2, 4, 6];
 const _HVY_STEPS = [2, 3, 5], _ELEM_STEPS = [2, 3, 5], _TECH_STEPS = [2, 3, 5];
 const _HP_TIERS = [0, 8, 18, 30], _CRIT_TIERS = [0, 0.06, 0.12, 0.20], _RNG_TIERS = [0, 45, 95, 155];
-const _ASPD_TIERS = [0, 0.08, 0.16, 0.25], _ARM_TIERS = [0, 3, 6, 10], _ELEM_TIERS = [0, 0.18, 0.38, 0.62], _TECH_TIERS = [0, 0.25, 0.52, 0.85];
+const _ASPD_TIERS = [0, 0.08, 0.16, 0.25], _ARM_TIERS = [0, 2, 5, 8], _ELEM_TIERS = [0, 0.18, 0.38, 0.62], _TECH_TIERS = [0, 0.25, 0.52, 0.85];
 
 function _tierOfSet(c, steps) {
   return c >= steps[2] ? 3 : (c >= steps[1] ? 2 : (c >= steps[0] ? 1 : 0));
@@ -589,14 +597,14 @@ function getSetBonuses() {
     cache = {
       counts: { primitive: 0, precise: 0, gun: 0, heavy: 0, elemental: 0, tech: 0 },
       hp: 0, crit: 0, range: 0, aspd: 0, armor: 0, blast: 0, elem: 0, tech: 0,
-      rocks: 0, sticks: 0, meleeCnt: 0, screwdrivers: 0, maxMineTier: 1, doubleMines: 0,
+      rocks: 0, sticks: 0, meleeCnt: 0, staffCnt: 0, totemCnt: 0, screwdrivers: 0, maxMineTier: 1, doubleMines: 0,
       _len: 0, _ids: [], _tiers: [], _evos: []
     };
     player._sbCache = cache;
   }
   const counts = cache.counts;
   counts.primitive = 0; counts.precise = 0; counts.gun = 0; counts.heavy = 0; counts.elemental = 0; counts.tech = 0;
-  let rocks = 0, sticks = 0, meleeCnt = 0, screwdrivers = 0, maxMineTier = 1, doubleMines = 0;
+  let rocks = 0, sticks = 0, meleeCnt = 0, staffCnt = 0, totemCnt = 0, screwdrivers = 0, maxMineTier = 1, doubleMines = 0;
   cache._len = ws.length;
   cache._ids.length = ws.length;
   cache._tiers.length = ws.length;
@@ -611,6 +619,12 @@ function getSetBonuses() {
     if (!tpl) continue;
     if (tpl.set && counts[tpl.set] !== undefined) counts[tpl.set]++;
     if (tpl.melee) meleeCnt++;
+    if (tpl.isStaff) staffCnt++;
+    if (tpl.deploysTotem) {
+      totemCnt += 1;
+      const evT = typeof getWeaponEvo === 'function' ? getWeaponEvo(w) : null;
+      if (evT && evT.extraTotem) totemCnt += evT.extraTotem;
+    }
     if (w.id === 'rock') rocks++;
     else if (w.id === 'stick') sticks++;
     else if (w.id === 'screwdriver') {
@@ -637,6 +651,8 @@ function getSetBonuses() {
   cache.rocks = rocks;
   cache.sticks = sticks;
   cache.meleeCnt = meleeCnt;
+  cache.staffCnt = staffCnt;
+  cache.totemCnt = totemCnt;
   cache.screwdrivers = screwdrivers;
   cache.maxMineTier = maxMineTier;
   cache.doubleMines = doubleMines;
@@ -681,25 +697,31 @@ function startGame(cls, opts) {
   diff = DIFFS[selectedDiff] || DIFFS[1] || DIFFS[0];
   inHurtPlayer = false;
   player = {
-    cls, x: WORLD.w / 2, y: WORLD.h / 2, r: 21, faceDir: 1, lookA: 0,
+    cls, x: WORLD.w / 2, y: WORLD.h / 2, r: 24.2, faceDir: 1, lookA: 0,
     vx: 0, vy: 0, _leanA: 0, _hsCd: 0,
     dashCd: 0, dashMaxCd: cls === 'ghost' ? 2.5 : 3.2, dashT: 0, dashVx: 0, dashVy: 0,
     dashHasteT: 0, turretOverclockT: 0, magnetPulseT: 0,
-    hp: 30, maxHp: 30, _setHp: 0, regen: 0.5, regenAcc: 0, noRegen: false, lifesteal: 0,
+    hp: 30, maxHp: 30, _setHp: 0, regen: 0.5, regenAcc: 0, noRegen: false, lifesteal: 0, _lifestealCd: 0,
     armor: 0, maxShield: 0, shield: 0, shieldRegenT: 0, shieldHitT: 0,
     spd: 194, spdMul: 1, dmgMul: 1, meleeBonus: 0, rangedBonus: 0, elemBonus: 0, techBonus: 0, atkSpd: 0.90, crit: 0.05, critDmg: 0,
-    dodge: 0, dodgeCap: 0.80, maxSlots: 6, bonusTurrets: 0, laserTurrets: 0, mineLayers: 0, mineCd: 1.4, turretCrit: false, turretElem: false, turretSalvo: false, _salvoCd: 0, bullCd: 0,
+    dodge: 0, dodgeCap: 0.80, maxSlots: 6, bonusTurrets: 0, laserTurrets: 0, shockTurrets: 0, totemTurrets: 0, mineLayers: 0, mineCd: 1.4,
+    turretAspdBonus: 0, turretBastion: 0, mineHaste: 0, mineRadiusBonus: 0, turretAuraHeal: 0, turretElemInherit: false, turretMissile: false, _inTurretAura: false,
+    turretCrit: false, turretElem: false, turretSalvo: false, _salvoCd: 0, bullCd: 0,
+    staffHaste: 0, staffPierce: 0, staffRange: 0, dotHaste: 0, staffVolley: 0, elemCrit: false, archmageMeteor: false, _reactionCount: 0,
     magnet: 130, harvest: 1, harvestFlat: 0, luck: 0, rangeBonus: 0, _displayRange: 140,
-    pierceBonus: 0, bounceBonus: 0, bounceAmpDmg: 0, shopDiscount: 0, freeRerolls: 0, bonusTrees: 0,
-    enemySlow: 0, thorns: 0, cyberball: 0, critHeal: 0, critMeleeHeal: false, ailmentLeech: 0, rangeToDmg: false, hpToDmg: 0, armorToDmg: 0, hasAnvil: false, healBonus: 0,
+    pierceBonus: 0, bounceBonus: 0, bounceAmpDmg: 0, farShotBonus: 0, shopDiscount: 0, freeRerolls: 0, bonusTrees: 0,
+    enemySlow: 0, thorns: 0, cyberball: 0, critHeal: 0, critMeleeHeal: false, ailmentLeech: 0, rangeToDmg: false, hpToDmg: 0, armorToDmg: 0, regenToDmg: false, hasAnvil: false, healBonus: 0,
     burnChance: 0, chillChance: 0, chillDmgBonus: 0, freezeChance: 0, freezeDeathNova: false, poisonChance: 0, maxPoisonStacks: 8, plagueSpread: false, elemSynergy: false, reactionBlast: false,
-    meleeBossGuard: 0, meleeSweepBonus: 0, meleeShockwave: false, meleeBulletCutChance: 0, meleeSunder: false, strideQuake: false, _strideDist: 0, blastChance: 0, explosionScale: 1, napalmBlast: false, bloodNova: false,
+    meleeBossGuard: 0, meleeSweepBonus: 0, meleeKnockBonus: 0, meleeShockwave: false, meleeBulletCutChance: 0, meleeSunder: false, strideQuake: false, _strideDist: 0, blastChance: 0, explosionScale: 1, napalmBlast: false, bloodNova: false,
     interest: 0, teslaCount: 0, teslaCd: 1.0, healDropBonus: 0, chillSlowT: 0, inSpore: false,
     dashCdMul: 1, dashFreezeNova: false, dashSurge: false, dashSurgeT: 0, shieldPulseNova: false, executeLowHp: 0,
-    invulnBonus: 0, fastShield: false, soulBolt: false, noSlow: false, bossCratesQueued: 0, mythicCratesQueued: 0, recentCrateIds: [],
+    invulnBonus: 0, fastShield: false, soulBolt: false, noSlow: false, bossCratesQueued: 0, mythicCratesQueued: 0,
+    survivalActsCleared: {}, survivalCratesQueued: 0, survivalGoldCratesQueued: 0, survivalFlawlessCnt: 0,
+    _fissureHitCd: 0, _fissureLeapHintCd: 0, recentCrateIds: [],
     rarePortraitShown: false, shownBossPortraits: {}, mythicAwakenedCount: 0, waveMythicAwakened: false, retryCount: 0,
     lavaExposure: 0, lavaTick: 0, terrainHintT: 0, terrainSpdMul: 1,
     lv: 1, xp: 0, xpNeed: 10, mats: Math.round(diff.matBonus * (typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70)), kills: 0, invuln: 0, hurtFlashT: 0, walkT: 0, dustT: 0, moving: false,
+    runStats: { weaponDmg: {}, dmgTaken: {}, totalDealt: 0, totalTaken: 0 },
     weapons: [], items: {}
   };
   if (cls === 'allrounder') {
@@ -725,6 +747,7 @@ function startGame(cls, opts) {
   }
   syncSetHp();
   wave = 1; endlessMode = runEndless; pendingLevels = 0; pendingCrates = 0; freeRerollsLeft = 0; anvilUpgradedMsg = ''; shopOffers = []; waveCheckpoint = null;
+  survivalTrialQueued = false; survivalTrialWave = false; survivalTrialHits = 0; survivalFissures = []; survivalSkyVolleys = [];
   logInfo('GAME', `开局 ver=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '-'}, mode=${runEndless ? 'endless' : 'story'}, cls=${cls}, diff=${diff.badge}, sceneMode=${selectedScene}, ui=${uiMode}, world=${WORLD.w}x${WORLD.h}`);
   document.getElementById('startMenu').classList.add('hidden');
   document.getElementById('endMenu').classList.add('hidden');
@@ -765,6 +788,11 @@ function showStart() {
   if (typeof SpireAudio !== 'undefined' && SpireAudio.refreshButtons) SpireAudio.refreshButtons();
   bossCutscene = null;
   if (typeof pendingBossCutscene !== 'undefined') pendingBossCutscene = null;
+  survivalTrialQueued = false;
+  survivalTrialWave = false;
+  survivalTrialHits = 0;
+  survivalFissures = [];
+  survivalSkyVolleys = [];
   waveCheckpoint = null;
   document.getElementById('hud').classList.add('hidden');
   const sm = document.getElementById('startMenu');
@@ -842,7 +870,8 @@ function pauseGame() {
   resetJoy();
   beep(360, 0.05, 'triangle', 0.04);
   const clsObj = CLASSES.find(c => c.id === player.cls);
-  const waveTag = endlessMode ? `无尽第 ${wave} 层` : `第 ${wave} / ${MAX_WAVE} 层`;
+  const baseWaveTag = endlessMode ? `无尽第 ${wave} 层` : `第 ${wave} / ${MAX_WAVE} 层`;
+  const waveTag = survivalTrialWave ? `${baseWaveTag} · 🕯️蚀界试炼` : baseWaveTag;
   const timeTxt = overtime ? '超时死斗' : `剩余 ${Math.ceil(waveTime)}s`;
   document.getElementById('pauseInfo').innerHTML =
     `<b>${diff.badge}</b>  ·  层域：<b>${curScene.name}</b>  ·  登塔者：<b>${clsObj ? clsObj.name : ''}</b>  ·  进度：<b>${waveTag}（${timeTxt}）</b>  ·  等级：<b>Lv.${player.lv}</b>  ·  晶石：<b style="color:#dfc084">◇ ${player.mats}</b>`;
@@ -892,6 +921,8 @@ function clonePlayerForCheckpoint(p) {
   copy.items = Object.assign({}, p.items || {});
   copy.recentCrateIds = Array.isArray(p.recentCrateIds) ? p.recentCrateIds.slice() : [];
   copy.shownBossPortraits = Object.assign({}, p.shownBossPortraits || {});
+  copy.survivalActsCleared = Object.assign({}, p.survivalActsCleared || {});
+  copy.runStats = p.runStats ? JSON.parse(JSON.stringify(p.runStats)) : { weaponDmg: {}, dmgTaken: {}, totalDealt: 0, totalTaken: 0 };
   copy.story = p.story ? JSON.parse(JSON.stringify(p.story)) : null;
   copy._sbCache = null;
   return copy;
@@ -912,6 +943,7 @@ function saveWaveCheckpoint(extraMeta = null) {
     rerollStep,
     freeRerollsLeft,
     anvilUpgradedMsg,
+    isSurvivalTrial: !!survivalTrialWave,
     shopOffers: Array.isArray(shopOffers) ? shopOffers.map(o => o ? Object.assign({}, o) : null).filter(Boolean) : [],
     player: clonePlayerForCheckpoint(player)
   }, extraMeta || {});
@@ -977,6 +1009,7 @@ function retryFailedWave(options) {
   beginWave({
     isRetry: !isResume,
     sceneId: waveCheckpoint.sceneId,
+    isSurvivalTrial: !!waveCheckpoint.isSurvivalTrial,
     waveBossIds: Array.isArray(waveCheckpoint.waveBossIds) ? waveCheckpoint.waveBossIds.slice() : null
   });
 }

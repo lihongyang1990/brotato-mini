@@ -541,6 +541,48 @@ function _paintWeaponArt(g, id, tier, evoId) {
       g.beginPath(); g.roundRect(2, ry, 26, 4.3, 1.4); g.fill(); g.stroke();
     }
     _wpnSpark(g, 28, 0, 3.8, '#ffffff');
+  } else if (id === 'ember_staff') {
+    // 赤烬魂灯杖：玄铁鎏金盘龙长杖 + 弯钩提灯杖首 + 赤金烈焰魂核
+    _wpnWrapGrip(g, -25, -2.6, 35, 5.2, '#451a03', trimGold, '#fef08a');
+    g.strokeStyle = trimGold; g.lineWidth = 2.4;
+    g.beginPath(); g.arc(14, -3.5, 7.5, Math.PI * 0.85, Math.PI * 2.15); g.stroke();
+    const emC = isMythic ? accent : '#ff6b35';
+    g.fillStyle = _wpnGrad(g, 11, -7, 25, 9, '#fff7ed', '#ffd166', emC);
+    g.beginPath();
+    g.moveTo(18, -8.5); g.lineTo(24.5, 0); g.lineTo(18, 9.5); g.lineTo(11.5, 0);
+    g.closePath(); g.fill(); g.stroke();
+    _wpnSpark(g, 18, 0.5, 4.2, '#ffffff');
+  } else if (id === 'frost_scepter') {
+    // 永冻星辉杖：秘银寒玉杖身 + 双翼冰晶护鄂 + 六棱寒星王冠核
+    _wpnWrapGrip(g, -25, -2.4, 34, 4.8, '#0f172a', '#38bdf8', '#e0f2fe');
+    const frC = isMythic ? accent : '#72efdd';
+    g.fillStyle = _wpnGrad(g, 7, -11, 22, 11, '#ffffff', frC, '#0369a1');
+    g.beginPath();
+    g.moveTo(9, 0); g.lineTo(14, -10.5); g.lineTo(19, -4.5); g.lineTo(27, 0);
+    g.lineTo(19, 4.5); g.lineTo(14, 10.5);
+    g.closePath(); g.fill(); g.stroke();
+    _wpnSpark(g, 18, 0, 4.5, '#ffffff');
+  } else if (id === 'storm_rod') {
+    // 紫电星轨杖：黑曜绝缘法杖 + 双环磁暴星轨 + 雷耀紫晶球
+    _wpnWrapGrip(g, -25, -2.5, 34, 5.0, '#1e1b4b', '#a855f7', '#f3e8ff');
+    const stC = isMythic ? accent : '#c084fc';
+    g.strokeStyle = '#fde047'; g.lineWidth = 2.0;
+    g.beginPath(); g.ellipse(17, 0, 9.5, 5.2, 0.52, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.ellipse(17, 0, 9.5, 5.2, -0.52, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = _wpnGrad(g, 11, -6, 23, 6, '#ffffff', stC, '#4c1d95');
+    g.beginPath(); g.arc(17, 0, 5.6, 0, Math.PI * 2); g.fill(); g.stroke();
+    _wpnSpark(g, 17, 0, 3.8, '#fef08a');
+  } else if (id === 'chrono_staff') {
+    // 发条共鸣法杖：黄铜精密长杆 + 星盘齿轮外环 + 翡翠枢机指针核
+    _wpnWrapGrip(g, -25, -2.6, 33, 5.2, '#78350f', '#f59e0b', '#fef3c7');
+    const chC = isMythic ? accent : '#f6d379';
+    g.fillStyle = _wpnGrad(g, 7, -10, 27, 10, '#fef9c3', chC, '#92400e');
+    g.beginPath(); g.arc(17, 0, 9.4, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = '#0f172a';
+    g.beginPath(); g.arc(17, 0, 5.6, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#72efdd'; g.lineWidth = 2.0;
+    g.beginPath(); g.moveTo(17, 0); g.lineTo(21, -2.5); g.moveTo(17, 0); g.lineTo(15, 3.5); g.stroke();
+    _wpnSpark(g, 17, 0, 3.4, '#72efdd');
   } else {
     g.fillStyle = _wpnGrad(g, -14, -5, 22, 5, bladeHi, bladeMid, '#1e293b');
     g.beginPath(); g.roundRect(-14, -4.5, 34, 9, 3); g.fill(); g.stroke();
@@ -565,7 +607,7 @@ function getBakedWeaponSprite(id, tier = 1, evoId = '') {
     _paintWeaponArt(g, id, safeTier, evoId || '');
     g.restore();
   }
-  if (_weaponSpriteCache.size >= 110) {
+  if (_weaponSpriteCache.size >= 145) {
     const oldestKey = _weaponSpriteCache.keys().next().value;
     _weaponSpriteCache.delete(oldestKey);
   }
@@ -583,7 +625,7 @@ function getWeaponArtDataUrl(id, tier = 1, evoId = '') {
     try { url = off.toDataURL(); } catch (e) { url = ''; }
   }
   if (url && url.indexOf('data:image/') === 0) {
-    if (_weaponDataUrlCache.size >= 110) {
+    if (_weaponDataUrlCache.size >= 145) {
       const oldestKey = _weaponDataUrlCache.keys().next().value;
       _weaponDataUrlCache.delete(oldestKey);
     }
@@ -689,6 +731,49 @@ function drawTurretSprite(t) {
     ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(4, -7); ctx.lineTo(-5, 0); ctx.lineTo(4, 7); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#72efdd';
     ctx.beginPath(); ctx.arc(2, 0, 4.2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  if (t.kind === 'shock') {
+    // 磁暴电弧线圈塔：八角黑曜绝缘底座 + 双层紫电电容环 + 青白雷球塔尖
+    const pulse = 1 + Math.sin(now * 0.011 + t.x) * 0.12;
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2.4;
+    ctx.fillStyle = '#1e1b4b';
+    ctx.beginPath(); ctx.arc(0, 6, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 2.0;
+    ctx.beginPath(); ctx.ellipse(0, 1, 10.5, 4.5, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, -5, 8.2, 3.6, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath(); ctx.arc(0, -10, 5.2 * pulse, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(0, -10, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  if (t.kind === 'totem') {
+    // 奥术共鸣方尖碑 / 发条法阵图腾：165px 共鸣金环 + 悬浮旋转符文棱晶
+    const bob = Math.sin(now * 0.0055 + t.y) * 3.0;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(246, 211, 121, 0.24)';
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath(); ctx.arc(t.x, t.y + 4, 165, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.translate(t.x, t.y + bob);
+    ctx.fillStyle = '#78350f'; ctx.strokeStyle = '#1c1917'; ctx.lineWidth = 2.3;
+    ctx.beginPath();
+    ctx.moveTo(0, -17); ctx.lineTo(10, -3); ctx.lineTo(7, 11); ctx.lineTo(-7, 11); ctx.lineTo(-10, -3);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fde68a';
+    ctx.beginPath();
+    ctx.moveTo(0, -12); ctx.lineTo(5.5, -3); ctx.lineTo(0, 6); ctx.lineTo(-5.5, -3);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#72efdd';
+    ctx.beginPath(); ctx.arc(0, -3, 2.6, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     return;
   }
@@ -989,13 +1074,13 @@ function drawPotatoHero() {
   const it = p.items || {};
   const now = _syncNow();
 
-  // 1. 地面接触阴影与脚底轻量站位底椭圆（移除攻击射程圈；收集范围由地面层淡光圈呈现）
+  // 1. 地面接触阴影与脚底轻量站位底椭圆（主角视觉模型与受伤判定半径同步提升 +15%）
   ctx.fillStyle = 'rgba(0,0,0,0.48)';
-  ctx.beginPath(); ctx.ellipse(p.x, p.y + 22, 20, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(p.x, p.y + 25, 23, 8.6, 0, 0, Math.PI * 2); ctx.fill();
 
   ctx.strokeStyle = it.berserk ? 'rgba(251, 113, 133, 0.50)' : 'rgba(114, 239, 221, 0.42)';
-  ctx.lineWidth = 1.8;
-  ctx.beginPath(); ctx.ellipse(p.x, p.y + 21, 21, 7.8, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 1.9;
+  ctx.beginPath(); ctx.ellipse(p.x, p.y + 24, 24.2, 9.0, 0, 0, Math.PI * 2); ctx.stroke();
 
   // 2. 4 帧动作精灵表状态机与柔顺插值绘制（仅真实扣血受击时柔和微闪，瞬步/过场无敌态不闪白）
   const hurtFlash = (p.hurtFlashT || 0) > 0 && (((p.hurtFlashT * 16) | 0) % 2 === 0);
@@ -1009,8 +1094,8 @@ function drawPotatoHero() {
     ? SpireAssets.getHeroSheet(p.cls, hurtFlash)
     : null;
 
-  const drawSize = 82;
-  const footAnchorY = 23;
+  const drawSize = 94;
+  const footAnchorY = 26;
   const visFlip = Math.abs(p._visFlip) < 0.24 ? (p._visFlip < 0 ? -0.24 : 0.24) : p._visFlip;
 
   if (heroSheet && heroSheet.canvas) {
@@ -1024,18 +1109,18 @@ function drawPotatoHero() {
     if (inDash || (p.dashHasteT || 0) > 0) {
       ctx.save();
       ctx.strokeStyle = inDash ? 'rgba(114, 239, 221, 0.85)' : 'rgba(110, 231, 183, 0.52)';
-      ctx.lineWidth = inDash ? 2.8 : 1.8;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y + 19, inDash ? 28 : 24, inDash ? 10.5 : 9, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = inDash ? 2.9 : 1.9;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y + 22, inDash ? 32.2 : 27.6, inDash ? 12.1 : 10.4, 0, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
 
-    const strideBob = p._moveBlend * Math.abs(Math.sin((p._strideT || 0) * Math.PI * 0.5)) * 4.0
-      + (1 - p._moveBlend) * Math.sin(now * 0.0042) * 1.4;
-    const turnHop = (1 - Math.min(1, Math.abs(p._visFlip))) * 2.8;
+    const strideBob = p._moveBlend * Math.abs(Math.sin((p._strideT || 0) * Math.PI * 0.5)) * 4.4
+      + (1 - p._moveBlend) * Math.sin(now * 0.0042) * 1.6;
+    const turnHop = (1 - Math.min(1, Math.abs(p._visFlip))) * 3.1;
     const tilt = (p._leanA || 0) + p._moveBlend * Math.sin((p._strideT || 0) * Math.PI * 0.5) * 0.048;
     const lungeP = inAtkPose ? Math.min(1, (p._atkPoseT || 0) * 6.0) : 0;
-    const lungeX = lungeP ? Math.cos(p._atkAngle || 0) * 3.8 * lungeP : 0;
-    const lungeY = lungeP ? Math.sin(p._atkAngle || 0) * 2.4 * lungeP : 0;
+    const lungeX = lungeP ? Math.cos(p._atkAngle || 0) * 4.2 * lungeP : 0;
+    const lungeY = lungeP ? Math.sin(p._atkAngle || 0) * 2.7 * lungeP : 0;
     const sxScale = inDash ? 1.07 : (inAtkPose ? (1 + 0.045 * lungeP) : 1);
     const syScale = inDash ? 0.93 : (inAtkPose ? (1 - 0.032 * lungeP) : (1 + (1 - p._moveBlend) * Math.sin(now * 0.0042) * 0.018));
 
@@ -1049,27 +1134,27 @@ function drawPotatoHero() {
     ctx.drawImage(heroSheet.canvas, sx, 0, cw, ch, -drawSize * 0.5, -drawSize * 0.93, drawSize, drawSize);
     ctx.restore();
   } else {
-    const bounce = p.moving ? Math.abs(Math.sin(p.walkT)) * 4.2 : Math.sin(now * 0.004) * 1.6;
+    const bounce = p.moving ? Math.abs(Math.sin(p.walkT)) * 4.6 : Math.sin(now * 0.004) * 1.8;
     const tilt = p.moving ? Math.sin(p.walkT) * 0.06 : 0;
     const spr = (typeof SpireAssets !== 'undefined') ? SpireAssets.getHeroSprite(p.cls, hurtFlash) : null;
 
     ctx.save();
-    ctx.translate(p.x, p.y + 22 - bounce);
+    ctx.translate(p.x, p.y + 25 - bounce);
     ctx.rotate(tilt);
     ctx.scale(visFlip, 1);
     if (p.cls === 'ghost') ctx.globalAlpha = 0.92;
 
     if (spr && spr.canvas) {
-      const targetH = 76;
+      const targetH = 87;
       const sc = targetH / Math.max(16, spr.h);
       const dw = spr.w * sc, dh = spr.h * sc;
       ctx.drawImage(spr.canvas, -dw * 0.5, -dh, dw, dh);
     } else {
       ctx.fillStyle = hurtFlash ? '#fff7ed' : '#f1efe7';
       ctx.strokeStyle = '#090d16';
-      ctx.lineWidth = 2.4;
+      ctx.lineWidth = 2.6;
       ctx.beginPath();
-      ctx.moveTo(-16, 0); ctx.lineTo(-12, -44); ctx.quadraticCurveTo(0, -58, 12, -44); ctx.lineTo(16, 0);
+      ctx.moveTo(-18.4, 0); ctx.lineTo(-13.8, -50.6); ctx.quadraticCurveTo(0, -66.7, 13.8, -50.6); ctx.lineTo(18.4, 0);
       ctx.closePath(); ctx.fill(); ctx.stroke();
     }
     ctx.restore();
@@ -1104,7 +1189,7 @@ function drawPotatoHero() {
     if (orbMask & 16) orbCols.push('#c084fc');
     for (let i = 0; i < orbCols.length; i++) {
       const oa = now * 0.0032 + (i * Math.PI * 2) / orbCols.length;
-      const ox = p.x + Math.cos(oa) * 32, oy = p.y - 6 + Math.sin(oa) * 20;
+      const ox = p.x + Math.cos(oa) * 36, oy = p.y - 8 + Math.sin(oa) * 22.5;
       ctx.fillStyle = orbCols[i]; ctx.strokeStyle = '#090d16'; ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.arc(ox, oy, 4.8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }
@@ -1113,29 +1198,29 @@ function drawPotatoHero() {
   // 5. 寒冰地形渐进冰封状态视觉反馈（5秒寒霜进度条 + 冰封 1秒蓝宝石冰晶棱罩）
   if ((p.iceFreezeT || 0) > 0) {
     ctx.save();
-    ctx.translate(p.x, p.y - 6);
+    ctx.translate(p.x, p.y - 8);
     ctx.fillStyle = 'rgba(56, 189, 248, 0.36)';
     ctx.strokeStyle = '#e0f2fe';
     ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.moveTo(0, -34);
-    ctx.lineTo(22, -14);
-    ctx.lineTo(18, 22);
-    ctx.lineTo(0, 30);
-    ctx.lineTo(-18, 22);
-    ctx.lineTo(-22, -14);
+    ctx.moveTo(0, -39);
+    ctx.lineTo(25, -16);
+    ctx.lineTo(21, 25);
+    ctx.lineTo(0, 34);
+    ctx.lineTo(-21, 25);
+    ctx.lineTo(-25, -16);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
     ctx.font = '900 11px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e0f2fe';
-    ctx.fillText(`❄️ 冰封 ${p.iceFreezeT.toFixed(1)}s`, 0, -40);
+    ctx.fillText(`❄️ 冰封 ${p.iceFreezeT.toFixed(1)}s`, 0, -45);
     ctx.restore();
   } else if ((p.frostGauge || 0) > 0.05) {
     const fPct = Math.max(0, Math.min(1, p.frostGauge / 5.0));
     const inGrace = (p.frostLeaveGrace || 0) > 0 && fPct > 0;
-    const bw = 44, barY = p.y - 46;
+    const bw = 46, barY = p.y - 54;
     ctx.save();
     ctx.fillStyle = 'rgba(6, 14, 24, 0.85)';
     ctx.strokeStyle = fPct >= 0.75 ? '#38bdf8' : 'rgba(125, 211, 252, 0.65)';
@@ -1150,7 +1235,7 @@ function drawPotatoHero() {
   if (state === 'wave' && !overtime && waveTime > 0 && waveTime <= 5) {
     const sec = Math.ceil(waveTime);
     ctx.save();
-    ctx.translate(p.x, p.y - 60);
+    ctx.translate(p.x, p.y - 68);
     ctx.fillStyle = 'rgba(28, 10, 20, 0.88)';
     ctx.strokeStyle = '#fb7185';
     ctx.lineWidth = 2;
@@ -1307,3 +1392,52 @@ function drawBossPortrait(variant, cx, cy, scale, isMythic) {
 
   ctx.restore();
 }
+
+// 🩸 预烘焙「八荒血月斩」刀波离屏精灵（零 createRadialGradient / 零 shadowBlur，首帧立即可用永不漏贴图！）
+let _bloodMoonWaveCanvas = null;
+function getBloodMoonWaveSprite() {
+  if (_bloodMoonWaveCanvas) return _bloodMoonWaveCanvas;
+  if (typeof document === 'undefined') return null;
+  const off = document.createElement('canvas');
+  off.width = 96;
+  off.height = 96;
+  const g = off.getContext('2d');
+  if (g) {
+    g.save();
+    g.translate(48, 48);
+    // 外层暗红血雾残弧
+    g.fillStyle = 'rgba(225, 29, 72, 0.36)';
+    g.beginPath();
+    g.arc(-6, 0, 36, -1.24, 1.24);
+    g.quadraticCurveTo(8, 0, -6 + Math.cos(-1.24) * 36, Math.sin(-1.24) * 36);
+    g.closePath();
+    g.fill();
+    // 主体绯红弯月刃身
+    g.fillStyle = '#fb7185';
+    g.strokeStyle = '#881337';
+    g.lineWidth = 2.2;
+    g.beginPath();
+    g.arc(-4, 0, 30, -1.16, 1.16);
+    g.quadraticCurveTo(11, 0, -4 + Math.cos(-1.16) * 30, Math.sin(-1.16) * 30);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    // 内层赤金锋芒亮脊
+    g.fillStyle = '#fde68a';
+    g.beginPath();
+    g.arc(-1, 0, 24, -0.96, 0.96);
+    g.quadraticCurveTo(12, 0, -1 + Math.cos(-0.96) * 24, Math.sin(-0.96) * 24);
+    g.closePath();
+    g.fill();
+    // 刀尖纯白破空高光
+    g.fillStyle = '#ffffff';
+    g.beginPath();
+    g.moveTo(23, 0); g.lineTo(15, -5); g.lineTo(18, 0); g.lineTo(15, 5);
+    g.closePath();
+    g.fill();
+    g.restore();
+  }
+  _bloodMoonWaveCanvas = off;
+  return _bloodMoonWaveCanvas;
+}
+globalThis.getBloodMoonWaveSprite = getBloodMoonWaveSprite;
