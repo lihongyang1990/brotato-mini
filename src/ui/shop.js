@@ -484,8 +484,8 @@ function settleWaveRewards() {
   }
   const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const matRate = typeof getWaveMatRate === 'function' ? getWaveMatRate(wave) : (0.92 * crystalMul / (1 + Math.min(5, Math.max(0, wave - 1)) * 0.14 + Math.max(0, wave - 6) * 0.075));
-  const sweepRate = typeof UNCOLLECTED_MAT_SWEEP_RATE === 'number' ? UNCOLLECTED_MAT_SWEEP_RATE : 0.70;
-  // 自动回收地上 70% 未拾取晶石（由 50% 上调至 70%） + 适度通关津贴 + 【收获】成长分红 + 【理财冠】利息
+  const sweepRate = typeof UNCOLLECTED_MAT_SWEEP_RATE === 'number' ? UNCOLLECTED_MAT_SWEEP_RATE : 0.50;
+  // 自动回收地上 50% 未拾取晶石（由 70% 回调还原至 50%） + 适度通关津贴 + 【收获】成长分红 + 【理财冠】利息
   const leftover = Math.round(leftoverMats * matRate * sweepRate);
   const interestCap = Math.round((24 + wave * 9) * crystalMul);
   const interestGain = player.interest > 0 ? Math.min(interestCap, Math.round(player.mats * player.interest)) : 0;
@@ -1033,7 +1033,7 @@ function getShopScale() {
   return (1 + (wave - 1) * 0.18 + Math.pow(Math.max(0, wave - 1), 1.22) * 0.028) * endlessMul * (diff.shopTax || 1);
 }
 
-let rerollRawCost = 2;
+let rerollRawCost = 1;
 
 function calcDiscountedShopCost(rawCost, minFloor = 2) {
   const base = Math.max(minFloor, Math.round(rawCost || 0));
@@ -1112,11 +1112,20 @@ function openShop(fresh) {
   syncSetHp();
   if (fresh) {
     survivalTrialQueued = false;
-    // 亲民刷新定价（对齐原版《土豆兄弟》：第 1 波仅需 1💎 起刷、第 2 波 2💎，前期每次仅递增 +1💎）
+    // 跨波累进刷新定价：首店 1💎 起刷，每次付费刷新固定 +2💎；之后每次进店仅恢复 50% 价格（减半回落，保底 1💎，绝不直接归 1）
     freeRerollsLeft = player.freeRerolls || 0;
-    rerollBase = Math.max(1, Math.floor(wave * 0.75) + 1);
-    rerollStep = Math.max(1, Math.floor(wave * 0.45) + 1);
-    rerollRawCost = rerollBase;
+    rerollStep = typeof SHOP_REROLL_STEP === 'number' ? SHOP_REROLL_STEP : 2;
+    const initCost = typeof SHOP_REROLL_INIT_COST === 'number' ? SHOP_REROLL_INIT_COST : 1;
+    const recMul = typeof SHOP_REROLL_RECOVERY_MUL === 'number' ? SHOP_REROLL_RECOVERY_MUL : 0.50;
+    if ((player.shopVisits || 0) === 0) {
+      rerollRawCost = initCost;
+    } else {
+      const prevRaw = Math.max(initCost, Number.isFinite(player.shopRerollRaw) ? player.shopRerollRaw : (Number.isFinite(rerollRawCost) ? rerollRawCost : initCost));
+      rerollRawCost = Math.max(initCost, Math.round(prevRaw * recMul));
+    }
+    rerollBase = rerollRawCost;
+    player.shopRerollRaw = rerollRawCost;
+    player.shopVisits = (player.shopVisits || 0) + 1;
     rerollCost = freeRerollsLeft > 0 ? 0 : calcDiscountedShopCost(rerollRawCost, 1);
     anvilUpgradedMsg = '';
     if (player.hasAnvil && player.weapons.length > 0) {
@@ -1516,10 +1525,11 @@ function rerollShop() {
   player.mats -= actualCost;
   if (freeRerollsLeft > 0) {
     freeRerollsLeft--;
-    rerollRawCost = rerollBase;
     rerollCost = freeRerollsLeft > 0 ? 0 : calcDiscountedShopCost(rerollRawCost, 1);
   } else {
-    rerollRawCost = Math.max(rerollBase, (Number.isFinite(rerollRawCost) ? rerollRawCost : rerollBase)) + rerollStep;
+    const stepAdd = typeof SHOP_REROLL_STEP === 'number' ? SHOP_REROLL_STEP : 2;
+    rerollRawCost = Math.max(1, Number.isFinite(rerollRawCost) ? rerollRawCost : rerollBase) + stepAdd;
+    if (player) player.shopRerollRaw = rerollRawCost;
     rerollCost = calcDiscountedShopCost(rerollRawCost, 1);
   }
   shopOffers = shopOffers.map(o => (o && o.locked) ? o : null).filter(Boolean);
