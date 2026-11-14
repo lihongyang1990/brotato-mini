@@ -718,7 +718,7 @@ function startGame(cls, opts) {
     invulnBonus: 0, fastShield: false, soulBolt: false, noSlow: false, bossCratesQueued: 0, mythicCratesQueued: 0,
     survivalActsCleared: {}, survivalCratesQueued: 0, survivalGoldCratesQueued: 0, survivalFlawlessCnt: 0,
     _fissureHitCd: 0, _fissureLeapHintCd: 0, recentCrateIds: [],
-    rarePortraitShown: false, shownBossPortraits: {}, mythicAwakenedCount: 0, waveMythicAwakened: false, retryCount: 0,
+    rarePortraitShown: false, shownBossPortraits: {}, mythicAwakenedCount: 0, waveMythicAwakened: false, waveBossCrateDropped: false, retryCount: 0,
     lavaExposure: 0, lavaTick: 0, terrainHintT: 0, terrainSpdMul: 1,
     lv: 1, xp: 0, xpNeed: 10, mats: Math.round(diff.matBonus * (typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77)), kills: 0, invuln: 0, hurtFlashT: 0, walkT: 0, dustT: 0, moving: false,
     runStats: { weaponDmg: {}, dmgTaken: {}, totalDealt: 0, totalTaken: 0 },

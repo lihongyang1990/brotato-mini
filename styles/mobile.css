@@ -458,7 +458,7 @@ body.m-portrait .wave-badge {
 }
 body.m-portrait .mat-num {
   grid-column: 1; grid-row: 2; justify-self: start;
-  background: rgba(11, 15, 24, 0.94); border: 1px solid var(--gold-line);
+  background: rgba(11, 15, 24, 0.56); border: 1px solid rgba(223, 192, 132, 0.34);
   border-radius: 4px; padding: 2px 9px; font-size: 14.5px;
 }
 body.m-portrait .timer-capsule {

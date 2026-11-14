@@ -3,11 +3,11 @@ const MAX_WAVE = 16;
 if (typeof globalThis !== 'undefined') globalThis.MAX_WAVE = MAX_WAVE;
 const DIFFS = [
   { id: 0, code: 'D0', roman: 'I',   short: '寻光', tone: 'jade',    badge: 'D0 · 寻光', name: '寻光序章', hpMul: 0.88, dmgMul: 0.86, spdMul: 0.92, spawnMul: 0.90, eliteRate: 0.03, shopTax: 0.92, matBonus: 15, midElite: false, dualElite: false, doubleBoss: false, desc: '怪血量 -12%  ·  怪量 -10%  ·  行商 92 折  ·  开局赠 15 晶石，从容体验十六层四幕救赎剧情' },
-  { id: 1, code: 'D1', roman: 'II',  short: '守誓', tone: 'gold',    badge: 'D1 · 守誓', name: '守誓试炼', hpMul: 1.14, dmgMul: 1.15, spdMul: 0.98, spawnMul: 1.05, eliteRate: 0.05, shopTax: 1.00, matBonus: 4,  midElite: true,  dualElite: false, doubleBoss: false, desc: '标准基准试炼：怪血量 +14%  ·  伤害 +15%  ·  第 4 / 8 / 12 / 16 层迎战四幕固定守誓主宰' },
-  { id: 2, code: 'D2', roman: 'III', short: '残响', tone: 'amber',   badge: 'D2 · 残响', name: '残响危局', hpMul: 1.27, dmgMul: 1.21, spdMul: 1.00, spawnMul: 1.11, eliteRate: 0.072, shopTax: 1.03, matBonus: 0, midElite: true,  dualElite: false, doubleBoss: false, desc: '怪血量 +27%  ·  伤害 +21%  ·  地形规模 +12.5% / 侵蚀 +7.5%  ·  第 6 / 10 / 14 层增派先锋统领' },
-  { id: 3, code: 'D3', roman: 'IV',  short: '蚀月', tone: 'rose',    badge: 'D3 · 蚀月', name: '蚀月狂厄', hpMul: 1.40, dmgMul: 1.28, spdMul: 1.03, spawnMul: 1.16, eliteRate: 0.093, shopTax: 1.06, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: false, desc: '怪血量 +40%  ·  伤害 +28%  ·  地形规模 +25% / 侵蚀 +15%  ·  第 10 / 14 层双先锋统领夹击' },
-  { id: 4, code: 'D4', roman: 'V',   short: '逆钟', tone: 'violet',  badge: 'D4 · 逆钟', name: '逆钟深渊', hpMul: 1.52, dmgMul: 1.34, spdMul: 1.06, spawnMul: 1.22, eliteRate: 0.115, shopTax: 1.09, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '怪血量 +52%  ·  伤害 +34%  ·  地形规模 +37.5% / 侵蚀 +22.5%  ·  无尽层域解锁双王同临' },
-  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 1.65, dmgMul: 1.40, spdMul: 1.08, spawnMul: 1.27, eliteRate: 0.144, shopTax: 1.11, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +65%  ·  伤害 +40%  ·  地形规模 +50% / 侵蚀 +30%  ·  二阶首领独享10秒临死挣扎' }
+  { id: 1, code: 'D1', roman: 'II',  short: '守誓', tone: 'gold',    badge: 'D1 · 守誓', name: '守誓试炼', hpMul: 1.14, dmgMul: 1.15, spdMul: 0.98, spawnMul: 1.05, eliteRate: 0.05, shopTax: 1.00, matBonus: 4,  midElite: true,  dualElite: false, doubleBoss: false, desc: '标准基准试炼：怪血量 +14%  ·  伤害 +15%  ·  二阶概率 30%  ·  第 4 / 8 / 12 / 16 层迎战四幕固定守誓主宰' },
+  { id: 2, code: 'D2', roman: 'III', short: '残响', tone: 'amber',   badge: 'D2 · 残响', name: '残响危局', hpMul: 1.28, dmgMul: 1.24, spdMul: 1.00, spawnMul: 1.11, eliteRate: 0.072, shopTax: 1.03, matBonus: 0, midElite: true,  dualElite: false, doubleBoss: false, desc: '怪血量 +28%  ·  伤害 +24%  ·  二阶概率 35%  ·  寒晶 3.5s 冰封  ·  第 6 / 10 / 14 层增派先锋统领' },
+  { id: 3, code: 'D3', roman: 'IV',  short: '蚀月', tone: 'rose',    badge: 'D3 · 蚀月', name: '蚀月狂厄', hpMul: 1.42, dmgMul: 1.33, spdMul: 1.03, spawnMul: 1.16, eliteRate: 0.093, shopTax: 1.06, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: false, desc: '怪血量 +42%  ·  伤害 +33%  ·  二阶概率 40%  ·  寒晶 3.0s 冰封  ·  第 10 / 14 层双先锋统领夹击' },
+  { id: 4, code: 'D4', roman: 'V',   short: '逆钟', tone: 'violet',  badge: 'D4 · 逆钟', name: '逆钟深渊', hpMul: 1.56, dmgMul: 1.41, spdMul: 1.06, spawnMul: 1.22, eliteRate: 0.115, shopTax: 1.09, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '怪血量 +56%  ·  伤害 +41%  ·  二阶概率 45%  ·  寒晶 2.5s 冰封  ·  无尽层域解锁双王同临' },
+  { id: 5, code: 'D5', roman: 'VI',  short: '蚀日', tone: 'crimson', badge: 'D5 · 蚀日', name: '第999次神罚', hpMul: 1.70, dmgMul: 1.50, spdMul: 1.08, spawnMul: 1.27, eliteRate: 0.144, shopTax: 1.11, matBonus: 0, midElite: true,  dualElite: true,  doubleBoss: true,  desc: '最高厄度：怪血量 +70%  ·  伤害 +50%  ·  二阶概率 50%  ·  寒晶 2.0s 冰封  ·  二阶首领独享10秒临死挣扎' }
 ];
 let selectedDiff = 1;
 
@@ -72,12 +72,38 @@ function getSurvivalTrialDuration(d = (typeof diff !== 'undefined' ? diff : null
   const step = Math.min(4, Math.max(0, id - 1)) / 4;
   return Math.round(SURVIVAL_TRIAL_BASE_SEC + step * (SURVIVAL_TRIAL_MAX_SEC - SURVIVAL_TRIAL_BASE_SEC));
 }
+
+// 首领隐藏二阶段觉醒概率按难度阶梯上升：D0/D1 为 30%（0.30），D2~D4 等差递增（35% / 40% / 45%），D5 为 50%（0.50）
+const PHASE2_AWAKEN_BASE_RATE = 0.30;
+const PHASE2_AWAKEN_MAX_RATE = 0.50;
+function getPhase2AwakenRate(d = (typeof diff !== 'undefined' ? diff : null)) {
+  const id = (d && Number.isFinite(d.id)) ? d.id : (typeof d === 'number' && Number.isFinite(d) ? d : 1);
+  if (id <= 1) return PHASE2_AWAKEN_BASE_RATE;
+  const step = Math.min(4, Math.max(0, id - 1)) / 4;
+  return +(PHASE2_AWAKEN_BASE_RATE + step * (PHASE2_AWAKEN_MAX_RATE - PHASE2_AWAKEN_BASE_RATE)).toFixed(4);
+}
+
+// 冰元素地形（碎冕寒晶方砖台）对玩家冻结触发时长阶梯：D0/D1 为 4.0 秒，D2~D4 线性递减（3.5s / 3.0s / 2.5s），D5 为 2.0 秒
+const ICE_FREEZE_BASE_SEC = 4.0;
+const ICE_FREEZE_MIN_SEC = 2.0;
+function getIceFreezeTriggerSec(d = (typeof diff !== 'undefined' ? diff : null)) {
+  const id = (d && Number.isFinite(d.id)) ? d.id : (typeof d === 'number' && Number.isFinite(d) ? d : 1);
+  if (id <= 1) return ICE_FREEZE_BASE_SEC;
+  const step = Math.min(4, Math.max(0, id - 1)) / 4;
+  return +(ICE_FREEZE_BASE_SEC - step * (ICE_FREEZE_BASE_SEC - ICE_FREEZE_MIN_SEC)).toFixed(3);
+}
 if (typeof globalThis !== 'undefined') {
   globalThis.FLOOR16_BOSS_MAX_DODGE = FLOOR16_BOSS_MAX_DODGE;
   globalThis.getFloor16BossDodge = getFloor16BossDodge;
   globalThis.SURVIVAL_TRIAL_BASE_SEC = SURVIVAL_TRIAL_BASE_SEC;
   globalThis.SURVIVAL_TRIAL_MAX_SEC = SURVIVAL_TRIAL_MAX_SEC;
   globalThis.getSurvivalTrialDuration = getSurvivalTrialDuration;
+  globalThis.PHASE2_AWAKEN_BASE_RATE = PHASE2_AWAKEN_BASE_RATE;
+  globalThis.PHASE2_AWAKEN_MAX_RATE = PHASE2_AWAKEN_MAX_RATE;
+  globalThis.getPhase2AwakenRate = getPhase2AwakenRate;
+  globalThis.ICE_FREEZE_BASE_SEC = ICE_FREEZE_BASE_SEC;
+  globalThis.ICE_FREEZE_MIN_SEC = ICE_FREEZE_MIN_SEC;
+  globalThis.getIceFreezeTriggerSec = getIceFreezeTriggerSec;
 }
 
 // 6 位《烬塔残响：第999次救赎》设定集正统登塔角色（配备设定集左侧半身立绘 + Q版二头身实机精灵 + 专属【青焰瞬步】主动残响战技）

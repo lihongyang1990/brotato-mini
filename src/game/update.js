@@ -814,7 +814,7 @@ function update(dt) {
     portals[i].pulse += dt * 3.0;
   }
 
-  // 战场单一主题地形块判定（岩浆灼烫减速、毒泥沼阻滞腐蚀、寒冰台 5秒渐进减速累计至冰封 1秒 · 离冰 1秒后开始消退）
+  // 战场单一主题地形块判定（岩浆灼烫减速、毒泥沼阻滞腐蚀、寒冰台 D1=4s -> D5=2s 渐进减速累计至冰封 · 离冰 1秒后开始消退）
   let onLava = false, onSwamp = false, onIce = false;
   for (let i = 0; i < terrains.length; i++) {
     const tr = terrains[i];
@@ -845,7 +845,9 @@ function update(dt) {
   } else if (onIce && !(player.frostThawImmT > 0)) {
     player.frostLeaveGrace = 1.0;
     const prevGauge = player.frostGauge || 0;
-    player.frostGauge = Math.min(5.0, prevGauge + dt * terrainImpactMul);
+    const iceTriggerSec = typeof getIceFreezeTriggerSec === 'function' ? getIceFreezeTriggerSec(diff) : 4.0;
+    const iceFillRate = 5.0 / Math.max(0.5, iceTriggerSec);
+    player.frostGauge = Math.min(5.0, prevGauge + dt * iceFillRate);
     if (prevGauge <= 0.05 && player.terrainHintT <= 0) {
       player.terrainHintT = 2.4;
       addText(player.x, player.y - 36, '寒霜侵蚀 · 渐进冰缓!', '#7dd3fc', 15, 1.6);

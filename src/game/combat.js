@@ -644,7 +644,7 @@ function applyPoison(e, addStacks = 1) {
   if (!e.poisonTick || e.poisonTick <= 0) e.poisonTick = 0.46;
 }
 
-// 主线固定第二阶段剧情死战，无尽保留 33% 神话觉醒与额外战利品（血量再提升 50% + 攻击力提升 30% + 纯死战不加冗余时间）
+// 主线固定第二阶段剧情死战，无尽/统领/祭坛首领按难度阶梯 D1=30% -> D5=50% 触发神话觉醒与额外战利品（血量再提升 50% + 攻击力提升 30% + 纯死战不加冗余时间）
 function triggerBossMythicPhase2(e) {
   if (!e || e.mythicPhase2) return false;
   const storyPhase = !!e.storyPhaseBoss && !endlessMode;
@@ -1343,9 +1343,17 @@ function awardEnemyRewards(e) {
     let cratesOnMap = 0;
     for (let di = 0; di < drops.length; di++) if (drops[di].kind === 'crate') cratesOnMap++;
     const maxWaveCrates = 1 + (luck >= 72 ? 1 : 0);
-    if ((e.type === 'boss' || e.type === 'mini_boss') && cratesOnMap < 4) {
-      drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
-      addText(e.x, e.y - e.r - 16, '◆ 首领秘宝箱!', '#ffd166', 16, 1.65, true);
+    if (e.type === 'boss' || e.type === 'mini_boss') {
+      const otherWaveBossRemaining = enemies.some(o => o !== e && (o.type === 'boss' || o.type === 'mini_boss') && o.hp > 0)
+        || spawns.some(s => s.type === 'boss' || s.type === 'mini_boss');
+      const alreadyDroppedBossCrate = !!(player && player.waveBossCrateDropped);
+      if (!otherWaveBossRemaining && !alreadyDroppedBossCrate && cratesOnMap < 4) {
+        if (player) player.waveBossCrateDropped = true;
+        drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
+        addText(e.x, e.y - e.r - 16, '◆ 首领秘宝箱!', '#ffd166', 16, 1.65, true);
+      } else if (otherWaveBossRemaining) {
+        addText(e.x, e.y - e.r - 16, '◆ 斩破其一 · 决杀余首夺宝!', '#ffd166', 15, 1.55, true);
+      }
     } else if (e.elite && waveCratesDropped < maxWaveCrates && cratesOnMap < 2 && Math.random() < Math.min(0.12, 0.045 + luck * 0.0010)) {
       waveCratesDropped++;
       drops.push({ x: e.x, y: e.y, kind: 'crate', bob: 0 });

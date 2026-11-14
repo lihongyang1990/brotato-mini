@@ -20,7 +20,7 @@ const SCENES = [
     vistaImg: 'assets/spire/scene_2_vista.jpg', arenaImg: 'assets/spire/scene_2_arena.jpg', propKey: 'prop_s2_crystal',
     bossHint: '守层主宰：永冻星使 · 艾丝特莉亚',
     exclMob: 'frost_wisp', exclMobName: '❄️ 眠冬冰冠亡灵',
-    terrainSummary: '🧊 专属单一地形：碎冕寒晶方砖台（5秒渐进冰缓至冰封1秒） · 可破坏物：极寒冰晶簇',
+    terrainSummary: '🧊 专属单一地形：碎冕寒晶方砖台（D1 4秒~D5 2秒渐进冰缓至冰封） · 可破坏物：极寒冰晶簇',
     eventId: 'blizzard', eventIcon: '🌨️', eventName: '碎冕寒霜脉冲',
     eventDesc: '第 3 波起概率出现：艾丝特莉亚的极寒叹息席卷冰窟，冻结减速部分机关并凝结冰刺预警圈（配乐：永冻碎冕圆舞曲 / 二阶暴雪变奏）',
     voidBg: '#061019', centerCol: '#193547', midCol: '#122736', edgeCol: '#0b1924',
@@ -67,7 +67,7 @@ const TERRAIN_CODEX = [
   },
   {
     id: 'ice_sheet', icon: '🧊', name: '碎冕寒晶方砖台', badge: '二层·永冻冰窟专属地形', scenes: '❄️ 二层·永冻冰窟（单一主题地形）',
-    desc: '二层永冻冰窟专属的蓝宝石冰晶凹槽方台。<b>角色踏入将随寒气累计渐进减速（最多减速 20%），连续站立满 5 秒将直接冰封禁锢 1 秒后解冻；离开冰面 1 秒后寒气才开始消退恢复</b>（苍翠风翼可免疫）！守塔小怪踏上仅受轻微 <b>-20% 寒霜减速</b>，绝不会被冰封。'
+    desc: '二层永冻冰窟专属的蓝宝石冰晶凹槽方台。<b>角色踏入将随寒气累计渐进减速（最多减速 20%），连续站立满 4 秒（D1=4.0s → D5=2.0s 按厄度递减）将直接冰封禁锢后解冻；离开冰面 1 秒后寒气才开始消退恢复</b>（苍翠风翼可免疫）！守塔小怪踏上仅受轻微 <b>-20% 寒霜减速</b>，绝不会被冰封。'
   },
   {
     id: 'portal', icon: '🌀', name: '双生星晷裂隙门', badge: '三层·倒悬钟楼专属机关', scenes: '🕰️ 三层·倒悬钟楼（标志机关）',

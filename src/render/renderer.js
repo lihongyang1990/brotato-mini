@@ -3501,20 +3501,24 @@ function draw() {
       const bx = viewW * 0.5 - tw * 0.5;
       const by = baseY + i * (bh + 7) - (1 - enterP) * 8;
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = 'rgba(17, 13, 29, 0.90)';
+      ctx.fillStyle = 'rgba(17, 13, 29, 0.48)';
       ctx.strokeStyle = b.color || '#ffd166';
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.roundRect(bx, by, tw, bh, 9);
       ctx.fill();
+      ctx.globalAlpha = alpha * 0.66;
       ctx.stroke();
       const progW = Math.max(0, (tw - 14) * Math.max(0, Math.min(1, b.t / maxT)));
       if (progW > 1) {
-        ctx.globalAlpha = alpha * 0.65;
+        ctx.globalAlpha = alpha * 0.56;
         ctx.fillStyle = b.color || '#ffd166';
         ctx.fillRect(bx + 7, by + bh - 3.5, progW, 2);
       }
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = alpha * 0.94;
+      ctx.strokeStyle = 'rgba(5, 7, 15, 0.85)';
+      ctx.lineWidth = 3.2;
+      ctx.strokeText(b.txt, viewW * 0.5, by + bh * 0.5 - 0.5, tw - 18);
       ctx.fillStyle = '#f8f5ff';
       ctx.fillText(b.txt, viewW * 0.5, by + bh * 0.5 - 0.5, tw - 18);
     }
@@ -3587,8 +3591,8 @@ function draw() {
     ctx.restore();
   }
 
-  // 👑 首领登场（一阶段 33% 概率）/ 神话二阶段觉醒（二阶段 33% 概率觉醒且 100% 必出立绘）全屏斜向破框立绘横幅
-  // 完整展示 4.0 秒后进入 0.85 秒丝滑上浮消逝动画（0 radialGradient / 0 shadowBlur）
+  // 👑 首领登场（一阶段 33% 概率）/ 神话二阶段觉醒（二阶段 D1=30% -> D5=50% 概率觉醒且 100% 必出立绘）半透明斜向破框立绘横幅
+  // 完整展示 4.0 秒后进入 0.85 秒丝滑上浮消逝动画（0 radialGradient / 0 shadowBlur · 高透光不挡走位与弹幕）
   if (state === 'wave' && endlessMode &&
       typeof bossCutscene !== 'undefined' && bossCutscene && bossCutscene.t > 0 &&
       !(typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.isBlockingGameplay === 'function' && SpireDirector.isBlockingGameplay())) {
@@ -3612,19 +3616,19 @@ function draw() {
 
     if (alpha > 0.008) {
       ctx.save();
-      // 1. 全屏戏剧暗化衬底 + 破晓瞬闪刀光
-      ctx.globalAlpha = 0.78 * alpha;
+      // 1. 全屏清透氛围衬底（大幅降低遮挡度，确保玩家与弹幕清晰可见）+ 破晓微闪
+      ctx.globalAlpha = 0.26 * alpha;
       ctx.fillStyle = isMythic ? '#13040b' : '#060913';
       ctx.fillRect(0, 0, viewW, viewH);
       if (elapsed < 0.12) {
-        ctx.globalAlpha = (1 - elapsed / 0.12) * 0.38;
+        ctx.globalAlpha = (1 - elapsed / 0.12) * 0.16;
         ctx.fillStyle = isMythic ? '#ffd166' : '#ffffff';
         ctx.fillRect(0, 0, viewW, viewH);
       }
 
-      // 2. 上下电影级黑金封幅与中央棱钻饰纹
+      // 2. 上下电影级半透黑金封幅与中央棱钻饰纹
       const barH = Math.round(Math.min(isShortLand ? 38 : 54, viewH * 0.082) * enterP * (0.35 + 0.65 * exitP));
-      ctx.globalAlpha = 0.95 * alpha;
+      ctx.globalAlpha = 0.48 * alpha;
       ctx.fillStyle = '#04060c';
       ctx.fillRect(0, 0, viewW, barH);
       ctx.fillRect(0, viewH - barH, viewW, barH);
@@ -3632,7 +3636,7 @@ function draw() {
       ctx.fillRect(0, Math.max(0, barH - 1.8), viewW, 1.8);
       ctx.fillRect(0, viewH - barH, viewW, 1.8);
 
-      // 3. 双层斜切破框战幕横幅（底层主题色错位衬带 + 主层曜黑流金渐变带 + 内嵌细金线）
+      // 3. 双层斜切半透战幕横幅（底层主题色错位衬带 + 主层半透曜黑渐变带 + 内嵌细金线）
       const cy = viewH * 0.5 - dissolveLift * 0.45;
       const bandBaseH = portraitPortrait ? 252 : (isShortLand ? 168 : 210);
       const bandH = bandBaseH * (0.86 + 0.14 * exitP);
@@ -3640,7 +3644,7 @@ function draw() {
       const xL = -24, xR = viewW + 24;
 
       // 3a. 错位主题色暗影斜带
-      ctx.globalAlpha = 0.34 * alpha;
+      ctx.globalAlpha = 0.18 * alpha;
       ctx.fillStyle = mainCol;
       ctx.beginPath();
       ctx.moveTo(xL, cy - bandH * 0.5 + slant + 8);
@@ -3650,8 +3654,8 @@ function draw() {
       ctx.closePath();
       ctx.fill();
 
-      // 3b. 主战幕斜带（线性金属暗泽渐变）
-      ctx.globalAlpha = 0.96 * alpha;
+      // 3b. 主战幕斜带（半透金属暗泽渐变，透过战幕可直视战场与敌弹）
+      ctx.globalAlpha = 0.54 * alpha;
       const ribGrad = ctx.createLinearGradient(0, cy - bandH * 0.5, viewW, cy + bandH * 0.5);
       if (isMythic) {
         ribGrad.addColorStop(0, '#14040c');
@@ -3748,7 +3752,7 @@ function draw() {
       ctx.restore();
 
       // 4. 破框半身立绘（一阶段夏装 / 二阶段隐藏泳装）与主宰铭文排印
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = 0.84 * alpha;
       const slideOffset = (1 - enterP) * 64;
       const phaseBadgeTxt = isMythic ? '⚡ PHASE II · 神话二阶立绘解封' : '👑 PHASE I · 首领降临立绘';
       const personaShort = personaSpec ? personaSpec.personaName.split(' · ')[0] : '';
@@ -3765,7 +3769,7 @@ function draw() {
         ctx.textAlign = 'center';
         const pillW = Math.min(viewW - 36, 248);
         const pillY = cy + 36;
-        ctx.fillStyle = isMythic ? 'rgba(225, 29, 72, 0.34)' : 'rgba(15, 23, 42, 0.82)';
+        ctx.fillStyle = isMythic ? 'rgba(225, 29, 72, 0.28)' : 'rgba(15, 23, 42, 0.48)';
         ctx.strokeStyle = accCol;
         ctx.lineWidth = 1.4;
         ctx.beginPath();
@@ -3860,7 +3864,7 @@ function draw() {
           const tipH = isShortLand ? 24 : 29;
           const tipY = cy + (isShortLand ? 34 : 44);
           const tipW = Math.min(maxTxtW, Math.max(240, bc.extraTag.length * (isShortLand ? 12.5 : 14) + 28));
-          ctx.fillStyle = isMythic ? 'rgba(217, 4, 41, 0.34)' : 'rgba(15, 23, 42, 0.72)';
+          ctx.fillStyle = isMythic ? 'rgba(217, 4, 41, 0.28)' : 'rgba(15, 23, 42, 0.46)';
           ctx.strokeStyle = isMythic ? '#ffd166' : 'rgba(246, 211, 121, 0.55)';
           ctx.lineWidth = 1.4;
           ctx.beginPath();

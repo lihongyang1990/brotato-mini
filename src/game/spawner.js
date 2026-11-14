@@ -1030,9 +1030,9 @@ function spawnSpecialRelic(forceId = null) {
   return rel;
 }
 
-// 全屏首领登场（一阶段 33% 概率）与神话二阶段觉醒（二阶段 33% 概率觉醒且 100% 必出立绘）破框横幅触发器
+// 全屏首领登场（一阶段 33% 概率）与神话二阶段觉醒（二阶段 D1=30% -> D5=50% 阶梯概率觉醒且 100% 必出立绘）破框横幅触发器
 const RARE_PORTRAIT_RATE = 0.33;
-const PHASE2_AWAKEN_RATE = 0.33;
+const PHASE2_AWAKEN_RATE = 0.30;
 const BOSS_CUTSCENE_SHOW_SEC = 4.0;
 const BOSS_CUTSCENE_FADE_SEC = 0.85;
 const BOSS_CUTSCENE_TOTAL_SEC = BOSS_CUTSCENE_SHOW_SEC + BOSS_CUTSCENE_FADE_SEC;
@@ -1262,6 +1262,7 @@ function beginWave(retryMeta = null) {
   player._fissureHitCd = 0; player._fissureLeapHintCd = 0;
   player.frostGauge = 0; player.frostLeaveGrace = 0; player.iceFreezeT = 0; player.frostThawImmT = 0;
   player.waveMythicAwakened = false;
+  player.waveBossCrateDropped = false;
   cam.x = player.x; cam.y = player.y;
   clampCam();
   player.hp = player.maxHp;
@@ -2056,7 +2057,7 @@ function createEnemy(x, y, type, variant = '') {
   }
 
   let ent;
-  const mythicRate = PHASE2_AWAKEN_RATE;
+  const mythicRate = typeof getPhase2AwakenRate === 'function' ? getPhase2AwakenRate(diff) : PHASE2_AWAKEN_RATE;
   const bossDefs = getBossDefs();
   const miniBossDefs = getMiniBossDefs();
   const specialRelics = getSpecialRelics();

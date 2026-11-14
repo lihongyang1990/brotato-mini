@@ -917,7 +917,16 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       const p2 = getBossAnimePortrait(k, true);
       return p1 && p2 && p1 !== p2 && p1.width === 440 && p1.height === 516 && p2.width === 440 && p2.height === 516;
     });
-    const ratesValid = (RARE_PORTRAIT_RATE === 0.33 && PHASE2_AWAKEN_RATE === 0.33 && BOSS_CUTSCENE_SHOW_SEC === 4.0);
+    const ratesValid = (
+      RARE_PORTRAIT_RATE === 0.33 &&
+      PHASE2_AWAKEN_RATE === 0.30 &&
+      getPhase2AwakenRate(DIFFS[1]) === 0.30 &&
+      getPhase2AwakenRate(DIFFS[2]) === 0.35 &&
+      getPhase2AwakenRate(DIFFS[3]) === 0.40 &&
+      getPhase2AwakenRate(DIFFS[4]) === 0.45 &&
+      getPhase2AwakenRate(DIFFS[5]) === 0.50 &&
+      BOSS_CUTSCENE_SHOW_SEC === 4.0
+    );
 
     // Render Phase 1 & Phase 2 cut-in banners across entrance, 4s hold, and 0.85s dissolve fade-out
     endlessMode = true;
@@ -950,7 +959,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(actionAudit.dashArtsTested, 6, "All 6 heroes must execute their signature Soul Dash arts & slice projectiles");
   assert.strictEqual(actionAudit.sigBossesVerified, 4, "All 4 Fixed Act Bosses must telegraph and unleash their signature named skills");
   assert.strictEqual(actionAudit.all32PortraitsReady, true, "All 16 Bosses must provide distinct 440x516 Phase 1 & Phase 2 cutout portraits (32 total)");
-  assert.strictEqual(actionAudit.ratesValid, true, "Phase 1 portrait rate & Phase 2 awaken rate must both be 33% (0.33), with 4.0s display");
+  assert.strictEqual(actionAudit.ratesValid, true, "Phase 1 portrait rate must be 33% and Phase 2 awaken rate must scale D1=30% -> D5=50%, with 4.0s display");
   assert(actionAudit.p1Dur >= 4.8 && actionAudit.p1Dur <= 4.9, "Boss portrait cut-in banner must display for 4.0s plus smooth fade-out (~4.85s total)");
   assert.strictEqual(actionAudit.p2Guaranteed, true, "Triggering Phase 2 awakening must 100% guarantee displaying the Phase 2 portrait banner");
 
@@ -1209,13 +1218,15 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     terrains.push(ensureTerrainGeometry({ kind: 'ice_sheet', shape: 'square_slab', x: player.x, y: player.y, r: 220, rot: 0, pulse: 0 }));
     const iceMob = createEnemy(player.x + 36, player.y, 'chaser');
     iceMob.hp = 99999; iceMob.maxHp = 99999; iceMob.dmg = 0;
+    diff = DIFFS[1]; selectedDiff = 1;
     for (let k = 0; k < 50; k++) {
       spawnAcc = 99;
       iceMob.x = player.x + 36; iceMob.y = player.y;
       update(0.05);
     }
     const midGauge = player.frostGauge;
-    const midSlowOk = midGauge > 2.2 && midGauge < 2.8 && player.terrainSpdMul < 0.94 && player.terrainSpdMul >= 0.80 && player.iceFreezeT === 0;
+    // On D1 (4.0s trigger -> fillRate = 1.25/s), 2.5s accumulates 3.125/5.00
+    const midSlowOk = midGauge > 2.95 && midGauge < 3.30 && player.terrainSpdMul < 0.90 && player.terrainSpdMul >= 0.80 && player.iceFreezeT === 0;
     const mobSlow20Ok = Math.abs((iceMob._terrainSpdMul || 1) - 0.80) < 0.001 && iceMob.freezeT === 0;
     // Leave terrain: 0.8s within 1s grace must hold frostGauge; +0.6s after grace must decay
     terrains.length = 0;
@@ -1223,18 +1234,33 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     const graceHeldOk = Math.abs(player.frostGauge - midGauge) < 0.02;
     for (let k = 0; k < 12; k++) { spawnAcc = 99; update(0.05); }
     const decayAfterGraceOk = player.frostGauge < midGauge - 0.45;
-    // Accumulate to 5.0s: max slow right before 5.0s is strictly capped at -20% (>= 0.80) -> freeze 1.0s -> thaw
+    // Accumulate on D1 (4.0s): max slow right before 5.0 gauge is strictly capped at -20% (>= 0.80) -> freeze 1.0s -> thaw
     terrains.push(ensureTerrainGeometry({ kind: 'ice_sheet', shape: 'square_slab', x: player.x, y: player.y, r: 220, rot: 0, pulse: 0 }));
-    player.frostGauge = 4.92;
+    player.frostGauge = 4.90;
     spawnAcc = 99; update(0.05);
     const maxSlowCap20Ok = player.iceFreezeT === 0 && player.terrainSpdMul >= 0.80 && player.terrainSpdMul <= 0.81;
     for (let k = 0; k < 3; k++) { spawnAcc = 99; update(0.05); }
-    const frozeAt5sOk = maxSlowCap20Ok && player.iceFreezeT > 0.80 && player.frostGauge === 0;
+    const frozeAtD1Ok = maxSlowCap20Ok && player.iceFreezeT > 0.80 && player.frostGauge === 0;
     draw();
     terrains.length = 0;
-    for (let k = 0; k < 24; k++) { spawnAcc = 99; update(0.05); }
+    for (let k = 0; k < 28; k++) { spawnAcc = 99; update(0.05); }
     const thawedAfter1sOk = player.iceFreezeT === 0;
-    const frostTerrainOk = midSlowOk && mobSlow20Ok && graceHeldOk && decayAfterGraceOk && frozeAt5sOk && thawedAfter1sOk;
+    // Verify D1=4.0s..D5=2.0s ladder & D5 freezes in 2.0s (40 * 0.05s)
+    const iceLadderOk = (
+      getIceFreezeTriggerSec(DIFFS[1]) === 4.0 &&
+      getIceFreezeTriggerSec(DIFFS[2]) === 3.5 &&
+      getIceFreezeTriggerSec(DIFFS[3]) === 3.0 &&
+      getIceFreezeTriggerSec(DIFFS[4]) === 2.5 &&
+      getIceFreezeTriggerSec(DIFFS[5]) === 2.0
+    );
+    diff = DIFFS[5]; selectedDiff = 5;
+    player.frostGauge = 0; player.frostLeaveGrace = 0; player.iceFreezeT = 0; player.frostThawImmT = 0;
+    terrains.push(ensureTerrainGeometry({ kind: 'ice_sheet', shape: 'square_slab', x: player.x, y: player.y, r: 220, rot: 0, pulse: 0 }));
+    for (let k = 0; k < 41; k++) { spawnAcc = 99; update(0.05); }
+    const frozeAtD5In2sOk = player.iceFreezeT > 1.0 && player.frostGauge === 0;
+    terrains.length = 0; player.iceFreezeT = 0;
+    diff = DIFFS[1]; selectedDiff = 1;
+    const frostTerrainOk = midSlowOk && mobSlow20Ok && graceHeldOk && decayAfterGraceOk && frozeAtD1Ok && thawedAfter1sOk && iceLadderOk && frozeAtD5In2sOk;
 
     // 6) Boss Venom-Spray VFX + Hidden Phase-2 Exclusive Skill
     endlessMode = true;
@@ -1654,13 +1680,13 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       getMidLateWaveHpMul(11) > 1.92 &&
       Math.abs(getMidLateWaveHpMul(16) - 3.00) < 1e-9
     );
-    // D1 unchanged (1.14 / 1.15), D5 tuned to +65% HP (1.65) & +40% DMG (1.40), D2-D4 scaled proportionally & strictly monotonic
+    // D1 unchanged (1.14 / 1.15), D5 tuned to +70% HP (1.70) & +50% DMG (1.50), D2-D4 scaled proportionally & strictly monotonic
     const diffRebalanceOk = (
       DIFFS[1].hpMul === 1.14 && DIFFS[1].dmgMul === 1.15 && DIFFS[1].spdMul === 0.98 && DIFFS[1].spawnMul === 1.05 && DIFFS[1].eliteRate === 0.05 && DIFFS[1].shopTax === 1.00 &&
-      DIFFS[2].hpMul === 1.27 && DIFFS[2].dmgMul === 1.21 &&
-      DIFFS[3].hpMul === 1.40 && DIFFS[3].dmgMul === 1.28 &&
-      DIFFS[4].hpMul === 1.52 && DIFFS[4].dmgMul === 1.34 &&
-      DIFFS[5].hpMul === 1.65 && DIFFS[5].dmgMul === 1.40 && DIFFS[5].spdMul === 1.08 && DIFFS[5].spawnMul === 1.27 && DIFFS[5].eliteRate === 0.144 && DIFFS[5].shopTax === 1.11 &&
+      DIFFS[2].hpMul === 1.28 && DIFFS[2].dmgMul === 1.24 &&
+      DIFFS[3].hpMul === 1.42 && DIFFS[3].dmgMul === 1.33 &&
+      DIFFS[4].hpMul === 1.56 && DIFFS[4].dmgMul === 1.41 &&
+      DIFFS[5].hpMul === 1.70 && DIFFS[5].dmgMul === 1.50 && DIFFS[5].spdMul === 1.08 && DIFFS[5].spawnMul === 1.27 && DIFFS[5].eliteRate === 0.144 && DIFFS[5].shopTax === 1.11 &&
       DIFFS[1].hpMul < DIFFS[2].hpMul && DIFFS[2].hpMul < DIFFS[3].hpMul && DIFFS[3].hpMul < DIFFS[4].hpMul && DIFFS[4].hpMul < DIFFS[5].hpMul &&
       DIFFS[1].dmgMul < DIFFS[2].dmgMul && DIFFS[2].dmgMul < DIFFS[3].dmgMul && DIFFS[3].dmgMul < DIFFS[4].dmgMul && DIFFS[4].dmgMul < DIFFS[5].dmgMul
     );
@@ -2025,7 +2051,36 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       return true;
     })();
 
-    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk && lateHealDropAndBoss16DodgeOk);
+    // Twin Boss / Dual Commander wave must drop ONLY 1 Boss Relic Crate total (never 2)
+    const twinBossSingleCrateOk = (() => {
+      endlessMode = true;
+      state = 'wave';
+      wave = 20;
+      diff = DIFFS[5]; selectedDiff = 5;
+      enemies.length = 0; spawns.length = 0; drops.length = 0;
+      player.waveBossCrateDropped = false;
+      const tb1 = createEnemy(player.x + 150, player.y, 'boss', 'butcher');
+      const tb2 = createEnemy(player.x - 150, player.y, 'boss', 'frost_queen');
+      tb1.canPhase2 = false; tb2.canPhase2 = false;
+      hurtEnemy(tb1, tb1.maxHp + 999999, true);
+      const cratesAfterFirst = drops.filter(d => d.kind === 'crate' && d.isBoss && !d.isMythic).length;
+      hurtEnemy(tb2, tb2.maxHp + 999999, true);
+      const cratesAfterSecond = drops.filter(d => d.kind === 'crate' && d.isBoss && !d.isMythic).length;
+      if (cratesAfterFirst !== 0 || cratesAfterSecond !== 1) return false;
+
+      // Dual mini_boss commanders must also drop ONLY 1 Boss Relic Crate total
+      enemies.length = 0; spawns.length = 0; drops.length = 0;
+      player.waveBossCrateDropped = false;
+      const mb1 = createEnemy(player.x + 140, player.y, 'mini_boss', 'vanguard');
+      const mb2 = createEnemy(player.x - 140, player.y, 'mini_boss', 'pyro_lord');
+      mb1.canPhase2 = false; mb2.canPhase2 = false;
+      hurtEnemy(mb1, mb1.maxHp + 999999, true);
+      hurtEnemy(mb2, mb2.maxHp + 999999, true);
+      const cmdCrates = drops.filter(d => d.kind === 'crate' && d.isBoss && !d.isMythic).length;
+      return cmdCrates === 1;
+    })();
+
+    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk && lateHealDropAndBoss16DodgeOk && twinBossSingleCrateOk);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,
