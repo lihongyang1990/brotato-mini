@@ -1175,17 +1175,18 @@ function awardEnemyRewards(e) {
     }
   }
   const isBigBoss = e.type === 'boss' || e.type === 'special_boss';
+  const eliteFxCol = e.elite ? (e.eliteKind === 'frenzy' ? '#ff4d6d' : '#fbbf24') : e.color;
   // 移除普通小怪阵亡时的地面残留血圈与死亡扩散圈（仅精英/统领/首领保留击破光环，彻底消除群怪阵亡满地出圈与卡顿）
   if ((isBigBoss || e.type === 'mini_boss' || e.elite) && rings.length < 28) {
-    rings.push({ x: e.x, y: e.y, r: e.r * 1.65, color: e.elite ? '#ffd166' : e.color, t: 0.20, maxT: 0.20 });
+    rings.push({ x: e.x, y: e.y, r: e.r * 1.65, color: eliteFxCol, t: 0.20, maxT: 0.20 });
   }
   if ((isBigBoss || e.type === 'mini_boss') && typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.triggerHitstop === 'function') {
     SpireDirector.triggerHitstop(isBigBoss ? 0.062 : 0.030);
   }
-  addBurst(e.x, e.y, e.elite ? '#ffd166' : e.color, isBigBoss ? 24 : (enemies.length > 26 ? 3 : 5), isBigBoss ? 240 : 145);
+  addBurst(e.x, e.y, eliteFxCol, isBigBoss ? 24 : (enemies.length > 26 ? 3 : 5), isBigBoss ? 240 : 145);
 
-  // 狂化精英亡语：精英怪刷新数目降低 20%，亡语黄色小箭头（金梭弹）伤害与尺寸相应提升 +10%
-  if (e.elite) {
+  // 狂化精英双形态结算：仅【亡语形态 (deathrattle · 隐隐泛黄)】阵亡时迸射 4 枚黄色亡语金梭小箭头；【血怒形态 (frenzy · 隐隐发红)】不产亡语弹
+  if (e.elite && e.eliteKind !== 'frenzy') {
     const baseA = Math.random() * Math.PI * 2;
     for (let k = 0; k < 4 && eBullets.length < 170; k++) {
       const ba = baseA + (k / 4) * Math.PI * 2;

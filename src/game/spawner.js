@@ -2157,25 +2157,51 @@ function createEnemy(x, y, type, variant = '') {
   if (!isBossLike) {
     ent.mat = +((ent.mat || 0) * lateCoinMul * trialCoinMul).toFixed(2);
   }
-  // 第 3 波起按难度刷出【狂化精英词缀怪】（蚀界生存试炼期间禁用狂化精英词缀，保持纯粹走位闪避节奏）
+  // 第 3 波起按难度刷出双形态【狂化精英词缀怪】（蚀界生存试炼期间禁用狂化精英词缀）：
+  // 1) frenzy（血怒狂化 · 隐隐发红）：相对基础精英形态额外获得 血量+20%、移速+20%、攻速+20%（无亡语弹）；
+  // 2) deathrattle（金梭亡语 · 隐隐泛黄）：标准移速与攻速，阵亡时向四周迸射 4 枚黄色亡语金梭小箭头。
   const canElite = !survivalTrialWave && wave >= 3 && !isBossLike && type !== 'mini_slime' && type !== 'bomber' && (type !== 'juggernaut' || wave >= 8);
   const rawEChance = (diff.eliteRate || 0.05) + Math.min(0.12, (wave - 3) * 0.011);
   const lateEliteAdd = wave >= 10 ? (0.045 + Math.min(0.085, (wave - 10) * 0.013)) : 0;
   const baseEChance = wave === 3 ? rawEChance * 0.40 : (wave === 4 ? rawEChance * 0.55 : (wave === 5 ? rawEChance * 0.72 : (rawEChance + lateEliteAdd)));
   const eChance = baseEChance * ELITE_MOB_COUNT_MUL;
   if (canElite && Math.random() < eChance) {
-    ent.elite = true;
-    ent.r = Math.round(ent.r * 1.20);
-    ent.hp = Math.round(ent.hp * (wave >= 10 ? 2.45 : (wave <= 5 ? 1.90 : 2.15)));
-    ent.maxHp = ent.hp;
-    ent.spd *= (wave >= 10 ? 1.09 : 1.05);
-    ent.dmg = Math.round(ent.dmg * (wave >= 10 ? 1.32 : (wave <= 5 ? 1.15 : 1.22)));
-    ent.mat = +((ent.mat || 0) * 1.45).toFixed(2);
+    applyEliteAffix(ent);
   }
 
   enemies.push(ent);
-  addBurst(x, y, ent.elite ? '#ffd166' : ent.color, isBossLike ? 16 : (ent.elite ? 8 : 5), isBossLike ? 150 : 85);
+  const spawnBurstCol = ent.elite ? (ent.eliteKind === 'frenzy' ? '#ff4d6d' : '#fbbf24') : ent.color;
+  addBurst(x, y, spawnBurstCol, isBossLike ? 16 : (ent.elite ? 8 : 5), isBossLike ? 150 : 85);
   return ent;
+}
+
+const ELITE_FRENZY_BONUS_MUL = 1.20;
+function applyEliteAffix(ent, forcedKind = '') {
+  if (!ent) return ent;
+  const kind = (forcedKind === 'frenzy' || forcedKind === 'deathrattle')
+    ? forcedKind
+    : (Math.random() < 0.50 ? 'frenzy' : 'deathrattle');
+  ent.elite = true;
+  ent.eliteKind = kind;
+  ent.r = Math.round(ent.r * 1.18);
+  const baseEliteHp = Math.max(4, Math.round(ent.hp * (wave >= 10 ? 2.05 : (wave <= 5 ? 1.65 : 1.85))));
+  ent.dmg = Math.max(2, Math.round(ent.dmg * (wave >= 10 ? 1.25 : (wave <= 5 ? 1.14 : 1.20))));
+  ent.mat = +((ent.mat || 0) * 1.45).toFixed(2);
+  if (kind === 'frenzy') {
+    ent.hp = Math.max(5, Math.round(baseEliteHp * ELITE_FRENZY_BONUS_MUL));
+    ent.maxHp = ent.hp;
+    ent.spd = ent.spd * ELITE_FRENZY_BONUS_MUL;
+    ent.eliteAspdMul = ELITE_FRENZY_BONUS_MUL;
+  } else {
+    ent.hp = baseEliteHp;
+    ent.maxHp = ent.hp;
+    ent.eliteAspdMul = 1.00;
+  }
+  return ent;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.ELITE_FRENZY_BONUS_MUL = ELITE_FRENZY_BONUS_MUL;
+  globalThis.applyEliteAffix = applyEliteAffix;
 }
 if (typeof SpireBootGate !== 'undefined' && SpireBootGate) {
   SpireBootGate.setStep(52, '波次与地形引擎就绪 · 正在装载渲染管线…');

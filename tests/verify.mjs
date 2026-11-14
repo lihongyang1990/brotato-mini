@@ -1812,7 +1812,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       update(0.05);
       if (!b3.chronoAnchor) return false;
       draw();
-      player.x = b3.chronoAnchor.dispelX; player.y = b3.chronoAnchor.dispelY;
+      player.x = b3.chronoAnchor.dx; player.y = b3.chronoAnchor.dy;
       update(0.05);
       if (b3.chronoAnchor !== null || !(b3.exposeT >= 1.8)) return false;
 
@@ -1822,10 +1822,10 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       b4.hp = 50000; b4.maxHp = 50000; b4.arenaMechCd = 0.01;
       player.x = 1100; player.y = 900;
       update(0.05);
-      if (!b4.eclipseSingularity || b4.eclipseSingularity.seals.length !== 2) return false;
+      if (!b4.eclipseSingularity || !Number.isFinite(b4.eclipseSingularity.s1x)) return false;
       draw();
-      player.x = b4.eclipseSingularity.seals[0].x;
-      player.y = b4.eclipseSingularity.seals[0].y;
+      player.x = b4.eclipseSingularity.s1x;
+      player.y = b4.eclipseSingularity.s1y;
       b4.eclipseSingularity.t = 0.02;
       const hpBeforeNova = player.hp;
       update(0.05);
@@ -1845,7 +1845,58 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       return hasMagnetAndCocoon;
     })();
 
-    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk);
+    // Dual-form Elite Monsters (frenzy red +20% aspd/spd/hp vs deathrattle yellow 4-arrow burst) + Dynamic Boss Cast Pose/Phenomena
+    const eliteFormsAndBossCastAnimOk = (() => {
+      if (typeof applyEliteAffix !== 'function' || ELITE_FRENZY_BONUS_MUL !== 1.20 || typeof triggerBossActionPose !== 'function') return false;
+      state = 'wave'; wave = 6; survivalTrialWave = false;
+      enemies.length = 0; eBullets.length = 0;
+
+      const origRand = Math.random;
+      Math.random = () => 0.999999; // prevent random auto-elite on createEnemy so we can compare exact base stats
+      const eFrenzy = createEnemy(1100, 900, 'shooter');
+      const eDeath = createEnemy(1260, 900, 'shooter');
+      Math.random = origRand;
+
+      const baseSpd = eFrenzy.spd;
+      applyEliteAffix(eFrenzy, 'frenzy');
+      applyEliteAffix(eDeath, 'deathrattle');
+
+      if (eFrenzy.eliteKind !== 'frenzy' || eDeath.eliteKind !== 'deathrattle') return false;
+      if (Math.abs(eFrenzy.spd / baseSpd - 1.20) > 0.001 || Math.abs(eDeath.spd / baseSpd - 1.00) > 0.001) return false;
+      if (eFrenzy.hp !== Math.round(eDeath.hp * 1.20) || eFrenzy.eliteAspdMul !== 1.20 || eDeath.eliteAspdMul !== 1.00) return false;
+
+      // Verify frenzy elite ticks shotT 20% faster than deathrattle elite
+      eFrenzy.shotT = 2.40;
+      eDeath.shotT = 2.40;
+      player.x = 1180; player.y = 650;
+      update(0.50);
+      if (Math.abs((2.40 - eFrenzy.shotT) - (2.40 - eDeath.shotT) * 1.20) > 0.02) return false;
+
+      // Render pass for both elite forms (crimson vs golden tint + badges)
+      draw();
+
+      // Deathrattle gating: frenzy spawns 0 yellow arrows; deathrattle spawns 4 yellow lance arrows
+      eBullets.length = 0;
+      hurtEnemy(eFrenzy, 999999, true);
+      if (eBullets.length !== 0) return false;
+      hurtEnemy(eDeath, 999999, true);
+      if (eBullets.length !== 4 || !eBullets.every(b => b.shape === 'lance' && b.color === '#fbbf24')) return false;
+
+      // Dynamic Boss skill-casting pose & phenomena render pass across all 6 Bosses
+      enemies.length = 0; eBullets.length = 0;
+      for (const bv of ['frost_queen', 'void_weaver', 'solar_seraph', 'mech_colossus', 'plague_empress', 'butcher']) {
+        const b = createEnemy(1320, 900, 'boss', bv);
+        b.hp = 50000; b.maxHp = 50000;
+        b.sigWindupT = 0.45; b.sigMaxW = 0.90;
+        triggerBossActionPose(b, bv === 'mech_colossus' ? 'recoil' : (bv === 'butcher' ? 'slash' : 'cast_up'), 0.3, 0.5, '#fde68a');
+        draw();
+        if (!(b._actPoseT > 0)) return false;
+        enemies.length = 0;
+      }
+      return true;
+    })();
+
+    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,
