@@ -620,10 +620,10 @@ function triggerSoulDash() {
     _activeWeaponId = prevWpnId;
   }
 }
-// 对齐中后期 <=80 同屏怪上限后的单怪晶石购买力曲线（全局金币/晶石产出下调 30%）
+// 对齐中后期 <=80 同屏怪上限后的单怪晶石购买力曲线（全局晶石/金币获取上调 +10%，CRYSTAL_YIELD_MUL=0.77）
 function getWaveMatRate(w) {
   const wv = Math.max(1, w || 1);
-  const yieldMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const yieldMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   return (0.92 * yieldMul) / (1 + Math.min(5, Math.max(0, wv - 1)) * 0.14 + Math.max(0, wv - 6) * 0.075);
 }
 
@@ -681,6 +681,9 @@ function triggerBossMythicPhase2(e) {
     }
   }
   beep(155, 0.32, 'sawtooth', 0.09);
+  if (typeof SpireAudio !== 'undefined' && SpireAudio && typeof SpireAudio.enterPhase2 === 'function') {
+    SpireAudio.enterPhase2((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId);
+  }
   if (typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.triggerHitstop === 'function') {
     SpireDirector.triggerHitstop(0.055);
   }
@@ -722,6 +725,71 @@ function triggerBossMythicPhase2(e) {
   return true;
 }
 
+// D5（第999次神罚）专属二阶段首领【10秒临死挣扎】常量与状态触发器（整场首领战仅触发一次：10s 无敌 + 攻速+20% + 每次伤害到玩家回血 10%）
+const D5_LAST_STAND_DURATION_SEC = 10.0;
+const D5_LAST_STAND_ASPD_MUL = 1.20;
+const D5_LAST_STAND_HEAL_RATIO = 0.10;
+
+function canTriggerD5BossLastStand(e) {
+  return !!(
+    e &&
+    e.type === 'boss' &&
+    e.mythicPhase2 &&
+    !e._d5LastStandUsed &&
+    !(e.d5LastStandT > 0) &&
+    typeof diff !== 'undefined' &&
+    diff &&
+    diff.id === 5
+  );
+}
+
+function triggerBossD5LastStand(e) {
+  if (!canTriggerD5BossLastStand(e)) return false;
+  e._d5LastStandUsed = true;
+  e.hp = 1;
+  e.d5LastStandMaxT = D5_LAST_STAND_DURATION_SEC;
+  e.d5LastStandT = D5_LAST_STAND_DURATION_SEC;
+  e.exposeT = 0;
+  e.freezeT = 0;
+  e.chillT = 0;
+  e.hitFlash = 0.16;
+  shake = Math.max(shake, 7.5);
+  beep(165, 0.24, 'sawtooth', 0.085);
+  beep(520, 0.16, 'triangle', 0.065);
+  if (typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.triggerHitstop === 'function') {
+    SpireDirector.triggerHitstop(0.055);
+  }
+  if (rings.length < 42) {
+    rings.push({ x: e.x, y: e.y, r: 195, color: '#ff2a55', t: 0.40, maxT: 0.40, kind: 'star' });
+    rings.push({ x: e.x, y: e.y, r: 138, color: '#ffd166', t: 0.34, maxT: 0.34, kind: 'hex' });
+  }
+  addBurst(e.x, e.y, '#ff2a55', 22, 235);
+  if (lightnings.length < 36) {
+    for (let k = -1; k <= 1; k++) {
+      lightnings.push({
+        pts: [
+          { x: e.x + k * 36, y: Math.max(12, e.y - 290) },
+          { x: e.x + k * 14, y: e.y - 125 },
+          { x: e.x, y: e.y }
+        ],
+        color: k === 0 ? '#ffd166' : '#ff2a55', t: 0.34, maxT: 0.34
+      });
+    }
+  }
+  addText(e.x, e.y - e.r - 28, '◆ 临死挣扎 · 10秒无敌狂暴!', '#ffd166', 19, 2.2, true);
+  announce('◆ 蚀日神罚·临死挣扎！首领进入 10 秒不灭状态（无敌 · 攻速+20% · 命中玩家回血10%）！', '#ff4d6d', 4.2);
+  logInfo('D5_LAST_STAND', `${e.bossTitle || e.variant} 触发 D5 二阶段 10s 临死挣扎`);
+  return true;
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.D5_LAST_STAND_DURATION_SEC = D5_LAST_STAND_DURATION_SEC;
+  globalThis.D5_LAST_STAND_ASPD_MUL = D5_LAST_STAND_ASPD_MUL;
+  globalThis.D5_LAST_STAND_HEAL_RATIO = D5_LAST_STAND_HEAL_RATIO;
+  globalThis.canTriggerD5BossLastStand = canTriggerD5BossLastStand;
+  globalThis.triggerBossD5LastStand = triggerBossD5LastStand;
+}
+
 function primeBomber(e) {
   if (!e || e.primed) return;
   e.primed = true;
@@ -732,12 +800,67 @@ function primeBomber(e) {
   addText(e.x, e.y - e.r - 10, '自爆预警!', '#ffbe0b', 13, 0.62, false);
 }
 
+function countActiveHealDrops() {
+  if (typeof drops === 'undefined' || !Array.isArray(drops)) return 0;
+  let c = 0;
+  for (let i = 0; i < drops.length; i++) {
+    if (drops[i] && drops[i].kind === 'heal') c++;
+  }
+  return c;
+}
+
+function getGroundHealCrowdFactor() {
+  const onMap = countActiveHealDrops();
+  if (onMap >= 10) return 0;
+  if (onMap >= 5) return 0.50;
+  return 1.00;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.countActiveHealDrops = countActiveHealDrops;
+  globalThis.getGroundHealCrowdFactor = getGroundHealCrowdFactor;
+}
+
 function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts = {}) {
   if (!e || e.hp <= 0 || e.primed || !Number.isFinite(rawDmg)) return;
   if (!player || player.hp <= 0 || state !== 'wave') return;
   if (typeof isSpireCombatSuspended === 'function' && isSpireCombatSuspended()) return;
   if (typeof SpireDirector !== 'undefined' && SpireDirector.isBlockingGameplay()) return;
   if (!Number.isFinite(e.hp)) { e.hp = 0; return; }
+
+  // D5 二阶段首领【10秒临死挣扎】无敌金身：持续期间完全免疫伤害（仅节流弹出金红护体反馈，结束后方可斩杀）
+  if ((e.d5LastStandT || 0) > 0) {
+    if (!opts.isDot) {
+      if (_frameHitBeeps < 2) { _frameHitBeeps++; beep(920, 0.022, 'triangle', 0.024); }
+      if (_frameSparks < 14) { _frameSparks++; addSparks(e.x, e.y, knockA !== null ? knockA + Math.PI : Math.random() * 6.28, '#ffd166', 3); }
+      if (!e._lsTxtCd || e._lsTxtCd <= 0) {
+        e._lsTxtCd = 0.42;
+        addText(e.x, e.y - e.r - 18, `◈ 临死挣扎·无敌 ${e.d5LastStandT.toFixed(1)}s`, '#ffd166', 13, 0.45, false);
+      }
+    }
+    return;
+  }
+
+  // 第 16 层终幕首领（日蚀圣女）常驻 25% 镜影闪避（持续灼烧/毒蚀 DoT 与阵眼崩碎反噬真伤不触发闪避）
+  if ((e.dodge || 0) > 0 && !(opts && (opts.isDot || opts.undodgeable))) {
+    if (Math.random() < e.dodge) {
+      if (!e._dodgeTxtCd || e._dodgeTxtCd <= 0) {
+        e._dodgeTxtCd = 0.26;
+        addText(e.x + (Math.random() - 0.5) * 20, e.y - e.r - 14, '◈ 闪避', '#fde68a', 14, 0.44, false);
+        if (_frameSparks < 14) { _frameSparks++; addSparks(e.x, e.y, knockA !== null ? knockA : Math.random() * 6.28, '#fde68a', 3); }
+        if (_frameHitBeeps < 2) { _frameHitBeeps++; beep(780, 0.024, 'sine', 0.022); }
+      }
+      return;
+    }
+  }
+
+  // 首领共鸣阵眼棱柱护佑减伤（场上存在存活阵眼时减免 28% 非破盾伤害，引导玩家优先转火击破阵眼）
+  if (e.type === 'boss' && (e._pylonShieldCnt || 0) > 0 && !ignoreShield) {
+    rawDmg *= 0.72;
+    if (!opts.isDot && (!e._pylonTxtCd || e._pylonTxtCd <= 0)) {
+      e._pylonTxtCd = 0.65;
+      addText(e.x, e.y - e.r - 14, '⚡ 阵眼棱障 -28%（击破棱柱破防）', '#72efdd', 12, 0.45, false);
+    }
+  }
 
   // 铁甲圣甲虫正面举盾减伤 55% + 金属格挡火星（格挡轻提示 0.38s 快隐 + 0.35s 节流防刷屏）
   const faceA = Number.isFinite(e.faceA) ? e.faceA : 0;
@@ -796,7 +919,7 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
     }
   }
   const effectiveDealt = Math.max(1, Math.round(prevHp - Math.max(0, e.hp)));
-  const willTrueDie = e.hp <= 0 && !(e.type === 'bomber' && !e.primed) && !(isBossTarget && e.canPhase2 && !e.mythicPhase2);
+  const willTrueDie = e.hp <= 0 && !(e.type === 'bomber' && !e.primed) && !(isBossTarget && e.canPhase2 && !e.mythicPhase2) && !canTriggerD5BossLastStand(e);
   const attribSrc = opts.srcId || (opts.isDot ? 'elemental_dot' : (_activeWeaponId || 'relic_proc'));
   recordWeaponDamage(attribSrc, effectiveDealt, willTrueDie);
 
@@ -969,6 +1092,9 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
     if ((e.type === 'boss' || e.type === 'special_boss' || e.type === 'mini_boss') && e.canPhase2 && !e.mythicPhase2) {
       if (triggerBossMythicPhase2(e)) return;
     }
+    if (canTriggerD5BossLastStand(e)) {
+      if (triggerBossD5LastStand(e)) return;
+    }
     killEnemyRewards(e);
   }
 }
@@ -1051,6 +1177,15 @@ function dropCrystals(x, y, totalMat, allowBigChunks = false) {
 function killEnemyRewards(e) {
   if (!e || e._rewarded || e._storyDefeatQueued || !player || player.hp <= 0 || state !== 'wave') return;
   if (typeof isSpireCombatSuspended === 'function' && isSpireCombatSuspended()) return;
+  if (e.type === 'boss' && typeof trees !== 'undefined' && Array.isArray(trees)) {
+    for (let ti = trees.length - 1; ti >= 0; ti--) {
+      const tr = trees[ti];
+      if (tr && tr.isBossPylon && tr.owner === e) {
+        addBurst(tr.x, tr.y, tr.pylonColor || '#72efdd', 8, 120);
+        trees.splice(ti, 1);
+      }
+    }
+  }
   const isStoryActBoss = !endlessMode && e.type === 'boss' && wave <= MAX_WAVE && wave % 4 === 0;
   if (isStoryActBoss && typeof resolveSpireBossDefeat === 'function') {
     // 本帧立即锁定结果；之后的弹丸/反伤不得同时把本层结算为玩家失败。
@@ -1076,17 +1211,18 @@ function awardEnemyRewards(e) {
     }
   }
   const isBigBoss = e.type === 'boss' || e.type === 'special_boss';
+  const eliteFxCol = e.elite ? (e.eliteKind === 'frenzy' ? '#ff4d6d' : '#fbbf24') : e.color;
   // 移除普通小怪阵亡时的地面残留血圈与死亡扩散圈（仅精英/统领/首领保留击破光环，彻底消除群怪阵亡满地出圈与卡顿）
   if ((isBigBoss || e.type === 'mini_boss' || e.elite) && rings.length < 28) {
-    rings.push({ x: e.x, y: e.y, r: e.r * 1.65, color: e.elite ? '#ffd166' : e.color, t: 0.20, maxT: 0.20 });
+    rings.push({ x: e.x, y: e.y, r: e.r * 1.65, color: eliteFxCol, t: 0.20, maxT: 0.20 });
   }
   if ((isBigBoss || e.type === 'mini_boss') && typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.triggerHitstop === 'function') {
     SpireDirector.triggerHitstop(isBigBoss ? 0.062 : 0.030);
   }
-  addBurst(e.x, e.y, e.elite ? '#ffd166' : e.color, isBigBoss ? 24 : (enemies.length > 26 ? 3 : 5), isBigBoss ? 240 : 145);
+  addBurst(e.x, e.y, eliteFxCol, isBigBoss ? 24 : (enemies.length > 26 ? 3 : 5), isBigBoss ? 240 : 145);
 
-  // 狂化精英亡语：精英怪刷新数目降低 20%，亡语黄色小箭头（金梭弹）伤害与尺寸相应提升 +10%
-  if (e.elite) {
+  // 狂化精英双形态结算：仅【亡语形态 (deathrattle · 隐隐泛黄)】阵亡时迸射 4 枚黄色亡语金梭小箭头；【血怒形态 (frenzy · 隐隐发红)】不产亡语弹
+  if (e.elite && e.eliteKind !== 'frenzy') {
     const baseA = Math.random() * Math.PI * 2;
     for (let k = 0; k < 4 && eBullets.length < 170; k++) {
       const ba = baseA + (k / 4) * Math.PI * 2;
@@ -1214,8 +1350,14 @@ function awardEnemyRewards(e) {
       waveCratesDropped++;
       drops.push({ x: e.x, y: e.y, kind: 'crate', bob: 0 });
       addText(e.x, e.y - e.r - 16, '◆ 战利品箱!', '#ffd166', 16, 1.65, true);
-    } else if (Math.random() < Math.min(0.22, 0.032 + player.healDropBonus + luck * 0.0006)) {
-      drops.push({ x: e.x, y: e.y, kind: 'heal', bob: 0 });
+    } else {
+      const baseHealProb = Math.min(0.22, 0.032 + player.healDropBonus + luck * 0.0006);
+      const lateDiffMul = typeof getEffectiveHealDropMul === 'function' ? getEffectiveHealDropMul(wave, diff) : 1.0;
+      const unitHealWeight = e.type === 'mini_slime' ? 0.35 : (e.type === 'swarmer' ? 0.65 : 1.0);
+      const crowdFactor = getGroundHealCrowdFactor();
+      if (crowdFactor > 0 && Math.random() < baseHealProb * lateDiffMul * unitHealWeight * crowdFactor) {
+        drops.push({ x: e.x, y: e.y, kind: 'heal', bob: 0 });
+      }
     }
   }
 
@@ -1315,6 +1457,38 @@ function triggerBullNova() {
   triggerExplosion(player.x, player.y, 165 * getBlastScale(), novaDmg, false, 0, '#ff9f1c', true, 0, 'bull_nova');
 }
 
+// D5 二阶段首领【临死挣扎】命中玩家回血结算：每次真实伤害到玩家（未被闪避），恢复首领 10% 最大生命值
+function _applyD5BossLastStandSiphon(dmgSrc) {
+  if (typeof diff === 'undefined' || !diff || diff.id !== 5 || !Array.isArray(enemies)) return;
+  let targetBoss = null;
+  if (dmgSrc && typeof dmgSrc === 'object' && dmgSrc.type === 'boss' && dmgSrc.hp > 0 && (dmgSrc.d5LastStandT || 0) > 0) {
+    targetBoss = dmgSrc;
+  } else if (_activeEnemyActor && typeof _activeEnemyActor === 'object' && _activeEnemyActor.type === 'boss' && _activeEnemyActor.hp > 0 && (_activeEnemyActor.d5LastStandT || 0) > 0) {
+    targetBoss = _activeEnemyActor;
+  } else {
+    const srcKey = typeof dmgSrc === 'string' ? dmgSrc : (typeof _activeEnemyActor === 'string' ? _activeEnemyActor : '');
+    if (srcKey && !srcKey.startsWith('terrain_') && !srcKey.startsWith('trap_')) {
+      for (let i = 0; i < enemies.length; i++) {
+        const be = enemies[i];
+        if (be && be.hp > 0 && be.type === 'boss' && (be.d5LastStandT || 0) > 0 && (be.variant === srcKey || srcKey === 'boss')) {
+          targetBoss = be;
+          break;
+        }
+      }
+    }
+  }
+  if (!targetBoss) return;
+  const healAmt = Math.max(1, Math.round(targetBoss.maxHp * D5_LAST_STAND_HEAL_RATIO));
+  targetBoss.hp = Math.min(targetBoss.maxHp, targetBoss.hp + healAmt);
+  if (player && beams.length < 40) {
+    beams.push({ x1: player.x, y1: player.y - 10, x2: targetBoss.x, y2: targetBoss.y - 12, color: '#ff2a55', t: 0.28, maxT: 0.28 });
+  }
+  if (rings.length < 42) {
+    rings.push({ x: targetBoss.x, y: targetBoss.y, r: targetBoss.r + 34, color: '#ff4d6d', t: 0.26, maxT: 0.26, kind: 'hex' });
+  }
+  addText(targetBoss.x, targetBoss.y - targetBoss.r - 24, `◆ 噬血回春 +10% (+${healAmt})`, '#ff4d6d', 16, 1.15, true);
+}
+
 // 全面加固受击结算（参照《土豆兄弟》收敛隐性叠乘减伤并设 66% 非闪避减伤上限 + 记录精准承伤来源）
 function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
   if (!player || state !== 'wave' || player.hp <= 0 || inHurtPlayer) return;
@@ -1383,6 +1557,7 @@ function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
       if (player.shieldPulseNova) triggerShieldPulse();
       if (dmg <= 0) {
         recordDamageTaken(dmgSrc || _activeEnemyActor, Math.round(totalAbsorbed), false);
+        _applyD5BossLastStandSiphon(dmgSrc);
         addText(player.x, player.y - 28, `护盾 -${absorbed}`, '#72efdd', 15, 0.72, false);
         if (player.thorns > 0) triggerThornsNova();
         triggerBullNova();
@@ -1394,6 +1569,7 @@ function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
     player.hp -= dmg;
     const isFatal = player.hp <= 0;
     recordDamageTaken(dmgSrc || _activeEnemyActor, Math.max(1, Math.round(totalAbsorbed + hpLost)), isFatal);
+    _applyD5BossLastStandSiphon(dmgSrc);
     player.hurtFlashT = 0.22;
     shake = 4.5;
     beep(115, 0.15, 'sawtooth', 0.08);

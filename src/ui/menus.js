@@ -539,7 +539,7 @@ let relicSpawnT = -1, activeSceneEvent = null, sceneEventT = 0, sandGustT = 0, s
 let lastBossVariant = '', lastMiniBossVariant = '';
 let texts = [], particles = [], sparks = [], lightnings = [], slashes = [], beams = [], stains = [], shells = [];
 let pendingLevels = 0, pendingCrates = 0, treeSpawnT = 3.2, shopOffers = [];
-let rerollCost = 2, rerollBase = 2, rerollStep = 1, freeRerollsLeft = 0, anvilUpgradedMsg = '', inHurtPlayer = false;
+let rerollCost = 1, rerollBase = 1, rerollStep = 2, freeRerollsLeft = 0, anvilUpgradedMsg = '', inHurtPlayer = false;
 let hudAcc = 0, last = performance.now();
 const hudCache = {}, hudEls = {}, renderList = [];
 function setHudText(id, val) {
@@ -708,8 +708,8 @@ function startGame(cls, opts) {
     turretAspdBonus: 0, turretBastion: 0, mineHaste: 0, mineRadiusBonus: 0, turretAuraHeal: 0, turretElemInherit: false, turretMissile: false, _inTurretAura: false,
     turretCrit: false, turretElem: false, turretSalvo: false, _salvoCd: 0, bullCd: 0,
     staffHaste: 0, staffPierce: 0, staffRange: 0, dotHaste: 0, staffVolley: 0, elemCrit: false, archmageMeteor: false, _reactionCount: 0,
-    magnet: 130, harvest: 1, harvestFlat: 0, luck: 0, rangeBonus: 0, _displayRange: 140,
-    pierceBonus: 0, bounceBonus: 0, bounceAmpDmg: 0, farShotBonus: 0, shopDiscount: 0, freeRerolls: 0, bonusTrees: 0,
+    magnet: typeof BASE_PICKUP_MAGNET === 'number' ? BASE_PICKUP_MAGNET : 143, harvest: 1, harvestFlat: 0, luck: 0, rangeBonus: 0, _displayRange: 140,
+    pierceBonus: 0, bounceBonus: 0, bounceAmpDmg: 0, farShotBonus: 0, shopDiscount: 0, freeRerolls: 0, shopVisits: 0, shopRerollRaw: 1, bonusTrees: 0,
     enemySlow: 0, thorns: 0, cyberball: 0, critHeal: 0, critMeleeHeal: false, ailmentLeech: 0, rangeToDmg: false, hpToDmg: 0, armorToDmg: 0, regenToDmg: false, hasAnvil: false, healBonus: 0,
     burnChance: 0, chillChance: 0, chillDmgBonus: 0, freezeChance: 0, freezeDeathNova: false, poisonChance: 0, maxPoisonStacks: 8, plagueSpread: false, elemSynergy: false, reactionBlast: false,
     meleeBossGuard: 0, meleeSweepBonus: 0, meleeKnockBonus: 0, meleeShockwave: false, meleeBulletCutChance: 0, meleeSunder: false, strideQuake: false, _strideDist: 0, blastChance: 0, explosionScale: 1, napalmBlast: false, bloodNova: false,
@@ -720,7 +720,7 @@ function startGame(cls, opts) {
     _fissureHitCd: 0, _fissureLeapHintCd: 0, recentCrateIds: [],
     rarePortraitShown: false, shownBossPortraits: {}, mythicAwakenedCount: 0, waveMythicAwakened: false, retryCount: 0,
     lavaExposure: 0, lavaTick: 0, terrainHintT: 0, terrainSpdMul: 1,
-    lv: 1, xp: 0, xpNeed: 10, mats: Math.round(diff.matBonus * (typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70)), kills: 0, invuln: 0, hurtFlashT: 0, walkT: 0, dustT: 0, moving: false,
+    lv: 1, xp: 0, xpNeed: 10, mats: Math.round(diff.matBonus * (typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77)), kills: 0, invuln: 0, hurtFlashT: 0, walkT: 0, dustT: 0, moving: false,
     runStats: { weaponDmg: {}, dmgTaken: {}, totalDealt: 0, totalTaken: 0 },
     weapons: [], items: {}
   };
@@ -746,7 +746,7 @@ function startGame(cls, opts) {
     player.weapons.push(makeWeapon('pistol', 1), makeWeapon('stick', 1));
   }
   syncSetHp();
-  wave = 1; endlessMode = runEndless; pendingLevels = 0; pendingCrates = 0; freeRerollsLeft = 0; anvilUpgradedMsg = ''; shopOffers = []; waveCheckpoint = null;
+  wave = 1; endlessMode = runEndless; pendingLevels = 0; pendingCrates = 0; freeRerollsLeft = 0; rerollBase = 1; rerollStep = 2; rerollCost = 1; if (typeof rerollRawCost !== 'undefined') rerollRawCost = 1; anvilUpgradedMsg = ''; shopOffers = []; waveCheckpoint = null;
   survivalTrialQueued = false; survivalTrialWave = false; survivalTrialHits = 0; survivalFissures = []; survivalSkyVolleys = [];
   logInfo('GAME', `开局 ver=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '-'}, mode=${runEndless ? 'endless' : 'story'}, cls=${cls}, diff=${diff.badge}, sceneMode=${selectedScene}, ui=${uiMode}, world=${WORLD.w}x${WORLD.h}`);
   document.getElementById('startMenu').classList.add('hidden');
@@ -786,7 +786,13 @@ function showStart() {
   if (clm) clm.classList.add('hidden');
   const am = document.getElementById('audioModal');
   if (am) am.classList.add('hidden');
-  if (typeof SpireAudio !== 'undefined' && SpireAudio.refreshButtons) SpireAudio.refreshButtons();
+  if (typeof SpireAudio !== 'undefined') {
+    if (SpireAudio.phase2Active && typeof SpireAudio.syncScene === 'function') {
+      SpireAudio.syncScene('foundry', false);
+    } else if (SpireAudio.refreshButtons) {
+      SpireAudio.refreshButtons();
+    }
+  }
   bossCutscene = null;
   if (typeof pendingBossCutscene !== 'undefined') pendingBossCutscene = null;
   survivalTrialQueued = false;
@@ -942,6 +948,7 @@ function saveWaveCheckpoint(extraMeta = null) {
     rerollCost,
     rerollBase,
     rerollStep,
+    rerollRawCost: typeof rerollRawCost === 'number' ? rerollRawCost : rerollBase,
     freeRerollsLeft,
     anvilUpgradedMsg,
     isSurvivalTrial: !!survivalTrialWave,
@@ -981,6 +988,9 @@ function retryFailedWave(options) {
   rerollCost = waveCheckpoint.rerollCost;
   rerollBase = waveCheckpoint.rerollBase;
   rerollStep = waveCheckpoint.rerollStep;
+  if (typeof rerollRawCost !== 'undefined' && Number.isFinite(waveCheckpoint.rerollRawCost)) {
+    rerollRawCost = waveCheckpoint.rerollRawCost;
+  }
   freeRerollsLeft = waveCheckpoint.freeRerollsLeft || 0;
   anvilUpgradedMsg = waveCheckpoint.anvilUpgradedMsg || '';
   shopOffers = Array.isArray(waveCheckpoint.shopOffers)

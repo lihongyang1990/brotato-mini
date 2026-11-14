@@ -21,6 +21,15 @@ body.m-ui #shopMenu { justify-content: space-between; }
 
 body.m-ui .start-frame-ornament { inset: 6px; }
 body.m-ui .hud-right small { display: none; }
+body.m-ui .bar { height: 21px; border-radius: 4px; }
+body.m-ui .bar-xp { height: 14px; }
+body.m-ui .bar-boss { height: 15px; }
+body.m-ui .bar-text { font-size: 12px; font-weight: 700; }
+body.m-ui .xp-text { font-size: 10.5px; }
+body.m-ui .boss-hp-text { font-size: 10.5px; }
+body.m-ui .hud-dash-wrap { height: 22px; }
+body.m-ui .hud-dash-text { font-size: 11px; }
+body.m-ui .boss-cast-sub { font-size: 11.5px; padding: 2px 9px; }
 /* Mobile volume controls remain available in the pause menu; the battle grid
    reserves its right-hand slot for the pause control. */
 body.m-ui #hudAudioBtn { display: none; }

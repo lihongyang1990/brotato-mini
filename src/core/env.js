@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.10 蚀界试炼金币补偿提升 + 赛后结算兵装/魔物/遗物点击详情弹窗 + 流派隐藏爆率提升至+20% + 1~5层小怪血量下调15%）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.11 六大首领创新机制重做 + D5二阶段10秒临死挣扎 + D1->D5地形影响+30%/地形增大+50% + 6~10层血量-10% + 金币与远程伤害+10%）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,13 +16,24 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.10';
-const APP_BUILD_DATE = '2026-11-14';
+const APP_VERSION = 'v2.1.11';
+const APP_BUILD_DATE = '2026-11-15';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.10', date: '2026-11-14', tag: '当前版本 · 蚀界试炼金币补偿翻倍 · 赛后结算点击查看详情 · 流派隐藏+20%爆率 · 1~5层小怪血量-15%',
+    ver: 'v2.1.11', date: '2026-11-15', tag: '当前版本 · 四幕古典钢琴曲&二阶变奏 · 网页UI放大 · D2~D5曲线&行商刷新重调 · 双形态精英&首领升级',
+    title: '🎹 四幕专属古典钢琴曲与隐藏二阶段变奏实装 + 🖥️ 网页版 UI 全面放大 + ⚖️ D2~D5 数值/生存时长/16层首领闪避/行商刷新重调 + 👹 双形态精英与首领动作升级',
+    items: [
+      '🎹 四幕专属古典独奏钢琴原声（60s+）与首领二阶段变奏动态切换：为雨夜长桥、永冻冰窟、倒悬钟楼、日蚀镜界谱写 8 首清爽录音棚级古典钢琴曲（夜曲/圆舞曲/巴洛克赋格/月光慢板 + 四首隐藏二阶段激昂变奏），首领进入二阶段瞬间自动切换变奏曲！',
+      '🖥️ 网页版 UI 整体放大与高清易读化：大幅放大桌面端生命条(28px/15.5px粗体)、经验条、回合倒计时(46px超清大字)、晶石数(27px)、首领血条(新增实时血量与百分比数字)及行商货架/属性栏/圣典/结算全部文字！',
+      '⚖️ 难度曲线、生存试炼与行商经济精细回调：D1 保持不变，D5 怪血量/伤害下调至 +65%/+40%（D2~D4 同步更新）；蚀界生存试炼时长调整为 D1=30s → D5=45s；未拾取晶石波末结算还原至 50%；行商刷新改为每次 +2💎 累加，且每次新进商店仅恢复 50% 累积价格！',
+      '❤️ 后期血包阶梯管控 & 🌑 16 层首领闪避：10~16+ 层全难度血包掉落降低 30%，D2~D5 再阶梯递减至 -50%（D1 不变）；第 16 层【日蚀圣女】在 D2~D5 阶梯新增最高 25% 闪避（D1 不加）；潜渊骨蛇与旋刃陀螺偶刷新率回调至 0.80，狂化精英回调至 0.70！',
+      '💃 双形态狂化精英怪（红光血怒+20%攻移血 / 黄光亡语4金梭）、全首领施法动态身法与六大创新交互机制升级，D5 二阶段独享一次【10 秒临死挣扎】！'
+    ]
+  },
+  {
+    ver: 'v2.1.10', date: '2026-11-14', tag: '蚀界试炼金币补偿翻倍 · 赛后结算点击查看详情 · 流派隐藏+20%爆率 · 1~5层小怪血量-15%',
     title: '💎 蚀界生存试炼金币补偿大幅上调 + 🔍 赛后结算支持点击查看武器/魔物/遗物详情 + 🎯 流派隐藏爆率提升至最高 +20% + ⚔️ 第 1~5 层小怪血量降低 15%',
     items: [
       '💎 蚀界生存试炼金币补偿大幅提升：上调 40 秒渡劫通关保底晶石津贴（随层数与收获成长，且无论受击几次均享有保底渡劫赏金），试炼期间刷出的 30% 追猎小怪晶石掉落同步提高 +40%，并在行商契约栏实时展示本层保底补偿区间！',
@@ -515,7 +526,7 @@ const SpireBootGate = (function () {
       ['主角立绘档案', 'assets/spire/port_zero.jpg'],
       ['风语行商立绘', 'assets/spire/port_qingyu.jpg'],
       ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png'],
-      ['首幕地面石板贴图', 'assets/spire/arena_1_foundry.jpg']
+      ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg']
     ];
     const total = criticalList.length;
     let doneCount = 0;

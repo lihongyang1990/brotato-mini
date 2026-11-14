@@ -377,12 +377,36 @@ const SpireAssets = (function () {
     return MONSTER_SPRITE_MAP.chaser;
   }
 
+  function _buildTintedView(entry, cacheProp, tintCss) {
+    if (!entry || !entry.normal) return null;
+    if (entry[cacheProp]) return entry[cacheProp];
+    const tw = entry.w, th = entry.h;
+    const cTint = document.createElement('canvas');
+    cTint.width = tw; cTint.height = th;
+    const gt = cTint.getContext('2d');
+    if (gt) {
+      gt.drawImage(entry.normal, 0, 0);
+      gt.globalCompositeOperation = 'source-atop';
+      gt.fillStyle = tintCss;
+      gt.fillRect(0, 0, tw, th);
+    }
+    entry[cacheProp] = { canvas: cTint, w: tw, h: th };
+    return entry[cacheProp];
+  }
+
   function getMonsterSprite(e, flash) {
     const rel = pickMonsterPath(e);
     const isBig = e && (e.type === 'boss' || e.type === 'special_boss' || e.type === 'mini_boss' || e.type === 'juggernaut');
     const ent = ensureSpriteEntry(rel, isBig ? 300 : 256);
     if (!ent) return null;
-    return flash ? ent.flashView : ent.normalView;
+    if (flash) return ent.flashView;
+    if (e && e.elite && !isBig) {
+      if (e.eliteKind === 'frenzy') {
+        return _buildTintedView(ent, 'frenzyView', 'rgba(255, 52, 86, 0.27)') || ent.normalView;
+      }
+      return _buildTintedView(ent, 'deathrattleView', 'rgba(251, 191, 36, 0.27)') || ent.normalView;
+    }
+    return ent.normalView;
   }
 
   const _arenaHooked = Object.create(null);
