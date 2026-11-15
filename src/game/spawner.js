@@ -1024,10 +1024,12 @@ function spawnSpecialRelic(forceId = null) {
   }
   const rel = { x: rx, y: ry, r: 88, def, charge: 0, need: 1.15, pulse: 0 };
   relics.push(rel);
-  if (rings.length < 40) rings.push({ x: rx, y: ry, r: 142, color: def.color, t: 0.48, maxT: 0.48, kind: 'hex' });
-  beep(740, 0.12, 'triangle', 0.06);
-  if (player) addText(player.x, player.y - 54, `奇遇现世：${def.name}！`, '#ffd166', 18, 2.6);
-  announce(`✨ 地图刷新大型召唤法阵【${def.icon}${def.name}】！跟随边缘箭头踏入圈内即可召唤首领`, '#ffd166', 4.2);
+  if (rings.length < 40) rings.push({ x: rx, y: ry, r: 156, color: def.color, t: 0.54, maxT: 0.54, kind: 'hex' });
+  if (rings.length < 40 && player) rings.push({ x: player.x, y: player.y, r: 96, color: '#ffd166', t: 0.42, maxT: 0.42, fill: false });
+  beep(880, 0.16, 'triangle', 0.075);
+  const bossLabel = def.bossName || def.name;
+  if (player) addText(player.x, player.y - 58, `⛩️ 隐藏Boss祭坛现世：${bossLabel}！`, '#ffd166', 19, 3.2);
+  announce(`⛩️ 隐藏首领召唤祭坛现世：【${def.icon}${bossLabel}】！跟随角色脚下金箭头指引踏入召唤（必掉首领秘宝）`, '#ffd166', 5.4);
   logInfo('RELIC', `刷新地图奇遇圣物 ${def.name}(${def.id}) r=${rel.r} at (${Math.round(rx)},${Math.round(ry)})`);
   return rel;
 }

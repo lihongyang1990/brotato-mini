@@ -831,21 +831,42 @@ function draw() {
       ctx.restore();
     }
 
-    // 稀有地图奇遇召唤圣物（扩容巨型双环六芒星召唤祭坛 + 六方符文柱 + 站立读条进度环）
+    // 稀有地图奇遇召唤圣物（扩容巨型双环六芒星召唤祭坛 + 冲天圣辉光柱 + 脉冲声呐环 + 站立读条进度环）
     for (let i = 0; i < relics.length; i++) {
       const rel = relics[i];
       const rr = Math.max(28, rel.r || 88);
       const col = (rel.def && rel.def.color) || '#ffd166';
+      const bName = (rel.def && (rel.def.bossName || rel.def.name)) || '秘境主宰';
       const prog = Math.max(0, Math.min(1, (rel.charge || 0) / Math.max(0.1, rel.need || 1.1)));
+      drawVfxGlow(ctx, 'glowGold', rel.x, rel.y, rr * 1.32, 0.34 + prog * 0.22);
       ctx.save();
       ctx.translate(rel.x, rel.y);
-      ctx.globalAlpha = 0.13 + Math.sin(rel.pulse) * 0.04 + prog * 0.10;
+      // 向外扩散的声呐脉冲唤醒环，远距离一眼锁定祭坛方位
+      const sonarP = (rel.pulse * 0.42) % 1;
+      ctx.globalAlpha = (1 - sonarP) * 0.46;
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.arc(0, 0, rr * (1.02 + sonarP * 0.56), 0, Math.PI * 2); ctx.stroke();
+
+      ctx.globalAlpha = 0.16 + Math.sin(rel.pulse) * 0.05 + prog * 0.12;
       ctx.fillStyle = col;
       ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.fill();
+      // 冲天圣辉光柱（纯多边形叠层，0 实时渐变）
+      ctx.globalAlpha = 0.16 + Math.sin(rel.pulse * 1.8) * 0.05 + prog * 0.16;
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.moveTo(-22, 0); ctx.lineTo(-10, -150); ctx.lineTo(10, -150); ctx.lineTo(22, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.24 + prog * 0.20;
+      ctx.fillStyle = '#fffbeb';
+      ctx.beginPath();
+      ctx.moveTo(-9, 0); ctx.lineTo(-3, -150); ctx.lineTo(3, -150); ctx.lineTo(9, 0);
+      ctx.closePath(); ctx.fill();
+
       // 外圈顺时针铭文虚线阵
-      ctx.globalAlpha = 0.88;
+      ctx.globalAlpha = 0.92;
       ctx.strokeStyle = col;
-      ctx.lineWidth = 2.8;
+      ctx.lineWidth = 3.0;
       ctx.save();
       ctx.rotate(rel.pulse * 0.32);
       ctx.setLineDash([14, 8]);
@@ -855,16 +876,16 @@ function draw() {
         const ka = (Math.PI * 2 * k) / 6;
         const px = Math.cos(ka) * (rr * 0.94), py = Math.sin(ka) * (rr * 0.94);
         ctx.fillStyle = '#1b1429';
-        ctx.beginPath(); ctx.arc(px, py, 5.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px, py, 5.5, 0, Math.PI * 2); ctx.fill();
         ctx.stroke();
       }
       ctx.restore();
       // 内圈逆时针六芒星秘法副环
       ctx.save();
       ctx.rotate(-rel.pulse * 0.45);
-      ctx.globalAlpha = 0.56 + prog * 0.30;
+      ctx.globalAlpha = 0.62 + prog * 0.30;
       ctx.strokeStyle = '#ffe8a3';
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 2.0;
       const inR = rr * 0.66;
       ctx.beginPath(); ctx.arc(0, 0, inR, 0, Math.PI * 2); ctx.stroke();
       for (let t = 0; t < 2; t++) {
@@ -879,33 +900,40 @@ function draw() {
       }
       ctx.restore();
       if (prog > 0.01) {
-        ctx.globalAlpha = 0.95;
+        ctx.globalAlpha = 0.96;
         ctx.strokeStyle = '#ffe8a3';
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 6.5;
         ctx.beginPath(); ctx.arc(0, 0, rr + 6, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha = 0.65;
-        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.68;
+        ctx.lineWidth = 3.2;
         ctx.beginPath(); ctx.arc(0, 0, rr * 0.66, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2); ctx.stroke();
       }
       const bobY = Math.sin(rel.pulse * 1.5) * 4.5;
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#1b1429';
       ctx.strokeStyle = col;
-      ctx.lineWidth = 2.8;
+      ctx.lineWidth = 3.0;
       ctx.beginPath();
-      ctx.moveTo(0, -22 + bobY); ctx.lineTo(19, bobY); ctx.lineTo(0, 22 + bobY); ctx.lineTo(-19, bobY);
+      ctx.moveTo(0, -24 + bobY); ctx.lineTo(21, bobY); ctx.lineTo(0, 24 + bobY); ctx.lineTo(-21, bobY);
       ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.font = '22px -apple-system, sans-serif';
+      ctx.font = '23px -apple-system, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText((rel.def && rel.def.icon) || '✨', 0, bobY + 1);
-      ctx.textBaseline = 'alphabetic';
+      // 祭坛头顶高对比胶囊铭牌
       ctx.font = '800 13.5px -apple-system, sans-serif';
-      ctx.fillStyle = '#120d18';
-      const lbl = prog > 0.03 ? `⚡ 召唤共鸣 ${Math.round(prog * 100)}%` : `✨ ${rel.def ? rel.def.name : '奇遇圣物'} (站入阵内召唤Boss)`;
-      ctx.fillText(lbl, 1.5, -rr - 12 + 1.5);
-      ctx.fillStyle = prog > 0.03 ? '#ffd166' : '#f8f5ff';
-      ctx.fillText(lbl, 0, -rr - 12);
+      const lbl = prog > 0.03
+        ? `⚡ 正在唤醒【${bName}】 ${Math.round(prog * 100)}%`
+        : `⛩️ 隐藏Boss祭坛：【${bName}】（踏阵召唤）`;
+      const ltw = Math.max(180, ctx.measureText(lbl).width + 24);
+      const lby = -rr - 32;
+      ctx.fillStyle = 'rgba(15, 11, 26, 0.86)';
+      ctx.strokeStyle = prog > 0.03 ? '#ffd166' : col;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.roundRect(-ltw * 0.5, lby, ltw, 24, 12); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText(lbl, 0, lby + 12.5);
+      ctx.textBaseline = 'alphabetic';
       ctx.restore();
     }
 
@@ -2888,6 +2916,71 @@ function draw() {
         ctx.setLineDash([]);
       }
       ctx.restore();
+
+      // 隐藏首领召唤祭坛：角色脚下贴身黄金罗盘箭头 + 流动引魂金线（玩家视线聚焦主角时 0 延迟一眼看清方向！）
+      if (relics.length > 0) {
+        const rel = relics[0];
+        const dxR = rel.x - player.x, dyR = rel.y - player.y;
+        const distR = Math.hypot(dxR, dyR);
+        const relR = rel.r || 88;
+        if (distR > relR + 18) {
+          const angR = Math.atan2(dyR, dxR);
+          const ux = dxR / distR, uy = dyR / distR;
+          const orbitR = 68 + Math.sin(now * 0.008) * 4;
+          const ax = player.x + ux * orbitR, ay = player.y + uy * orbitR;
+          const lineEndDist = Math.max(orbitR + 18, distR - relR - 6);
+          // 1) 流动金色虚线牵引轨
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255, 209, 102, 0.42)';
+          ctx.lineWidth = 2.4;
+          ctx.setLineDash([12, 10]);
+          ctx.lineDashOffset = -((now * 0.085) % 22);
+          ctx.beginPath();
+          ctx.moveTo(player.x + ux * (orbitR + 14), player.y + uy * (orbitR + 14));
+          ctx.lineTo(player.x + ux * lineEndDist, player.y + uy * lineEndDist);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+          // 2) 角色身畔高对比金色双翼罗盘锋矢
+          drawVfxGlow(ctx, 'glowGold', ax, ay, 24, 0.52);
+          ctx.save();
+          ctx.translate(ax, ay);
+          ctx.rotate(angR);
+          ctx.fillStyle = '#ffd166';
+          ctx.strokeStyle = '#1b1429';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(15, 0);
+          ctx.lineTo(-8, -9.5);
+          ctx.lineTo(-3, 0);
+          ctx.lineTo(-8, 9.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#fffbeb';
+          ctx.beginPath();
+          ctx.moveTo(11, 0); ctx.lineTo(-2, -3.5); ctx.lineTo(-2, 3.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          // 3) 箭头旁距离微铭牌
+          const stepsM = Math.max(1, Math.round((distR - relR) / 28));
+          const tagY = ay + (uy > 0.25 ? 20 : -16);
+          ctx.save();
+          ctx.font = '800 11.5px -apple-system, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const tagTxt = `⛩️召唤Boss ${stepsM}m`;
+          const tagW = Math.max(78, ctx.measureText(tagTxt).width + 12);
+          ctx.fillStyle = 'rgba(15, 11, 26, 0.78)';
+          ctx.strokeStyle = 'rgba(255, 209, 102, 0.85)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.roundRect(ax - tagW * 0.5, tagY - 9, tagW, 18, 9); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#fde68a';
+          ctx.fillText(tagTxt, ax, tagY + 0.5);
+          ctx.restore();
+        }
+      }
     }
 
     // 晶石、血包与异星战利品箱绘制
@@ -4103,31 +4196,91 @@ function draw() {
     ctx.restore();
   }
 
-  // 地图奇遇圣物在视野外时，于屏幕边缘绘制醒目方向指引信标
+  // 地图隐藏首领召唤祭坛现世期间：顶部半透明常驻雷达提示胶囊 + 屏幕边缘高辨识度方向指引信标（浓雾下同样穿透可见！）
   if (state === 'wave' && relics.length > 0) {
     const rel = relics[0];
+    const rNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now());
+    const rPulse = 0.5 + 0.5 * Math.sin(rNow * 0.007);
+    const bIcon = (rel.def && rel.def.icon) || '⛩️';
+    const bName = (rel.def && (rel.def.bossName || rel.def.name)) || '秘境主宰';
+    const rCol = (rel.def && rel.def.color) || '#ffd166';
+    const rProg = Math.max(0, Math.min(1, (rel.charge || 0) / Math.max(0.1, rel.need || 1.15)));
+    const distWorld = player ? Math.hypot(rel.x - player.x, rel.y - player.y) : 0;
+    const stepsM = Math.max(0, Math.round(Math.max(0, distWorld - (rel.r || 88)) / 28));
+
+    // 1) 顶部常驻半透明雷达胶囊（自动避让临时播报 banners，绝不遮挡走位）
+    const bannerCnt = (typeof banners !== 'undefined' && banners) ? banners.length : 0;
+    const bannerBaseY = uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 118);
+    const bannerStepH = (uiMode === 'desktop' ? 37 : 28) + 7;
+    const pillY = bannerBaseY + bannerCnt * bannerStepH;
+    const pillFont = uiMode === 'desktop' ? 13.5 : 11.5;
+    const pillH = uiMode === 'desktop' ? 30 : 25;
+    const pillTxt = rProg > 0.02
+      ? `⚡ 正在共鸣召唤隐藏Boss【${bIcon}${bName}】 ${Math.round(rProg * 100)}% · 请保持在阵内`
+      : `⛩️ 隐藏Boss可召唤：【${bIcon}${bName}】(${stepsM}m) · 沿脚下金箭头踏阵必掉首领秘宝`;
+    ctx.save();
+    ctx.font = `800 ${pillFont}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const maxPillW = Math.max(190, viewW - 24);
+    const pillW = Math.min(maxPillW, Math.max(210, ctx.measureText(pillTxt).width + 30));
+    const pillX = viewW * 0.5 - pillW * 0.5;
+    ctx.fillStyle = 'rgba(18, 13, 32, 0.56)';
+    ctx.strokeStyle = rProg > 0.02 ? '#ffd166' : `rgba(255, 209, 102, ${(0.58 + rPulse * 0.36).toFixed(2)})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, pillH * 0.5); ctx.fill(); ctx.stroke();
+    if (rProg > 0.02) {
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.78)';
+      ctx.fillRect(pillX + 10, pillY + pillH - 3.5, Math.max(2, (pillW - 20) * rProg), 2.2);
+    }
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillText(pillTxt, viewW * 0.5, pillY + pillH * 0.5, pillW - 18);
+    ctx.restore();
+
+    // 2) 视野外（或浓雾遮蔽外）屏幕边缘高辨识度脉冲方向信标 + 距离铭牌
     const rxScreen = (rel.x - cam.x) * camZoom + viewW * 0.5;
     const ryScreen = (rel.y - cam.y) * camZoom + viewH * 0.5;
-    const pad = 42;
-    if (rxScreen < pad || rxScreen > viewW - pad || ryScreen < 84 || ryScreen > viewH - pad) {
+    const pad = 52;
+    const fogActiveNow = (typeof isSoulFogActive === 'function' && isSoulFogActive()) || (typeof isD5Floor16Phase2FogActive === 'function' && isD5Floor16Phase2FogActive());
+    const offScreenOrFogged = rxScreen < pad || rxScreen > viewW - pad || ryScreen < 92 || ryScreen > viewH - pad || (fogActiveNow && distWorld > 220);
+    if (offScreenOrFogged) {
       const ang = Math.atan2(ryScreen - viewH * 0.5, rxScreen - viewW * 0.5);
-      const px = Math.max(54, Math.min(viewW - 54, rxScreen));
-      const py = Math.max(96, Math.min(viewH - 56, ryScreen));
+      const px = Math.max(62, Math.min(viewW - 62, rxScreen));
+      const py = Math.max(106, Math.min(viewH - 68, ryScreen));
       ctx.save();
       ctx.translate(px, py);
-      ctx.fillStyle = 'rgba(24, 16, 36, 0.88)';
-      ctx.strokeStyle = (rel.def && rel.def.color) || '#ffd166';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // 脉冲外扩金环
+      ctx.strokeStyle = `rgba(255, 209, 102, ${(0.85 - rPulse * 0.45).toFixed(2)})`;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath(); ctx.arc(0, 0, 24 + rPulse * 9, 0, Math.PI * 2); ctx.stroke();
+      // 信标圆章主体
+      ctx.fillStyle = 'rgba(22, 14, 36, 0.90)';
+      ctx.strokeStyle = rCol;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.arc(0, 0, 23, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // 方向大锋矢
       ctx.save();
       ctx.rotate(ang);
       ctx.fillStyle = '#ffd166';
-      ctx.beginPath(); ctx.moveTo(28, 0); ctx.lineTo(19, -6); ctx.lineTo(19, 6); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#120d18';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(36 + rPulse * 3, 0); ctx.lineTo(23, -8); ctx.lineTo(25, 0); ctx.lineTo(23, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.restore();
-      ctx.font = '16px -apple-system, sans-serif';
+      ctx.font = '18px -apple-system, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText((rel.def && rel.def.icon) || '✨', 0, 1);
+      ctx.fillText(bIcon, 0, 1);
+      // 信标下方距离提示小签
+      ctx.font = '800 11px -apple-system, sans-serif';
+      const edgeLbl = `隐藏Boss ${stepsM}m`;
+      const ew = Math.max(68, ctx.measureText(edgeLbl).width + 12);
+      const ey = py > viewH - 105 ? -34 : 33;
+      ctx.fillStyle = 'rgba(15, 11, 26, 0.88)';
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect(-ew * 0.5, ey - 8.5, ew, 17, 8.5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText(edgeLbl, 0, ey + 0.5);
       ctx.restore();
     }
   }
