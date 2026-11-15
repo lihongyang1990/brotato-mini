@@ -115,6 +115,146 @@ function buildVignettes() {
   }
   vfxSprites.blackHoleCore = bh;
 
+  // 预烘焙【首领剧毒龙息 · 多瓣立体毒雾云团贴图】128×128（消除扁平圆球与单调波浪线，战斗帧 0 实时渐变）
+  const vcp = document.createElement('canvas');
+  vcp.width = 128; vcp.height = 128;
+  const vcg = vcp.getContext('2d');
+  if (vcg) {
+    const lobes = [
+      [60, 66, 56, 'rgba(6, 95, 70, 0.52)', 'rgba(88, 28, 135, 0.22)', 'rgba(6, 78, 59, 0)'],
+      [52, 56, 44, 'rgba(16, 185, 129, 0.62)', 'rgba(5, 150, 105, 0.28)', 'rgba(5, 150, 105, 0)'],
+      [74, 68, 42, 'rgba(101, 163, 13, 0.64)', 'rgba(16, 185, 129, 0.26)', 'rgba(16, 185, 129, 0)'],
+      [66, 58, 34, 'rgba(217, 249, 157, 0.85)', 'rgba(163, 230, 53, 0.48)', 'rgba(132, 204, 22, 0)']
+    ];
+    for (let li = 0; li < lobes.length; li++) {
+      const [lx, ly, lr, c0, c1, c2] = lobes[li];
+      const lg = vcg.createRadialGradient(lx, ly, 2, lx, ly, lr);
+      lg.addColorStop(0, c0);
+      lg.addColorStop(0.48, c1);
+      lg.addColorStop(1, c2);
+      vcg.fillStyle = lg;
+      vcg.beginPath();
+      vcg.arc(lx, ly, lr, 0, Math.PI * 2);
+      vcg.fill();
+    }
+  }
+  vfxSprites.venomCloudPuff = vcp;
+
+  // 预烘焙【首领剧毒龙息 · 高压雾化羽化锥幕贴图】256×224（柔边流体扇幕，告别生硬三角扇片）
+  const vjc = document.createElement('canvas');
+  vjc.width = 256; vjc.height = 224;
+  const vjg = vjc.getContext('2d');
+  if (vjg) {
+    vjg.save();
+    vjg.beginPath();
+    vjg.moveTo(10, 100);
+    vjg.quadraticCurveTo(118, 46, 248, 12);
+    vjg.arc(10, 112, 240, -0.425, 0.425);
+    vjg.quadraticCurveTo(118, 178, 10, 124);
+    vjg.closePath();
+    vjg.clip();
+
+    const axial = vjg.createLinearGradient(10, 112, 250, 112);
+    axial.addColorStop(0, 'rgba(247, 254, 231, 0.95)');
+    axial.addColorStop(0.18, 'rgba(190, 242, 100, 0.86)');
+    axial.addColorStop(0.48, 'rgba(132, 204, 22, 0.64)');
+    axial.addColorStop(0.78, 'rgba(16, 185, 129, 0.36)');
+    axial.addColorStop(1, 'rgba(6, 78, 59, 0)');
+    vjg.fillStyle = axial;
+    vjg.fillRect(0, 0, 256, 224);
+
+    // 侧翼柔化渐隐遮罩，消除扇形硬边
+    vjg.globalCompositeOperation = 'destination-in';
+    const lat = vjg.createLinearGradient(0, 8, 0, 216);
+    lat.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    lat.addColorStop(0.18, 'rgba(0, 0, 0, 0.72)');
+    lat.addColorStop(0.5, 'rgba(0, 0, 0, 1)');
+    lat.addColorStop(0.82, 'rgba(0, 0, 0, 0.72)');
+    lat.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    vjg.fillStyle = lat;
+    vjg.fillRect(0, 0, 256, 224);
+    vjg.restore();
+  }
+  vfxSprites.venomJetCone = vjc;
+
+  // 预烘焙【赤烬魂灯杖 · 混沌陨石 3D 龟裂黑曜熔岩巨石贴图】128×128（还原 Dota2 卡尔陨石翻滚质感，战斗帧 0 实时渐变）
+  [
+    ['chaosMeteorSolar', '#1c1016', '#33181e', '#b91c1c', '#ff5400', '#ffbe0b', '#fffbeb'],
+    ['chaosMeteorPurgatory', '#0a1821', '#132a38', '#0f766e', '#14b8a6', '#72efdd', '#ecfeff']
+  ].forEach(([key, rockDark, rockMid, lavaDeep, lavaMid, lavaHot, lavaCore]) => {
+    const mc = document.createElement('canvas');
+    mc.width = 128; mc.height = 128;
+    const mg = mc.getContext('2d');
+    if (mg) {
+      // 外圈炽热火冕光晕
+      const aura = mg.createRadialGradient(64, 64, 34, 64, 64, 63);
+      aura.addColorStop(0, lavaMid);
+      aura.addColorStop(0.55, key === 'chaosMeteorPurgatory' ? 'rgba(20, 184, 166, 0.34)' : 'rgba(255, 84, 0, 0.36)');
+      aura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      mg.fillStyle = aura;
+      mg.fillRect(0, 0, 128, 128);
+
+      // 不规则多棱火山陨铁岩体轮廓
+      const rPts = [49, 45, 51, 47, 44, 50, 46, 51, 45, 48, 50, 44, 49, 46];
+      mg.save();
+      mg.translate(64, 64);
+      mg.beginPath();
+      for (let k = 0; k < rPts.length; k++) {
+        const a = (k / rPts.length) * Math.PI * 2;
+        const rr = rPts[k];
+        if (k === 0) mg.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        else mg.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      mg.closePath();
+      mg.clip();
+
+      // 陨石内部熔融岩浆球体底色
+      const coreGr = mg.createRadialGradient(-8, -8, 6, 0, 0, 52);
+      coreGr.addColorStop(0, lavaCore);
+      coreGr.addColorStop(0.32, lavaHot);
+      coreGr.addColorStop(0.68, lavaMid);
+      coreGr.addColorStop(1, lavaDeep);
+      mg.fillStyle = coreGr;
+      mg.fillRect(-60, -60, 120, 120);
+
+      // 7 块厚重黑曜焦岩板块（板块缝隙间透出滚烫熔岩裂谷！）
+      const plates = [
+        [[-42, -16], [-12, -46], [8, -28], [-10, -6], [-38, -2]],
+        [[14, -44], [44, -20], [36, 4], [12, -2], [6, -24]],
+        [[-46, 8], [-14, 2], [-4, 24], [-26, 44], [-46, 28]],
+        [[8, 6], [42, 10], [44, 34], [16, 46], [2, 26]],
+        [[-16, -24], [6, -18], [10, 0], [-8, 6], [-20, -8]],
+        [[-30, -38], [-8, -48], [6, -36], [-14, -26]],
+        [[-12, 30], [10, 28], [14, 48], [-16, 48]]
+      ];
+      mg.fillStyle = rockDark;
+      mg.strokeStyle = rockMid;
+      mg.lineWidth = 2.2;
+      for (let pi = 0; pi < plates.length; pi++) {
+        const pl = plates[pi];
+        mg.beginPath();
+        for (let vi = 0; vi < pl.length; vi++) {
+          if (vi === 0) mg.moveTo(pl[vi][0], pl[vi][1]);
+          else mg.lineTo(pl[vi][0], pl[vi][1]);
+        }
+        mg.closePath();
+        mg.fill();
+        mg.stroke();
+      }
+
+      // 炽白熔岩裂隙高光核点
+      mg.strokeStyle = lavaCore;
+      mg.lineWidth = 2.0;
+      mg.beginPath();
+      mg.moveTo(-32, -3); mg.lineTo(-6, -3); mg.lineTo(10, -24);
+      mg.moveTo(-6, -3); mg.lineTo(4, 22); mg.lineTo(28, 8);
+      mg.moveTo(-22, 18); mg.lineTo(4, 22);
+      mg.stroke();
+      mg.restore();
+    }
+    vfxSprites[key] = mc;
+  });
+
   // 预烘焙【蚀界生存试炼 · 沉浸浓雾提灯遮罩】（离屏一次性生成，战斗帧 0 createRadialGradient / 0 shadowBlur，外圈 100% 纯黑不透怪）
   Object.keys(SOUL_FOG_PALETTE).forEach(scId => {
     const [mr, mg, mb] = SOUL_FOG_PALETTE[scId];

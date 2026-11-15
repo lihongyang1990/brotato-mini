@@ -590,13 +590,13 @@ const WEAPONS = {
     ]
   },
 
-  // --- 🪄 秘术法杖谱系 (4 把 · 独立真法术技能吟唱体系：陨炎火球 / 极寒暴风雪 / 奥术连锁闪电 / 万蛊蚀骨毒雾) ---
+  // --- 🪄 秘术法杖谱系 (4 把 · 独立真法术技能吟唱体系：混沌陨石 / 极寒暴风雪 / 奥术连锁闪电 / 万蛊蚀骨毒雾) ---
   ember_staff: {
-    name: '赤烬魂灯杖', icon: '🪄', set: 'elemental', melee: false, isStaff: true, isEmberStaff: true, spellSkill: 'fireball', dmg: 23.0, cd: 0.78, range: 355, spd: 540, pierce: 0, blastR: 72, elemScale: 1.30, cost: 19,
-    desc: '【秘术法杖 · 陨炎火球术】纯享 130% 元素增幅（不吃枪械加成）：吟唱重型陨炎火球轰击目标，爆裂震波并在地面铺开持续灼烧的【熔火燎原炎海】！',
+    name: '赤烬魂灯杖', icon: '🪄', set: 'elemental', melee: false, isStaff: true, isEmberStaff: true, spellSkill: 'fireball', dmg: 23.0, cd: 0.90, range: 365, spd: 540, pierce: 0, blastR: 72, elemScale: 1.30, cost: 19,
+    desc: '【秘术法杖 · 混沌陨石术】纯享 130% 元素增幅（不吃枪械加成）：自九霄斜坠巨型黑曜熔岩陨石轰击地面，随后沿施法方向一路向前翻滚碾压敌群，并在身后犁出整条持续焚烧的【焦土熔火长廊】！',
     evos: [
-      { id: 'staff_solar',     name: '日冕焚世圣杖·赫利俄斯', tag: '双阳齐轰 · 巨型火海', color: '#ff6b35', dmgMul: 1.36, pelletsAdd: 1, blastAdd: 42, forceBurn: true, desc: '每次同时吟唱 2 颗日冕大火球，落点【熔火燎原炎海】半径扩大 +42 并高频焚烧敌群！' },
-      { id: 'staff_purgatory', name: '九幽冥灯魔杖·青焰引渡', tag: '极速连发 · 毒火炼狱', color: '#72efdd', dmgMul: 1.34, cdMul: 0.72, pierceAdd: 1, forcePoison: true, forceBurn: true, desc: '火球吟唱冷却 -28%，炎海同时引爆青焰灼烧与风蚀剧毒双相炼狱反应！' }
+      { id: 'staff_solar',     name: '日冕焚世圣杖·赫利俄斯', tag: '双陨齐降 · 巨石碾界', color: '#ff6b35', dmgMul: 1.36, pelletsAdd: 1, blastAdd: 30, forceBurn: true, desc: '每次并排召唤 2 颗日冕混沌巨陨同步砸落翻滚，碾压宽度与【焦土熔火长廊】大幅扩张！' },
+      { id: 'staff_purgatory', name: '九幽冥灯魔杖·青焰引渡', tag: '极速星陨 · 毒火炼狱', color: '#2dd4bf', dmgMul: 1.34, cdMul: 0.72, pierceAdd: 1, forcePoison: true, forceBurn: true, desc: '陨石吟唱冷却 -28%，召唤九幽青焰冥陨高速翻滚，焦土火路同时引爆青焰灼烧与风蚀剧毒！' }
     ]
   },
   frost_scepter: {

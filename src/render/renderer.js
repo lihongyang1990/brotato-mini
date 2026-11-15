@@ -1160,56 +1160,83 @@ function draw() {
         const z = spellZones[zi];
         const zr = Math.max(24, z.r || 92);
         if (z.x + zr + 32 < vL || z.x - zr - 32 > vR || z.y + zr + 32 < vT || z.y - zr - 32 > vB) continue;
-        const elapsed = Math.max(0, (z.maxT || 2.4) - (z.t || 0));
-        const fade = Math.max(0.08, Math.min(1, elapsed / 0.22) * Math.min(1, (z.t || 0) / 0.32));
+        const zRem = z.life !== undefined ? z.life : (z.t || 0);
+        const zMax = z.maxLife !== undefined ? z.maxLife : (z.maxT || 2.4);
+        const elapsed = Math.max(0, zMax - zRem);
+        const fade = Math.max(0.08, Math.min(1, elapsed / 0.18) * Math.min(1, zRem / 0.34));
         const seed = z.seed || (zi * 1.37);
         if (z.kind === 'fire_patch') {
-          drawVfxGlow(ctx, 'glowOrange', z.x, z.y, zr * 1.24, 0.52 * fade);
-          drawVfxGlow(ctx, 'glowRed', z.x, z.y, zr * 0.86, 0.38 * fade);
+          const isPurg = !!z.forcePoison;
+          drawVfxGlow(ctx, isPurg ? 'glowCyan' : 'glowOrange', z.x, z.y, zr * 1.26, 0.50 * fade);
+          drawVfxGlow(ctx, isPurg ? 'glowGreen' : 'glowRed', z.x, z.y, zr * 0.88, 0.36 * fade);
           ctx.save();
           ctx.translate(z.x, z.y);
-          ctx.globalAlpha = 0.22 * fade;
-          ctx.fillStyle = '#9a031e';
+          // 混沌陨石翻滚犁出的焦黑熔岩壕沟底床
+          ctx.globalAlpha = 0.30 * fade;
+          ctx.fillStyle = isPurg ? '#082f49' : '#450a0a';
           ctx.beginPath(); ctx.arc(0, 0, zr * 0.96, 0, Math.PI * 2); ctx.fill();
-          // 旋转八芒熔火日冕阵环
-          const rotA = now * 0.0016 + seed;
-          ctx.save();
-          ctx.rotate(rotA);
-          ctx.globalAlpha = 0.78 * fade;
-          ctx.strokeStyle = '#ff6b35';
-          ctx.lineWidth = 2.4;
-          ctx.beginPath();
-          for (let k = 0; k < 16; k++) {
-            const ka = (Math.PI * 2 * k) / 16;
-            const rr = k % 2 === 0 ? zr : zr * 0.80;
-            k === 0 ? ctx.moveTo(Math.cos(ka) * rr, Math.sin(ka) * rr) : ctx.lineTo(Math.cos(ka) * rr, Math.sin(ka) * rr);
-          }
-          ctx.closePath();
-          ctx.stroke();
-          ctx.strokeStyle = '#ffd166';
-          ctx.lineWidth = 1.7;
-          ctx.beginPath(); ctx.arc(0, 0, zr * 0.62, 0, Math.PI * 2); ctx.stroke();
-          // 地表熔岩裂纹
-          for (let k = 0; k < 5; k++) {
-            const ca = (Math.PI * 2 * k) / 5 + 0.3;
+
+          if (z.isMeteorTrail) {
+            // 沿陨石翻滚方向的车辙熔火炽痕与外翻焦岩边线
+            ctx.save();
+            ctx.rotate(z.trailAng || 0);
+            ctx.globalAlpha = 0.44 * fade;
+            ctx.fillStyle = isPurg ? '#0d9488' : '#c2410c';
             ctx.beginPath();
-            ctx.moveTo(Math.cos(ca) * 8, Math.sin(ca) * 8);
-            ctx.lineTo(Math.cos(ca + 0.16) * (zr * 0.44), Math.sin(ca + 0.16) * (zr * 0.44));
-            ctx.lineTo(Math.cos(ca - 0.08) * (zr * 0.78), Math.sin(ca - 0.08) * (zr * 0.78));
+            ctx.ellipse(0, 0, zr * 1.08, zr * 0.72, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 0.78 * fade;
+            ctx.strokeStyle = isPurg ? '#5eead4' : '#fb923c';
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.moveTo(-zr * 0.88, -zr * 0.46);
+            ctx.quadraticCurveTo(0, -zr * 0.56, zr * 0.88, -zr * 0.44);
+            ctx.moveTo(-zr * 0.88, zr * 0.46);
+            ctx.quadraticCurveTo(0, zr * 0.56, zr * 0.88, zr * 0.44);
             ctx.stroke();
+            ctx.strokeStyle = isPurg ? '#ccfbf1' : '#fef08a';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(-zr * 0.72, -3);
+            ctx.lineTo(0, 4);
+            ctx.lineTo(zr * 0.72, -2);
+            ctx.stroke();
+            ctx.restore();
+          } else {
+            // 旋转八芒熔火日冕阵环
+            const rotA = now * 0.0016 + seed;
+            ctx.save();
+            ctx.rotate(rotA);
+            ctx.globalAlpha = 0.78 * fade;
+            ctx.strokeStyle = isPurg ? '#2dd4bf' : '#ff6b35';
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            for (let k = 0; k < 16; k++) {
+              const ka = (Math.PI * 2 * k) / 16;
+              const rr = k % 2 === 0 ? zr : zr * 0.80;
+              k === 0 ? ctx.moveTo(Math.cos(ka) * rr, Math.sin(ka) * rr) : ctx.lineTo(Math.cos(ka) * rr, Math.sin(ka) * rr);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.strokeStyle = isPurg ? '#ccfbf1' : '#ffd166';
+            ctx.lineWidth = 1.7;
+            ctx.beginPath(); ctx.arc(0, 0, zr * 0.62, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
           }
-          ctx.restore();
+
           // 升腾跳跃的烈焰火舌与火星
-          for (let fk = 0; fk < 7; fk++) {
-            const cyc = ((now * 0.0024 + fk * 0.143 + seed) % 1);
-            const fa = fk * 0.897 + seed * 2.1;
-            const fd = zr * (0.18 + ((fk * 37) % 62) * 0.01);
+          for (let fk = 0; fk < 6; fk++) {
+            const cyc = ((now * 0.0025 + fk * 0.166 + seed) % 1);
+            const fa = fk * 1.047 + seed * 2.1;
+            const fd = zr * (0.16 + ((fk * 37) % 58) * 0.01);
             const fx = Math.cos(fa) * fd;
-            const fy = Math.sin(fa) * fd - cyc * 18;
-            const fh = (11 + (fk % 3) * 5) * (1 - cyc * 0.45);
-            const fw = (5.5 + (fk % 2) * 2.5) * (1 - cyc * 0.35);
+            const fy = Math.sin(fa) * fd - cyc * 17;
+            const fh = (10 + (fk % 3) * 4.5) * (1 - cyc * 0.45);
+            const fw = (5.0 + (fk % 2) * 2.4) * (1 - cyc * 0.35);
             ctx.globalAlpha = (1 - cyc * 0.75) * 0.86 * fade;
-            ctx.fillStyle = cyc < 0.42 ? '#fff3b0' : (cyc < 0.74 ? '#ff9f1c' : '#e63946');
+            ctx.fillStyle = isPurg
+              ? (cyc < 0.42 ? '#ecfeff' : (cyc < 0.74 ? '#2dd4bf' : '#0f766e'))
+              : (cyc < 0.42 ? '#fff3b0' : (cyc < 0.74 ? '#ff9f1c' : '#e63946'));
             ctx.beginPath();
             ctx.moveTo(fx - fw, fy + 4);
             ctx.quadraticCurveTo(fx - fw * 0.4, fy - fh * 0.6, fx + Math.sin(now * 0.015 + fk) * 3, fy - fh);
@@ -2084,91 +2111,249 @@ function draw() {
         }
         ctx.restore();
       }
-      // 首领高压扇形【剧毒吐息喷流】蓄力扇面预警与多层雾化毒息特效（支持单向横扫与二阶段双龙双向毒息！）
+      // 首领高压扇形【剧毒龙息喷流】炼金蓄力法阵与立体翻涌毒雾激流特效（彻底告别简陋扇片+单根波浪线，支持单向横扫与二阶段双龙毒息）
       if ((e.venomWindupT || 0) > 0 || (e.venomBreathT || 0) > 0) {
         const vLen = e.venomLen || 278;
         const vSpan = e.venomSpan || 0.46;
         const nozzles = e.venomTwin ? [0, Math.PI] : [0];
+        const puffSp = (typeof vfxSprites !== 'undefined' && vfxSprites) ? vfxSprites.venomCloudPuff : null;
+        const jetSp = (typeof vfxSprites !== 'undefined' && vfxSprites) ? vfxSprites.venomJetCone : null;
         ctx.save();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         if ((e.venomWindupT || 0) > 0) {
           const vProg = Math.max(0.06, Math.min(1, 1 - e.venomWindupT / Math.max(0.1, e.venomWindupMax || 0.56)));
+          const lockFlash = e.venomWindupT <= 0.24 ? (0.65 + 0.35 * Math.sin(now * 0.045)) : 1;
           for (let ni = 0; ni < nozzles.length; ni++) {
             const na = (e.venomAimA || 0) + nozzles[ni];
-            ctx.fillStyle = `rgba(132, 204, 22, ${0.12 + vProg * 0.16})`;
+            const ca = Math.cos(na), sa = Math.sin(na);
+            const mx = e.x + ca * (e.r * 0.56), my = e.y + sa * (e.r * 0.56);
+            drawVfxGlow(ctx, 'glowGreen', mx, my, 36 + vProg * 22, 0.45 + vProg * 0.35);
+            drawVfxGlow(ctx, 'glowViolet', mx, my, 24 + vProg * 12, 0.28 + vProg * 0.22);
+
+            // 1) 渐变危区底幕 + 蓄力推进毒潮弧面
+            ctx.fillStyle = `rgba(6, 78, 59, ${0.22 + vProg * 0.14})`;
             ctx.beginPath();
-            ctx.moveTo(e.x, e.y);
+            ctx.moveTo(mx, my);
             ctx.arc(e.x, e.y, vLen, na - vSpan, na + vSpan);
             ctx.closePath();
             ctx.fill();
-            ctx.fillStyle = 'rgba(163, 230, 53, 0.24)';
+
+            ctx.fillStyle = `rgba(132, 204, 22, ${0.14 + vProg * 0.22})`;
             ctx.beginPath();
-            ctx.moveTo(e.x, e.y);
-            ctx.arc(e.x, e.y, vLen * vProg, na - vSpan * 0.92, na + vSpan * 0.92);
+            ctx.moveTo(mx, my);
+            ctx.arc(e.x, e.y, Math.max(e.r * 0.65, vLen * vProg), na - vSpan * 0.96, na + vSpan * 0.96);
             ctx.closePath();
             ctx.fill();
-            ctx.strokeStyle = '#bef264';
-            ctx.lineWidth = 2.2;
-            ctx.setLineDash([9, 6]);
+
+            // 2) 扇面内三道等距刻度警戒弧纹
+            ctx.strokeStyle = 'rgba(190, 242, 100, 0.28)';
+            ctx.lineWidth = 1.4;
+            for (let rk = 1; rk <= 2; rk++) {
+              ctx.beginPath();
+              ctx.arc(e.x, e.y, vLen * (rk / 3), na - vSpan * 0.92, na + vSpan * 0.92);
+              ctx.stroke();
+            }
+
+            // 3) 锐利双层炼金边轨与扇角毒牙锚点（保证近战绕侧安全边界一目了然）
+            ctx.strokeStyle = `rgba(6, 95, 70, ${0.65 * lockFlash})`;
+            ctx.lineWidth = 4.6;
             ctx.beginPath();
-            ctx.moveTo(e.x, e.y);
+            ctx.moveTo(mx, my);
             ctx.lineTo(e.x + Math.cos(na - vSpan) * vLen, e.y + Math.sin(na - vSpan) * vLen);
-            ctx.moveTo(e.x, e.y);
+            ctx.arc(e.x, e.y, vLen, na - vSpan, na + vSpan);
+            ctx.lineTo(mx, my);
+            ctx.stroke();
+
+            ctx.strokeStyle = e.venomWindupT <= 0.24 ? '#ecfccb' : '#bef264';
+            ctx.lineWidth = 2.2;
+            ctx.setLineDash([10, 6]);
+            ctx.beginPath();
+            ctx.moveTo(mx, my);
+            ctx.lineTo(e.x + Math.cos(na - vSpan) * vLen, e.y + Math.sin(na - vSpan) * vLen);
+            ctx.moveTo(mx, my);
             ctx.lineTo(e.x + Math.cos(na + vSpan) * vLen, e.y + Math.sin(na + vSpan) * vLen);
             ctx.arc(e.x, e.y, vLen, na - vSpan, na + vSpan);
             ctx.stroke();
             ctx.setLineDash([]);
+
+            // 4) 喷口向内倒吸聚拢的万蛊毒珠与六芒蓄力阵
+            ctx.save();
+            ctx.translate(mx, my);
+            ctx.rotate(now * 0.0045 * (ni === 0 ? 1 : -1));
+            ctx.strokeStyle = '#d9f99d';
+            ctx.lineWidth = 1.8;
+            const sigR = 12 + vProg * 8;
+            ctx.beginPath();
+            for (let sk = 0; sk < 6; sk++) {
+              const sa2 = (sk * Math.PI) / 3;
+              const rx = Math.cos(sa2) * sigR, ry = Math.sin(sa2) * sigR;
+              if (sk === 0) ctx.moveTo(rx, ry); else ctx.lineTo(rx, ry);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
+
+            for (let ik = 0; ik < 5; ik++) {
+              const inT = 1 - ((now * 0.0032 + ik * 0.2) % 1);
+              const ia = na + (ik - 2) * (vSpan * 0.38);
+              const idist = 10 + inT * 46;
+              ctx.fillStyle = ik % 2 === 0 ? '#ecfccb' : '#34d399';
+              ctx.globalAlpha = (1 - inT) * 0.85;
+              ctx.beginPath();
+              ctx.arc(mx + Math.cos(ia) * idist, my + Math.sin(ia) * idist, 2.2 + (1 - inT) * 2.4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.globalAlpha = 1;
           }
         } else {
           const bAlpha = Math.min(1, (e.venomBreathT || 0) / 0.22);
           for (let ni = 0; ni < nozzles.length; ni++) {
             const na = (e.venomAimA || 0) + nozzles[ni];
-            const mx = e.x + Math.cos(na) * (e.r * 0.56);
-            const my = e.y + Math.sin(na) * (e.r * 0.56);
-            drawVfxGlow(ctx, 'glowGreen', mx, my, 42, 0.65 * bAlpha);
-            // 1) 外层翻涌祖母绿毒雾锥幕
-            ctx.globalAlpha = 0.28 * bAlpha;
-            ctx.fillStyle = '#10b981';
-            ctx.beginPath();
-            ctx.moveTo(mx, my);
-            ctx.arc(e.x, e.y, vLen, na - vSpan, na + vSpan);
-            ctx.closePath();
-            ctx.fill();
-            // 2) 中层高压荧光毒液喷射扇流
-            ctx.globalAlpha = 0.46 * bAlpha;
-            ctx.fillStyle = '#84cc16';
-            ctx.beginPath();
-            ctx.moveTo(mx, my);
-            ctx.arc(e.x, e.y, vLen * 0.93, na - vSpan * 0.62, na + vSpan * 0.62);
-            ctx.closePath();
-            ctx.fill();
-            // 3) 内芯蜿蜒高压酸液激流线
-            ctx.globalAlpha = 0.92 * bAlpha;
-            ctx.strokeStyle = '#ecfccb';
-            ctx.lineWidth = 7.5;
-            ctx.beginPath();
-            ctx.moveTo(mx, my);
-            for (let s = 1; s <= 5; s++) {
-              const frac = s / 5;
-              const wag = Math.sin(now * 0.022 - s * 1.35 + ni) * (10 * frac);
-              const px = e.x + Math.cos(na) * (vLen * 0.88 * frac) - Math.sin(na) * wag;
-              const py = e.y + Math.sin(na) * (vLen * 0.88 * frac) + Math.cos(na) * wag;
-              ctx.lineTo(px, py);
+            const ca = Math.cos(na), sa = Math.sin(na);
+            const startOff = e.r * 0.48;
+            const mx = e.x + ca * startOff;
+            const my = e.y + sa * startOff;
+            const midX = e.x + ca * (vLen * 0.52), midY = e.y + sa * (vLen * 0.52);
+            const tipX = e.x + ca * (vLen * 0.84), tipY = e.y + sa * (vLen * 0.84);
+
+            // 环境辉光衬底：喷口炽毒辉光 + 中段冥紫瘴气 + 末端翡翠腐蚀光晕
+            drawVfxGlow(ctx, 'glowGreen', mx, my, 48, 0.78 * bAlpha);
+            drawVfxGlow(ctx, 'glowGold', mx, my, 26, 0.46 * bAlpha);
+            drawVfxGlow(ctx, 'glowViolet', midX, midY, vLen * 0.34, 0.26 * bAlpha);
+            drawVfxGlow(ctx, 'glowGreen', tipX, tipY, vLen * 0.38, 0.38 * bAlpha);
+
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.rotate(na);
+
+            // 1) 预烘焙羽化高压毒雾扇幕基底（完全契合判定扇区，边缘柔和雾化零锯齿）
+            const pulseW = 1 + 0.045 * Math.sin(now * 0.032 + ni);
+            const endHalfW = vLen * Math.sin(vSpan) * 1.12 * pulseW;
+            if (jetSp) {
+              ctx.globalAlpha = 0.86 * bAlpha;
+              ctx.drawImage(jetSp, startOff - 10, -endHalfW, (vLen - startOff) + 22, endHalfW * 2);
+            } else {
+              ctx.globalAlpha = 0.32 * bAlpha;
+              ctx.fillStyle = '#10b981';
+              ctx.beginPath();
+              ctx.moveTo(startOff, 0);
+              ctx.arc(0, 0, vLen, -vSpan, vSpan);
+              ctx.closePath();
+              ctx.fill();
             }
-            ctx.stroke();
-            // 4) 扇区内高速飞溅的毒泡气团，营造饱满立体喷毒流体质感
-            for (let pk = 0; pk < 7; pk++) {
-              const tFlow = ((now * 0.0036 + pk * 0.143) % 1);
-              const spreadA = na + Math.sin(pk * 2.3 + now * 0.005) * (vSpan * 0.78);
-              const distFlow = e.r * 0.6 + tFlow * (vLen - e.r * 0.6);
-              const bx = e.x + Math.cos(spreadA) * distFlow;
-              const by = e.y + Math.sin(spreadA) * distFlow;
-              const bubR = (3.5 + (pk % 3) * 2.2) * (0.65 + tFlow * 0.75);
-              ctx.globalAlpha = (1 - tFlow * 0.58) * 0.82 * bAlpha;
-              ctx.fillStyle = pk % 2 === 0 ? '#bef264' : '#34d399';
-              ctx.beginPath(); ctx.arc(bx, by, bubR, 0, Math.PI * 2); ctx.fill();
+
+            // 2) 多通道翻涌立体毒云团（14 团由窄及宽高速翻滚扩散的浓稠瘴气云瓣）
+            if (puffSp) {
+              for (let pk = 0; pk < 14; pk++) {
+                const lane = (pk % 3) - 1; // -1 左旋涡, 0 中轴主喷流, +1 右旋涡
+                const tFlow = ((now * 0.0029 + pk * 0.0714 + ni * 0.37) % 1);
+                const easeT = tFlow * (1.15 - 0.15 * tFlow);
+                const dist = startOff + 6 + easeT * (vLen - startOff - 10);
+                const maxSpread = dist * Math.sin(vSpan * 0.76);
+                const turb = Math.sin(now * 0.011 + pk * 1.9) * (4 + easeT * 12);
+                const py = lane * maxSpread * (0.28 + easeT * 0.72) + turb;
+                const puffR = (15 + (pk % 3) * 4.5) * (0.58 + easeT * 1.38);
+                const puffAlpha = (tFlow < 0.12 ? tFlow / 0.12 : (1 - Math.pow(tFlow, 1.55))) * 0.68 * bAlpha;
+                if (puffAlpha > 0.02) {
+                  ctx.save();
+                  ctx.translate(dist, py);
+                  ctx.rotate((pk % 2 === 0 ? 1 : -1) * (now * 0.0026 + pk * 0.8));
+                  ctx.globalAlpha = puffAlpha;
+                  ctx.drawImage(puffSp, -puffR, -puffR, puffR * 2, puffR * 2);
+                  ctx.restore();
+                }
+              }
             }
+
+            // 3) 三股锥形高压腐蚀液柱（宽口聚能流线型锋矢喷流，彻底替代单根波浪线！）
+            const jetStreams = [
+              { ang: 0, lenMul: 0.86, baseW: 11.5, phase: 0 },
+              { ang: -vSpan * 0.38, lenMul: 0.68, baseW: 7.2, phase: 2.1 },
+              { ang: vSpan * 0.38, lenMul: 0.68, baseW: 7.2, phase: 4.2 }
+            ];
+            for (let si = 0; si < jetStreams.length; si++) {
+              const js = jetStreams[si];
+              const jLen = (vLen - startOff) * js.lenMul * (0.94 + 0.06 * Math.sin(now * 0.028 + js.phase));
+              const tipSway = Math.sin(now * 0.019 + js.phase) * 7.5;
+              const midSway = Math.cos(now * 0.023 + js.phase) * 4.5;
+              ctx.save();
+              ctx.translate(startOff, 0);
+              ctx.rotate(js.ang);
+
+              // 外层翠绿高压酸液鞘
+              ctx.globalAlpha = (si === 0 ? 0.64 : 0.48) * bAlpha;
+              ctx.fillStyle = si === 0 ? '#84cc16' : '#10b981';
+              ctx.beginPath();
+              ctx.moveTo(0, -js.baseW);
+              ctx.quadraticCurveTo(jLen * 0.46, -js.baseW * 0.58 + midSway, jLen, tipSway);
+              ctx.quadraticCurveTo(jLen * 0.46, js.baseW * 0.58 + midSway, 0, js.baseW);
+              ctx.closePath();
+              ctx.fill();
+
+              // 内层炽亮荧光毒芯
+              const coreW = js.baseW * 0.52;
+              const coreLen = jLen * 0.84;
+              ctx.globalAlpha = (si === 0 ? 0.90 : 0.72) * bAlpha;
+              ctx.fillStyle = si === 0 ? '#ecfccb' : '#bef264';
+              ctx.beginPath();
+              ctx.moveTo(-2, -coreW);
+              ctx.quadraticCurveTo(coreLen * 0.44, -coreW * 0.45 + midSway * 0.6, coreLen, tipSway * 0.75);
+              ctx.quadraticCurveTo(coreLen * 0.44, coreW * 0.45 + midSway * 0.6, -2, coreW);
+              ctx.closePath();
+              ctx.fill();
+              ctx.restore();
+            }
+
+            // 4) 沿喷流高速推进的椭圆气压激波环 + 喷口双层震荡波纹
+            ctx.globalAlpha = 0.78 * bAlpha;
+            ctx.fillStyle = '#f7fee7';
+            ctx.beginPath();
+            ctx.ellipse(startOff + 2, 0, 7.5, 14.5 + Math.sin(now * 0.04) * 2.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            for (let rk = 0; rk < 3; rk++) {
+              const rt = ((now * 0.0038 + rk / 3 + ni * 0.5) % 1);
+              const rx = startOff + 10 + rt * (vLen - startOff - 26);
+              const rySpan = (13 + rt * vLen * Math.sin(vSpan) * 0.78);
+              ctx.globalAlpha = (1 - rt * 0.82) * 0.52 * bAlpha;
+              ctx.strokeStyle = rk % 2 === 0 ? '#d9f99d' : '#6ee7b7';
+              ctx.lineWidth = 2.2 - rt * 0.9;
+              ctx.beginPath();
+              ctx.ellipse(rx, Math.sin(now * 0.015 + rk * 2) * 3.5, 5.5 + rt * 5, rySpan, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+
+            // 5) 立体高光腐蚀酸液珠与末端爆裂毒泡环
+            for (let bk = 0; bk < 10; bk++) {
+              const bt = ((now * 0.0034 + bk * 0.1 + ni * 0.25) % 1);
+              const bAng = Math.sin(bk * 2.47 + now * 0.003) * (vSpan * 0.84);
+              const bDist = startOff + 8 + bt * (vLen - startOff - 6);
+              const bx = Math.cos(bAng) * bDist;
+              const by = Math.sin(bAng) * bDist;
+              const br = (2.8 + (bk % 3) * 1.9) * (0.72 + bt * 0.62);
+              if (bt > 0.84) {
+                const popP = (bt - 0.84) / 0.16;
+                ctx.globalAlpha = (1 - popP) * 0.72 * bAlpha;
+                ctx.strokeStyle = '#bef264';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(bx, by, br * (1.1 + popP * 1.3), 0, Math.PI * 2);
+                ctx.stroke();
+              } else {
+                ctx.globalAlpha = (1 - bt * 0.35) * 0.88 * bAlpha;
+                ctx.fillStyle = bk % 4 === 0 ? '#c084fc' : (bk % 2 === 0 ? '#bef264' : '#34d399');
+                ctx.beginPath();
+                ctx.arc(bx, by, br, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#f7fee7';
+                ctx.beginPath();
+                ctx.arc(bx - br * 0.28, by - br * 0.28, Math.max(1.0, br * 0.36), 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+
+            ctx.restore();
           }
         }
         ctx.restore();
@@ -2216,13 +2401,24 @@ function draw() {
             ctx.setLineDash([]);
           }
         } else if (e.p2Kind === 'p2_twin_venom') {
-          drawVfxGlow(ctx, 'glowGreen', e.x, e.y, 128 * (0.5 + p2Prog * 0.5), 0.50);
+          drawVfxGlow(ctx, 'glowGreen', e.x, e.y, 136 * (0.5 + p2Prog * 0.5), 0.56);
+          drawVfxGlow(ctx, 'glowViolet', e.x, e.y, 88 * (0.5 + p2Prog * 0.5), 0.36);
           for (let ni = 0; ni < 2; ni++) {
             const na = baseA + ni * Math.PI;
-            ctx.fillStyle = `rgba(163, 230, 53, ${0.15 + p2Prog * 0.18})`;
-            ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.arc(e.x, e.y, 278, na - 0.36, na + 0.36); ctx.closePath(); ctx.fill();
-            ctx.strokeStyle = '#d9f99d'; ctx.lineWidth = 2.4; ctx.setLineDash([8, 6]);
-            ctx.beginPath(); ctx.arc(e.x, e.y, 278 * p2Prog, na - 0.36, na + 0.36); ctx.stroke(); ctx.setLineDash([]);
+            const mx = e.x + Math.cos(na) * (e.r * 0.56), my = e.y + Math.sin(na) * (e.r * 0.56);
+            drawVfxGlow(ctx, 'glowGreen', mx, my, 34 + p2Prog * 18, 0.58);
+            ctx.fillStyle = `rgba(6, 78, 59, ${0.22 + p2Prog * 0.14})`;
+            ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(e.x, e.y, 278, na - 0.36, na + 0.36); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = `rgba(132, 204, 22, ${0.14 + p2Prog * 0.22})`;
+            ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(e.x, e.y, Math.max(e.r * 0.65, 278 * p2Prog), na - 0.35, na + 0.35); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = 'rgba(6, 95, 70, 0.65)'; ctx.lineWidth = 4.2;
+            ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(na - 0.36) * 278, e.y + Math.sin(na - 0.36) * 278); ctx.arc(e.x, e.y, 278, na - 0.36, na + 0.36); ctx.lineTo(mx, my); ctx.stroke();
+            ctx.strokeStyle = '#d9f99d'; ctx.lineWidth = 2.4; ctx.setLineDash([9, 6]);
+            ctx.beginPath();
+            ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(na - 0.36) * 278, e.y + Math.sin(na - 0.36) * 278);
+            ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(na + 0.36) * 278, e.y + Math.sin(na + 0.36) * 278);
+            ctx.arc(e.x, e.y, 278, na - 0.36, na + 0.36);
+            ctx.stroke(); ctx.setLineDash([]);
           }
         } else {
           const cx = (e.p2Kind === 'p2_eclipse_apocalypse' || e.p2Kind === 'p2_crimson_prison') && Number.isFinite(e.p2TargetX) ? e.p2TargetX : e.x;
@@ -3213,7 +3409,8 @@ function draw() {
     // 投射物绘制（火焰气流、电浆球、陨炎大火球、冰锥、弹弓圆石、旋转手里剑、火箭弹头、带辉光曳光弹）
     for (let i = 0; i < bullets.length; i++) {
       const b = bullets[i];
-      if (b.x < vL || b.x > vR || b.y < vT || b.y > vB) continue;
+      const bPad = b.isChaosMeteor ? 320 : 0;
+      if (b.x + bPad < vL || b.x - bPad > vR || b.y + bPad < vT || b.y - bPad > vB) continue;
       const br = Math.max(1.5, b.r || 4);
       if (b.isFlame) {
         const lifeP = Math.max(0, b.life / Math.max(0.01, b.maxLife));
@@ -3229,33 +3426,178 @@ function draw() {
         ctx.fillStyle = '#ffffff';
         ctx.beginPath(); ctx.arc(b.x, b.y, br * 0.45, 0, Math.PI * 2); ctx.fill();
       } else if (b.isFireball) {
-        // 赤烬魂灯杖【陨炎火球术】：炽橙预烘焙辉光 + 狂暴拖曳彗尾 + 旋转熔火日冕 + 炽白炎核
-        drawVfxGlow(ctx, 'glowOrange', b.x, b.y, br * 2.95, 0.80);
-        ctx.save();
-        ctx.translate(b.x, b.y);
-        ctx.rotate(b.angle || 0);
-        const tailFlick = Math.sin(now * 0.035 + i * 1.7) * 3.5;
-        ctx.fillStyle = 'rgba(230, 57, 70, 0.78)';
-        ctx.beginPath();
-        ctx.moveTo(br * 0.3, -br * 0.98);
-        ctx.quadraticCurveTo(-br * 1.9, -br * 0.65 + tailFlick * 0.4, -br * 3.5, tailFlick);
-        ctx.quadraticCurveTo(-br * 1.9, br * 0.65 + tailFlick * 0.4, br * 0.3, br * 0.98);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#ff9f1c';
-        ctx.beginPath();
-        ctx.moveTo(br * 0.45, -br * 0.68);
-        ctx.quadraticCurveTo(-br * 1.25, -br * 0.32, -br * 2.35, tailFlick * 0.55);
-        ctx.quadraticCurveTo(-br * 1.25, br * 0.32, br * 0.45, br * 0.68);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#fb5607';
-        ctx.strokeStyle = '#ffd166';
-        ctx.lineWidth = 2.0;
-        ctx.beginPath(); ctx.arc(0, 0, br, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#fffbeb';
-        ctx.beginPath(); ctx.arc(br * 0.16, 0, br * 0.50, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
+        if (b.isChaosMeteor) {
+          // ☄️ 赤烬魂灯杖 · Dota2 卡尔式【混沌陨石 (Chaos Meteor)】：九霄斜坠轰击 -> 3D 龟裂熔岩巨石向前翻滚碾压！
+          const isPurg = !!b.purgatoryMeteor;
+          const boulderSp = (typeof vfxSprites !== 'undefined' && vfxSprites)
+            ? (isPurg ? vfxSprites.chaosMeteorPurgatory : vfxSprites.chaosMeteorSolar)
+            : null;
+          if (!b._landed) {
+            const fallRatio = Math.max(0, Math.min(1, (b.meteorFallT || 0) / Math.max(0.05, b.meteorFallMax || 0.28)));
+            const impP = 1 - fallRatio;
+            const impR = b.impactR || 72;
+            // 1) 地面落点：卡尔火球日冕星盘 + 迫近阴影 + 翻滚推进方向三连锋矢
+            drawVfxGlow(ctx, isPurg ? 'glowCyan' : 'glowOrange', b.x, b.y, impR * (0.68 + impP * 0.48), 0.36 + impP * 0.42);
+            ctx.save();
+            ctx.translate(b.x, b.y);
+            ctx.fillStyle = `rgba(8, 6, 14, ${0.18 + impP * 0.42})`;
+            ctx.beginPath();
+            ctx.ellipse(0, 4, br * (0.55 + impP * 0.68), br * (0.34 + impP * 0.42), 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.save();
+            ctx.rotate(now * 0.0042);
+            ctx.strokeStyle = isPurg ? '#5eead4' : '#ffd166';
+            ctx.lineWidth = 2.2;
+            ctx.globalAlpha = 0.55 + impP * 0.40;
+            ctx.setLineDash([10, 6]);
+            ctx.beginPath();
+            ctx.arc(0, 0, impR * (1.12 - impP * 0.24), 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+
+            ctx.rotate(b.angle || 0);
+            ctx.strokeStyle = isPurg ? '#2dd4bf' : '#ff9f1c';
+            ctx.lineWidth = 2.4;
+            ctx.globalAlpha = 0.52 + impP * 0.36;
+            for (let ck = 0; ck < 3; ck++) {
+              const cx = impR * 0.42 + ck * 26;
+              ctx.beginPath();
+              ctx.moveTo(cx - 8, -9); ctx.lineTo(cx + 2, 0); ctx.lineTo(cx - 8, 9);
+              ctx.stroke();
+            }
+            ctx.restore();
+
+            // 2) 高空斜坠陨石本体 + 三层大气层等离子燃烧长尾
+            const alt = fallRatio * 265;
+            const sx = b.x - Math.cos(b.angle || 0) * (alt * 0.48);
+            const sy = b.y - alt - Math.sin(b.angle || 0) * (alt * 0.20);
+            const fallAng = Math.atan2(b.y - sy, b.x - sx);
+            drawVfxGlow(ctx, isPurg ? 'glowCyan' : 'glowOrange', sx, sy, br * 2.85, 0.88);
+            ctx.save();
+            ctx.translate(sx, sy);
+            ctx.rotate(fallAng);
+            const tailL = br * 5.2;
+            const flk = Math.sin(now * 0.045 + i) * 5;
+            ctx.fillStyle = isPurg ? 'rgba(13, 148, 136, 0.72)' : 'rgba(220, 38, 38, 0.76)';
+            ctx.beginPath();
+            ctx.moveTo(br * 0.2, -br * 1.05);
+            ctx.quadraticCurveTo(-tailL * 0.48, -br * 0.72 + flk * 0.4, -tailL, flk);
+            ctx.quadraticCurveTo(-tailL * 0.48, br * 0.72 + flk * 0.4, br * 0.2, br * 1.05);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = isPurg ? '#5eead4' : '#ff9f1c';
+            ctx.beginPath();
+            ctx.moveTo(br * 0.35, -br * 0.72);
+            ctx.quadraticCurveTo(-tailL * 0.32, -br * 0.38, -tailL * 0.68, flk * 0.55);
+            ctx.quadraticCurveTo(-tailL * 0.32, br * 0.38, br * 0.35, br * 0.72);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.save();
+            ctx.rotate(b.rollRot || 0);
+            if (boulderSp) {
+              const bSz = br * 2.35;
+              ctx.drawImage(boulderSp, -bSz * 0.5, -bSz * 0.5, bSz, bSz);
+            } else {
+              ctx.fillStyle = '#fb5607';
+              ctx.beginPath(); ctx.arc(0, 0, br, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+            ctx.restore();
+          } else {
+            // 已着陆翻滚阶段：沉重贴地阴影 + 烈焰尾流 + 高速自转龟裂黑曜熔岩巨石 + 前缘犁地熔火激波弧！
+            const remP = Math.max(0.15, Math.min(1, (b.life || 0) / 0.22));
+            drawVfxGlow(ctx, isPurg ? 'glowCyan' : 'glowOrange', b.x, b.y, br * 2.95, 0.88 * remP);
+            drawVfxGlow(ctx, isPurg ? 'glowGreen' : 'glowRed', b.x, b.y, br * 1.95, 0.58 * remP);
+
+            ctx.save();
+            ctx.translate(b.x, b.y);
+            ctx.globalAlpha = remP;
+            // 巨石贴地碾压重影
+            ctx.fillStyle = 'rgba(7, 5, 12, 0.54)';
+            ctx.beginPath();
+            ctx.ellipse(0, br * 0.52, br * 1.16, br * 0.54, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.rotate(b.angle || 0);
+            // 巨石后方翻腾拖曳的烈焰尾羽
+            const wFlick = Math.sin(now * 0.038 + i * 1.7) * 5.5;
+            ctx.fillStyle = isPurg ? 'rgba(15, 118, 110, 0.78)' : 'rgba(185, 28, 28, 0.80)';
+            ctx.beginPath();
+            ctx.moveTo(br * 0.15, -br * 1.02);
+            ctx.quadraticCurveTo(-br * 1.65, -br * 0.78 + wFlick * 0.35, -br * 3.1, wFlick);
+            ctx.quadraticCurveTo(-br * 1.65, br * 0.78 + wFlick * 0.35, br * 0.15, br * 1.02);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = isPurg ? '#2dd4bf' : '#ff9f1c';
+            ctx.beginPath();
+            ctx.moveTo(br * 0.25, -br * 0.72);
+            ctx.quadraticCurveTo(-br * 1.15, -br * 0.42, -br * 2.15, wFlick * 0.5);
+            ctx.quadraticCurveTo(-br * 1.15, br * 0.42, br * 0.25, br * 0.72);
+            ctx.closePath();
+            ctx.fill();
+
+            // 沉重颠簸自转的 3D 龟裂熔岩巨石本体
+            const bounceSq = 1 + 0.045 * Math.sin(now * 0.042 + i);
+            ctx.save();
+            ctx.scale(bounceSq, 2 - bounceSq);
+            ctx.rotate(b.rollRot || 0);
+            if (boulderSp) {
+              const bSz = br * 2.48;
+              ctx.drawImage(boulderSp, -bSz * 0.5, -bSz * 0.5, bSz, bSz);
+            } else {
+              ctx.fillStyle = '#fb5607';
+              ctx.beginPath(); ctx.arc(0, 0, br, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+
+            // 巨石正前方破阵推挤的炽白熔火犁浪新月弧
+            ctx.strokeStyle = isPurg ? '#ccfbf1' : '#fff3b0';
+            ctx.lineWidth = 3.2;
+            ctx.beginPath();
+            ctx.arc(br * 0.28, 0, br * 1.05, -0.88, 0.88);
+            ctx.stroke();
+            ctx.strokeStyle = isPurg ? '#2dd4bf' : '#ff6b35';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            ctx.arc(br * 0.44, 0, br * 1.15, -0.68, 0.68);
+            ctx.stroke();
+
+            ctx.restore();
+          }
+        } else {
+          // 兼容常规陨炎火球弹体渲染
+          drawVfxGlow(ctx, 'glowOrange', b.x, b.y, br * 2.95, 0.80);
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(b.angle || 0);
+          const tailFlick = Math.sin(now * 0.035 + i * 1.7) * 3.5;
+          ctx.fillStyle = 'rgba(230, 57, 70, 0.78)';
+          ctx.beginPath();
+          ctx.moveTo(br * 0.3, -br * 0.98);
+          ctx.quadraticCurveTo(-br * 1.9, -br * 0.65 + tailFlick * 0.4, -br * 3.5, tailFlick);
+          ctx.quadraticCurveTo(-br * 1.9, br * 0.65 + tailFlick * 0.4, br * 0.3, br * 0.98);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#ff9f1c';
+          ctx.beginPath();
+          ctx.moveTo(br * 0.45, -br * 0.68);
+          ctx.quadraticCurveTo(-br * 1.25, -br * 0.32, -br * 2.35, tailFlick * 0.55);
+          ctx.quadraticCurveTo(-br * 1.25, br * 0.32, br * 0.45, br * 0.68);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#fb5607';
+          ctx.strokeStyle = '#ffd166';
+          ctx.lineWidth = 2.0;
+          ctx.beginPath(); ctx.arc(0, 0, br, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#fffbeb';
+          ctx.beginPath(); ctx.arc(br * 0.16, 0, br * 0.50, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
       } else if (b.isStaffOrb) {
         // 法杖秘术奥术星弹：柔彩元素法环 + 旋转四芒符文核 + 纯白星芯
         ctx.save();

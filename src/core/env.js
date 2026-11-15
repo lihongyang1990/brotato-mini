@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.18 手机端与桌面端开始界面版本徽章常驻显示 + 一键直达烬塔纪元志版本记录）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.19 首领剧毒龙息立体流体特效重制 + 赤烬魂灯杖重做为 Dota2 卡尔式「混沌陨石」天降翻滚碾压火路）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,13 +16,22 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.18';
+const APP_VERSION = 'v2.1.19';
 const APP_BUILD_DATE = '2026-11-15';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.18', date: '2026-11-15', tag: '当前版本 · 手机端开始界面版本号清晰常驻 · 点击一键查阅纪元志',
+    ver: 'v2.1.19', date: '2026-11-15', tag: '当前版本 · Dota2卡尔式混沌陨石法杖 · 首领剧毒龙息特效重制',
+    title: '☄️ 赤烬魂灯杖重做为 Dota 2 卡尔式【混沌陨石】（天外斜坠 + 3D熔岩巨石翻滚碾压 + 焦土火路） + 🐉 首领【剧毒龙息】特效全面重制',
+    items: [
+      '☄️ 法杖【赤烬魂灯杖】火球重做为 Dota 2 祈求者卡尔同款【混沌陨石 (Chaos Meteor)】：施法后巨型 3D 龟裂黑曜熔岩陨石自九霄斜坠轰击落点，随后沿施法者→目标向量方向一路沉重向前翻滚推进（无限穿透群怪、每 0.26 秒造成接触碾压重伤并顺向推挤点燃），同时沿翻滚车辙铺开整条熊熊燃烧的【焦土熔火长廊】（五阶赫利俄斯进化并排召唤双巨陨犁地，九幽进化召唤青焰毒火冥陨）；并修复地面法术区透明度衰减字段错配导致法阵偏淡的问题！',
+      '🧪 首领喷毒吐息视觉重制（瘟疫女皇 / 虚空织母 / 腐殖母神 / 深渊噬魂魔）：移除此前纯色扇片加单根正弦波浪线的简陋画法，在离屏引擎预烘焙【多瓣立体瘴气云团】与【高压雾化柔边锥幕】（战斗帧依旧 0 实时渐变零掉帧），叠加 14 团三通道翻滚扩散毒云、3 股由宽收尖的高压流线腐蚀液柱、喷口椭圆激波环及末端爆裂高光酸液珠！',
+      '☠️ 喷毒蓄力预警同步升级：新增喷口旋转炼金六芒阵、向内倒吸聚拢毒珠、三道射程刻度弧与双层高亮安全边界轨（最后 0.24 秒锁向闪烁提示），兼顾压迫感与近战侧移绕后判读！'
+    ]
+  },
+  {
+    ver: 'v2.1.18', date: '2026-11-15', tag: '手机端开始界面版本号清晰常驻 · 点击一键查阅纪元志',
     title: '🏷️ 手机端（竖屏/横屏）开始界面新增黑曜金边版本徽章常驻显示 + 一键点击直达「烬塔纪元志」版本更新记录',
     items: [
       '📱 修复手机端竖屏与横屏开始界面隐藏版本号导致无法确认线上缓存是否已更新的问题：移除移动端对 #startVersionPill 的隐藏规则，改为在左上角常驻高辨识度黑曜金边胶囊徽章「✦ v2.1.18 · 纪元志」（与右上角音量/音景按钮同行对称排布，超窄屏自动自适应精简不换行）！',
