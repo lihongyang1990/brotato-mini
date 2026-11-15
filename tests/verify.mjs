@@ -2543,6 +2543,85 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(touchConflictCheck.fledLeftNotIntoBoss, true, "Releasing thumb before tapping Dash must dash along player.moveA (escape direction), NEVER into nearest monster (player.lookA)");
   assert.strictEqual(touchConflictCheck.joyStillIntact, true, "Triggering mobile Dash while moving must keep active joystick untouched");
   assert.strictEqual(touchConflictCheck.dashedAlongJoy, true, "Mobile Dash while moving must dash along active joystick vector");
+
+  // v2.1.21 Mobile Tap-Anywhere Narrative, Zero-Permanent-Canvas Sprite Loader & -20% Mob / +20% Gold Balance Check
+  const narCssRaw = fs.readFileSync(path.join(ROOT, "styles/narrative.css"), "utf8");
+  assert(
+    narCssRaw.includes("body.m-ui .spire-narrative .story-next,body.m-ui .spire-narrative .story-cinematic-next{display:none!important}"),
+    "Mobile narrative CSS must hide bottom-right .story-next and .story-cinematic-next buttons"
+  );
+  const v2121MobileCheck = vm.runInContext(`(() => {
+    // 1) Verify mobile story tap-anywhere advances cinematic & dialogue without clicking .story-next / .story-cinematic-next
+    SpireDirector.resetRun();
+    endlessMode = false;
+    SpireDirector.onWaveStart(1);
+    const narRoot = document.getElementById('spireNarrative');
+    const cinCaption = narRoot.querySelector('.story-cinematic-caption');
+    const cinP = cinCaption.querySelector('p');
+    // Tap cinematic caption paragraph: 1st tap reveals full line, 2nd tap advances!
+    SpireDirector.setPreferences({ instantText: true });
+    const beforeKind = narRoot.getAttribute('data-kind');
+    cinP.dispatch('click', { bubbles: true, detail: 1 });
+    cinCaption.dispatch('click', { bubbles: true, detail: 1 });
+    // Advance until dialogue scene and tap footer / speaker row (not .story-next!)
+    let safety = 0;
+    while (SpireDirector.isActive() && narRoot.getAttribute('data-kind') !== 'dialogue' && safety++ < 12) {
+      narRoot.dispatch('click', { bubbles: true, detail: 1 });
+    }
+    const reachedDialogue = narRoot.getAttribute('data-kind') === 'dialogue';
+    const dlgProgBefore = narRoot.querySelector('.story-line-count').textContent;
+    const footerEl = narRoot.querySelector('.story-dialogue-footer');
+    footerEl.dispatch('click', { bubbles: true, detail: 1 });
+    const dlgProgAfter = narRoot.querySelector('.story-line-count').textContent;
+    while (SpireDirector.isActive() && safety++ < 40) {
+      narRoot.dispatch('click', { bubbles: true, detail: 1 });
+    }
+
+    // 2) Verify ensureSpriteEntry uses decoded HTMLImageElement directly (0 permanent offscreen <canvas>)
+    const chaserSpr = SpireAssets.getMonsterSprite({ type: 'chaser', elite: false }, false);
+    const normalUsesDirectImg = !!(chaserSpr && chaserSpr.canvas && chaserSpr.canvas.tagName !== 'CANVAS' && chaserSpr.rawImg === chaserSpr.canvas);
+    const hasPendingApi = typeof SpireAssets.hasPendingHiLoads === 'function';
+
+    // 3) Verify Mobile -20% Monster Count & +20% Monster Gold Yield vs Desktop
+    wave = 1;
+    survivalTrialWave = false;
+    setUIPref('mobile');
+    const mobBalOn = isMobileCombatBalance() === true && MOBILE_MOB_COUNT_MUL === 0.80 && MOBILE_GOLD_YIELD_MUL === 1.20;
+    enemies.length = 0;
+    const mobStalker = createEnemy(400, 400, 'stalker');
+    const mobBoss = createEnemy(500, 500, 'boss', 'butcher');
+    const mobMat = mobStalker.mat;
+    const mobBossMat = mobBoss.mat;
+
+    setUIPref('desktop');
+    const deskBalOff = isMobileCombatBalance() === false;
+    enemies.length = 0;
+    const deskStalker = createEnemy(400, 400, 'stalker');
+    const deskBoss = createEnemy(500, 500, 'boss', 'butcher');
+    const deskMat = deskStalker.mat;
+    const deskBossMat = deskBoss.mat;
+    setUIPref('auto');
+
+    return {
+      beforeKind,
+      reachedDialogue,
+      footerTapAdvanced: dlgProgBefore !== dlgProgAfter,
+      normalUsesDirectImg,
+      hasPendingApi,
+      mobBalOn,
+      deskBalOff,
+      goldPlus20Exact: Math.abs(mobMat - deskMat * 1.20) < 1e-6,
+      bossMatUnchanged: mobBossMat === deskBossMat
+    };
+  })()`, s);
+  assert.strictEqual(v2121MobileCheck.reachedDialogue, true, "Tapping anywhere on mobile #spireNarrative must advance through cinematic scenes into dialogue");
+  assert.strictEqual(v2121MobileCheck.footerTapAdvanced, true, "Tapping dialogue footer (with .story-next hidden) must advance dialogue on mobile");
+  assert.strictEqual(v2121MobileCheck.normalUsesDirectImg, true, "Monster normalView must draw decoded HTMLImageElement directly without allocating permanent 2D canvases");
+  assert.strictEqual(v2121MobileCheck.hasPendingApi, true, "SpireAssets must expose hasPendingHiLoads()");
+  assert.strictEqual(v2121MobileCheck.mobBalOn, true, "Mobile UI mode must activate MOBILE_MOB_COUNT_MUL=0.80 and MOBILE_GOLD_YIELD_MUL=1.20");
+  assert.strictEqual(v2121MobileCheck.deskBalOff, true, "Desktop UI mode must keep isMobileCombatBalance()===false");
+  assert.strictEqual(v2121MobileCheck.goldPlus20Exact, true, "Mobile non-boss monsters must yield +20% gold/crystal mat compared to desktop");
+  assert.strictEqual(v2121MobileCheck.bossMatUnchanged, true, "Boss crystal reward must remain identical between mobile and desktop");
 }
 
 // ============================================================================

@@ -267,29 +267,70 @@ const SpireAssets = (function () {
     return fast;
   }
 
-  // 移动端双优先级防拥塞加载器：高优战斗贴图独享绿色通道 + 5秒挂起看门狗超时自愈 + 3次自动重试（彻底根治怪物贴图被大图阻塞变圆球）
+  // 移动端双优先级防拥塞加载器：屏上急需贴图 LIFO 插队抢占 + 严控并发槽位防蜂窝队头阻塞 + 14秒看门狗与保留缓存重试 + 常驻引用防 GC 回收
   const _hiQueue = [];
   const _loQueue = [];
+  const _pinnedImages = [];
   let _inflightHi = 0;
   let _inflightLo = 0;
 
+  function _pinDecodedImage(img) {
+    if (!img) return;
+    if (_pinnedImages.indexOf(img) === -1) _pinnedImages.push(img);
+    if (typeof img.decode === 'function') {
+      try {
+        const dp = img.decode();
+        if (dp && typeof dp.catch === 'function') dp.catch(function () {});
+      } catch (_) {}
+    }
+  }
+
+  function hasPendingHiLoads() {
+    return _inflightHi > 0 || _hiQueue.length > 0;
+  }
+
   function _pumpLoadQueue() {
     const compact = _isCompactDevice();
-    const hiLimit = compact ? 10 : 16;
-    const loLimit = compact ? 3 : 6;
+    const hiLimit = compact ? 4 : 16;
+    const loLimit = compact ? 2 : 6;
     while ((_inflightHi + _inflightLo) < hiLimit && _hiQueue.length > 0) {
-      const task = _hiQueue.shift();
-      if (task) task();
+      const item = _hiQueue.shift();
+      if (item && item.fn) item.fn();
     }
-    while (_inflightLo < loLimit && (_inflightHi + _inflightLo) < hiLimit && _loQueue.length > 0) {
-      const task = _loQueue.shift();
-      if (task) task();
+    // 高优战斗贴图排队或高并发拉取期间，暂停启动新的低优大图下载，杜绝 500KB 剧情图阻塞 50KB 怪物贴图
+    const allowLo = _hiQueue.length === 0 && _inflightHi <= (compact ? 1 : 6);
+    while (allowLo && _inflightLo < loLimit && (_inflightHi + _inflightLo) < hiLimit && _loQueue.length > 0) {
+      const item = _loQueue.shift();
+      if (item && item.fn) item.fn();
     }
+  }
+
+  function _promoteQueuedLoad(relPath) {
+    for (let i = 0; i < _hiQueue.length; i++) {
+      if (_hiQueue[i] && _hiQueue[i].relPath === relPath) {
+        if (i > 0) {
+          const picked = _hiQueue.splice(i, 1)[0];
+          _hiQueue.unshift(picked);
+        }
+        return true;
+      }
+    }
+    for (let j = 0; j < _loQueue.length; j++) {
+      if (_loQueue[j] && _loQueue[j].relPath === relPath) {
+        const picked = _loQueue.splice(j, 1)[0];
+        picked.isHi = true;
+        _hiQueue.unshift(picked);
+        _pumpLoadQueue();
+        return true;
+      }
+    }
+    return false;
   }
 
   function loadImage(relPath, onReady, onFail, highPriority) {
     if (!relPath || typeof Image === 'undefined') return null;
-    const isHi = !!highPriority || /^assets\/spire\/(?:mob_|boss_|sb_|mb_|hero_|prop_)/i.test(relPath);
+    const urgent = highPriority === 'urgent';
+    const isHi = urgent || !!highPriority || /^assets\/spire\/(?:mob_|boss_|sb_|mb_|hero_|prop_)/i.test(relPath);
     let rec = _imgCache[relPath];
     if (rec) {
       if (rec.ready) {
@@ -301,9 +342,10 @@ const SpireAssets = (function () {
       if (rec.loading) {
         if (onReady) rec.cbs.push(onReady);
         if (onFail) rec.failCbs.push(onFail);
+        if (urgent) _promoteQueuedLoad(relPath);
         return null;
       }
-      if (rec.failed && Date.now() < (rec.retryAfter || 0)) {
+      if (!urgent && rec.failed && Date.now() < (rec.retryAfter || 0)) {
         if (onFail) {
           try { onFail(); } catch (_) {}
         }
@@ -322,13 +364,15 @@ const SpireAssets = (function () {
     const baseUrl = resolve(relPath);
     const isDataUri = /^data:/i.test(baseUrl);
 
-    const startAttempt = function (attempt) {
+    const startAttempt = function (attempt, slotIsHi) {
       let settled = false;
       let watchdog = null;
       const img = new Image();
       rec.img = img;
-      // 小体积战斗精灵采用默认同步位图就绪，避免移动端 WebKit 对离屏 Image 延迟异步解码导致首帧空白；仅大尺寸剧情背景用 async
-      if (!isHi) img.decoding = 'async';
+      if (!slotIsHi) img.decoding = 'async';
+      if (slotIsHi) {
+        try { img.fetchPriority = 'high'; } catch (_) {}
+      }
 
       const releaseSlot = function () {
         if (watchdog !== null) {
@@ -336,7 +380,7 @@ const SpireAssets = (function () {
           watchdog = null;
         }
         if (!isDataUri) {
-          if (isHi) _inflightHi = Math.max(0, _inflightHi - 1);
+          if (slotIsHi) _inflightHi = Math.max(0, _inflightHi - 1);
           else _inflightLo = Math.max(0, _inflightLo - 1);
           _pumpLoadQueue();
         }
@@ -351,6 +395,7 @@ const SpireAssets = (function () {
         if (nw > 0 && nh > 0) {
           if (!img.width) img.width = nw;
           if (!img.height) img.height = nh;
+          _pinDecodedImage(img);
           rec.ready = true;
           rec.loading = false;
           rec.failed = false;
@@ -363,7 +408,7 @@ const SpireAssets = (function () {
               if (typeof logWarn === 'function') logWarn('ASSET_CB', relPath + ': ' + String(err));
             }
           }
-        } else if (!isDataUri && attempt < 2) {
+        } else if (!isDataUri && attempt < 3) {
           _enqueueAttempt(attempt + 1);
         } else {
           _handleFinalFailure();
@@ -374,7 +419,7 @@ const SpireAssets = (function () {
         if (settled) return;
         settled = true;
         releaseSlot();
-        if (!isDataUri && attempt < 2) {
+        if (!isDataUri && attempt < 3) {
           _enqueueAttempt(attempt + 1);
         } else {
           _handleFinalFailure();
@@ -382,7 +427,7 @@ const SpireAssets = (function () {
       };
 
       if (!isDataUri && typeof setTimeout === 'function') {
-        const timeoutMs = isHi ? 5000 : 9000;
+        const timeoutMs = slotIsHi ? 14000 : 20000;
         watchdog = setTimeout(function () {
           if (settled) return;
           settled = true;
@@ -390,7 +435,7 @@ const SpireAssets = (function () {
           img.onerror = null;
           try { img.src = ''; } catch (_) {}
           releaseSlot();
-          if (attempt < 2) {
+          if (attempt < 3) {
             _enqueueAttempt(attempt + 1);
           } else {
             _handleFinalFailure();
@@ -399,15 +444,16 @@ const SpireAssets = (function () {
       }
 
       if (!isDataUri) {
-        if (isHi) _inflightHi++;
+        if (slotIsHi) _inflightHi++;
         else _inflightLo++;
       }
-      if (attempt === 0 || isDataUri) {
+      // 前两次尝试保持标准版本化 URL 以充分利用浏览器与 SW 缓存；第 3 次起附带确定性重试序号破除坏缓存
+      if (attempt <= 1 || isDataUri) {
         img.src = baseUrl;
       } else {
         const clean = fastStoryPath(relPath).split('?')[0];
         const verTag = (typeof APP_VERSION === 'string' && APP_VERSION) ? APP_VERSION : '1';
-        img.src = clean + '?v=' + encodeURIComponent(verTag) + '&_retry=' + attempt + '&_t=' + (Date.now() & 0xfffff);
+        img.src = clean + '?v=' + encodeURIComponent(verTag) + '&_retry=' + attempt;
       }
     };
 
@@ -415,7 +461,7 @@ const SpireAssets = (function () {
       rec.loading = false;
       rec.ready = false;
       rec.failed = true;
-      rec.retryAfter = Date.now() + 1200;
+      rec.retryAfter = Date.now() + 800;
       rec.cbs.length = 0;
       const fList = rec.failCbs.splice(0, rec.failCbs.length);
       for (let i = 0; i < fList.length; i++) {
@@ -428,23 +474,34 @@ const SpireAssets = (function () {
 
     function _enqueueAttempt(attempt) {
       if (isDataUri) {
-        startAttempt(attempt);
+        startAttempt(attempt, isHi);
         return;
       }
       const run = function () {
         const compact = _isCompactDevice();
-        const hiLimit = compact ? 10 : 16;
-        const loLimit = compact ? 3 : 6;
+        const hiLimit = compact ? 4 : 16;
+        const loLimit = compact ? 2 : 6;
+        const qItem = { relPath, isHi, fn: null };
+        qItem.fn = function () { startAttempt(attempt, qItem.isHi); };
         if (isHi) {
-          if ((_inflightHi + _inflightLo) < hiLimit) startAttempt(attempt);
-          else _hiQueue.push(function () { startAttempt(attempt); });
+          if ((_inflightHi + _inflightLo) < hiLimit && (_hiQueue.length === 0 || urgent)) {
+            startAttempt(attempt, true);
+          } else if (urgent) {
+            _hiQueue.unshift(qItem);
+          } else {
+            _hiQueue.push(qItem);
+          }
         } else {
-          if (_inflightLo < loLimit && (_inflightHi + _inflightLo) < hiLimit) startAttempt(attempt);
-          else _loQueue.push(function () { startAttempt(attempt); });
+          const allowLo = _hiQueue.length === 0 && _inflightHi <= (compact ? 1 : 6);
+          if (allowLo && _inflightLo < loLimit && (_inflightHi + _inflightLo) < hiLimit) {
+            startAttempt(attempt, false);
+          } else {
+            _loQueue.push(qItem);
+          }
         }
       };
       if (attempt > 0 && typeof setTimeout === 'function') {
-        setTimeout(run, attempt === 1 ? 220 : 600);
+        setTimeout(run, attempt === 1 ? 180 : (attempt === 2 ? 480 : 900));
       } else {
         run();
       }
@@ -454,11 +511,11 @@ const SpireAssets = (function () {
     return rec.ready ? rec.img : null;
   }
 
-  // 离屏染色画布 LRU 池：严控手机 WebKit 活跃 2D Canvas 数量，驱逐时归零尺寸立即释放 GPU 显存，且 getContext('2d') 失败时 100% 无缝回退原图！
+  // 离屏染色画布 LRU 池：严控手机 WebKit 活跃 2D Canvas 数量（<=12），驱逐时归零尺寸立即释放 GPU IOSurface，彻底根除 iOS 画布超限引发的贴图静默空白！
   const _tintLru = [];
   function _allocPooledCanvas(w, h, holder, prop) {
     if (typeof document === 'undefined') return null;
-    const maxPool = _isCompactDevice() ? 24 : 72;
+    const maxPool = _isCompactDevice() ? 12 : 64;
     while (_tintLru.length >= maxPool) {
       const oldest = _tintLru.shift();
       if (oldest) {
@@ -486,15 +543,18 @@ const SpireAssets = (function () {
     }
   }
 
-  // 高清精灵贴图缓存：移动端直接以解码后的 HTMLImageElement 作为 normalView（零额外 Canvas 开销！），桌面端超采样缩放且失败自动回退 HTMLImageElement
-  function ensureSpriteEntry(relPath, maxPx) {
+  // 高清精灵贴图缓存：直接以常驻解码 HTMLImageElement 作为 normalView（0 常驻离屏 Canvas 开销，彻底消除移动端 45 张 Canvas 撑爆 GPU 上限导致贴图消失）
+  function ensureSpriteEntry(relPath, maxPx, urgent) {
     if (!relPath || typeof document === 'undefined') return null;
     const cap = maxPx || 256;
     const cacheKey = relPath + '@' + cap;
     let entry = _spriteBank[cacheKey];
     if (entry) {
       if (entry.ready) return entry;
-      if (entry._loading) return null;
+      if (entry._loading) {
+        if (urgent) loadImage(relPath, null, null, 'urgent');
+        return null;
+      }
     } else {
       entry = { ready: false, _loading: false, rawImg: null, normal: null, flash: null, normalView: null, flashView: null, w: cap, h: cap };
       _spriteBank[cacheKey] = entry;
@@ -505,54 +565,35 @@ const SpireAssets = (function () {
       const nh = img.naturalHeight || img.height || 256;
       entry.rawImg = img;
       const compact = _isCompactDevice();
-      const effCap = compact ? Math.min(cap, cap > 256 ? 200 : 160) : cap;
+      const effCap = compact ? Math.min(cap, cap > 256 ? 176 : 144) : cap;
       const scale = Math.min(1, effCap / Math.max(nw, nh));
       const tw = Math.max(16, Math.round(nw * scale));
       const th = Math.max(16, Math.round(nh * scale));
 
-      // 将怪物/场景道具预烘焙至轻量常驻离屏 Canvas（移动端单怪仅约 80KB），杜绝移动 WebKit 回收离屏 HTMLImageElement 位图导致空白或回退；异常时无缝回退原图
-      let normSource = img;
-      let normW = nw;
-      let normH = nh;
-      try {
-        const cNorm = document.createElement('canvas');
-        cNorm.width = tw;
-        cNorm.height = th;
-        const gn = cNorm.getContext('2d');
-        if (gn && cNorm.width > 0) {
-          gn.imageSmoothingEnabled = true;
-          if ('imageSmoothingQuality' in gn) gn.imageSmoothingQuality = 'high';
-          gn.drawImage(img, 0, 0, tw, th);
-          normSource = cNorm;
-          normW = tw;
-          normH = th;
-        } else {
-          cNorm.width = 0;
-          cNorm.height = 0;
-        }
-      } catch (_) {}
-
-      entry.normal = normSource;
-      entry.w = normW;
-      entry.h = normH;
+      entry.normal = img;
+      entry.w = nw;
+      entry.h = nh;
       entry.tintW = tw;
       entry.tintH = th;
-      entry.normalView = { canvas: normSource, w: normW, h: normH };
+      entry.normalView = { canvas: img, rawImg: img, w: nw, h: nh };
       entry._loading = false;
       entry.ready = true;
     }, function () {
       entry._loading = false;
-    }, true);
+    }, urgent ? 'urgent' : true);
     return entry.ready ? entry : null;
   }
 
   // 原生 1024×256（单格 256×256）四帧精灵表缓存：常规态直绘解码原图（零额外大画布开销），受击态按需惰性构建并带完备回退
-  function ensureSheetEntry(relPath) {
+  function ensureSheetEntry(relPath, urgent) {
     if (!relPath || typeof document === 'undefined') return null;
     let entry = _sheetBank[relPath];
     if (entry) {
       if (entry.ready) return entry;
-      if (entry._loading) return null;
+      if (entry._loading) {
+        if (urgent) loadImage(relPath, null, null, 'urgent');
+        return null;
+      }
     } else {
       entry = { ready: false, _loading: false, normal: null, flash: null, normalView: null, flashView: null, cellW: 256, cellH: 256, frames: 4, nw: 1024, nh: 256 };
       _sheetBank[relPath] = entry;
@@ -573,12 +614,12 @@ const SpireAssets = (function () {
       entry.cellW = cellW;
       entry.cellH = cellH;
       entry.frames = frames;
-      entry.normalView = { canvas: img, cellW, cellH, frames };
+      entry.normalView = { canvas: img, rawImg: img, cellW, cellH, frames };
       entry._loading = false;
       entry.ready = true;
     }, function () {
       entry._loading = false;
-    }, true);
+    }, urgent ? 'urgent' : true);
     return entry.ready ? entry : null;
   }
 
@@ -612,25 +653,27 @@ const SpireAssets = (function () {
     return keyOrCls;
   }
 
-  function getHeroSheet(keyOrCls, flash) {
+  function getHeroSheet(keyOrCls, flash, urgent) {
+    const isUrgent = urgent !== false;
     const effKey = _resolveZeroOutfitSheetKey(keyOrCls);
     const rel = HERO_SHEET_MAP[effKey] || HERO_SHEET_MAP[keyOrCls];
     if (!rel) return null;
-    let ent = ensureSheetEntry(rel);
+    let ent = ensureSheetEntry(rel, isUrgent);
     if (!ent && effKey !== 'zero' && keyOrCls === 'allrounder') {
-      ent = ensureSheetEntry(HERO_SHEET_MAP.zero);
+      ent = ensureSheetEntry(HERO_SHEET_MAP.zero, isUrgent);
     }
     if (!ent) return null;
     return flash ? _getSheetFlashView(ent) : ent.normalView;
   }
 
-  function getBossSheet(variant, flash) {
+  function getBossSheet(variant, flash, urgent) {
     if (!variant) return null;
+    const isUrgent = urgent !== false;
     if (BOSS_SPRITE_MAP[variant]) {
-      ensureSpriteEntry(BOSS_SPRITE_MAP[variant], 300);
+      ensureSpriteEntry(BOSS_SPRITE_MAP[variant], 300, isUrgent);
     }
     if (HERO_SHEET_MAP[variant]) {
-      return getHeroSheet(variant, flash);
+      return getHeroSheet(variant, flash, isUrgent);
     }
     return null;
   }
@@ -638,9 +681,9 @@ const SpireAssets = (function () {
   function getHeroSprite(cls, flash) {
     const effKey = _resolveZeroOutfitSheetKey(cls);
     const rel = HERO_MAP[effKey] || HERO_MAP[cls] || HERO_MAP.allrounder;
-    let ent = ensureSpriteEntry(rel, 256);
+    let ent = ensureSpriteEntry(rel, 256, true);
     if (!ent && effKey !== 'zero' && cls === 'allrounder') {
-      ent = ensureSpriteEntry(HERO_MAP.allrounder, 256);
+      ent = ensureSpriteEntry(HERO_MAP.allrounder, 256, true);
     }
     if (!ent) return null;
     return flash ? (_buildTintedView(ent, 'flashView', 'rgba(255, 250, 240, 0.32)') || ent.normalView) : ent.normalView;
@@ -650,14 +693,14 @@ const SpireAssets = (function () {
     if (typeof Image === 'undefined') return;
     const o = (typeof ZERO_OUTFITS !== 'undefined' && ZERO_OUTFITS[outfitId]) ? ZERO_OUTFITS[outfitId] : null;
     if (!o) return;
-    ensureSheetEntry(HERO_SHEET_MAP[o.sheetKey] || HERO_SHEET_MAP.zero);
-    ensureSpriteEntry(HERO_MAP[o.sheetKey] || HERO_MAP.allrounder, 256);
+    ensureSheetEntry(HERO_SHEET_MAP[o.sheetKey] || HERO_SHEET_MAP.zero, false);
+    ensureSpriteEntry(HERO_MAP[o.sheetKey] || HERO_MAP.allrounder, 256, false);
     loadImage(o.portrait);
   }
 
   function getPropSprite(sceneId, flash) {
     const rel = PROP_MAP[sceneId] || PROP_MAP.foundry;
-    const ent = ensureSpriteEntry(rel, 224);
+    const ent = ensureSpriteEntry(rel, 224, true);
     if (!ent) return null;
     return flash ? (_buildTintedView(ent, 'flashView', 'rgba(255, 250, 240, 0.32)') || ent.normalView) : ent.normalView;
   }
@@ -675,9 +718,12 @@ const SpireAssets = (function () {
 
   function _buildTintedView(entry, cacheProp, tintCss) {
     if (!entry || !entry.normal) return null;
-    if (entry[cacheProp]) return entry[cacheProp];
-    const tw = entry.tintW || entry.w || 160;
-    const th = entry.tintH || entry.h || 160;
+    const cached = entry[cacheProp];
+    if (cached && cached.canvas && (!(cached.canvas.tagName === 'CANVAS') || (cached.canvas.width > 0 && cached.canvas.height > 0))) {
+      return cached;
+    }
+    const tw = entry.tintW || entry.w || 144;
+    const th = entry.tintH || entry.h || 144;
     const pair = _allocPooledCanvas(tw, th, entry, cacheProp);
     if (!pair) return entry.normalView;
     try {
@@ -687,7 +733,7 @@ const SpireAssets = (function () {
       gt.globalCompositeOperation = 'source-atop';
       gt.fillStyle = tintCss;
       gt.fillRect(0, 0, tw, th);
-      entry[cacheProp] = { canvas: pair.canvas, w: tw, h: th };
+      entry[cacheProp] = { canvas: pair.canvas, rawImg: entry.rawImg || entry.normal, w: tw, h: th };
       return entry[cacheProp];
     } catch (_) {
       try { pair.canvas.width = 0; pair.canvas.height = 0; } catch (_e) {}
@@ -698,7 +744,7 @@ const SpireAssets = (function () {
   function getMonsterSprite(e, flash) {
     const rel = pickMonsterPath(e);
     const isBig = e && (e.type === 'boss' || e.type === 'special_boss' || e.type === 'mini_boss' || e.type === 'juggernaut');
-    const ent = ensureSpriteEntry(rel, isBig ? 300 : 256);
+    const ent = ensureSpriteEntry(rel, isBig ? 300 : 256, true);
     if (!ent) return null;
     if (flash) return _buildTintedView(ent, 'flashView', 'rgba(255, 250, 240, 0.32)') || ent.normalView;
     if (e && e.elite && !isBig) {
@@ -715,16 +761,19 @@ const SpireAssets = (function () {
     const rel = SPIRE_STORY_PACK.arenaMaps[sceneId] || SPIRE_STORY_PACK.arenaMaps.foundry;
     const cached = _imgCache[rel];
     if (cached && cached.ready) return cached.img;
-    if (_arenaHooked[sceneId]) return loadImage(rel);
+    if (_arenaHooked[sceneId]) return loadImage(rel, null, null, true);
     _arenaHooked[sceneId] = true;
     return loadImage(rel, function () {
+      _arenaHooked[sceneId] = false;
       if (typeof curScene !== 'undefined' && curScene && curScene.id === sceneId) {
         if (typeof bakedSceneKey !== 'undefined') bakedSceneKey = '';
         if (typeof bootReady !== 'undefined' && bootReady && typeof buildFloorTexture === 'function') {
           buildFloorTexture();
         }
       }
-    });
+    }, function () {
+      _arenaHooked[sceneId] = false;
+    }, true);
   }
 
   function getPortrait(keyOrVariant) {
@@ -759,7 +808,7 @@ const SpireAssets = (function () {
     const w = Math.max(1, Number(waveNum) || 1);
     const sc = sceneId || (w <= 4 ? 'foundry' : (w <= 8 ? 'glacier' : (w <= 12 ? 'wasteland' : 'desert')));
     getArenaBg(sc);
-    ensureSpriteEntry(PROP_MAP[sc] || PROP_MAP.foundry, 224);
+    ensureSpriteEntry(PROP_MAP[sc] || PROP_MAP.foundry, 224, false);
 
     const mobs = ['chaser', 'stalker', 'swarmer', 'splitter', 'mini_slime', 'shooter'];
     if (w >= 2) mobs.push('charger', 'shielder', 'iron_guard', 'rad_scorpion');
@@ -771,7 +820,7 @@ const SpireAssets = (function () {
     for (let i = 0; i < mobs.length; i++) {
       const mKey = mobs[i];
       if (MONSTER_SPRITE_MAP[mKey]) {
-        ensureSpriteEntry(MONSTER_SPRITE_MAP[mKey], mKey === 'juggernaut' ? 300 : 256);
+        ensureSpriteEntry(MONSTER_SPRITE_MAP[mKey], mKey === 'juggernaut' ? 300 : 256, false);
       }
     }
 
@@ -779,34 +828,34 @@ const SpireAssets = (function () {
     if (w === 2 || w === 6 || w === 10 || w === 14 || w > 16) {
       const miniByAct = w <= 4 ? ['vanguard', 'pyro_lord'] : (w <= 8 ? ['glacial_valkyrie', 'venom_matriarch'] : (w <= 12 ? ['shadow_stalker', 'storm_siren'] : ['iron_warden']));
       for (let j = 0; j < miniByAct.length; j++) {
-        getBossSheet(miniByAct[j], false);
+        getBossSheet(miniByAct[j], false, false);
       }
     }
     if (w === 3 || w === 4 || w === 7 || w === 8 || w === 11 || w === 12 || w === 15 || w >= 16) {
       const actBoss = w <= 4 ? 'butcher' : (w <= 8 ? 'frost_queen' : (w <= 12 ? 'void_weaver' : 'solar_seraph'));
-      getBossSheet(actBoss, false);
+      getBossSheet(actBoss, false, false);
     }
   }
 
   function warmup() {
     if (typeof Image === 'undefined') return;
     // 第一优先级：主角精灵表与第 1 层核心小怪贴图立刻进入高优绿色通道并发拉取，彻底消除进战初期怪变圆球
-    ensureSheetEntry(HERO_SHEET_MAP.zero);
+    ensureSheetEntry(HERO_SHEET_MAP.zero, true);
     if (typeof getActiveZeroOutfit === 'function') {
       const ao = getActiveZeroOutfit();
-      if (ao && ao.sheetKey && ao.sheetKey !== 'zero') ensureSheetEntry(HERO_SHEET_MAP[ao.sheetKey]);
+      if (ao && ao.sheetKey && ao.sheetKey !== 'zero') ensureSheetEntry(HERO_SHEET_MAP[ao.sheetKey], false);
     }
-    ensureSpriteEntry(PROP_MAP.foundry, 224);
+    ensureSpriteEntry(PROP_MAP.foundry, 224, false);
     const wave1Mobs = ['chaser', 'swarmer', 'stalker', 'splitter', 'mini_slime', 'magma_imp', 'shielder', 'shooter'];
     for (let i = 0; i < wave1Mobs.length; i++) {
-      ensureSpriteEntry(MONSTER_SPRITE_MAP[wave1Mobs[i]], 256);
+      ensureSpriteEntry(MONSTER_SPRITE_MAP[wave1Mobs[i]], 256, false);
     }
 
     // 第二优先级：序章首屏背景图与竞技场底图在空闲帧平缓预热，绝不抢占小怪并发槽位
     const jobs = [
-      () => loadImage('assets/spire/v3/awakening-coffin.png', null, null, true),
-      () => loadImage('assets/spire/v3/awakening-lantern.png'),
-      () => loadImage('assets/spire/scene_1_vista.jpg'),
+      () => loadImage('assets/spire/v3/awakening-coffin.png', null, null, false),
+      () => loadImage('assets/spire/v3/awakening-lantern.png', null, null, false),
+      () => loadImage('assets/spire/scene_1_vista.jpg', null, null, false),
       () => getArenaBg('foundry')
     ];
     const idle = typeof requestIdleCallback === 'function'
@@ -822,6 +871,7 @@ const SpireAssets = (function () {
     fastStoryPath,
     resolve,
     loadImage,
+    hasPendingHiLoads,
     getHeroSheet,
     getBossSheet,
     getHeroSprite,

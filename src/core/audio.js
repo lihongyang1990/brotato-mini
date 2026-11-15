@@ -167,7 +167,7 @@ const AudioBank = {
     }
     beep(fallbackFreq, fallbackDur, fallbackType, fallbackVol);
   },
-  playBgm(url, volume = 0.28) {
+  playBgm(url, volume = 0.28, _deferTry = 0) {
     this.currentBgmUrl = url || '';
     this.baseBgmVol = volume;
     if (typeof Audio === 'undefined' || !url) return false;
@@ -182,6 +182,23 @@ const AudioBank = {
         return true;
       }
       if (this.bgm) { try { this.bgm.pause(); } catch (_) {} }
+      // 移动端非内联模式下，若高优战斗贴图仍在下载，最多让路 1.25 秒避免 3MB WAV 抢占蜂窝带宽，期间由合成器无缝过渡
+      if (
+        _deferTry < 5 &&
+        typeof setTimeout === 'function' &&
+        !(typeof window !== 'undefined' && window.__SPIRE_INLINE_ASSETS__) &&
+        typeof isTrueMobileDevice === 'function' && isTrueMobileDevice() &&
+        typeof SpireAssets !== 'undefined' && SpireAssets &&
+        typeof SpireAssets.hasPendingHiLoads === 'function' && SpireAssets.hasPendingHiLoads()
+      ) {
+        if (this._bgmDeferTimer) clearTimeout(this._bgmDeferTimer);
+        const self = this;
+        this._bgmDeferTimer = setTimeout(function () {
+          self._bgmDeferTimer = null;
+          if (self.currentBgmUrl === url) self.playBgm(url, self.baseBgmVol, _deferTry + 1);
+        }, 250);
+        return true;
+      }
       const a = new Audio(this._resolveUrl(url));
       a._relUrl = url;
       a.loop = true;
@@ -198,6 +215,11 @@ const AudioBank = {
     }
   },
   stopBgm() {
+    if (this._bgmDeferTimer && typeof clearTimeout === 'function') {
+      clearTimeout(this._bgmDeferTimer);
+      this._bgmDeferTimer = null;
+    }
+    this.currentBgmUrl = '';
     if (this.bgm) { try { this.bgm.pause(); } catch (_) {} }
   }
 };

@@ -1655,17 +1655,21 @@ function update(dt) {
   // 前期（第 1~5 层）刷怪密度与同屏上限进一步温和下调，第 10 层起显著拉升终局尸潮压迫感！
   const earlySpawnMul = wave <= 2 ? 0.66 : (wave <= 4 ? 0.72 : (wave === 5 ? 0.80 : (wave === 6 ? 0.94 : 1.0)));
   const lateSurgeMul = wave >= 10 ? (1.16 + Math.min(0.32, (wave - 10) * 0.042)) : 1.0;
-  const rawMaxActive = isTouch
+  const mobCountMul = (typeof isMobileCombatBalance === 'function' && isMobileCombatBalance())
+    ? (typeof MOBILE_MOB_COUNT_MUL === 'number' ? MOBILE_MOB_COUNT_MUL : 0.80)
+    : 1.0;
+  const baseMaxActive = isTouch
     ? (bossDuelActive ? (wave >= 12 ? 28 : (wave <= 4 ? 20 : 24)) : Math.min(wave >= 10 ? 76 : 64, Math.round((28 + wave * 2.8) * earlySpawnMul * lateSurgeMul)))
     : (bossDuelActive ? (wave >= 12 ? 36 : (wave <= 4 ? 26 : 30)) : Math.min(wave >= 10 ? 98 : 80, Math.round((34 + wave * 3.2) * earlySpawnMul * lateSurgeMul)));
+  const rawMaxActive = mobCountMul < 1 ? Math.max(4, Math.round(baseMaxActive * mobCountMul)) : baseMaxActive;
   const maxActiveEnemies = survivalTrialWave ? Math.max(3, Math.round(rawMaxActive * 0.30)) : rawMaxActive;
   if (!overtime && spawnAcc <= 0 && waveTime > 1.5 && (enemies.length + spawns.length) < maxActiveEnemies) {
     const baseCount = bossDuelActive ? (wave >= 12 ? 2.4 : (wave <= 4 ? 1.8 : 2.0)) : (2.45 + Math.min(wave, 6) * 0.28 + Math.max(0, Math.min(16, wave) - 6) * 0.26);
-    const fullExactCnt = baseCount * (bossDuelActive ? 1.0 : earlySpawnMul * lateSurgeMul) * diff.spawnMul * hordeBoost;
+    const fullExactCnt = baseCount * (bossDuelActive ? 1.0 : earlySpawnMul * lateSurgeMul) * diff.spawnMul * hordeBoost * mobCountMul;
     const exactCnt = survivalTrialWave ? (fullExactCnt * 0.30) : fullExactCnt;
     const bernoulliCnt = Math.floor(exactCnt) + (Math.random() < (exactCnt - Math.floor(exactCnt)) ? 1 : 0);
-    const rawCnt = survivalTrialWave ? bernoulliCnt : Math.max(1, bernoulliCnt);
-    const room = Math.max(1, maxActiveEnemies - (enemies.length + spawns.length));
+    const rawCnt = (survivalTrialWave || mobCountMul < 1) ? bernoulliCnt : Math.max(1, bernoulliCnt);
+    const room = Math.max(0, maxActiveEnemies - (enemies.length + spawns.length));
     const count = Math.min(rawCnt, room);
     const early = selectedDiff >= 3 ? 1 : 0;
     for (let i = 0; i < count; i++) {

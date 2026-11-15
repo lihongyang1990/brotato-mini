@@ -54,6 +54,10 @@ const SpireDirector = (function () {
   }
   function warmArtPath(path, highPriority) {
     if (!path || typeof Image === 'undefined') return null;
+    if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.loadImage === 'function') {
+      const cachedImg = SpireAssets.loadImage(path, null, null, !!highPriority);
+      return cachedImg ? { img: cachedImg, ready: true, decoded: true } : { img: null, ready: false, decoded: false };
+    }
     const url = source(path);
     if (!url) return null;
     let entry = _artCache[url];
@@ -75,9 +79,6 @@ const SpireDirector = (function () {
       if (img.complete && (img.naturalWidth || img.width)) markReady();
     } else if (highPriority && !entry.ready) {
       try { entry.img.fetchPriority = 'high'; } catch (_) {}
-    }
-    if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.loadImage === 'function') {
-      SpireAssets.loadImage(path, null, null, !!highPriority);
     }
     return entry;
   }
@@ -150,7 +151,6 @@ const SpireDirector = (function () {
       if (art && art.fallback) setArt(art.fallback);
       else { artWindow.classList.remove('art-loading'); frame.classList.add('art-unavailable'); }
     });
-    frame.addEventListener('click', () => advanceOrSkip(false));
     const atmosphere = node('div', 'story-atmosphere', frame), particles = [];
     for (let i = 0; i < 8; i++) particles.push(node('i', 'story-particle', atmosphere));
     const light = node('div', 'story-ambient-light', frame), shutter = node('div', 'story-scene-transition', frame);
@@ -172,7 +172,6 @@ const SpireDirector = (function () {
     const accessible = node('p', 'story-sr-only', root); accessible.setAttribute('aria-live', 'polite'); accessible.setAttribute('aria-atomic', 'true');
     const footer = node('div', 'story-dialogue-footer', dialog), readHint = node('span', 'story-read-hint', footer);
     const nextBtn = button('继续  ›', 'story-next', footer, () => advanceOrSkip(false));
-    dialog.addEventListener('click', ev => { if (ev.target === dialog || ev.target === text) advanceOrSkip(false); });
     const cinematic = node('div', 'story-cinematic-caption', root), cinName = node('span', 'story-cinematic-speaker', cinematic), cinText = node('p', '', cinematic);
     const cinNext = button('继续  ›', 'story-cinematic-next', cinematic, () => advanceOrSkip(false));
     const titleCard = node('div', 'story-title-card', root), overline = node('span', 'story-title-overline', titleCard), title = node('h2', '', titleCard), subtitle = node('p', '', titleCard);
@@ -182,13 +181,22 @@ const SpireDirector = (function () {
     const logHead = node('div', 'story-log-head', log); node('h2', '', logHead, '刚才的话');
     const logClose = button('返回剧情', '', logHead, toggleLog), logList = node('div', 'story-log-list', log); logList.tabIndex = 0;
     ui = { root, frame, artWindow, backdrop, camera, image, atmosphere, particles, light, shutter, left, right, toolbar, chapter, logBtn, autoBtn, skipBtn, sizeBtn, closeBtn, dialog, nameRow, listener, name, role, progress, text, accessible, readHint, nextBtn, cinematic, cinName, cinText, cinNext, titleCard, overline, title, subtitle, choices, restore, log, logList, logClose };
-    root.addEventListener('click', ev => { if (hidden && ev.target !== restore) setHidden(false); });
     // A reading gesture must never become a "next line" click after native scrolling.
     root.addEventListener('pointerdown', ev => { pointerTrack = { id: ev.pointerId, x: ev.clientX, y: ev.clientY }; suppressDragClick = false; if (cur) cur.readHold = 1.2; }, { passive: true });
     root.addEventListener('pointermove', ev => { if (pointerTrack && pointerTrack.id === ev.pointerId && Math.hypot(ev.clientX - pointerTrack.x, ev.clientY - pointerTrack.y) > 8) { suppressDragClick = true; if (cur) cur.readHold = 1.2; } }, { passive: true });
     root.addEventListener('pointerup', () => { pointerTrack = null; }, { passive: true });
     root.addEventListener('pointercancel', () => { pointerTrack = null; suppressDragClick = true; }, { passive: true });
     root.addEventListener('click', ev => { if (!suppressDragClick || ev.detail === 0) return; suppressDragClick = false; if (ev.preventDefault) ev.preventDefault(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }, true);
+    // 全屏触屏任意处继续：除顶栏按钮、选项面板、对白回看与恢复按钮外，点击画幅/台词框/黑边任意区域均推进剧情
+    root.addEventListener('click', ev => {
+      if (hidden) {
+        if (ev.target !== restore) setHidden(false);
+        return;
+      }
+      const tgt = ev && ev.target;
+      if (tgt && (toolbar.contains(tgt) || choices.contains(tgt) || log.contains(tgt) || restore.contains(tgt) || (tgt.tagName && /^(BUTTON|INPUT|SELECT)$/i.test(tgt.tagName)))) return;
+      advanceOrSkip(false);
+    });
     for (const paragraph of [text, cinText]) paragraph.addEventListener('scroll', () => { if (cur) { cur.readHold = 1.2; cur.wait = 0; } refreshReadingScroll(); }, { passive: true });
     // viewport.js coalesces window/visualViewport changes and calls onResize once.
     window.addEventListener('keydown', handleKey, true);
@@ -245,14 +253,23 @@ const SpireDirector = (function () {
     ui.skipBtn.textContent = skipRead ? '正在跳过已读' : '跳过已读'; ui.skipBtn.setAttribute('aria-pressed', String(skipRead));
     ui.closeBtn.classList.toggle('hidden', !preview); ui.autoBtn.disabled = ui.skipBtn.disabled = !!(cur && cur.kind === 'choice');
   }
-  function setHidden(value) { hidden = !!value; if (ui) ui.root.classList.toggle('story-ui-hidden', hidden); syncMotionState(); if (!hidden) focus(ui && ui.nextBtn); }
+  function focusAdvanceTarget() {
+    if (!ui) return;
+    if (cur && cur.kind === 'choice') {
+      const opt = ui.choices.querySelector('button:not([disabled])');
+      if (opt) { focus(opt); return; }
+    }
+    const btn = (cur && cur.kind === 'cinematic') ? ui.cinNext : ui.nextBtn;
+    focus((btn && btn.offsetParent !== null) ? btn : ui.root);
+  }
+  function setHidden(value) { hidden = !!value; if (ui) ui.root.classList.toggle('story-ui-hidden', hidden); syncMotionState(); if (!hidden) focusAdvanceTarget(); }
   function toggleLog() {
     if (!cur || hidden) return; logOpen = !logOpen; ui.log.classList.toggle('hidden', !logOpen);
     if (logOpen) {
       ui.logList.innerHTML = ''; if (!history.length) node('p', '', ui.logList, '已完整显示的对白会留在这里。');
       for (const entry of history) { const row = node('div', 'story-log-row', ui.logList); node('span', '', row, entry.speaker || '旁白'); node('p', '', row, entry.text); }
       ui.logList.scrollTop = ui.logList.scrollHeight; focus(ui.logClose);
-    } else focus(cur.kind === 'choice' ? ui.choices.querySelector('button') : ui.nextBtn);
+    } else focusAdvanceTarget();
     syncMotionState();
   }
   function setAutoPlay(value) { auto = !!value; if (cur && cur.kind === 'choice') auto = false; syncControls(); }
@@ -405,7 +422,7 @@ const SpireDirector = (function () {
     ui.root.classList.remove('hidden'); document.body.classList.add('story-presenting');
     hidden = logOpen = false; ui.log.classList.add('hidden'); ui.root.classList.remove('story-ui-hidden');
     if (cur.kind === 'choice') auto = skipRead = false;
-    syncScene(); focus(cur.kind === 'choice' ? ui.choices.querySelector('button:not([disabled])') : cur.kind === 'cinematic' ? ui.cinNext : ui.nextBtn);
+    syncScene(); focusAdvanceTarget();
   }
   function hideStage() {
     if (ui) { ui.root.classList.add('hidden'); document.body.classList.remove('story-presenting'); }
@@ -505,8 +522,8 @@ const SpireDirector = (function () {
     if (shown !== lastText || !shown) { (cur.kind === 'cinematic' ? ui.cinText : ui.text).textContent = shown; lastText = shown; }
     const nextLabel = cur.revealed ? '继续  ›' : '显示全文';
     if (nextLabel !== lastNext) { ui.nextBtn.textContent = ui.cinNext.textContent = nextLabel; lastNext = nextLabel; }
-    const compact = window.innerWidth <= 900 || window.innerHeight <= 540;
-    const hint = cur.awaitingScroll ? '上滑阅读余下内容' : auto ? '自动阅读中 · 遇到选项暂停' : cur.revealed ? compact ? '轻点继续' : '空格 / 点击继续' : '点击先显示完整句子';
+    const compact = (document.body && document.body.classList && document.body.classList.contains('m-ui')) || window.innerWidth <= 900 || window.innerHeight <= 540;
+    const hint = cur.awaitingScroll ? '上滑阅读余下内容' : auto ? '自动阅读中 · 遇到选项暂停' : cur.revealed ? (compact ? '轻触屏幕任意处继续' : '空格 / 点击继续') : (compact ? '轻触屏幕显示全文' : '点击先显示完整句子');
     if (hint !== lastHint) { ui.readHint.textContent = hint; lastHint = hint; }
   }
   function renderChoices() {
