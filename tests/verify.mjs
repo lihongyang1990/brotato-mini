@@ -2460,6 +2460,43 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(mobResilience.attemptsAtLeast2, true, "Transient failure must trigger retry attempt");
   assert.strictEqual(mobResilience.hasVersionQuery, true, "SpireAssets.resolve must append ?v= version tag to prevent broken partial cache");
   assert.strictEqual(mobResilience.hasWarmWave, true, "SpireAssets must expose warmWave and getBossSheet");
+
+  // v2.1.16 Mobile Multi-Touch Move + Dash Non-Conflict Check
+  const touchConflictCheck = vm.runInContext(`(() => {
+    state = 'wave';
+    bossCutscene = null;
+    player.hp = player.maxHp;
+    player.dashCd = 0;
+    player.dashT = 0;
+    player.vx = 0;
+    player.vy = 0;
+    // Simulate fleeing LEFT (moveA = PI) while nearest monster is to the RIGHT (lookA = 0)
+    player.moveA = Math.PI;
+    player.lookA = 0;
+    joy.active = false;
+    joy.lastAt = 0;
+    const fired1 = triggerSoulDash();
+    const fledLeftNotIntoBoss = fired1 && player.dashVx < -500;
+
+    // Simulate active left-thumb joystick pointing UP-LEFT while right-thumb triggers dash via handleDashTouchClick
+    player.dashCd = 0;
+    player.dashT = 0;
+    joy.active = true;
+    joy.id = 11;
+    joy.dx = -0.8;
+    joy.dy = -0.6;
+    joy.mag = 1;
+    joy.lockedMove = true;
+    _lastTouchDashAt = 0;
+    const fired2 = handleDashTouchClick(null);
+    const joyStillIntact = joy.active === true && joy.id === 11 && joy.dx === -0.8;
+    const dashedAlongJoy = fired2 && player.dashVx < -400 && player.dashVy < -300;
+    resetJoy();
+    return { fledLeftNotIntoBoss, joyStillIntact, dashedAlongJoy };
+  })()`, s);
+  assert.strictEqual(touchConflictCheck.fledLeftNotIntoBoss, true, "Releasing thumb before tapping Dash must dash along player.moveA (escape direction), NEVER into nearest monster (player.lookA)");
+  assert.strictEqual(touchConflictCheck.joyStillIntact, true, "Triggering mobile Dash while moving must keep active joystick untouched");
+  assert.strictEqual(touchConflictCheck.dashedAlongJoy, true, "Mobile Dash while moving must dash along active joystick vector");
 }
 
 // ============================================================================

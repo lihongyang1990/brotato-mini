@@ -562,12 +562,31 @@ if (document.addEventListener) {
   });
 }
 
-// 手机端全屏动态悬浮摇杆 + 双指捏合缩放视野
-const joy = { id: null, ox: 0, oy: 0, cx: 0, cy: 0, dx: 0, dy: 0, mag: 0, active: false, maxR: 56 };
-let pinchDist = 0, confirmSellIdx = -1;
+// 手机端双指独立解耦操控：专属 Touch.identifier 摇杆锁定 + 0ms 瞬发瞬步键 + 右手辅助轻点瞬步 + 防误触捏合缩放
+const joy = {
+  id: null, ox: 0, oy: 0, cx: 0, cy: 0, dx: 0, dy: 0, mag: 0,
+  active: false, lockedMove: false, maxR: 56,
+  lastDx: 0, lastDy: 0, lastAt: 0
+};
+let pinchDist = 0, pinchStartDist = 0, pinching = false, confirmSellIdx = -1;
+let _lastTouchDashAt = 0;
+let _auxDashTap = null;
+let _dashBtnTouch = null;
 
 function resetJoy() {
-  joy.id = null; joy.active = false; joy.dx = 0; joy.dy = 0; joy.mag = 0; pinchDist = 0;
+  joy.id = null; joy.active = false; joy.lockedMove = false;
+  joy.dx = 0; joy.dy = 0; joy.mag = 0;
+  pinchDist = 0; pinchStartDist = 0; pinching = false;
+  _auxDashTap = null; _dashBtnTouch = null;
+  const dtBtn = typeof document !== 'undefined' && document.getElementById ? document.getElementById('dashTouchBtn') : null;
+  if (dtBtn && dtBtn.classList) dtBtn.classList.remove('is-pressed');
+}
+
+function handleDashTouchClick(btn) {
+  if (btn && typeof btn.blur === 'function') btn.blur();
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  if (now - _lastTouchDashAt < 450) return false;
+  return typeof triggerSoulDash === 'function' ? triggerSoulDash() : false;
 }
 
 if (window.addEventListener) {
@@ -583,6 +602,118 @@ if (cv.addEventListener) {
   const canvasTouches = list => Array.from(list || []).filter(t => !t.target || t.target === cv);
   const canTouchBattle = () => state === 'wave' && !bossCutscene &&
     !(typeof SpireDirector !== 'undefined' && SpireDirector.isBlockingGameplay());
+  const nowMs = () => (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+
+  const adoptTouchAsJoy = t => {
+    if (!t) return;
+    joy.id = t.identifier;
+    joy.ox = joy.cx = t.clientX;
+    joy.oy = joy.cy = t.clientY;
+    joy.dx = 0; joy.dy = 0; joy.mag = 0;
+    joy.active = true;
+    joy.lockedMove = false;
+  };
+
+  const updateJoyFromTouch = t => {
+    const rx = t.clientX - joy.ox, ry = t.clientY - joy.oy;
+    const dist = Math.hypot(rx, ry);
+    const clamped = Math.min(joy.maxR, dist);
+    const ang = Math.atan2(ry, rx);
+    joy.cx = joy.ox + Math.cos(ang) * clamped;
+    joy.cy = joy.oy + Math.sin(ang) * clamped;
+    if (dist > joy.maxR * 1.35) {
+      joy.ox += (t.clientX - joy.cx) * 0.45;
+      joy.oy += (t.clientY - joy.cy) * 0.45;
+    }
+    if (dist > 6) {
+      joy.dx = rx / dist;
+      joy.dy = ry / dist;
+      joy.mag = Math.min(1, dist / (joy.maxR * 0.75));
+      if (dist > 10) joy.lockedMove = true;
+      if (joy.mag > 0.10) {
+        joy.lastDx = joy.dx;
+        joy.lastDy = joy.dy;
+        joy.lastAt = nowMs();
+      }
+    } else {
+      joy.dx = 0; joy.dy = 0; joy.mag = 0;
+    }
+  };
+
+  const isNearDashTouchBtn = (cx, cy) => {
+    const btn = typeof document !== 'undefined' && document.getElementById ? document.getElementById('dashTouchBtn') : null;
+    if (!btn || typeof btn.getBoundingClientRect !== 'function') return false;
+    const r = btn.getBoundingClientRect();
+    if (!r || r.width < 10 || r.height < 10) return false;
+    const bx = r.left + r.width * 0.5, by = r.top + r.height * 0.5;
+    return Math.hypot(cx - bx, cy - by) <= Math.max(88, r.width * 1.25);
+  };
+
+  const dashBtnEl = typeof document !== 'undefined' && document.getElementById ? document.getElementById('dashTouchBtn') : null;
+  if (dashBtnEl && dashBtnEl.addEventListener) {
+    dashBtnEl.addEventListener('touchstart', e => {
+      isTouch = true;
+      if (!canTouchBattle()) return;
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      _lastTouchDashAt = nowMs();
+      if (dashBtnEl.classList) dashBtnEl.classList.add('is-pressed');
+      const t = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]) || null;
+      if (t && !joy.active) {
+        _dashBtnTouch = { id: t.identifier, ox: t.clientX, oy: t.clientY, handedOff: false };
+      }
+      if (typeof triggerSoulDash === 'function') triggerSoulDash();
+    }, { passive: false });
+
+    dashBtnEl.addEventListener('touchmove', e => {
+      if (!canTouchBattle()) return;
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      if (!_dashBtnTouch || !e.touches) return;
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches[i];
+        if (t.identifier === _dashBtnTouch.id) {
+          if (!_dashBtnTouch.handedOff && !joy.active && Math.hypot(t.clientX - _dashBtnTouch.ox, t.clientY - _dashBtnTouch.oy) > 10) {
+            _dashBtnTouch.handedOff = true;
+            joy.id = t.identifier;
+            joy.ox = _dashBtnTouch.ox;
+            joy.oy = _dashBtnTouch.oy;
+            joy.cx = t.clientX;
+            joy.cy = t.clientY;
+            joy.active = true;
+            joy.lockedMove = true;
+            if (dashBtnEl.classList) dashBtnEl.classList.remove('is-pressed');
+          }
+          if (joy.active && joy.id === t.identifier) {
+            updateJoyFromTouch(t);
+          }
+          break;
+        }
+      }
+    }, { passive: false });
+
+    const endDashBtnTouch = e => {
+      if (e && e.stopPropagation) e.stopPropagation();
+      if (dashBtnEl.classList) dashBtnEl.classList.remove('is-pressed');
+      if (_dashBtnTouch) {
+        let stillOnScreen = false;
+        const allT = (e && e.touches) ? e.touches : [];
+        for (let i = 0; i < allT.length; i++) {
+          if (allT[i].identifier === _dashBtnTouch.id) { stillOnScreen = true; break; }
+        }
+        if (!stillOnScreen) {
+          if (joy.active && joy.id === _dashBtnTouch.id) {
+            joy.id = null; joy.active = false; joy.lockedMove = false;
+            joy.dx = 0; joy.dy = 0; joy.mag = 0;
+          }
+          _dashBtnTouch = null;
+        }
+      }
+    };
+    dashBtnEl.addEventListener('touchend', endDashBtnTouch, { passive: true });
+    dashBtnEl.addEventListener('touchcancel', endDashBtnTouch, { passive: true });
+  }
+
   cv.addEventListener('mousedown', e => {
     if (bossCutscene && bossCutscene._skipRect) {
       const fadeDur = bossCutscene.fadeDur || 0.85;
@@ -615,19 +746,31 @@ if (cv.addEventListener) {
     if (!canTouchBattle()) { resetJoy(); return; }
     e.preventDefault();
     const touches = canvasTouches(e.touches);
-    if (touches.length >= 2) {
-      resetJoy();
-      pinchDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    const changed = canvasTouches(e.changedTouches);
+
+    if (!joy.active && !pinching && changed.length > 0) {
+      adoptTouchAsJoy(changed[0]);
+      if (touches.length >= 2) {
+        pinchStartDist = pinchDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+      }
       return;
     }
-    const changed = canvasTouches(e.changedTouches);
-    if (!joy.active && changed.length > 0) {
-      const t = changed[0];
-      joy.id = t.identifier;
-      joy.ox = joy.cx = t.clientX;
-      joy.oy = joy.cy = t.clientY;
-      joy.dx = 0; joy.dy = 0; joy.mag = 0;
-      joy.active = true;
+
+    // 摇杆已在工作时落下第二根手指：绝不重置摇杆！若落在瞬步键边缘光环内则 0ms 瞬发瞬步，否则记录辅助轻点瞬步（仅当摇杆未推动且双指明显拉开才进入缩放）
+    for (let i = 0; i < changed.length; i++) {
+      const ct = changed[i];
+      if (joy.active && ct.identifier === joy.id) continue;
+      if (isNearDashTouchBtn(ct.clientX, ct.clientY)) {
+        _lastTouchDashAt = nowMs();
+        if (typeof triggerSoulDash === 'function') triggerSoulDash();
+        return;
+      }
+      if (joy.active && (joy.lockedMove || joy.mag > 0.06)) {
+        _auxDashTap = { id: ct.identifier, sx: ct.clientX, sy: ct.clientY, t0: nowMs(), moved: false };
+      } else if (touches.length >= 2) {
+        pinchStartDist = pinchDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+        _auxDashTap = { id: ct.identifier, sx: ct.clientX, sy: ct.clientY, t0: nowMs(), moved: false };
+      }
     }
   }, { passive: false });
 
@@ -635,38 +778,40 @@ if (cv.addEventListener) {
     if (!canTouchBattle()) { resetJoy(); return; }
     e.preventDefault();
     const touches = canvasTouches(e.touches);
-    if (touches.length >= 2) {
+
+    if (_auxDashTap) {
+      for (let i = 0; i < touches.length; i++) {
+        const at = touches[i];
+        if (at.identifier === _auxDashTap.id) {
+          if (Math.hypot(at.clientX - _auxDashTap.sx, at.clientY - _auxDashTap.sy) > 24) _auxDashTap.moved = true;
+          break;
+        }
+      }
+    }
+
+    // 仅当第一指尚未锁定走位且双指间距变化超过 18px 时，才真正进入双指缩放视野（杜绝边走边点瞬步误触缩放与断触）
+    if (touches.length >= 2 && (!joy.active || (!joy.lockedMove && joy.mag <= 0.06) || pinching)) {
       const d = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
-      if (pinchDist > 10) {
+      if (!pinching && pinchStartDist > 10 && Math.abs(d - pinchStartDist) > 18) {
+        pinching = true;
+        joy.id = null; joy.active = false; joy.lockedMove = false;
+        joy.dx = 0; joy.dy = 0; joy.mag = 0;
+        _auxDashTap = null;
+      }
+      if (pinching && pinchDist > 10) {
         userZoomed = true;
         camZoom = Math.max(0.38, Math.min(1.95, camZoom * (d / pinchDist)));
         if (bootReady) clampCam();
       }
-      joy.id = null; joy.active = false; joy.dx = 0; joy.dy = 0; joy.mag = 0;
       pinchDist = d;
-      return;
+      if (pinching) return;
     }
+
     if (joy.active) {
       for (let i = 0; i < touches.length; i++) {
         const t = touches[i];
         if (t.identifier === joy.id) {
-          const rx = t.clientX - joy.ox, ry = t.clientY - joy.oy;
-          const dist = Math.hypot(rx, ry);
-          const clamped = Math.min(joy.maxR, dist);
-          const ang = Math.atan2(ry, rx);
-          joy.cx = joy.ox + Math.cos(ang) * clamped;
-          joy.cy = joy.oy + Math.sin(ang) * clamped;
-          if (dist > joy.maxR * 1.35) {
-            joy.ox += (t.clientX - joy.cx) * 0.45;
-            joy.oy += (t.clientY - joy.cy) * 0.45;
-          }
-          if (dist > 6) {
-            joy.dx = rx / dist;
-            joy.dy = ry / dist;
-            joy.mag = Math.min(1, dist / (joy.maxR * 0.75));
-          } else {
-            joy.dx = 0; joy.dy = 0; joy.mag = 0;
-          }
+          updateJoyFromTouch(t);
           break;
         }
       }
@@ -674,18 +819,49 @@ if (cv.addEventListener) {
   }, { passive: false });
 
   const endTouch = e => {
-    const touches = canvasTouches(e.touches);
-    if (touches.length < 2) pinchDist = 0;
+    const allTouches = Array.from((e && e.touches) || []);
+    const touches = canvasTouches(e && e.touches);
+    const changed = canvasTouches(e && e.changedTouches);
+    const isCancel = !!(e && e.type === 'touchcancel');
+
+    if (_auxDashTap && changed.length > 0) {
+      for (let i = 0; i < changed.length; i++) {
+        if (changed[i].identifier === _auxDashTap.id) {
+          if (!isCancel && !_auxDashTap.moved && !pinching && (nowMs() - _auxDashTap.t0) <= 260 && canTouchBattle()) {
+            _lastTouchDashAt = nowMs();
+            if (typeof triggerSoulDash === 'function') triggerSoulDash();
+          }
+          _auxDashTap = null;
+          break;
+        }
+      }
+    }
+
+    if (touches.length < 2) {
+      pinchDist = 0;
+      pinchStartDist = 0;
+      pinching = false;
+    }
+
     if (joy.active) {
       let stillDown = false;
-      for (let i = 0; i < touches.length; i++) {
-        if (touches[i].identifier === joy.id) { stillDown = true; break; }
+      for (let i = 0; i < allTouches.length; i++) {
+        if (allTouches[i].identifier === joy.id) { stillDown = true; break; }
       }
-      if (!stillDown) { joy.id = null; joy.active = false; joy.dx = 0; joy.dy = 0; joy.mag = 0; }
+      if (!stillDown) {
+        joy.id = null; joy.active = false; joy.lockedMove = false;
+        joy.dx = 0; joy.dy = 0; joy.mag = 0;
+        // 若另一根留在画布上的手指仍在按住，平滑继承为新摇杆锚点，杜绝“抬起一指后另一指失效罚站”
+        if (touches.length === 1 && canTouchBattle()) {
+          adoptTouchAsJoy(touches[0]);
+        }
+      }
+    } else if (touches.length === 1 && canTouchBattle()) {
+      adoptTouchAsJoy(touches[0]);
     }
   };
   cv.addEventListener('touchend', endTouch, { passive: true });
-  cv.addEventListener('touchcancel', resetJoy, { passive: true });
+  cv.addEventListener('touchcancel', endTouch, { passive: true });
 }
 
 let state = 'menu', wave = 1, waveTime = 30, waveMaxTime = 30, lastUrgentSec = -1, spawnAcc = 0, shake = 0, diff = DIFFS[1];
@@ -865,7 +1041,7 @@ function startGame(cls, opts) {
   inHurtPlayer = false;
   player = {
     cls, outfit: cls === 'allrounder' && typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : '',
-    x: WORLD.w / 2, y: WORLD.h / 2, r: 24.2, faceDir: 1, lookA: 0,
+    x: WORLD.w / 2, y: WORLD.h / 2, r: 24.2, faceDir: 1, lookA: 0, moveA: 0,
     vx: 0, vy: 0, _leanA: 0, _hsCd: 0,
     dashCd: 0, dashMaxCd: cls === 'ghost' ? 2.5 : 3.2, dashT: 0, dashVx: 0, dashVy: 0,
     dashHasteT: 0, turretOverclockT: 0, magnetPulseT: 0,

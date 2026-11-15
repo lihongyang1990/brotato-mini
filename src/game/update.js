@@ -1603,6 +1603,9 @@ function update(dt) {
   if (!dx && !dy && joy.active && joy.mag > 0) {
     dx = joy.dx; dy = joy.dy; moveScale = joy.mag;
   }
+  if (dx || dy) {
+    player.moveA = Math.atan2(dy, dx);
+  }
   const prevPx = player.x, prevPy = player.y;
   if ((player.iceFreezeT || 0) > 0) {
     player.dashT = 0;

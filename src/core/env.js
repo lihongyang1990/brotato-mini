@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.15 手机端全界面排版对齐重构 + 首屏缓存静默自愈与渐进解锁 + 移动端离屏画布防爆与怪物贴图100%稳态渲染）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.16 手机端双指移动与瞬步完全解耦 + 0ms 瞬发触控瞬步 + 移动朝向独立记忆防反向撞怪）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,13 +16,22 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.15';
+const APP_VERSION = 'v2.1.16';
 const APP_BUILD_DATE = '2026-11-15';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.15', date: '2026-11-15', tag: '当前版本 · 手机端UI错位全面修复 · 缓存冲突静默自愈 · 怪物变球/丢贴图根治',
+    ver: 'v2.1.16', date: '2026-11-15', tag: '当前版本 · 手机端边走边瞬步零冲突 · 0ms瞬发触控 · 防反向撞怪',
+    title: '🎮 彻底解决手机端「摇杆移动」与「青焰瞬步」互锁/断触/反向冲刺冲突',
+    items: [
+      '🕹️ 双指触控完全解耦（边走边按瞬步丝滑不断触）：重构移动端多指 Touch.identifier 追踪；左手推摇杆走位时，右手点击右下角【瞬步】按钮（或点偏在按钮边缘光环、在画布另一侧轻点）均改为 touchstart 0ms 瞬发响应，彻底解决此前多指下 onclick 被系统抑制按不出、点偏 1px 就清空摇杆导致角色罚站并乱缩放镜头的冲突！',
+      '🧭 独立移动朝向记忆（杜绝松手点瞬步反向撞进怪物堆）：新增独立移动朝向角 player.moveA 与摇杆近期拨动方向记忆（650ms），彻底剥离自动索敌角 player.lookA 对瞬步方向的污染——单手逃跑松开摇杆去点瞬步时，100% 沿刚才逃跑方向冲刺，绝不再反向冲进贴脸首领怀里！',
+      '👆 单手滑移接管与大热区防误触：加大移动端瞬步键尺寸与隐形触控热区（100×100px），修正副手指边缘取消（touchcancel）误清主摇杆问题，并支持单手按住瞬步键向外滑动直接无缝接管为摇杆走位！'
+    ]
+  },
+  {
+    ver: 'v2.1.15', date: '2026-11-15', tag: '手机端UI错位全面修复 · 缓存冲突静默自愈 · 怪物变球/丢贴图根治',
     title: '📱 手机端竖屏/横屏全界面排版错位精修 + 🔄 首屏缓存冲突静默自愈与渐进式秒开 + 👾 根治移动端怪物变色球与贴图加载失败',
     items: [
       '👾 根治手机端怪物变成纯色圆球 / 刷不出贴图：定位并移除开机 320ms 并发拉取 64 张首领立绘与预占 32 张大画布导致的移动端带宽挤占及 WebKit 2D Canvas 上下文耗尽问题；移动端常规精灵与四帧动作表改为零额外 Canvas 直绘 HTMLImageElement、受击/精英染色改为按需惰性缓存并设上限兜底，贴图加载新增并发队列、3 次自动重试、失败冷却自愈与波前提前预热！',

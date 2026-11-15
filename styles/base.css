@@ -188,11 +188,11 @@ canvas {
 .dash-touch-btn {
   display: none;
   position: absolute;
-  right: calc(18px + env(safe-area-inset-right, 0px));
-  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  right: calc(22px + env(safe-area-inset-right, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   z-index: 6;
-  width: 66px;
-  height: 66px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 30%, rgba(44, 88, 104, 0.95), rgba(14, 24, 36, 0.98));
   border: 1.5px solid var(--gold);
@@ -204,9 +204,19 @@ canvas {
   gap: 2px;
   cursor: pointer;
   pointer-events: auto;
-  touch-action: manipulation;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.dash-touch-btn:active { transform: scale(0.93); }
+.dash-touch-btn::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+}
+.dash-touch-btn:active,
+.dash-touch-btn.is-pressed { transform: scale(0.91); filter: brightness(1.16); }
 .dash-touch-btn.cooling {
   background: rgba(12, 16, 26, 0.94);
   border-color: rgba(148, 163, 184, 0.34);

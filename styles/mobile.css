@@ -577,8 +577,10 @@ body.m-ui .wave-badge,
 body.m-ui .boss-bar-wrap { min-width: 0; }
 body.m-ui .hud-mini-stats { flex-wrap: wrap; gap: 2px 8px; }
 body.m-ui .dash-touch-btn {
-  right: calc(18px + env(safe-area-inset-right, 0px));
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  right: calc(22px + env(safe-area-inset-right, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  width: 72px;
+  height: 72px;
   touch-action: none;
 }
 body.m-ui .shop-merchant-wrap { gap: 9px; }
