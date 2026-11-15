@@ -149,7 +149,7 @@ function openSpireSettings() {
   [
     ['切换环境音景', () => toggleSpireAudio()],
     ['视界模式', () => { cycleUIPref(); openSpireSettings(); }],
-    ['版本记录', () => { closePresentationModal(); openChangelogModal(); }],
+    [typeof APP_VERSION !== 'undefined' ? `版本记录 · ${APP_VERSION}` : '版本记录', () => { closePresentationModal(); openChangelogModal(); }],
     ['运行诊断', () => { closePresentationModal(); openLogModal(); }]
   ].forEach(([text, fn]) => { const b = document.createElement('button'); b.className = 'quiet-button'; b.textContent = text; b.onclick = fn; actions.appendChild(b); });
   body.appendChild(actions);

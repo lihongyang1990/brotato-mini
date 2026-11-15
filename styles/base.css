@@ -645,12 +645,32 @@ h2 {
 }
 
 .home-ver-pill {
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 2px;
-  color: rgba(223, 192, 132, 0.85);
-  padding: 5px 0;
+  letter-spacing: 1.6px;
+  color: rgba(223, 192, 132, 0.90);
+  background: rgba(10, 20, 32, 0.44);
+  border: 1px solid rgba(223, 192, 132, 0.24);
+  border-radius: 5px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: border-color 0.16s, background 0.16s, color 0.16s;
+  touch-action: manipulation;
+  white-space: nowrap;
 }
+.home-ver-pill:hover, .home-ver-pill:focus-visible {
+  color: #fff3d6;
+  border-color: rgba(223, 192, 132, 0.56);
+  background: rgba(18, 32, 48, 0.68);
+}
+.home-ver-pill:active { transform: scale(0.97); }
+.home-ver-pill .ver-dot { display: none; color: #dfc084; font-size: 10px; letter-spacing: 0; }
+.home-ver-pill .ver-num { color: #f3dfb6; font-weight: 700; font-variant-numeric: tabular-nums; }
+.home-ver-pill .ver-log-tag { color: rgba(214, 226, 230, 0.80); font-size: 10.5px; letter-spacing: 1px; }
 
 .home-top-actions {
   display: flex;

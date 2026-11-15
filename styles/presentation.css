@@ -9,7 +9,8 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline:2px solid #
 #startMenu .menu-stage { max-width:1160px; width:100%; margin:0 auto; align-items:center; gap:0; }
 #menuHomeView { margin:auto; }
 .home-topbar { width:100%; min-height:42px; align-items:center; }
-.home-ver-pill { border:0; padding:0; background:none; color:#c1d0d6; font-size:10px; letter-spacing:2px; opacity:.78; }
+.home-ver-pill { border:1px solid rgba(185,208,210,.22); padding:6px 11px; border-radius:5px; background:rgba(10,23,34,.36); color:#d3e0e5; font-size:10.5px; letter-spacing:1.6px; opacity:.92; cursor:pointer; }
+.home-ver-pill:hover,.home-ver-pill:focus-visible { border-color:rgba(223,192,132,.52); background:rgba(16,32,46,.62); color:#fff4dc; opacity:1; }
 .home-topbar .ghost-pill-btn { background:rgba(10,23,34,.36); border-color:rgba(220,237,239,.24); color:#e0e9e7; }
 #menuHomeView .home-centerpiece { align-self:center; align-items:center; justify-content:center; text-align:center; gap:0; width:100%; max-width:760px; padding:0; margin:auto; flex:1; }
 #menuHomeView .brand-en-sub { font:10px/1.8 -apple-system,"PingFang SC",sans-serif; letter-spacing:4px; padding-left:4px; color:#b9cdd2; margin:0 0 16px; }
@@ -114,9 +115,9 @@ body:not(.m-ui) .sub-topbar>.gold { justify-self:end; }
   body.m-ui #startMenu.start-hub { padding:calc(15px + env(safe-area-inset-top,0px)) 22px calc(15px + env(safe-area-inset-bottom,0px)); }
   #startMenu .start-bg-art { background-position:63% center; }
   #startMenu .start-bg-vignette { background:linear-gradient(0deg,#06111ef2,rgba(6,17,30,.18) 76%,#0b15274d); }
-  #menuHomeView .home-topbar { min-height:44px; align-items:center; }
-  #menuHomeView .home-ver-pill { font-size:8px; line-height:1.9; max-width:190px; letter-spacing:1.4px; }
-  #menuHomeView .home-topbar .ghost-pill-btn { font-size:10px; padding:7px 10px; }
+  #menuHomeView .home-topbar { min-height:44px; align-items:center; justify-content:space-between; gap:6px; }
+  #menuHomeView .home-ver-pill { font-size:10px; line-height:1.3; max-width:none; letter-spacing:.8px; padding:5px 9px; }
+  #menuHomeView .home-topbar .ghost-pill-btn { font-size:10.5px; padding:7px 10px; }
   #menuHomeView .home-centerpiece { width:100%; justify-content:center; align-items:center; text-align:center; margin:auto; padding:16px 8px; }
   #menuHomeView .brand-en-sub { font-size:8px; letter-spacing:2.5px; margin-bottom:12px; }
   #menuHomeView .home-main-title { font-size:clamp(44px,12vw,72px); letter-spacing:.09em; padding-left:.09em; }
@@ -193,6 +194,18 @@ body.m-ui #startMenu.start-hub {
 }
 body.m-ui #menuHomeView .home-topbar,
 body.m-ui #menuHomeView .home-footer { flex-shrink:0; }
+body.m-ui #menuHomeView .home-topbar { justify-content:space-between; align-items:center; gap:6px; min-height:40px; }
+body.m-ui #menuHomeView .home-top-actions { gap:6px; flex-shrink:0; }
+body.m-ui #menuHomeView .home-ver-pill {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:6px 10px; min-height:34px; max-width:none;
+  background:rgba(10,22,34,.68); border:1px solid rgba(223,192,132,.40); border-radius:5px;
+  color:#f3dfb6; font-size:11.5px; font-weight:700; line-height:1.2; letter-spacing:.6px; opacity:1;
+}
+body.m-ui #menuHomeView .home-ver-pill .ver-prefix { display:none; }
+body.m-ui #menuHomeView .home-ver-pill .ver-dot { display:inline; font-size:10px; color:#dfc084; }
+body.m-ui #menuHomeView .home-ver-pill .ver-num { color:#f7e5be; font-weight:800; }
+body.m-ui #menuHomeView .home-ver-pill .ver-log-tag { color:#cbdade; font-size:10.5px; font-weight:600; letter-spacing:.4px; }
 body.m-ui #menuHomeView .home-centerpiece { flex-shrink:0; }
 body.m-ui .presentation-modal {
   padding:calc(10px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px));
@@ -229,8 +242,7 @@ body.m-ui .sub-topbar>.gold { justify-self:end; }
 body.m-ui #endMenu .modal-plaque { width:min(560px,100%); box-sizing:border-box; }
 body.m-landscape #endMenu:not([data-result="defeat"]) .end-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
 body.m-landscape #endMenu:not([data-result="defeat"]) .end-actions #endlessBtn { grid-column:1 / -1; }
-body.m-landscape #menuHomeView .home-ver-pill { display:none; }
-body.m-landscape #menuHomeView .home-topbar { min-height:40px; justify-content:flex-end; }
+body.m-landscape #menuHomeView .home-topbar { min-height:38px; justify-content:space-between; }
 body.m-landscape #menuHomeView .home-centerpiece {
   display:grid; grid-template-columns:minmax(0,1fr) minmax(200px,.88fr);
   grid-template-rows:auto auto auto; gap:4px 20px; width:100%; max-width:740px; margin:auto; padding:6px 0;
@@ -260,6 +272,8 @@ body.m-landscape .prep-hero-caption { position:absolute; left:0; right:0; bottom
 body.m-landscape .prep-hero-caption h2 { font-size:22px; margin:2px 0; }
 body.m-landscape .prep-hero-caption p { display:none; }
 @media (max-width:360px) {
+  body.m-ui #menuHomeView .home-ver-pill { padding:5px 8px; font-size:11px; }
+  body.m-ui #menuHomeView .home-ver-pill .ver-log-tag { display:none; }
   body.m-portrait #menuHomeView .home-main-title { font-size:41px; }
   body.m-portrait #menuHomeView .home-centerpiece { padding-left:2px; padding-right:2px; }
   body.m-portrait #menuHomeView .title-link { font-size:21px; }
