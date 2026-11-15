@@ -475,9 +475,9 @@ function getTechMul() {
 }
 function getBlastScale() { return (player ? player.explosionScale : 1) + getSetBonuses().blast; }
 
-// 参照《土豆兄弟》独立【建筑攻速】计算：完全剥离角色自身 atkSpd 与 techMul，仅由独立建筑攻速词条（turretAspdBonus + 机巧羁绊）+ 图腾共鸣 + 瞬步超频驱动，且基础塔攻速降低 15%（0.85x）
+// 参照《土豆兄弟》独立【建筑攻速】计算：完全剥离角色自身 atkSpd 与 techMul，仅由独立建筑攻速词条（turretAspdBonus + 机巧羁绊）+ 图腾共鸣 + 瞬步超频驱动；基础塔攻速还原并额外提升 +20%（1.20x）
 function getEffectiveTurretAspdMul(totemHaste = 1) {
-  const baseMul = typeof TURRET_BASE_ASPD_MUL === 'number' ? TURRET_BASE_ASPD_MUL : 0.85;
+  const baseMul = typeof TURRET_BASE_ASPD_MUL === 'number' ? TURRET_BASE_ASPD_MUL : 1.20;
   const sb = typeof getSetBonuses === 'function' ? getSetBonuses() : null;
   const setTurretAspd = (sb && sb.turretAspd) ? sb.turretAspd : 0;
   const bonus = (player ? (player.turretAspdBonus || 0) : 0) + setTurretAspd;

@@ -195,8 +195,8 @@ const SET_DEFS = {
 };
 
 // 参照《土豆兄弟 (Brotato)》建筑攻速独立法则：
-// 角色自身【攻击速度 (atkSpd)】与【工程学伤害 (tech)】绝不加速炮台/图腾开火，建筑仅受独立【建筑攻速 (turretAspdBonus)】加成；基础塔攻速整体下调 15%（0.85x）
-const TURRET_BASE_ASPD_MUL = 0.85;
+// 角色自身【攻击速度 (atkSpd)】与【工程学伤害 (tech)】绝不加速炮台/图腾开火，建筑仅受独立【建筑攻速 (turretAspdBonus)】加成；修复叠乘 Bug 后还原基础塔攻速并额外提升 +20%（1.20x）
+const TURRET_BASE_ASPD_MUL = 1.20;
 if (typeof globalThis !== 'undefined') globalThis.TURRET_BASE_ASPD_MUL = TURRET_BASE_ASPD_MUL;
 
 // 全局硬核平衡常量（无主角无敌帧；全流程小怪血量再下调 -20%，第 10 层及以后首领血量下调 -20%；前 5 层强度温和下调；怪物移速 -20%；远程怪数量 -20% 且怪物总量不变）

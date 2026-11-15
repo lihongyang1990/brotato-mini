@@ -2616,7 +2616,7 @@ function update(dt) {
   player._displayRange = maxEquipRange > 0 ? maxEquipRange : Math.max(68, 104 + totalRange);
 
   // 自动机炮塔、浮游激光塔、紫电震波塔与秘法共鸣图腾塔索敌开火
-  // （参照《土豆兄弟》建筑机制：角色自身 atkSpd 与工程学 techMul 绝不加速塔开火，仅受独立【建筑攻速】、图腾共鸣与瞬步超频影响，且基础塔攻速下调 15%！）
+  // （参照《土豆兄弟》建筑机制：角色自身 atkSpd 与工程学 techMul 绝不加速塔开火，仅受独立【建筑攻速】、图腾共鸣与瞬步超频影响，基础塔攻速还原并额外 +20%！）
   const turretMaxR = Math.max(148, 316 + Math.round(totalRange * 0.5));
   for (let ti = 0; ti < turrets.length; ti++) {
     const t = turrets[ti];
@@ -2648,10 +2648,10 @@ function update(dt) {
         const cMul = isCrit ? getEffectiveCritMult(1.85) : 1;
         const tAspd = typeof getEffectiveTurretAspdMul === 'function'
           ? getEffectiveTurretAspdMul(totemHaste)
-          : (0.85 * (1 + (player.turretAspdBonus || 0)) * totemHaste * ((player.turretOverclockT || 0) > 0 ? 1.55 : 1));
+          : (1.20 * (1 + (player.turretAspdBonus || 0)) * totemHaste * ((player.turretOverclockT || 0) > 0 ? 1.55 : 1));
         const tSrc = t.kind === 'laser' ? 'turret_laser' : (t.kind === 'shock' ? 'turret_shock' : (t.kind === 'totem' ? 'turret_totem' : 'turret_gun'));
         if (t.kind === 'shock') {
-          t.cd = Math.max(0.65, 1.55 / tAspd);
+          t.cd = Math.max(0.52, 1.55 / tAspd);
           t.recoil = 1;
           const shockR = Math.round(162 * getBlastScale());
           const sdmg = (18.0 + wave * 2.6) * (1 + (t.tier - 1) * 0.42) * effDmg * techMul * cMul;
@@ -2671,7 +2671,7 @@ function update(dt) {
           }
         } else if (t.kind === 'laser') {
           const tierAspd = 1 + (t.tier - 1) * 0.12;
-          t.cd = Math.max(0.32, 0.81 / (tAspd * tierAspd));
+          t.cd = Math.max(0.26, 0.81 / (tAspd * tierAspd));
           t.recoil = 1;
           const ldmg = (14.5 + wave * 1.75) * (1 + (t.tier - 1) * 0.45) * effDmg * techMul * cMul;
           if ((player.bounceBonus || 0) > 0) {
@@ -2717,7 +2717,7 @@ function update(dt) {
         } else if (bullets.length < (isTouch ? 180 : 260)) {
           const isTotem = t.kind === 'totem';
           const tierAspd = 1 + (t.tier - 1) * 0.12;
-          t.cd = Math.max(isTotem ? 0.28 : 0.22, (isTotem ? 0.62 : 0.465) / (tAspd * tierAspd));
+          t.cd = Math.max(isTotem ? 0.24 : 0.18, (isTotem ? 0.62 : 0.465) / (tAspd * tierAspd));
           t.recoil = 1;
           const tdmg = (isTotem ? (13.5 + wave * 1.65) : (9.5 + wave * 1.15)) * (1 + (t.tier - 1) * 0.5) * effDmg * techMul * (isTotem ? Math.sqrt(elemMul) : 1) * cMul;
           const tSpd = isTotem ? 640 : 690;

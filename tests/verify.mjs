@@ -2168,23 +2168,23 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       return true;
     })();
 
-    // v2.1.14: D5 Floor 16 Guaranteed Phase-2 + Phase-2 Soul Fog + Last Stand Portrait & Fear (-15% Spd / +50% Dash CD) + Independent Structure Aspd (-15% Base)
+    // v2.1.14: D5 Floor 16 Guaranteed Phase-2 + Phase-2 Soul Fog + Last Stand Portrait & Fear (-15% Spd / +50% Dash CD) + Independent Structure Aspd (+20% Base = 1.20)
     const v2114Ok = (() => {
-      // 1) Independent Structure Attack Speed (-15% base = 0.85, player atkSpd & techBonus must NOT affect turret fire rate!)
+      // 1) Independent Structure Attack Speed (+20% base = 1.20, player atkSpd & techBonus must NOT affect turret fire rate!)
       player.weapons = [];
       player.atkSpd = 0;
       player.techBonus = 0;
       player.turretAspdBonus = 0;
       player.turretOverclockT = 0;
       const baseTurretAspd = getEffectiveTurretAspdMul(1);
-      if (Math.abs(baseTurretAspd - 0.85) > 1e-6) return false;
-      // Crank player atkSpd (+300%) and techBonus (+400%) -> turret attack speed MUST remain 0.85!
+      if (Math.abs(baseTurretAspd - 1.20) > 1e-6) return false;
+      // Crank player atkSpd (+300%) and techBonus (+400%) -> turret attack speed MUST remain 1.20!
       player.atkSpd = 3.0;
       player.techBonus = 4.0;
-      if (Math.abs(getEffectiveTurretAspdMul(1) - 0.85) > 1e-6) return false;
+      if (Math.abs(getEffectiveTurretAspdMul(1) - 1.20) > 1e-6) return false;
       // Dedicated turretAspdBonus (+32%) MUST scale turret attack speed cleanly
       player.turretAspdBonus = 0.32;
-      if (Math.abs(getEffectiveTurretAspdMul(1) - +(0.85 * 1.32).toFixed(6)) > 1e-5) return false;
+      if (Math.abs(getEffectiveTurretAspdMul(1) - +(1.20 * 1.32).toFixed(6)) > 1e-5) return false;
       player.atkSpd = 0; player.techBonus = 0; player.turretAspdBonus = 0;
 
       // 2) D5 Floor 16 Boss 100% Guaranteed Phase-2 (even in Endless Mode when Math.random is 0.9999) + Phase-2 Soul Fog

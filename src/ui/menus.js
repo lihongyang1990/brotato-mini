@@ -822,7 +822,7 @@ function renderBuildSummary(statsId, setsId) {
   const rng = getTotalRangeBonus();
   const rngTxt = rng >= 0 ? `+${rng}` : `${rng}`;
   const harv = Math.round(player.harvestFlat || 0);
-  const tAspdBase = typeof TURRET_BASE_ASPD_MUL === 'number' ? TURRET_BASE_ASPD_MUL : 0.85;
+  const tAspdBase = typeof TURRET_BASE_ASPD_MUL === 'number' ? TURRET_BASE_ASPD_MUL : 1.20;
   const turretAspdBonusTotal = (player.turretAspdBonus || 0) + (setB.turretAspd || 0);
   const showTurretAspd = turretAspdBonusTotal > 0 || (setB.counts && setB.counts.tech > 0) ||
     ((player.bonusTurrets || 0) + (player.laserTurrets || 0) + (player.shockTurrets || 0) + (player.totemTurrets || 0)) > 0;
