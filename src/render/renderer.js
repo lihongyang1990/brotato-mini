@@ -3912,8 +3912,9 @@ function draw() {
       for (let i = 0; i < enemies.length; i++) {
         const be = enemies[i];
         if (!be || be.hp <= 0 || (be.type !== 'boss' && be.type !== 'special_boss')) continue;
-        if (be.eclipseSingularity && Array.isArray(be.eclipseSingularity.sanctuaries)) {
-          const sancts = be.eclipseSingularity.sanctuaries;
+        if (be.eclipseSingularity && Number.isFinite(be.eclipseSingularity.s1x)) {
+          const es = be.eclipseSingularity;
+          const sancts = [{ x: es.s1x, y: es.s1y }, { x: es.s2x, y: es.s2y }];
           for (let sk = 0; sk < sancts.length; sk++) {
             const sc = sancts[sk];
             const dxs = sc.x - player.x, dys = sc.y - player.y;

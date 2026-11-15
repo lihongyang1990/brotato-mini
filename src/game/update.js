@@ -612,12 +612,13 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
     const pullRange = es.pullRange || Math.max(760, (es.r || 440) + 320);
     const inSealNow = Math.hypot(player.x - es.s1x, player.y - es.s1y) <= es.safeR + player.r * 0.45
       || Math.hypot(player.x - es.s2x, player.y - es.s2y) <= es.safeR + player.r * 0.45;
-    // 全场强力黑洞吸积引力（未进晨曦庇护印且未瞬步时产生强烈向心吸力与旋涡牵引，驻留原地将被直接吸入视界！）
+    // 全场黑洞吸积引力（吸引力削弱 60%，即 ×0.40：保留清晰引力拖拽感同时确保玩家可凭走位与瞬步脱离或踏入晨曦庇护印）
+    const BLACK_HOLE_PULL_MUL = 0.40;
     if (distP > 34 && distP < pullRange && !(player.dashT > 0)) {
       const prox = 1 - Math.min(1, distP / pullRange);
-      const rawPullSpd = (enraged ? 178 : 162) + prox * 68;
+      const rawPullSpd = ((enraged ? 178 : 162) + prox * 68) * BLACK_HOLE_PULL_MUL;
       const pull = (inSealNow ? rawPullSpd * 0.15 : rawPullSpd) * dt;
-      const swirl = (inSealNow ? 0 : 28) * dt;
+      const swirl = (inSealNow ? 0 : 28 * BLACK_HOLE_PULL_MUL) * dt;
       const caP = Math.cos(aimToPlayer), saP = Math.sin(aimToPlayer);
       const px2 = Math.max(player.r + 10, Math.min(WORLD.w - player.r - 10, player.x - caP * pull + saP * swirl));
       const py2 = Math.max(player.r + 10, Math.min(WORLD.h - player.r - 10, player.y - saP * pull - caP * swirl));
@@ -627,7 +628,7 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
       player._bhPullT = inSealNow ? 0 : 0.14;
       player._bhSrcX = e.x;
       player._bhSrcY = e.y;
-      if (!inSealNow) shake = Math.max(shake, 0.9 + prox * 1.1);
+      if (!inSealNow) shake = Math.max(shake, 0.5 + prox * 0.6);
     }
     if (es.t <= 0) {
       e.eclipseSingularity = null;
@@ -4150,12 +4151,15 @@ function update(dt) {
           spawnWarning(Math.max(80, Math.min(WORLD.w - 80, e.x + (Math.random() - 0.5) * 180)), Math.max(80, Math.min(WORLD.h - 80, e.y + (Math.random() - 0.5) * 180)), 'shielder');
         }
       } else {
-        // 深渊噬界者：黑洞引力牵引玩家 + 正反双旋虚空月刃弹幕 + 分裂泥召唤
+        // 深渊噬界者（零号容器 · 饥饿黑影）：黑洞引力牵引玩家（吸引力同步削弱 60% 即 ×0.40，且开启超巨黑洞奇点期间不双重叠加） + 正反双旋虚空月刃弹幕 + 分裂泥召唤
         if (distP > 150) { e.x += Math.cos(a) * curSpd * sbMult * dt; e.y += Math.sin(a) * curSpd * sbMult * dt; }
-        if (distP > 75 && distP < 360 && !(player.dashT > 0)) {
-          const pull = 38 * sbMult * dt;
-          player.x = Math.max(player.r + 8, Math.min(WORLD.w - player.r - 8, player.x - Math.cos(a) * pull));
-          player.y = Math.max(player.r + 8, Math.min(WORLD.h - player.r - 8, player.y - Math.sin(a) * pull));
+        if (!e.eclipseSingularity && distP > 75 && distP < 360 && !(player.dashT > 0)) {
+          const pull = 38 * 0.40 * sbMult * dt;
+          const px2 = Math.max(player.r + 8, Math.min(WORLD.w - player.r - 8, player.x - Math.cos(a) * pull));
+          const py2 = Math.max(player.r + 8, Math.min(WORLD.h - player.r - 8, player.y - Math.sin(a) * pull));
+          if (!isBlockedByTerrain(px2, py2, player.r)) {
+            player.x = px2; player.y = py2;
+          }
         }
         e.shotT = (e.shotT || 1.8) - dt * sbMult;
         if (e.shotT <= 0) {

@@ -2161,7 +2161,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       const distBefore = Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y);
       tickBossArenaMechanic(bhBoss, 0.20);
       const distAfter = Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y);
-      if (!(distAfter < distBefore - 18)) return false;
+      const pulledDist = distBefore - distAfter;
+      // Suction nerfed by 60% (* 0.40): ~15.9px pull in 0.20s (down from ~39.7px), noticeable yet escapable!
+      if (!(pulledDist > 10 && pulledDist < 22)) return false;
       bhBoss.sigWindupT = 0.5; bhBoss.sigMaxW = 0.9; bhBoss.sigKind = 'frost_prism';
       draw(); // Verify all new VFX (spellZones, blackHoleCore, sigWindupT, dual-boss overhead) render with 0 radialGradient & 0 shadowBlur!
       enemies.length = 0; spellZones.length = 0; bullets.length = 0;
