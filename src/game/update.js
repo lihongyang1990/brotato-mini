@@ -241,20 +241,20 @@ function tickBossVenomBreath(e, dt, aimToPlayer, paceMult) {
 
     e._venomPulseCd = (e._venomPulseCd || 0) - dt;
     if (e._venomPulseCd <= 0) {
-      e._venomPulseCd = 0.16;
+      e._venomPulseCd = 0.12;
       for (let ni = 0; ni < nozzles.length; ni++) {
         const na = (e.venomAimA || 0) + nozzles[ni];
-        for (let pk = 0; pk < 3; pk++) {
-          const pa = na + (Math.random() - 0.5) * vSpan * 1.75;
-          const pSpd = 190 + Math.random() * 145;
+        for (let pk = 0; pk < 4; pk++) {
+          const pa = na + (Math.random() - 0.5) * vSpan * 1.82;
+          const pSpd = 175 + Math.random() * 165;
           pushParticle({
-            x: e.x + Math.cos(na) * (e.r * 0.65),
-            y: e.y + Math.sin(na) * (e.r * 0.65),
+            x: e.x + Math.cos(na) * (e.r * 0.62) + (Math.random() - 0.5) * 10,
+            y: e.y + Math.sin(na) * (e.r * 0.62) + (Math.random() - 0.5) * 10,
             vx: Math.cos(pa) * pSpd,
             vy: Math.sin(pa) * pSpd,
-            r: 4.2 + Math.random() * 3.4,
-            color: pk === 0 ? '#a3e635' : (pk === 1 ? '#10b981' : '#d9f99d'),
-            t: 0.34, maxT: 0.34
+            r: 4.8 + Math.random() * 4.6,
+            color: pk === 0 ? '#bef264' : (pk === 1 ? '#10b981' : (pk === 2 ? '#84cc16' : '#a855f7')),
+            t: 0.38, maxT: 0.38
           });
         }
         if (eBullets.length < 168) {
@@ -771,10 +771,11 @@ let _bossHudSeq = 0;
 
 function spawnPlayerSpellZone(spec) {
   if (!spec || typeof spellZones === 'undefined') return null;
+  const mergeDist = spec.mergeDist !== undefined ? spec.mergeDist : 34;
   // 若同类型法阵在极近位置已存在，则刷新并强化，防止多把同法杖同点无意义叠百层粒子
   for (let i = 0; i < spellZones.length; i++) {
     const z = spellZones[i];
-    if (z && z.kind === spec.kind && Math.hypot(z.x - spec.x, z.y - spec.y) < 34) {
+    if (z && z.kind === spec.kind && Math.hypot(z.x - spec.x, z.y - spec.y) < mergeDist) {
       z.life = Math.max(z.life, spec.life || 3.2);
       z.maxLife = Math.max(z.maxLife, spec.life || 3.2);
       z.r = Math.max(z.r, spec.r || 84);
@@ -782,7 +783,7 @@ function spawnPlayerSpellZone(spec) {
       return z;
     }
   }
-  if (spellZones.length >= 16) spellZones.shift();
+  if (spellZones.length >= 28) spellZones.shift();
   const dur = spec.life || 3.2;
   const zone = {
     kind: spec.kind || 'fire_patch',
@@ -801,6 +802,8 @@ function spawnPlayerSpellZone(spec) {
     freezeChance: spec.freezeChance || 0,
     forceBurn: !!spec.forceBurn,
     forcePoison: !!spec.forcePoison,
+    isMeteorTrail: !!spec.isMeteorTrail,
+    trailAng: Number.isFinite(spec.trailAng) ? spec.trailAng : 0,
     spin: Math.random() * 6.28,
     seed: Math.random() * 100
   };
@@ -812,31 +815,225 @@ if (typeof globalThis !== 'undefined') globalThis.spawnPlayerSpellZone = spawnPl
 function detonateStaffFireball(b) {
   if (!b || b._fireballDetonated) return;
   b._fireballDetonated = true;
-  const blastR = b.fireballBlastR || 76;
+  const blastR = b.fireballBlastR || b.impactR || 76;
   const prevAct = _activeWeaponId;
   _activeWeaponId = b.srcId || 'ember_staff';
   try {
-    triggerExplosion(b.x, b.y, blastR, b.dmg * 0.78, false, 0, b.color || '#ff6b35', true, 0, b.srcId || 'ember_staff');
+    triggerExplosion(b.x, b.y, blastR, b.dmg * 0.72, false, 0, b.color || '#ff6b35', true, 0, b.srcId || 'ember_staff');
     if (rings.length < 38) {
-      rings.push({ x: b.x, y: b.y, r: blastR * 1.12, color: '#ffd166', t: 0.28, maxT: 0.28, kind: 'star' });
+      rings.push({ x: b.x, y: b.y, r: blastR * 1.12, color: b.purgatoryMeteor ? '#5eead4' : '#ffd166', t: 0.28, maxT: 0.28, kind: 'star' });
     }
     spawnPlayerSpellZone({
       kind: 'fire_patch',
       x: b.x, y: b.y,
-      r: Math.max(66, blastR * 0.94),
-      life: 3.1,
+      r: Math.max(52, (b.trailR || blastR * 0.78)),
+      life: 2.55,
       tickInterval: 0.42,
-      dmg: b.dmg * 0.36,
+      dmg: b.dmg * 0.32,
       critChance: b.critChance || 0.08,
       critMult: b.critMult || 1.95,
       srcId: b.srcId || 'ember_staff',
       color: b.color || '#ff6b35',
       forceBurn: true,
-      forcePoison: !!b.firePatchPoison
+      forcePoison: !!b.firePatchPoison,
+      isMeteorTrail: true,
+      trailAng: b.angle || 0,
+      mergeDist: 20
     });
   } finally {
     _activeWeaponId = prevAct;
   }
+}
+
+// ☄️ Dota2 卡尔式【混沌陨石 (Chaos Meteor)】着陆爆震与翻滚碾压火海状态机
+function touchdownChaosMeteor(b) {
+  if (!b || b._landed) return;
+  b._landed = true;
+  b.meteorFallT = 0;
+  const rollSpd = b.rollSpd || 236;
+  b.vx = Math.cos(b.angle) * rollSpd;
+  b.vy = Math.sin(b.angle) * rollSpd;
+  b.life = b.rollDur || 1.28;
+  b.maxLife = b.life;
+  b.crushCd = 0.02;
+  b.trailAcc = 0;
+  b._expectX = b.x;
+  b._expectY = b.y;
+  beep(116, 0.15, 'sawtooth', 0.056);
+  shake = Math.max(shake, 3.0);
+  addBurst(b.x, b.y, b.purgatoryMeteor ? '#5eead4' : '#ff9f1c', 9, 155);
+  detonateStaffFireball(b);
+}
+
+function tickChaosMeteor(b, idx, dt) {
+  // 若外部（如单元测试）直接改动了坐标，立即触发着陆并生成熔火焦土轨迹
+  if (!b._landed) {
+    if (Number.isFinite(b._expectX) && Math.hypot(b.x - b._expectX, b.y - b._expectY) > 0.5) {
+      b.meteorFallT = 0;
+    } else {
+      b.meteorFallT = (b.meteorFallT || 0) - dt;
+      b.rollRot = (b.rollRot || 0) + dt * 5.2;
+      b.smokeT = (b.smokeT || 0) - dt;
+      if (b.smokeT <= 0) {
+        b.smokeT = 0.032;
+        const fallRatio = Math.max(0, Math.min(1, (b.meteorFallT || 0) / Math.max(0.05, b.meteorFallMax || 0.28)));
+        const alt = fallRatio * 265;
+        const sx = b.x - Math.cos(b.angle) * (alt * 0.48);
+        const sy = b.y - alt - Math.sin(b.angle) * (alt * 0.20);
+        pushParticle({
+          x: sx + (Math.random() - 0.5) * 14,
+          y: sy + (Math.random() - 0.5) * 14,
+          vx: Math.cos(b.angle) * 45 + (Math.random() - 0.5) * 35,
+          vy: 110 + Math.random() * 65,
+          r: 4.8 + Math.random() * 3.8,
+          color: b.purgatoryMeteor ? (Math.random() < 0.5 ? '#ccfbf1' : '#14b8a6') : (Math.random() < 0.5 ? '#fde047' : '#ff5400'),
+          t: 0.22, maxT: 0.22
+        });
+      }
+    }
+    if ((b.meteorFallT || 0) <= 0) {
+      touchdownChaosMeteor(b);
+      if (state !== 'wave') return true;
+    }
+    return false;
+  }
+
+  // 已着陆：巨型熔岩陨石沿施法向量沉重向前翻滚碾压，并铺开整条焦土火海长廊！
+  b.px = b.x; b.py = b.y;
+  const stepX = b.vx * dt, stepY = b.vy * dt;
+  b.x += stepX;
+  b.y += stepY;
+  b.life -= dt;
+  b.rollRot = (b.rollRot || 0) + dt * 8.2;
+
+  let hitArenaWall = false;
+  if (b.x < 46) { b.x = 46; hitArenaWall = true; }
+  else if (b.x > WORLD.w - 46) { b.x = WORLD.w - 46; hitArenaWall = true; }
+  if (b.y < 46) { b.y = 46; hitArenaWall = true; }
+  else if (b.y > WORLD.h - 46) { b.y = WORLD.h - 46; hitArenaWall = true; }
+  b._expectX = b.x; b._expectY = b.y;
+
+  // 翻滚扬起的滚烫火星与黑曜烟尘
+  b.smokeT = (b.smokeT || 0) - dt;
+  if (b.smokeT <= 0) {
+    b.smokeT = 0.036;
+    const perpA = b.angle + Math.PI * 0.5;
+    const side = (Math.random() - 0.5) * b.r * 1.4;
+    pushParticle({
+      x: b.x - Math.cos(b.angle) * (b.r * 0.55) + Math.cos(perpA) * side,
+      y: b.y - Math.sin(b.angle) * (b.r * 0.55) + Math.sin(perpA) * side,
+      vx: -b.vx * 0.18 + (Math.random() - 0.5) * 42,
+      vy: -b.vy * 0.18 - 18 + (Math.random() - 0.5) * 34,
+      r: 4.5 + Math.random() * 4.2,
+      color: b.purgatoryMeteor
+        ? (Math.random() < 0.45 ? '#ecfeff' : '#2dd4bf')
+        : (Math.random() < 0.42 ? '#fef08a' : (Math.random() < 0.75 ? '#ff6b35' : '#7f1d1d')),
+      t: 0.28, maxT: 0.28
+    });
+  }
+
+  // 每向前翻滚 42px 铺设一段相连的【焦土熔火长廊】节点
+  b.trailAcc = (b.trailAcc || 0) + Math.hypot(stepX, stepY);
+  if (b.trailAcc >= 42) {
+    b.trailAcc -= 42;
+    spawnPlayerSpellZone({
+      kind: 'fire_patch',
+      x: b.x - Math.cos(b.angle) * 10,
+      y: b.y - Math.sin(b.angle) * 10,
+      r: b.trailR || 54,
+      life: 2.45,
+      tickInterval: 0.42,
+      dmg: b.dmg * 0.30,
+      critChance: b.critChance || 0.08,
+      critMult: b.critMult || 1.95,
+      srcId: b.srcId || 'ember_staff',
+      color: b.color || '#ff6b35',
+      forceBurn: true,
+      forcePoison: !!b.firePatchPoison,
+      isMeteorTrail: true,
+      trailAng: b.angle,
+      mergeDist: 22
+    });
+  }
+
+  // 陨石翻滚碾压晶树
+  const crushR = b.crushR || 54;
+  for (let tIdx = trees.length - 1; tIdx >= 0; tIdx--) {
+    const tr = trees[tIdx];
+    if (!tr || tr.hp <= 0 || hasBulletHit(b, tr)) continue;
+    const tdx = tr.x - b.x, tdy = tr.y - b.y, thit = tr.r + crushR;
+    if (tdx * tdx + tdy * tdy <= thit * thit) {
+      markBulletHit(b, tr);
+      hurtTree(tr, b.dmg * 0.9);
+    }
+  }
+
+  // 周期性陨石本体翻滚接触碾压主伤害（每 0.26s 对触碰巨石的全体魔物结算一次重碾 + 顺向推挤 + 挂灼烧！）
+  b.crushCd = (b.crushCd || 0) - dt;
+  if (b.crushCd <= 0) {
+    b.crushCd = 0.26;
+    const prevActM = _activeWeaponId;
+    _activeWeaponId = b.srcId || 'ember_staff';
+    try {
+      let crushedAny = false;
+      for (let ei = enemies.length - 1; ei >= 0; ei--) {
+        const e = enemies[ei];
+        if (!e || e.hp <= 0 || e.primed) continue;
+        const edx = e.x - b.x, edy = e.y - b.y, elim = crushR + e.r;
+        if (edx * edx + edy * edy <= elim * elim) {
+          crushedAny = true;
+          const isCrit = Math.random() < (b.critChance || 0.08);
+          const cDmg = b.dmg * 0.52 * (isCrit ? (b.critMult || 1.95) : 1);
+          if (b.firePatchPoison) applyPoison(e, 1);
+          hurtEnemy(e, cDmg, isCrit, b.angle, true, {
+            srcId: b.srcId || 'ember_staff',
+            knockMult: 0.85,
+            forceBurn: true,
+            forcePoison: !!b.firePatchPoison,
+            silentHit: enemies.length > 24
+          });
+          if (state !== 'wave') return true;
+        }
+      }
+      if (crushedAny && rings.length < 36) {
+        rings.push({ x: b.x, y: b.y, r: crushR * 0.95, color: b.purgatoryMeteor ? '#2dd4bf' : '#ff9f1c', t: 0.16, maxT: 0.16 });
+      }
+    } finally {
+      _activeWeaponId = prevActM;
+    }
+  }
+
+  // 翻滚结束或撞击外墙：陨石崩裂终爆！
+  if (b.life <= 0 || hitArenaWall) {
+    const prevActEnd = _activeWeaponId;
+    _activeWeaponId = b.srcId || 'ember_staff';
+    try {
+      triggerExplosion(b.x, b.y, (b.impactR || 72) * 0.82, b.dmg * 0.48, false, 0, b.color || '#ff6b35', true, 0, b.srcId || 'ember_staff');
+      spawnPlayerSpellZone({
+        kind: 'fire_patch',
+        x: b.x, y: b.y,
+        r: (b.trailR || 54) * 1.06,
+        life: 2.35,
+        tickInterval: 0.42,
+        dmg: b.dmg * 0.30,
+        critChance: b.critChance || 0.08,
+        critMult: b.critMult || 1.95,
+        srcId: b.srcId || 'ember_staff',
+        color: b.color || '#ff6b35',
+        forceBurn: true,
+        forcePoison: !!b.firePatchPoison,
+        isMeteorTrail: true,
+        trailAng: b.angle,
+        mergeDist: 18
+      });
+      addBurst(b.x, b.y, b.purgatoryMeteor ? '#99f6e4' : '#fde047', 8, 140);
+    } finally {
+      _activeWeaponId = prevActEnd;
+    }
+    if (state !== 'wave') return true;
+    bullets.splice(idx, 1);
+  }
+  return false;
 }
 
 function update(dt) {
@@ -2417,32 +2614,56 @@ function update(dt) {
           }
 
           if (tpl.isEmberStaff) {
-            // 1) 赤烬魂灯杖 -> 【陨炎火球术】：吟唱重型日冕大火球，命中或至射程终点爆裂震波并铺开【熔火燎原炎海】！
-            const fbBlastR = ((tpl.blastR || 72) + ((evo && evo.blastAdd) || 0) + (player.staffPierce || 0) * 8) * getBlastScale();
+            // 1) 赤烬魂灯杖 -> Dota2 卡尔式【混沌陨石 (Chaos Meteor)】：天外巨型黑曜熔岩陨石斜坠轰击，随后沿施法方向一路翻滚碾压并犁出整条【焦土熔火长廊】！
+            const isPurgatory = !!(evo && evo.id === 'staff_purgatory');
+            const isSolar = !!(evo && evo.id === 'staff_solar');
+            const impactR = ((tpl.blastR || 72) + ((evo && evo.blastAdd) || 0) + (player.staffPierce || 0) * 8) * getBlastScale();
+            const boulderR = (evo ? 31 : 26) * Math.min(1.32, getBlastScale());
+            const crushR = Math.max(48, impactR * 0.72);
+            const trailR = Math.max(46, impactR * 0.68);
+            const distToBest = Math.hypot(best.x - player.x, best.y - player.y);
+            const landDist = Math.max(48, Math.min(maxR * 0.78, distToBest - 30));
+            const perpA = w.angle + Math.PI * 0.5;
+            beep(288, 0.08, 'triangle', 0.04);
             for (let p = 0; p < pellets; p++) {
               if (bullets.length >= (isTouch ? 185 : 275)) break;
-              const sp = pellets > 1 ? (p - (pellets - 1) * 0.5) * 0.18 : 0;
-              const a = w.angle + sp;
-              const isCrit = Math.random() < critChance;
-              const bSpd = tpl.spd;
-              const distToTarget = Math.min(maxR, Math.max(85, Math.hypot(best.x - mx, best.y - my) + 22));
-              const maxLife = distToTarget / bSpd;
+              const laneOff = pellets > 1 ? (p - (pellets - 1) * 0.5) * 62 : 0;
+              const spAng = pellets > 1 ? (p - (pellets - 1) * 0.5) * 0.06 : 0;
+              const a = w.angle + spAng;
+              const lx = Math.max(58, Math.min(WORLD.w - 58, player.x + Math.cos(w.angle) * landDist + Math.cos(perpA) * laneOff));
+              const ly = Math.max(58, Math.min(WORLD.h - 58, player.y + Math.sin(w.angle) * landDist + Math.sin(perpA) * laneOff));
               bullets.push({
-                x: mx, y: my, px: mx, py: my, ox: mx, oy: my, srcId: w.id,
-                vx: Math.cos(a) * bSpd, vy: Math.sin(a) * bSpd,
-                dmg: base * finalMul * (isCrit ? critMult : 1), isCrit, angle: a,
+                x: lx, y: ly, px: lx, py: ly, ox: mx, oy: my,
+                _expectX: lx, _expectY: ly,
+                srcId: w.id,
+                vx: 0, vy: 0,
+                dmg: base * finalMul,
+                isCrit: false,
+                angle: a,
                 critChance, critMult,
-                pierce: (evo && evo.pierceAdd) ? evo.pierceAdd : 0,
+                pierce: 999,
                 bounces: 0,
                 isFireball: true,
+                isChaosMeteor: true,
+                purgatoryMeteor: isPurgatory,
                 isStaffOrb: 'ember',
-                fireballBlastR: fbBlastR,
+                impactR,
+                fireballBlastR: impactR,
+                crushR,
+                trailR,
+                rollSpd: isPurgatory ? 276 : 236,
+                rollDur: isSolar ? 1.46 : (isPurgatory ? 1.24 : 1.28),
+                meteorFallT: 0.28,
+                meteorFallMax: 0.28,
+                _landed: false,
                 firePatchPoison: !!(evo && evo.forcePoison),
                 forceEvoBurn: true,
-                spin: Math.random() * 6.28, smokeT: 0,
-                life: maxLife, maxLife,
+                rollRot: Math.random() * 6.28,
+                spin: Math.random() * 6.28,
+                smokeT: 0,
+                life: 1.85, maxLife: 1.85,
                 color: (evo && evo.color) ? evo.color : '#ff6b35',
-                r: 12.2 * (evo ? 1.18 : 1),
+                r: boulderR,
                 hit: null, lastHit: null
               });
             }
@@ -2786,6 +3007,10 @@ function update(dt) {
     if (state !== 'wave') return;
     const b = bullets[i];
     if (!b) continue;
+    if (b.isChaosMeteor) {
+      if (tickChaosMeteor(b, i, dt)) return;
+      continue;
+    }
     b.px = b.x; b.py = b.y;
     b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
     if (b.isStar || b.isGrenade || b.isFireball) b.spin += dt * (b.isFireball ? 11 : (b.isGrenade ? 14 : 22));
