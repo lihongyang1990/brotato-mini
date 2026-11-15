@@ -5246,7 +5246,10 @@ function update(dt) {
           beep(920, 0.12, 'triangle', 0.06);
         }
       } else if (d.kind === 'crate') {
-        if (d.isMythic || pendingCrates < 3) {
+        const specialQueued = (player.mythicCratesQueued || 0) + (player.bossCratesQueued || 0)
+          + (player.survivalCratesQueued || 0) + (player.survivalGoldCratesQueued || 0);
+        const regularCratesQueued = Math.max(0, pendingCrates - specialQueued);
+        if (d.isMythic || d.isBoss || regularCratesQueued < 3) {
           pendingCrates++;
           if (d.isMythic) {
             player.mythicCratesQueued = (player.mythicCratesQueued || 0) + 1;

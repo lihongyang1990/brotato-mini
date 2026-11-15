@@ -2159,33 +2159,72 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       return true;
     })();
 
-    // Twin Boss / Dual Commander wave must drop ONLY 1 Boss Relic Crate total (never 2)
+    // Twin Boss / Dual Commander + Summoned Boss + Mythic Phase-2: ALL Boss Crates must be GRANTED DIRECTLY (no ground pickup needed, uncapped, preserved in Endless overtime)
     const twinBossSingleCrateOk = (() => {
       endlessMode = true;
       state = 'wave';
       wave = 20;
       diff = DIFFS[5]; selectedDiff = 5;
       enemies.length = 0; spawns.length = 0; drops.length = 0;
+      pendingCrates = 0;
+      player.bossCratesQueued = 0;
+      player.mythicCratesQueued = 0;
       player.waveBossCrateDropped = false;
       const tb1 = createEnemy(player.x + 150, player.y, 'boss', 'butcher');
       const tb2 = createEnemy(player.x - 150, player.y, 'boss', 'frost_queen');
-      tb1.canPhase2 = false; tb2.canPhase2 = false;
+      tb1.canPhase2 = false; tb2.canPhase2 = false; tb1._d5LastStandUsed = true; tb2._d5LastStandUsed = true;
       hurtEnemy(tb1, tb1.maxHp + 999999, true);
-      const cratesAfterFirst = drops.filter(d => d.kind === 'crate' && d.isBoss && !d.isMythic).length;
+      const qAfterFirst = player.bossCratesQueued || 0;
       hurtEnemy(tb2, tb2.maxHp + 999999, true);
-      const cratesAfterSecond = drops.filter(d => d.kind === 'crate' && d.isBoss && !d.isMythic).length;
-      if (cratesAfterFirst !== 0 || cratesAfterSecond !== 1) return false;
+      const qAfterSecond = player.bossCratesQueued || 0;
+      const groundBossCrates = drops.filter(d => d.kind === 'crate' && d.isBoss).length;
+      if (qAfterFirst !== 0 || qAfterSecond !== 1 || pendingCrates !== 1 || groundBossCrates !== 0) return false;
 
-      // Dual mini_boss commanders must also drop ONLY 1 Boss Relic Crate total
+      // Dual mini_boss commanders must also grant ONLY 1 Boss Relic Crate directly (0 ground boss crates)
       enemies.length = 0; spawns.length = 0; drops.length = 0;
+      pendingCrates = 0;
+      player.bossCratesQueued = 0;
       player.waveBossCrateDropped = false;
       const mb1 = createEnemy(player.x + 140, player.y, 'mini_boss', 'vanguard');
       const mb2 = createEnemy(player.x - 140, player.y, 'mini_boss', 'pyro_lord');
       mb1.canPhase2 = false; mb2.canPhase2 = false;
       hurtEnemy(mb1, mb1.maxHp + 999999, true);
       hurtEnemy(mb2, mb2.maxHp + 999999, true);
-      const cmdCrates = drops.filter(d => d.kind === 'crate' && d.isBoss && !d.isMythic).length;
-      return cmdCrates === 1;
+      if (player.bossCratesQueued !== 1 || pendingCrates !== 1 || drops.some(d => d.kind === 'crate' && d.isBoss)) return false;
+
+      // All 5 Summoned Altar Bosses (special_boss) must directly grant Boss Crates even when 3 regular crates are already queued, plus Mythic Phase-2 direct pod
+      pendingCrates = 3; // Simulate 3 regular elite crates already queued
+      player.bossCratesQueued = 0;
+      player.mythicCratesQueued = 0;
+      const variants = ['crimson_lord', 'golden_golem', 'mech_colossus', 'plague_empress', 'abyss_devourer'];
+      for (let vi = 0; vi < variants.length; vi++) {
+        const sb = createEnemy(player.x + 360, player.y + 220, 'special_boss', variants[vi]);
+        sb.canPhase2 = false; sb._d5LastStandUsed = true;
+        if (vi === 0) sb.mythicPhase2 = true; // Verify Mythic Phase-2 direct pod too
+        hurtEnemy(sb, sb.maxHp + 999999, true);
+      }
+      if (player.bossCratesQueued !== 5 || player.mythicCratesQueued !== 1 || pendingCrates !== 9) return false;
+      if (drops.some(d => d.kind === 'crate' && d.isBoss)) return false;
+
+      // Endless Mode overtime summoned-boss kill -> immediate wave settlement MUST preserve Boss Crate & sweep ground regular crate
+      wave = 19;
+      beginWave();
+      enemies.length = 0; spawns.length = 0; drops.length = 0;
+      pendingCrates = 0; player.bossCratesQueued = 0; player.mythicCratesQueued = 0;
+      drops.push({ x: player.x + 420, y: player.y + 320, kind: 'crate', bob: 0 }); // Unpicked elite crate far away
+      const otSummon = createEnemy(player.x + 420, player.y - 260, 'special_boss', 'golden_golem');
+      otSummon.canPhase2 = false; otSummon._d5LastStandUsed = true;
+      overtime = true; waveTime = 0;
+      hurtEnemy(otSummon, otSummon.maxHp + 999999, true);
+      update(0.016); // Triggers finishWave() -> settleSpireFloor() in Endless Mode!
+      const settledOk = state === 'crate' && pendingCrates === 2 && player.bossCratesQueued === 1;
+      // Restore clean wave state for subsequent checks
+      pendingCrates = 0; player.bossCratesQueued = 0; player.mythicCratesQueued = 0;
+      document.getElementById('crateMenu').classList.add('hidden');
+      document.getElementById('hud').classList.remove('hidden');
+      wave = 20; state = 'wave'; beginWave();
+      enemies.length = 0; spawns.length = 0; drops.length = 0;
+      return settledOk;
     })();
 
     // v2.1.13: 4 Staff Spells + Survival True DMG (D1 10% -> D5 20%) + Colossal Black Hole + 5 Summon Altars + Dual-Boss Independent HP & Phase-2

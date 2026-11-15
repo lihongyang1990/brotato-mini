@@ -332,9 +332,10 @@ export function runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap }) {
       hurtEnemy(boss, boss.maxHp + 99999, true);
       let finalCinematic, rewardHandledCleanly;
       if (floor < 16) {
-        // Early defeat on Floors 4/8/12 drops Boss rewards & crate immediately and keeps wave open to farm mobs!
+        // Early defeat on Floors 4/8/12 grants Boss rewards & Boss Crate directly (no ground pickup needed) and keeps wave open to farm mobs!
         const waveContinues = state === 'wave' && !!spireFloorFlow.bossDefeated && !!boss._rewarded &&
-          drops.some(d => d.kind === 'crate' && d.isBoss);
+          pendingCrates === before.crates + 1 && (player.bossCratesQueued || 0) >= 1 &&
+          !drops.some(d => d.kind === 'crate' && d.isBoss);
         finishWave();
         finalCinematic = waveContinues && SpireDirector.isBlockingGameplay();
         rewardHandledCleanly = waveContinues;

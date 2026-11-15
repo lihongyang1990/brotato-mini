@@ -1029,7 +1029,7 @@ function spawnSpecialRelic(forceId = null) {
   beep(880, 0.16, 'triangle', 0.075);
   const bossLabel = def.bossName || def.name;
   if (player) addText(player.x, player.y - 58, `⛩️ 隐藏Boss祭坛现世：${bossLabel}！`, '#ffd166', 19, 3.2);
-  announce(`⛩️ 隐藏首领召唤祭坛现世：【${def.icon}${bossLabel}】！跟随角色脚下金箭头指引踏入召唤（必掉首领秘宝）`, '#ffd166', 5.4);
+  announce(`⛩️ 隐藏首领召唤祭坛现世：【${def.icon}${bossLabel}】！跟随角色脚下金箭头指引踏入召唤（击败直接获得首领秘宝）`, '#ffd166', 5.4);
   logInfo('RELIC', `刷新地图奇遇圣物 ${def.name}(${def.id}) r=${rel.r} at (${Math.round(rx)},${Math.round(ry)})`);
   return rel;
 }
@@ -1170,13 +1170,13 @@ function summonSpecialBoss(rel, forceCutscene = false) {
       def.bossId,
       def.bossName,
       `🏮 记忆祭坛共鸣 · ${def.icon}${def.name}唤醒`,
-      '⚔️ 宿命死战到底（不加冗余时间） · 贴近风眼躲外环斩 · 击败必掉守誓遗物匣！',
+      '⚔️ 宿命死战到底（不加冗余时间） · 贴近风眼躲外环斩 · 击败直接获得守誓主宰秘匣！',
       def.bossColor,
       def.color,
       BOSS_CUTSCENE_TOTAL_SEC
     );
   }
-  announce(`${def.bossIcon} 特殊首领【${def.bossName}】已唤醒！宿命死战开启，击败必掉首领秘宝箱`, '#ffd166', 4.0);
+  announce(`${def.bossIcon} 特殊首领【${def.bossName}】已唤醒！宿命死战开启，击败直接获得首领秘宝箱`, '#ffd166', 4.0);
   logInfo('SPECIAL_BOSS', `召唤特殊首领 ${def.bossName}(${def.bossId}) · 立绘特写=${showRarePortrait} · 纯死战模式`);
 }
 
