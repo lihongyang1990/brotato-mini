@@ -4,6 +4,24 @@
 
 ---
 
+## [v2.1.15] - 2026-11-15
+### 📱 手机端全界面排版对齐精修 & 🔄 首屏缓存冲突静默自愈与渐进秒开 & 👾 根治移动端怪物变成纯色圆球 / 刷不出贴图
+- **根治手机端怪物变成圆球 / 贴图加载失败（`src/data/boss_portraits.js`、`src/render/sprites.js`、`src/game/spawner.js`）**：
+  - **移除开机 320ms 并发拉取风暴与常驻大画布挤占**：移除开机自动并发下载全部 16 首领 × 双阶段共 64 张抠像大图并常驻 32 张 `440×516` 离屏画布的旧逻辑（改为在首领预警阶段提前 `0.9s` 按需预热并设 6 张 LRU 上限），彻底释放手机蜂窝连接数与 WebKit 2D Canvas 预算；
+  - **移动端零额外 Canvas 直绘与惰性受击染色池**：移动端常规怪物精灵与 `1024×256` 四帧精灵表直接以解码后的 `HTMLImageElement` 作为渲染源（零额外 `<canvas>` 开销），受击闪白与精英狂化染色改为按需惰性构建并受控于 LRU 池（淘汰时主动归零 `width/height = 0` 释放显存）；圣典/商店兵装图标改为复用单张临时画布导出 `DataURL`（将常驻兵装画布上限从 `145` 收敛至 `24`）；即使在极端低内存设备 `getContext('2d')` 返回 `null` 时也 100% 无缝回退原图渲染，彻底告别怪物退化为圆球；
+  - **韧性加载队列与自动重试自愈**：`SpireAssets.resolve` 自动附带 `?v=` 版本防坏缓存参数，`loadImage` 新增移动端 `6` 路并发节流队列、`3` 次阶梯退避自动重试与 `2.2s` 失败冷却重拉机制（告别单次网络抖动导致整局贴图永久锁死 `ready: false`），并在 `beginWave` 与 `0.9s` 地面刷新预警（`spawnWarning`）阶段提前预热当波怪物贴图。
+- **彻底告别手机端频繁弹出「缓存版本不一致 / 未加载完全需重新加载」（`index.html`、`src/core/env.js`、`src/core/audio.js`）**：
+  - `index.html` 补充 `Cache-Control: no-cache, no-store, must-revalidate` 防旧壳缓存元标签；
+  - `SpireBootGate` 新增 `trySilentAutoHeal` 单次静默净缓存刷新机制（自动清理 `caches` / `serviceWorker` 并使用 `fetch(..., { cache: 'reload' })` 无感同步新版本，若强缓存 WebView 仍残留旧壳但 20 个模块均就绪则宽容放行）；
+  - 当 20/20 核心脚本与 4/4 样式表 100% 校验通过后，首屏原画改为共享 `SpireAssets` 缓存渐进预热（最长柔和等待 `0.9s` 即自动开启主殿，绝不再因蜂窝网络下载 2MB 背景图较慢而弹出报错拦截框）。
+- **手机端竖屏与横屏 UI 错位全面修复（`styles/mobile.css`、`styles/presentation.css`、`styles/base.css`）**：
+  - **主界面（`#menuHomeView`）**：修复 `.title-diamond` 导致主按钮文字偏右 `14px` 的问题；修复 `.save-status` 绝对定位遮挡底部四枚入口按钮的问题，竖屏四枚底栏按钮单行居中对称排布；
+  - **剧情启程台（`#menuStoryView`）**：修复 `presentation.css` 旧版 `height: 152%; bottom: -54%; left: 58%` 规则裁切主角无裁切立绘并与四套战装切换条（`.zero-outfit-strip`）重叠溢出的问题；统一剧情与无尽顶栏为三栏对称网格；收敛横屏最小高度避免裁切「提灯启程」按钮；
+  - **战装择定弹窗（`#outfitModal`）**：补齐弹性滚动容器（`min-height: 0; flex: 1`），竖屏改为紧凑左右双栏卡片、横屏精简卡片高度，确保底部确认按钮一屏常驻可点；
+  - **战斗 HUD 与结算/进化界面（`#hud`、`#evoModal`、`#endMenu`）**：对齐竖屏并排生命条与经验条高度（统一 `21px` 居中对齐），为 `.boss-cast-sub` 增加全宽自动折行防止临死挣扎/黑洞奇点长预警撑出屏幕，补齐横屏层数徽章居中、五阶神话进化弹窗滚动与横屏结算双列按钮布局。
+
+---
+
 ## [v2.1.14] - 2026-11-15
 ### 🌫️ D5 第 16 层首领必进二阶段并降临迷雾 & 🩸 临死挣扎破框立绘特写 + 主角恐惧减益（移速 `-15%` / 瞬步冷却 `+50%`） & ⚙️ 参照《土豆兄弟》重构独立【建筑攻速】词条并提升 `+20%` 基础塔攻速
 - **D5 第 16 层首领必定二阶段 + 二阶段迷雾降临（`src/game/spawner.js`、`src/game/combat.js`、`src/game/update.js`、`src/render/renderer.js`）**：

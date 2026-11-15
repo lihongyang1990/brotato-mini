@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.14 D5第16层必入二阶浓雾 + 临死挣扎破框立绘与恐惧减益 + 参照土豆兄弟独立建筑攻速重构并提升20%基础塔攻速）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.15 手机端全界面排版对齐重构 + 首屏缓存静默自愈与渐进解锁 + 移动端离屏画布防爆与怪物贴图100%稳态渲染）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,13 +16,22 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.14';
+const APP_VERSION = 'v2.1.15';
 const APP_BUILD_DATE = '2026-11-15';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.14', date: '2026-11-15', tag: '当前版本 · D5第16层必入二阶浓雾 · 临死挣扎破框立绘+恐惧威压 · 独立建筑攻速重构(+20%基础塔攻速)',
+    ver: 'v2.1.15', date: '2026-11-15', tag: '当前版本 · 手机端UI错位全面修复 · 缓存冲突静默自愈 · 怪物变球/丢贴图根治',
+    title: '📱 手机端竖屏/横屏全界面排版错位精修 + 🔄 首屏缓存冲突静默自愈与渐进式秒开 + 👾 根治移动端怪物变色球与贴图加载失败',
+    items: [
+      '👾 根治手机端怪物变成纯色圆球 / 刷不出贴图：定位并移除开机 320ms 并发拉取 64 张首领立绘与预占 32 张大画布导致的移动端带宽挤占及 WebKit 2D Canvas 上下文耗尽问题；移动端常规精灵与四帧动作表改为零额外 Canvas 直绘 HTMLImageElement、受击/精英染色改为按需惰性缓存并设上限兜底，贴图加载新增并发队列、3 次自动重试、失败冷却自愈与波前提前预热！',
+      '🔄 彻底告别「缓存版本不一致 / 资源未加载完全」频繁拦截：新增 HTML 防旧缓存响应头与旧版入口静默自动净缓存重拉自愈；当 20/20 核心脚本与 4/4 样式表校验通过后采用非阻塞渐进式原画预热（最长 0.9s 柔和缓冲即自动开启主殿），蜂窝网络波动不再误弹报错框！',
+      '📱 手机端竖屏与横屏 UI 全面对齐精修：修复主界面存档提示遮挡底栏、剧情启程台无裁切立绘与四战装切换条重叠裁切、换装弹窗确认键被挤出屏幕、战斗 HUD 血条/经验条高低错位及超长首领技能/临死挣扎字幕撑爆屏幕宽度、横屏整备台及结算按钮样式冲突等问题！'
+    ]
+  },
+  {
+    ver: 'v2.1.14', date: '2026-11-15', tag: 'D5第16层必入二阶浓雾 · 临死挣扎破框立绘+恐惧威压 · 独立建筑攻速重构(+20%基础塔攻速)',
     title: '🌫️ D5 第 16 层首领 100% 必进二阶段并降临蚀日迷雾 + 🩸 临死挣扎破框立绘特写与主角恐惧减益（移速-15%/瞬步冷却+50%） + ⚙️ 参照《土豆兄弟》彻底解耦独立【建筑攻速】词条并提升 20% 基础塔攻速',
     items: [
       '🌫️ D5 第 16 层首领必入二阶段 + 蚀日浓雾降临：在最高厄度 D5 下，第 16 层首领（主线与无尽均含）100% 必定进入二阶段，且进入二阶段时全场翻涌【蚀日浓雾】，仅凭青焰魂灯照明迎敌（灯圈边缘提供首领方位与庇护印罗盘指引）！',
@@ -525,11 +534,14 @@ const SpireBootGate = (function () {
       try {
         const base = (typeof location !== 'undefined' && location.pathname) ? location.pathname : './';
         const hash = (typeof location !== 'undefined' && location.hash) ? location.hash : '';
-        location.replace(base + '?_reload=' + Date.now() + hash);
+        location.replace(base + '?_v=' + encodeURIComponent(APP_VERSION) + '&_reload=' + Date.now() + hash);
       } catch (_) {}
     };
     try {
       const tasks = [];
+      if (typeof fetch === 'function' && typeof location !== 'undefined' && location.pathname) {
+        tasks.push(fetch(location.pathname, { cache: 'reload' }).catch(function () {}));
+      }
       if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
         tasks.push(navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))));
       }
@@ -542,6 +554,23 @@ const SpireBootGate = (function () {
       }
     } catch (_) {}
     go();
+  }
+
+  function trySilentAutoHeal(reason) {
+    try {
+      if (typeof sessionStorage === 'undefined' || typeof location === 'undefined') return false;
+      const healKey = 'spire_auto_heal_ver';
+      if (sessionStorage.getItem(healKey) === APP_VERSION) return false;
+      sessionStorage.setItem(healKey, APP_VERSION);
+      setStep(54, '正在自动同步最新版本缓存 (' + APP_VERSION + ')…');
+      if (typeof logInfo === 'function') {
+        logInfo('BOOT_AUTO_HEAL', '检测到旧缓存残留，执行单次静默净缓存刷新: ' + reason);
+      }
+      forceReloadClean();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   if (typeof window !== 'undefined') {
@@ -608,9 +637,11 @@ const SpireBootGate = (function () {
 
   function verifyModules() {
     const failures = [];
+    let staleHtmlMismatch = false;
     const gate = document.getElementById('bootGate');
     const htmlVer = gate && gate.getAttribute ? gate.getAttribute('data-html-version') : null;
     if (htmlVer && htmlVer !== APP_VERSION) {
+      staleHtmlMismatch = true;
       failures.push(`HTML 入口版本 (${htmlVer}) 与脚本版本 (${APP_VERSION}) 不一致（旧缓存残留）`);
     }
     for (let i = 0; i < failedNetTags.length; i++) {
@@ -640,13 +671,16 @@ const SpireBootGate = (function () {
       ['20/renderer', () => typeof draw === 'function' && typeof loop === 'function']
     ];
 
+    let modulesReady = true;
     for (let i = 0; i < checks.length; i++) {
       let ok = false;
       try { ok = !!checks[i][1](); } catch (_) { ok = false; }
-      if (!ok) failures.push(`模块未就绪或下载残缺: ${checks[i][0]}`);
+      if (!ok) {
+        modulesReady = false;
+        failures.push(`模块未就绪或下载残缺: ${checks[i][0]}`);
+      }
     }
 
-    const codeOk = failures.length === 0;
     let cssPending = false;
     if (typeof document !== 'undefined' && document.styleSheets && typeof document.styleSheets.length === 'number' && document.querySelectorAll) {
       const links = document.querySelectorAll('link[rel="stylesheet"]');
@@ -663,7 +697,8 @@ const SpireBootGate = (function () {
       }
     }
 
-    return { ok: failures.length === 0 && !cssPending, codeOk, cssPending, failures };
+    const codeOk = failures.length === 0;
+    return { ok: codeOk && !cssPending, codeOk, modulesReady, staleHtmlMismatch, cssPending, failures };
   }
 
   function verifyCriticalAssets() {
@@ -675,81 +710,60 @@ const SpireBootGate = (function () {
     }
 
     checkingImages = true;
+    // 20/20 核心脚本与 4/4 样式表已 100% 就绪：首屏原画通过 SpireAssets 共享缓存渐进预热，
+    // 最长仅柔和等待 900ms 即自动放行入殿，彻底根除手机蜂窝网络波动误弹“未加载完全/缓存冲突”拦截框！
     const criticalList = [
-      ['主殿背景原画', 'assets/spire/v2/title-clean.png'],
-      ['主角立绘档案', 'assets/spire/port_zero.jpg'],
-      ['风语行商立绘', 'assets/spire/port_qingyu.jpg'],
-      ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png'],
-      ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg']
+      ['主殿背景原画', 'assets/spire/v2/title-clean.png', true],
+      ['主角立绘档案', 'assets/spire/port_zero.jpg', true],
+      ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png', false],
+      ['风语行商立绘', 'assets/spire/port_qingyu.jpg', false],
+      ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg', false]
     ];
-    const total = criticalList.length;
+    const primaryTotal = 2;
+    let primaryDone = 0;
     let doneCount = 0;
-    let pending = total;
-    const imgFailures = [];
-    const startedAt = Date.now();
+    const total = criticalList.length;
+    const SOFT_ART_GRACE_MS = 900;
 
-    const finishOne = function (label, ok, relPath) {
-      if (finished) return;
+    const markDone = function (isPrimary) {
       doneCount++;
-      pending--;
-      if (!ok) imgFailures.push(`${label} (${relPath}) 下载或解码失败`);
-      const pct = 66 + Math.round((doneCount / total) * 34);
-      setStep(pct, `正在核验首屏核心原画 (${doneCount}/${total})…`);
-      if (pending <= 0) {
+      if (isPrimary) primaryDone++;
+      if (finished) return;
+      const pct = 72 + Math.round((doneCount / total) * 28);
+      setStep(pct, `核心代码已就绪 · 正在预热首屏原画 (${doneCount}/${total})…`);
+      if (primaryDone >= primaryTotal || doneCount >= total) {
         checkingImages = false;
-        if (imgFailures.length === 0) {
-          unlockGate('web_full_verified');
-        } else {
-          showFailure(imgFailures, true);
-        }
+        unlockGate(doneCount >= total ? 'web_full_verified' : 'web_primary_art_ready');
       }
     };
 
     for (let i = 0; i < total; i++) {
-      const label = criticalList[i][0];
       const rel = criticalList[i][1];
-      const baseResolved = (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.resolve === 'function')
-        ? SpireAssets.resolve(rel)
-        : rel;
-
-      const tryLoad = function (attempt) {
-        let settled = false;
-        const img = new Image();
-        img.onload = function () {
-          if (settled) return;
-          settled = true;
-          const validDim = (img.naturalWidth || img.width || 0) > 0 && (img.naturalHeight || img.height || 0) > 0;
-          if (validDim) finishOne(label, true, rel);
-          else if (attempt < 2 && !/^data:/i.test(baseResolved)) tryLoad(attempt + 1);
-          else finishOne(label, false, rel);
-        };
-        img.onerror = function () {
-          if (settled) return;
-          settled = true;
-          if (attempt < 2 && !/^data:/i.test(baseResolved)) {
-            tryLoad(attempt + 1);
-          } else {
-            finishOne(label, false, rel);
-          }
-        };
-        if (attempt === 0 || /^data:/i.test(baseResolved)) {
-          img.src = baseResolved + (/^data:|\?/.test(baseResolved) ? '' : ('?v=' + APP_VERSION));
-        } else {
-          const clean = baseResolved.split('?')[0];
-          img.src = clean + '?_retry=' + attempt + '&_t=' + Date.now();
-        }
+      const isPrimary = !!criticalList[i][2];
+      let settled = false;
+      const settle = function () {
+        if (settled) return;
+        settled = true;
+        markDone(isPrimary);
       };
-
-      tryLoad(0);
+      if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.loadImage === 'function') {
+        const cachedImg = SpireAssets.loadImage(rel, settle);
+        if (cachedImg) settle();
+      } else {
+        const img = new Image();
+        img.onload = settle;
+        img.onerror = settle;
+        img.src = rel + '?v=' + encodeURIComponent(APP_VERSION);
+      }
     }
 
-    if (!finished && pending > 0 && typeof setTimeout === 'function') {
+    if (!finished && typeof setTimeout === 'function') {
       setTimeout(function () {
-        if (!finished && pending > 0 && (Date.now() - startedAt) >= 10000) {
+        if (!finished) {
           checkingImages = false;
-          showFailure(['首屏核心原画响应超时（当前网络较慢或连接受阻）'], true);
+          unlockGate('code_verified_progressive_art');
         }
-      }, 11000);
+      }, SOFT_ART_GRACE_MS);
     }
   }
 
@@ -758,6 +772,17 @@ const SpireBootGate = (function () {
     const res = verifyModules();
     if (!res.codeOk) {
       if (source === 'window_load' || source === 'renderer_tail' || source === 'user_guard') {
+        // 情形 1：所有 20 个模块与样式均正常运行，仅外层旧缓存 index.html 的 data-html-version 落后 -> 先尝试单次静默净缓存刷新；若 WebView 强缓存仍未变则直接放行，绝不误拦！
+        if (res.staleHtmlMismatch && res.modulesReady && failedNetTags.length === 0 && !res.cssPending) {
+          if (trySilentAutoHeal('html_version_mismatch')) return false;
+          codeAllVerified = true;
+          unlockGate('tolerate_cached_html_shell');
+          return true;
+        }
+        // 情形 2：存在脚本/样式网络拉取残缺 -> 先自动静默净缓存重试一次，仅当重试后仍失败才展示手动修复面板
+        if (trySilentAutoHeal(res.failures[0] || 'module_or_net_failure')) {
+          return false;
+        }
         showFailure(res.failures, false);
       }
       return false;
@@ -767,11 +792,15 @@ const SpireBootGate = (function () {
       return false;
     }
     if (!res.ok) {
+      if (trySilentAutoHeal(res.failures[0] || 'css_incomplete')) return false;
       showFailure(res.failures, false);
       return false;
     }
+    try {
+      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('spire_auto_heal_ver');
+    } catch (_) {}
     codeAllVerified = true;
-    setStep(66, '20/20 核心模块校验通过 · 正在核验首屏原画…');
+    setStep(72, '20/20 核心模块校验通过 · 正在开启主殿…');
     verifyCriticalAssets();
     return bootIntegrityPassed;
   }

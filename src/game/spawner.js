@@ -1468,6 +1468,9 @@ function beginWave(retryMeta = null) {
   if (cxm) cxm.classList.add('hidden');
   document.getElementById('pauseMenu').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmWave === 'function') {
+    SpireAssets.warmWave(wave, curScene && curScene.id);
+  }
   const bwWrap = document.getElementById('bossBarWrap');
   if (bwWrap) {
     bwWrap.classList.remove('mythic');
@@ -1487,9 +1490,13 @@ function spawnWarning(x, y, type, variant = '') {
     pushOutOfChasms(dummy);
     sx = Math.max(60, Math.min(WORLD.w - 60, dummy.x));
     sy = Math.max(60, Math.min(WORLD.h - 60, dummy.y));
+    if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.getMonsterSprite === 'function') {
+      SpireAssets.getMonsterSprite({ type: type || 'chaser', variant }, false);
+    }
   } else if (variant && typeof SpireAssets !== 'undefined' && SpireAssets) {
-    // 提前 0.9s 预热首领四帧精灵表与双形态立绘抠像，杜绝血月魔君等降临时首帧贴图未就绪
+    // 提前 0.9s 预热首领四帧精灵表、单帧精灵与双形态立绘抠像，杜绝降临时首帧贴图未就绪
     if (typeof SpireAssets.getBossSheet === 'function') SpireAssets.getBossSheet(variant, false);
+    if (typeof SpireAssets.getMonsterSprite === 'function') SpireAssets.getMonsterSprite({ type, variant }, false);
     if (typeof getBossAnimePortrait === 'function') {
       getBossAnimePortrait(variant, false);
       getBossAnimePortrait(variant, true);

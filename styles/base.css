@@ -3003,6 +3003,11 @@ body:not(.m-ui) #shopCards .card.sold-out {
 }
 
 /* 首屏全量资源完整性门禁（防止网页端脚本/贴图未下载全时提前露出主菜单触发异常） */
+.boot-gate-card {
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
 .boot-gate.hidden {
   display: none !important;
   pointer-events: none !important;
@@ -3069,6 +3074,13 @@ body:not(.m-ui) #shopCards .card.sold-out {
   width: min(980px, 95vw);
   height: auto;
   max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.outfit-modal-head,
+.outfit-modal-sub {
+  flex-shrink: 0;
 }
 .outfit-modal-sub {
   font-size: 12.5px;
@@ -3081,7 +3093,11 @@ body:not(.m-ui) #shopCards .card.sold-out {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 2px;
 }
 .outfit-pick-card {
@@ -3258,6 +3274,7 @@ body:not(.m-ui) #shopCards .card.sold-out {
   padding-top: 6px;
   border-top: 1px solid rgba(223, 192, 132, 0.18);
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 .outfit-default-btn.active {
   border-color: var(--astral);
