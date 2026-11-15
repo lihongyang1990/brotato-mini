@@ -316,7 +316,8 @@ function tickBossVenomBreath(e, dt, aimToPlayer, paceMult) {
       e.venomWindupT = 0.68;
       e.venomAimA = aimToPlayer;
       e.venomSpan = 0.40;
-      e.venomLen = e.type === 'mini_boss' ? 248 : 276;
+      const vBeamMul = typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0;
+      e.venomLen = Math.round((e.type === 'mini_boss' ? 248 : 276) * vBeamMul);
       e.venomTwin = false;
       beep(330, 0.08, 'triangle', 0.048);
       addText(e.x, e.y - e.r - 18, '☠️ 高压剧毒喷流蓄力!', '#a3e635', 14, 1.1, true);
@@ -336,6 +337,7 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
       e.castEndT = 1.15;
       e.exposeT = Math.max(e.exposeT || 0, 1.35);
       const baseA = Number.isFinite(e.p2BaseA) ? e.p2BaseA : aimToPlayer;
+      const p2BeamMul = typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0;
       beep(215, 0.18, 'sawtooth', 0.07);
       if (e.p2Kind === 'p2_absolute_zero') {
         triggerBossActionPose(e, 'cast_up', baseA, 0.62, '#72efdd');
@@ -352,7 +354,7 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
         triggerBossActionPose(e, 'cast_up', baseA, 0.62, '#fde68a');
         const gx = Number.isFinite(e.p2TargetX) ? e.p2TargetX : player.x;
         const gy = Number.isFinite(e.p2TargetY) ? e.p2TargetY : player.y;
-        const span = 540;
+        const span = Math.round(540 * p2BeamMul);
         if (rings.length < 40) rings.push({ x: gx, y: gy, r: 120, color: '#fde68a', t: 0.32, maxT: 0.32, kind: 'star' });
         for (let k = 0; k < 4; k++) {
           const la = baseA + k * (Math.PI * 0.25);
@@ -388,7 +390,7 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
         e.venomTwin = true;
         e.venomAimA = baseA;
         e.venomSpan = 0.36;
-        e.venomLen = 278;
+        e.venomLen = Math.round(278 * p2BeamMul);
         e.venomBreathMax = 1.75;
         e.venomBreathT = 1.75;
         e._venomPulseCd = 0;
@@ -412,10 +414,11 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
         triggerBossActionPose(e, 'slash', baseA, 0.60, '#ff2a55');
         const tx = Number.isFinite(e.p2TargetX) ? e.p2TargetX : player.x;
         const ty = Number.isFinite(e.p2TargetY) ? e.p2TargetY : player.y;
+        const slashHalfLen = Math.round(138 * p2BeamMul);
         for (let k = 0; k < 2; k++) {
           spawnHazard(tx, ty, 30, e.dmg * 1.12, 0.85, {
             color: '#fb7185', style: 'void_slash',
-            angle: baseA + k * (Math.PI * 0.5) + 0.39, halfLen: 138, halfW: 15,
+            angle: baseA + k * (Math.PI * 0.5) + 0.39, halfLen: slashHalfLen, halfW: 15,
             srcKey: e.variant || e.type
           });
         }
@@ -489,6 +492,7 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
       }
     }
   }
+  e._alivePylonCnt = pylonCnt;
   e._pylonShieldCnt = (vId === 'frost_queen' || vId === 'plague_empress') ? pylonCnt : 0;
 
   // 双生极光冰棱柱同时存在时，两柱之间拉起寒霜极光冰弦（碰触减速并受寒霜切割，击破任一柱即刻瓦解！）
@@ -671,8 +675,12 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
     }
   }
 
-  // 触发冷却推进（蓄力大招/冲刺时不抢占节奏）
+  // 触发冷却推进（蓄力大招/冲刺时不抢占节奏；召唤柱系首领在场上仍有柱子存活或处于击破后 20 秒真实冷却期内绝不提前重召）
   if (e.dashing || (e.sigWindupT || 0) > 0 || (e.p2WindupT || 0) > 0 || e.duelRing || e.chronoAnchor || e.eclipseSingularity) {
+    return false;
+  }
+  const isPylonBoss = vId === 'frost_queen' || vId === 'mech_colossus' || vId === 'plague_empress';
+  if (isPylonBoss && (pylonCnt > 0 || (e.pylonRespawnCd || 0) > 0)) {
     return false;
   }
   e.arenaMechCd = (e.arenaMechCd !== undefined ? e.arenaMechCd : 5.2) - dt * bossMult;
@@ -692,16 +700,16 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
     if (rings.length < 40) rings.push({ x: cx, y: cy, r: 215, color: '#fb7185', t: 0.34, maxT: 0.34, kind: 'hex' });
     addText(cx, cy - 36, '⚔️ 血誓决斗剑域！圈内应战破防 · 逃圈遭追斩!', '#fb7185', 14, 1.75, true);
   } else if (vId === 'frost_queen') {
-    e.arenaMechCd = enraged ? 9.8 : 11.4;
     if (pylonCnt === 0 && typeof spawnBossPylon === 'function') {
       const perp = aimToPlayer + Math.PI * 0.5;
-      spawnBossPylon(e, 'cryo_obelisk', e.x + Math.cos(perp) * 176, e.y + Math.sin(perp) * 176);
-      spawnBossPylon(e, 'cryo_obelisk', e.x - Math.cos(perp) * 176, e.y - Math.sin(perp) * 176);
+      const s1 = spawnBossPylon(e, 'cryo_obelisk', e.x + Math.cos(perp) * 176, e.y + Math.sin(perp) * 176);
+      const s2 = spawnBossPylon(e, 'cryo_obelisk', e.x - Math.cos(perp) * 176, e.y - Math.sin(perp) * 176);
+      e.arenaMechCd = (s1 || s2) ? 0 : 3.0;
       triggerBossActionPose(e, 'cast_up', aimToPlayer, 0.60, '#72efdd');
       beep(560, 0.12, 'sine', 0.055);
-      announce('❄️ 艾丝特莉亚升起【双生极光共鸣棱柱】！击破冰棱柱可斩断护盾并反噬破防！', '#72efdd', 3.2);
+      announce('❄️ 艾丝特莉亚升起【双生极光共鸣棱柱】！击破冰棱柱可令首领真实破防（承伤+20%，持续20秒）！', '#72efdd', 3.2);
     } else {
-      e.arenaMechCd = 4.5;
+      e.arenaMechCd = 3.0;
     }
   } else if (vId === 'void_weaver') {
     e._arenaCastSeq = (e._arenaCastSeq || 0) + 1;
@@ -743,25 +751,27 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
     announce('⚠️ 【黑洞引力奇点】1秒高能预警！速撤离视界或踏入金色【晨曦庇护印】！', '#fde68a', 3.4);
     addText(e.x, e.y - e.r - 28, '⚠️ 1.0s 预警 · 超巨黑洞奇点即将开启!', '#fde68a', 15, 1.95, true);
   } else if (vId === 'mech_colossus') {
-    e.arenaMechCd = enraged ? 9.4 : 11.0;
-    if (pylonCnt < 2 && typeof spawnBossPylon === 'function') {
+    if (pylonCnt === 0 && typeof spawnBossPylon === 'function') {
       const ma = aimToPlayer + (Math.random() < 0.5 ? 0.85 : -0.85);
-      spawnBossPylon(e, 'magnet_core', player.x + Math.cos(ma) * 145, player.y + Math.sin(ma) * 145);
+      const s1 = spawnBossPylon(e, 'magnet_core', player.x + Math.cos(ma) * 145, player.y + Math.sin(ma) * 145);
+      e.arenaMechCd = s1 ? 0 : 3.0;
       triggerBossActionPose(e, 'slam', aimToPlayer, 0.52, '#38bdf8');
       beep(310, 0.11, 'sawtooth', 0.05);
+      announce('⚙️ 倒悬机神部署【磁暴引力桩】！击破引力桩可令机神真实破防（承伤+20%，持续20秒）！', '#ff9f1c', 3.0);
     } else {
-      e.arenaMechCd = 4.5;
+      e.arenaMechCd = 3.0;
     }
   } else if (vId === 'plague_empress') {
-    e.arenaMechCd = enraged ? 9.6 : 11.2;
     if (pylonCnt === 0 && typeof spawnBossPylon === 'function') {
       const perp = aimToPlayer + Math.PI * 0.5;
-      spawnBossPylon(e, 'venom_cocoon', e.x + Math.cos(perp) * 168, e.y + Math.sin(perp) * 168);
-      spawnBossPylon(e, 'venom_cocoon', e.x - Math.cos(perp) * 168, e.y - Math.sin(perp) * 168);
+      const s1 = spawnBossPylon(e, 'venom_cocoon', e.x + Math.cos(perp) * 168, e.y + Math.sin(perp) * 168);
+      const s2 = spawnBossPylon(e, 'venom_cocoon', e.x - Math.cos(perp) * 168, e.y - Math.sin(perp) * 168);
+      e.arenaMechCd = (s1 || s2) ? 0 : 3.0;
       triggerBossActionPose(e, 'spin', aimToPlayer, 0.54, '#a3e635');
       beep(420, 0.10, 'triangle', 0.05);
+      announce('🍃 青羽试炼影培植【万蛊共生母苞】！击破母苞可令首领真实破防（承伤+20%，持续20秒）！', '#5ef29b', 3.0);
     } else {
-      e.arenaMechCd = 4.5;
+      e.arenaMechCd = 3.0;
     }
   }
   return false;
@@ -3401,6 +3411,9 @@ function update(dt) {
     if (e.chillT > 0) e.chillT -= dt;
     if (e.freezeT > 0) e.freezeT = Math.max(0, e.freezeT - dt);
     if (e.exposeT > 0) e.exposeT = Math.max(0, e.exposeT - dt);
+    if (e.pylonBrokenT > 0) e.pylonBrokenT = Math.max(0, e.pylonBrokenT - dt);
+    if (e.pylonRespawnCd > 0) e.pylonRespawnCd = Math.max(0, e.pylonRespawnCd - dt);
+    if (e._vulnTxtCd > 0) e._vulnTxtCd = Math.max(0, e._vulnTxtCd - dt);
     if (e.sunderT > 0) e.sunderT = Math.max(0, e.sunderT - dt);
     if (e._touchCd > 0) e._touchCd = Math.max(0, e._touchCd - dt);
     if (e._actPoseT > 0) e._actPoseT = Math.max(0, e._actPoseT - dt);
@@ -3557,9 +3570,9 @@ function update(dt) {
             }
           } else if (e.sigKind === 'omega_cross_beam') {
             triggerBossActionPose(e, 'recoil', baseA, 0.58, '#fb923c');
-            // 欧米茄：十字重型等离子歼灭主炮（4 向贯通激光炮轨，发射口外移避开体心重叠，给近战留出四象限安全空间）
+            // 欧米茄：十字重型等离子歼灭主炮（4 向贯通激光炮轨，发射口外移避开体心重叠，随难度 D1 1.0x -> D5 +30% 延长臂长）
             const innerOff = (e.r || 42) + 18;
-            const beamLen = 460;
+            const beamLen = Math.round(460 * (typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0));
             for (let k = 0; k < 4; k++) {
               const ba = baseA + k * (Math.PI * 0.5);
               const bx1 = e.x + Math.cos(ba) * innerOff, by1 = e.y + Math.sin(ba) * innerOff;
@@ -3664,7 +3677,8 @@ function update(dt) {
           e.beamSweepA = (e.beamSweepA || 0) + dt * sweepSpd;
           e._beamHitCd = Math.max(0, (e._beamHitCd || 0) - dt);
           const innerOff = (e.r || 42) + 20;
-          const bLen = e.beamSweepQuad ? 380 : 345;
+          const beamLenMul = typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0;
+          const bLen = Math.round((e.beamSweepQuad ? 380 : 345) * beamLenMul);
           const beamCnt = e.beamSweepQuad ? 4 : 2;
           for (let bi = 0; bi < beamCnt; bi++) {
             const ba = e.beamSweepA + (bi / beamCnt) * Math.PI * 2;
@@ -3803,7 +3817,7 @@ function update(dt) {
             e.laserGridT = 0;
             const gx = e.laserGridX, gy = e.laserGridY, ga = e.laserGridA || 0;
             triggerBossActionPose(e, 'slash', ga, 0.50, '#c77dff');
-            const span = 560;
+            const span = Math.round(560 * (typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0));
             beep(310, 0.16, 'sawtooth', 0.065);
             if (rings.length < 40) rings.push({ x: gx, y: gy, r: 95, color: '#e0aaff', t: 0.28, maxT: 0.28, fill: true });
             for (let k = 0; k < 2; k++) {
@@ -4170,7 +4184,7 @@ function update(dt) {
           e.beamSweepA = (e.beamSweepA || 0) + dt * (e.beamSweepQuad ? 0.48 : 0.56);
           e._beamHitCd = Math.max(0, (e._beamHitCd || 0) - dt);
           const innerOff = (e.r || 32) + 18;
-          const bLen = 325;
+          const bLen = Math.round(325 * (typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0));
           const beamCnt = e.beamSweepQuad ? 4 : 2;
           for (let bi = 0; bi < beamCnt; bi++) {
             const ba = e.beamSweepA + (bi / beamCnt) * Math.PI * 2;
@@ -5412,12 +5426,14 @@ function update(dt) {
             activeCastLabel = `⏳ 逆时回溯锚点 (${e.chronoAnchor.t.toFixed(1)}s · 踏入断时阵解锚)`;
           } else if (e.duelRing) {
             activeCastLabel = `⚔️ 血誓决斗剑域 (${e.duelRing.t.toFixed(1)}s · 圈内应战破防)`;
-          } else if ((e._pylonShieldCnt || 0) > 0) {
-            activeCastLabel = `⚡ 共鸣阵眼护体×${e._pylonShieldCnt}（优先击破棱柱破防）`;
+          } else if ((e._alivePylonCnt || 0) > 0) {
+            activeCastLabel = `⚡ 共鸣阵眼×${e._alivePylonCnt}（优先击破棱柱 · 触发20s首领破防承伤+20%）`;
           } else if ((e.venomBreathT || 0) > 0) {
             activeCastLabel = e.venomTwin ? '☠️ 释放二阶终式 · 双龙万蛊毒息' : '☠️ 高压横扫 · 剧毒龙息喷流';
           } else if (e.castLabel && ((e.sigWindupT || 0) > 0 || (e.castEndT || 0) > 0)) {
             activeCastLabel = (e.sigWindupT || 0) > 0 ? `⚠️ 蓄力咏唱 · ${e.castLabel}` : `💥 释放杀招 · ${e.castLabel}`;
+          } else if ((e.pylonBrokenT || 0) > 0) {
+            activeCastLabel = `◈ 真实破防中 · 首领承伤 +20%（${e.pylonBrokenT.toFixed(1)}s 后重召阵眼）`;
           }
         }
       }

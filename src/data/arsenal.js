@@ -103,6 +103,15 @@ function getSurvivalTrueDmgFloorPct(d = (typeof diff !== 'undefined' ? diff : nu
   const step = Math.min(4, Math.max(0, id - 1)) / 4;
   return +(SURVIVAL_TRUE_DMG_BASE_PCT + step * (SURVIVAL_TRUE_DMG_MAX_PCT - SURVIVAL_TRUE_DMG_BASE_PCT)).toFixed(4);
 }
+// 首领【十字 / 一字转圈扫射与激光】长度阶梯：D0/D1 保持不变（1.00x），D2~D4 等差递增（1.075x / 1.150x / 1.225x），D5 延长 +30%（1.30x）
+const BOSS_BEAM_LEN_BASE_MUL = 1.00;
+const BOSS_BEAM_LEN_MAX_MUL = 1.30;
+function getBossBeamLenMul(d = (typeof diff !== 'undefined' ? diff : null)) {
+  const id = (d && Number.isFinite(d.id)) ? d.id : (typeof d === 'number' && Number.isFinite(d) ? d : 1);
+  if (id <= 1) return BOSS_BEAM_LEN_BASE_MUL;
+  const step = Math.min(4, Math.max(0, id - 1)) / 4;
+  return +(BOSS_BEAM_LEN_BASE_MUL + step * (BOSS_BEAM_LEN_MAX_MUL - BOSS_BEAM_LEN_BASE_MUL)).toFixed(4);
+}
 if (typeof globalThis !== 'undefined') {
   globalThis.FLOOR16_BOSS_MAX_DODGE = FLOOR16_BOSS_MAX_DODGE;
   globalThis.getFloor16BossDodge = getFloor16BossDodge;
@@ -118,6 +127,9 @@ if (typeof globalThis !== 'undefined') {
   globalThis.SURVIVAL_TRUE_DMG_BASE_PCT = SURVIVAL_TRUE_DMG_BASE_PCT;
   globalThis.SURVIVAL_TRUE_DMG_MAX_PCT = SURVIVAL_TRUE_DMG_MAX_PCT;
   globalThis.getSurvivalTrueDmgFloorPct = getSurvivalTrueDmgFloorPct;
+  globalThis.BOSS_BEAM_LEN_BASE_MUL = BOSS_BEAM_LEN_BASE_MUL;
+  globalThis.BOSS_BEAM_LEN_MAX_MUL = BOSS_BEAM_LEN_MAX_MUL;
+  globalThis.getBossBeamLenMul = getBossBeamLenMul;
 }
 
 // 6 位《烬塔残响：第999次救赎》设定集正统登塔角色（配备设定集左侧半身立绘 + Q版二头身实机精灵 + 专属【青焰瞬步】主动残响战技）
