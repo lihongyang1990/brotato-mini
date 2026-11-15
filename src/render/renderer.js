@@ -298,7 +298,7 @@ function drawSingleTerrain(tr, showLabel = false) {
       ? '🌋 嵌石熔火槽 (灼烧减速)'
       : (tr.kind === 'swamp'
         ? '🧪 翡翠秘毒渠 (阻滞腐蚀)'
-        : (tr.kind === 'ice_sheet' ? '🧊 寒晶方砖台 (疾滑加速)' : '🕳️ 石砌断层渊 (阻挡通行)'));
+        : (tr.kind === 'ice_sheet' ? '🧊 寒晶方砖台 (寒缓冰封)' : '🕳️ 石砌断层渊 (阻挡通行)'));
     const midPt = (tr.spine && tr.spine.length) ? tr.spine[Math.floor(tr.spine.length * 0.5)] : tr;
     const lx = midPt.x, ly = tr.kind === 'chasm' ? midPt.y - 6 : midPt.y - 46;
     ctx.font = '800 11.5px -apple-system, sans-serif';
@@ -1947,14 +1947,15 @@ function draw() {
           }
           ctx.setLineDash([]);
         } else if (e.sigKind === 'omega_cross_beam') {
-          // 欧米茄 · 十字重型等离子歼灭主炮充能导轨（炮口聚变辉光 + 等离子束核）
+          // 欧米茄 · 十字重型等离子歼灭主炮充能导轨（炮口聚变辉光 + 等离子束核，长度随 D1->D5 阶梯延伸最高 +30%）
           const innerOff = (e.r || 42) + 18;
+          const omegaLen = Math.round(460 * (typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0));
           drawVfxGlow(ctx, 'glowOrange', e.x, e.y, innerOff * 1.55, 0.45 + sProg * 0.35);
           for (let k = 0; k < 4; k++) {
             const ba = baseA + k * (Math.PI * 0.5);
             const sx = e.x + Math.cos(ba) * innerOff, sy = e.y + Math.sin(ba) * innerOff;
-            const ex = e.x + Math.cos(ba) * 460, ey = e.y + Math.sin(ba) * 460;
-            const curLen = innerOff + (460 - innerOff) * sProg;
+            const ex = e.x + Math.cos(ba) * omegaLen, ey = e.y + Math.sin(ba) * omegaLen;
+            const curLen = innerOff + (omegaLen - innerOff) * sProg;
             drawVfxGlow(ctx, 'glowOrange', sx, sy, 26 + sProg * 14, 0.68);
             ctx.strokeStyle = `rgba(251, 146, 60, ${0.18 + sProg * 0.26})`;
             ctx.lineWidth = 24;
@@ -2064,10 +2065,11 @@ function draw() {
         ctx.beginPath(); ctx.arc(0, 0, 4.2 + tpProg * 2.2, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
       }
-      // 艾丝特莉亚 / 凛霜统领先导轨预警后缓旋的双翼/四翼极光冰束（枪口冰耀辉光 + 螺旋寒晶流粒子）
+      // 艾丝特莉亚 / 凛霜统领先导轨预警后缓旋的双翼（一字）/ 四翼（十字）极光冰束（D1 不变，D2~D5 递增至 +30% 长度）
       if ((e.beamWindupT || 0) > 0 || (e.beamSweepT || 0) > 0) {
         const innerOff = (e.r || 36) + (e.type === 'mini_boss' ? 18 : 20);
-        const bLen = e.type === 'mini_boss' ? 325 : (e.beamSweepQuad ? 380 : 345);
+        const beamLenMul = typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0;
+        const bLen = Math.round((e.type === 'mini_boss' ? 325 : (e.beamSweepQuad ? 380 : 345)) * beamLenMul);
         const beamCnt = e.beamSweepQuad ? 4 : 2;
         const ba0 = e.beamSweepA || 0;
         ctx.save();
@@ -2373,12 +2375,13 @@ function draw() {
       if ((e.p2WindupT || 0) > 0) {
         const p2Prog = Math.max(0.08, Math.min(1, 1 - e.p2WindupT / Math.max(0.1, e.p2WindupMax || 0.78)));
         const baseA = Number.isFinite(e.p2BaseA) ? e.p2BaseA : 0;
+        const p2BeamMul = typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0;
         ctx.save();
         ctx.lineCap = 'round';
         if (e.p2Kind === 'p2_chrono_octa') {
           const gx = Number.isFinite(e.p2TargetX) ? e.p2TargetX : e.x;
           const gy = Number.isFinite(e.p2TargetY) ? e.p2TargetY : e.y;
-          const span = 520;
+          const span = Math.round(540 * p2BeamMul);
           drawVfxGlow(ctx, 'glowGold', gx, gy, 145 * (0.5 + p2Prog * 0.5), 0.52);
           drawVfxGlow(ctx, 'glowViolet', gx, gy, 95, 0.45);
           for (let k = 0; k < 4; k++) {
@@ -2398,11 +2401,12 @@ function draw() {
           ctx.beginPath(); ctx.arc(gx, gy, 68 * (1.2 - p2Prog * 0.45), 0, Math.PI * 2); ctx.stroke();
         } else if (e.p2Kind === 'p2_absolute_zero') {
           const innerOff = (e.r || 36) + (e.type === 'mini_boss' ? 18 : 20);
+          const quadLen = Math.round((e.type === 'mini_boss' ? 325 : 380) * p2BeamMul);
           drawVfxGlow(ctx, 'glowCyan', e.x, e.y, 135 * (0.5 + p2Prog * 0.5), 0.55);
           for (let k = 0; k < 4; k++) {
             const ba = baseA + k * (Math.PI * 0.5);
             const sx = e.x + Math.cos(ba) * innerOff, sy = e.y + Math.sin(ba) * innerOff;
-            const ex = e.x + Math.cos(ba) * 380, ey = e.y + Math.sin(ba) * 380;
+            const ex = e.x + Math.cos(ba) * quadLen, ey = e.y + Math.sin(ba) * quadLen;
             drawVfxGlow(ctx, 'glowCyan', sx, sy, 28, 0.62);
             ctx.strokeStyle = `rgba(125, 211, 252, ${0.18 + p2Prog * 0.24})`;
             ctx.lineWidth = 20;
@@ -2412,6 +2416,7 @@ function draw() {
             ctx.setLineDash([]);
           }
         } else if (e.p2Kind === 'p2_twin_venom') {
+          const tvLen = Math.round(278 * p2BeamMul);
           drawVfxGlow(ctx, 'glowGreen', e.x, e.y, 136 * (0.5 + p2Prog * 0.5), 0.56);
           drawVfxGlow(ctx, 'glowViolet', e.x, e.y, 88 * (0.5 + p2Prog * 0.5), 0.36);
           for (let ni = 0; ni < 2; ni++) {
@@ -2419,16 +2424,16 @@ function draw() {
             const mx = e.x + Math.cos(na) * (e.r * 0.56), my = e.y + Math.sin(na) * (e.r * 0.56);
             drawVfxGlow(ctx, 'glowGreen', mx, my, 34 + p2Prog * 18, 0.58);
             ctx.fillStyle = `rgba(6, 78, 59, ${0.22 + p2Prog * 0.14})`;
-            ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(e.x, e.y, 278, na - 0.36, na + 0.36); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(e.x, e.y, tvLen, na - 0.36, na + 0.36); ctx.closePath(); ctx.fill();
             ctx.fillStyle = `rgba(132, 204, 22, ${0.14 + p2Prog * 0.22})`;
-            ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(e.x, e.y, Math.max(e.r * 0.65, 278 * p2Prog), na - 0.35, na + 0.35); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(e.x, e.y, Math.max(e.r * 0.65, tvLen * p2Prog), na - 0.35, na + 0.35); ctx.closePath(); ctx.fill();
             ctx.strokeStyle = 'rgba(6, 95, 70, 0.65)'; ctx.lineWidth = 4.2;
-            ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(na - 0.36) * 278, e.y + Math.sin(na - 0.36) * 278); ctx.arc(e.x, e.y, 278, na - 0.36, na + 0.36); ctx.lineTo(mx, my); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(na - 0.36) * tvLen, e.y + Math.sin(na - 0.36) * tvLen); ctx.arc(e.x, e.y, tvLen, na - 0.36, na + 0.36); ctx.lineTo(mx, my); ctx.stroke();
             ctx.strokeStyle = '#d9f99d'; ctx.lineWidth = 2.4; ctx.setLineDash([9, 6]);
             ctx.beginPath();
-            ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(na - 0.36) * 278, e.y + Math.sin(na - 0.36) * 278);
-            ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(na + 0.36) * 278, e.y + Math.sin(na + 0.36) * 278);
-            ctx.arc(e.x, e.y, 278, na - 0.36, na + 0.36);
+            ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(na - 0.36) * tvLen, e.y + Math.sin(na - 0.36) * tvLen);
+            ctx.moveTo(mx, my); ctx.lineTo(e.x + Math.cos(na + 0.36) * tvLen, e.y + Math.sin(na + 0.36) * tvLen);
+            ctx.arc(e.x, e.y, tvLen, na - 0.36, na + 0.36);
             ctx.stroke(); ctx.setLineDash([]);
           }
         } else {
@@ -2457,7 +2462,7 @@ function draw() {
       if ((e.laserGridT || 0) > 0) {
         const gProg = Math.max(0.08, Math.min(1, 1 - e.laserGridT / Math.max(0.1, e.laserGridMaxT || 0.85)));
         const gx = e.laserGridX, gy = e.laserGridY, ga = e.laserGridA || 0;
-        const span = 560;
+        const span = Math.round(560 * (typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0));
         drawVfxGlow(ctx, 'glowViolet', gx, gy, 115, 0.42 + gProg * 0.30);
         ctx.save();
         ctx.lineCap = 'round';

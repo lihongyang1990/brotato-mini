@@ -1960,17 +1960,50 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       update(0.05);
       if (b1.duelRing !== null || !(b1.exposeT >= 2.0)) return false;
 
-      // 2) Frost Queen Twin Cryo-Obelisks: grant -28% barrier DR while alive; shattering deals backlash & exposeT
+      // 2) Frost Queen Twin Cryo-Obelisks: -14% DR per pillar (-28% for 2); shattering ALL pillars triggers 20s +20% True Armor Break & 20s respawn delay!
       enemies.length = 0; trees.length = 0;
+      const bBase = createEnemy(900, 900, 'boss', 'butcher');
+      bBase.hp = 50000; bBase.maxHp = 50000; bBase.dodge = 0; bBase.exposeT = 0; bBase.pylonBrokenT = 0;
+      hurtEnemy(bBase, 1000, false, null, false, { noProc: true, undodgeable: true });
+      const baseBossDmgTaken = 50000 - bBase.hp;
+      enemies.length = 0; trees.length = 0;
+
       const b2 = createEnemy(1320, 900, 'boss', 'frost_queen');
-      b2.hp = 50000; b2.maxHp = 50000; b2.arenaMechCd = 0.01;
+      b2.hp = 50000; b2.maxHp = 50000; b2.dodge = 0; b2.arenaMechCd = 0.01;
       update(0.05);
       const pylons = trees.filter(t => t && t.isBossPylon && t.pylonKind === 'cryo_obelisk');
       if (pylons.length !== 2) return false;
       draw();
       const hpBeforePylonShatter = b2.hp;
       hurtTree(pylons[0], 99999);
-      if (!(b2.hp < hpBeforePylonShatter && b2.exposeT >= 1.5)) return false;
+      if (!(b2.hp < hpBeforePylonShatter && b2.exposeT >= 1.5 && (b2.pylonBrokenT || 0) === 0 && b2._pylonShieldCnt === 1)) return false;
+      hurtTree(pylons[1], 99999);
+      if (!(b2.pylonBrokenT === 20 && b2.pylonRespawnCd === 20 && b2._pylonShieldCnt === 0)) return false;
+
+      // Verify true +20% Boss damage taken across the 20s broken-armor window (including after brief 1.85s exposeT expires!)
+      b2.exposeT = 0;
+      const hpBeforeVulnHit = b2.hp;
+      hurtEnemy(b2, 1000, false, null, false, { noProc: true, undodgeable: true });
+      const vulnBossDmgTaken = hpBeforeVulnHit - b2.hp;
+      if (vulnBossDmgTaken !== Math.round(baseBossDmgTaken * 1.20)) return false;
+      draw();
+
+      // Advance 19.5s (< 20s): Boss must STILL be in +20% armor break and MUST NOT respawn pillars early!
+      for (let step = 0; step < 195; step++) {
+        player.hp = 5000; b2.hp = 50000;
+        update(0.10);
+      }
+      const earlyPylons = trees.filter(t => t && t.isBossPylon && t.owner === b2 && t.hp > 0);
+      if (earlyPylons.length !== 0 || !(b2.pylonBrokenT > 0.3 && b2.pylonRespawnCd > 0.3)) return false;
+
+      // Advance past 20.0s mark and clear any mid-cast lock -> Boss must re-summon 2 brand-new Cryo-Obelisks!
+      for (let step = 0; step < 8; step++) {
+        player.hp = 5000; b2.hp = 50000;
+        b2.dashing = false; b2.sigWindupT = 0; b2.p2WindupT = 0;
+        update(0.10);
+      }
+      const respawnedPylons = trees.filter(t => t && t.isBossPylon && t.owner === b2 && t.pylonKind === 'cryo_obelisk' && t.hp > 0);
+      if (b2.pylonBrokenT !== 0 || b2.pylonRespawnCd !== 0 || respawnedPylons.length !== 2) return false;
 
       // 3) Void Weaver Chrono-Anchor + Dispel Pad counterplay
       enemies.length = 0; trees.length = 0;
@@ -2622,6 +2655,93 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(v2121MobileCheck.deskBalOff, true, "Desktop UI mode must keep isMobileCombatBalance()===false");
   assert.strictEqual(v2121MobileCheck.goldPlus20Exact, true, "Mobile non-boss monsters must yield +20% gold/crystal mat compared to desktop");
   assert.strictEqual(v2121MobileCheck.bossMatUnchanged, true, "Boss crystal reward must remain identical between mobile and desktop");
+
+  // v2.1.22 Ice Terrain Overhead Label, Boss Pylon +20% 20s Armor Break & 20s Respawn, and Boss Cross/Line Beam Length Scaling (D1=1.00x -> D5=1.30x)
+  const rendererRaw = fs.readFileSync(path.join(ROOT, "src/render/renderer.js"), "utf8");
+  assert(!rendererRaw.includes("疾滑加速"), "Outdated '疾滑加速' ice terrain label must be completely removed from renderer.js");
+  assert(rendererRaw.includes("🧊 寒晶方砖台 (寒缓冰封)"), "Ice terrain label in renderer.js must read '🧊 寒晶方砖台 (寒缓冰封)'");
+
+  const v2122Check = vm.runInContext(`(() => {
+    const m0 = getBossBeamLenMul(DIFFS[0]);
+    const m1 = getBossBeamLenMul(DIFFS[1]);
+    const m2 = getBossBeamLenMul(DIFFS[2]);
+    const m3 = getBossBeamLenMul(DIFFS[3]);
+    const m4 = getBossBeamLenMul(DIFFS[4]);
+    const m5 = getBossBeamLenMul(DIFFS[5]);
+    const ladderOk = (
+      Math.abs(m0 - 1.00) < 1e-9 &&
+      Math.abs(m1 - 1.00) < 1e-9 &&
+      Math.abs(m2 - 1.075) < 1e-9 &&
+      Math.abs(m3 - 1.15) < 1e-9 &&
+      Math.abs(m4 - 1.225) < 1e-9 &&
+      Math.abs(m5 - 1.30) < 1e-9
+    );
+
+    // Concrete reach check: frost_queen rotating 4-way cross beam (base 380px -> D5 494px) at 420px player distance
+    const prevDiff = diff;
+    state = 'wave';
+    enemies.length = 0;
+    arenaProps.length = 0;
+    const fq = createEnemy(700, 700, 'boss', 'frost_queen');
+    fq.hp = fq.maxHp = 999999;
+    player.x = 700 + 420;
+    player.y = 700;
+    player.dodge = 0;
+    player.armor = 0;
+    player.iFrame = 0;
+    player.hp = player.maxHp = 500;
+
+    diff = DIFFS[1];
+    fq.beamSweepQuad = true;
+    fq.beamSweepT = 1.0;
+    fq.beamSweepA = 0;
+    fq._beamHitCd = 0;
+    const hpBeforeD1 = player.hp;
+    update(0.016);
+    const d1MissedAt420 = (player.hp === hpBeforeD1);
+
+    diff = DIFFS[5];
+    fq.beamSweepQuad = true;
+    fq.beamSweepT = 1.0;
+    fq.beamSweepA = 0;
+    fq._beamHitCd = 0;
+    player.x = 700 + 420;
+    player.y = 700;
+    player.iFrame = 0;
+    const hpBeforeD5 = player.hp;
+    update(0.016);
+    const d5HitAt420 = (player.hp < hpBeforeD5);
+
+    // Boss Pylon Break: +20% true vulnerability for 20s & strict 20s respawn lock
+    diff = DIFFS[1];
+    arenaProps.length = 0;
+    fq.pylonBrokenT = 0;
+    fq.pylonRespawnCd = 0;
+    spawnBossArenaPillars(fq, 'cryo_obelisk');
+    const spawned2 = arenaProps.filter(p => p.hp > 0 && p.ownerBoss === fq).length === 2;
+    for (const p of [...arenaProps]) {
+      if (p.ownerBoss === fq) damageArenaProp(p, 999999);
+    }
+    const broken20s = Math.abs(fq.pylonBrokenT - 20.0) < 1e-6 && Math.abs(fq.pylonRespawnCd - 20.0) < 1e-6;
+    fq.hp = fq.maxHp = 100000;
+    fq.exposeT = 0; fq.sunderT = 0;
+    hurtEnemy(fq, 100, false, null, true);
+    const baseTakenWithBreak = 100000 - fq.hp;
+    fq.pylonBrokenT = 0;
+    const hpMid = fq.hp;
+    hurtEnemy(fq, 100, false, null, true);
+    const baseTakenNormal = hpMid - fq.hp;
+    const plus20Exact = Math.abs(baseTakenWithBreak - Math.round(baseTakenNormal * 1.20)) <= 1;
+
+    diff = prevDiff;
+    return { ladderOk, d1MissedAt420, d5HitAt420, spawned2, broken20s, plus20Exact };
+  })()`, s);
+  assert.strictEqual(v2122Check.ladderOk, true, "getBossBeamLenMul must scale linearly from 1.00x at D1 to 1.30x (+30%) at D5");
+  assert.strictEqual(v2122Check.d1MissedAt420, true, "D1 frost_queen cross beam (380px) must NOT hit player standing at 420px");
+  assert.strictEqual(v2122Check.d5HitAt420, true, "D5 frost_queen cross beam (494px, +30%) MUST hit player standing at 420px");
+  assert.strictEqual(v2122Check.spawned2, true, "spawnBossArenaPillars must summon 2 cryo_obelisk pillars");
+  assert.strictEqual(v2122Check.broken20s, true, "Breaking all pillars must set pylonBrokenT=20.0s and pylonRespawnCd=20.0s");
+  assert.strictEqual(v2122Check.plus20Exact, true, "pylonBrokenT must increase boss damage taken by +20%");
 }
 
 // ============================================================================

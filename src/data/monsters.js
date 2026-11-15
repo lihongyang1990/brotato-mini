@@ -10,12 +10,12 @@ const BOSS_DEFS = {
   frost_queen: {
     id: 'frost_queen', icon: '❄️', sprite: 'assets/spire/hero_astria.png', portrait: 'assets/spire/port_astria.jpg',
     name: '永冻星使 · 艾丝特莉亚', epithet: '二层冰封王城之主 · 碎冕星瞳', color: '#00bbf9', spd: 84,
-    desc: '遵从遗愿冰封王城的挚友星使：升起可破坏的【双生极光共鸣棱柱】（拉起极光冰弦并赋予棱障减伤，优先击破冰棱柱可斩断护盾并反噬破防！）、扫射极光冰束与六合冰牢；二阶段解锁【绝对零度四翼极光环】，D5 二阶段独享 10 秒【临死挣扎】！'
+    desc: '遵从遗愿冰封王城的挚友星使：升起可破坏的【双生极光共鸣棱柱】（拉起极光冰弦并赋予棱障减伤，击破冰棱柱可斩断护盾并使首领陷入 20 秒真实破防：承伤 +20%，20 秒后方重新召唤新柱！）、扫射极光冰束与六合冰牢；二阶段解锁【绝对零度四翼极光环】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   mech_colossus: {
     id: 'mech_colossus', icon: '⚙️', sprite: 'assets/spire/boss_mech_colossus.png', portrait: 'assets/spire/port_jialan.jpg',
     name: '倒悬机神 · 伽蓝重装态', epithet: '三层逆转发条钟楼镇守者', color: '#f77f00', spd: 78,
-    desc: '伽蓝操控的钟楼重装巨像：部署可破坏的【超导磁暴引力桩】牵引猎物（击破引力桩可超载反噬机神破防）、横扫熔核加特林与钢铁矩阵排炮；二阶段解锁终式【末日熔核锯刃风暴】，D5 二阶段独享 10 秒【临死挣扎】！'
+    desc: '伽蓝操控的钟楼重装巨像：部署可破坏的【超导磁暴引力桩】牵引猎物（击破引力桩可令机神陷入 20 秒真实破防：承伤 +20%，20 秒后方重新部署新桩！）、横扫熔核加特林与钢铁矩阵排炮；二阶段解锁终式【末日熔核锯刃风暴】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   void_weaver: {
     id: 'void_weaver', icon: '🕰️', sprite: 'assets/spire/hero_jialan.png', portrait: 'assets/spire/port_jialan.jpg',
@@ -25,7 +25,7 @@ const BOSS_DEFS = {
   plague_empress: {
     id: 'plague_empress', icon: '🍃', sprite: 'assets/spire/hero_qingyu.png', portrait: 'assets/spire/port_qingyu.jpg',
     name: '残羽魔女 · 青羽试炼影', epithet: '风语守望者 · 最后的温柔锁', color: '#52b788', spd: 85,
-    desc: '守望轮回的残羽魔女幻影：培植可破坏的【万蛊共生母苞】护体（击破母苞触发反噬破防）、横扫高压【万蛊剧毒吐息】并旋舞双螺旋风翎弹；二阶段解锁终式【双龙万蛊毒息】，D5 二阶段独享 10 秒【临死挣扎】！'
+    desc: '守望轮回的残羽魔女幻影：培植可破坏的【万蛊共生母苞】护体（击破母苞可令其陷入 20 秒真实破防：承伤 +20%，20 秒后方重新培植新苞！）、横扫高压【万蛊剧毒吐息】并旋舞双螺旋风翎弹；二阶段解锁终式【双龙万蛊毒息】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   solar_seraph: {
     id: 'solar_seraph', icon: '🌑', sprite: 'assets/spire/hero_eclipse.png', portrait: 'assets/spire/port_eclipse.jpg',

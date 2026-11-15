@@ -748,7 +748,7 @@ function drawTreeSprite(tr) {
     ctx.font = '800 10px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fef08a';
-    ctx.fillText('击破破防', 0, -55);
+    ctx.fillText('击破破防+20%', 0, -55);
     ctx.restore();
     return;
   }
@@ -1209,7 +1209,18 @@ function drawEnemySprite(e) {
     ctx.beginPath(); ctx.arc(e.x, e.y, r + 8 + Math.sin(now * 0.03) * 3, 0, Math.PI * 2); ctx.stroke();
   }
 
-  if (e.exposeT > 0) {
+  if ((e.pylonBrokenT || 0) > 0) {
+    ctx.save();
+    ctx.strokeStyle = '#72efdd';
+    ctx.lineWidth = 2.6;
+    ctx.setLineDash([10, 5]);
+    ctx.beginPath(); ctx.arc(e.x, e.y, r + 15, now * 0.0022, now * 0.0022 + Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([5, 7]);
+    ctx.beginPath(); ctx.arc(e.x, e.y, r + 10, -now * 0.0028, -now * 0.0028 + Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  } else if (e.exposeT > 0) {
     ctx.save();
     ctx.strokeStyle = '#f6d379';
     ctx.lineWidth = 2.4;
@@ -1533,6 +1544,11 @@ function drawEnemySprite(e) {
     ctx.fillStyle = '#fef08a';
     ctx.fillText(activeBadgeTxt, e.x, cy + 2);
     ctx.restore();
+  } else if ((e.pylonBrokenT || 0) > 0 && (isBoss || e.type === 'special_boss')) {
+    ctx.font = '800 11px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fde68a';
+    ctx.fillText(`破防承伤+20% (${Math.ceil(e.pylonBrokenT)}s)`, e.x, e.y + r + 20);
   } else if (e.exposeT > 0 && isBoss) {
     ctx.font = '800 11px -apple-system, sans-serif';
     ctx.textAlign = 'center';

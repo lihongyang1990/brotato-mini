@@ -865,7 +865,17 @@ function spawnTree() {
   rings.push({ x: tx, y: ty, r: 32, color: '#5ef29b', t: 0.24, maxT: 0.24 });
 }
 
-// 首领创新交互机关：可破坏的【共鸣阵眼棱柱 / 超导磁暴桩 / 万蛊共生苞】（击破即斩断首领棱障并触发反噬重创与破防！）
+// 首领创新交互机关：可破坏的【共鸣阵眼棱柱 / 超导磁暴桩 / 万蛊共生苞】
+// 机制契约：击破场上全部阵眼棱柱后，首领进入 20 秒【真实破防】（承受全源伤害 +20%），且严格冷却满 20 秒后才会重新召唤新柱子！
+const BOSS_PYLON_BROKEN_DMG_MUL = 1.20;
+const BOSS_PYLON_BROKEN_DURATION_SEC = 20.0;
+const BOSS_PYLON_RESPAWN_DELAY_SEC = 20.0;
+if (typeof globalThis !== 'undefined') {
+  globalThis.BOSS_PYLON_BROKEN_DMG_MUL = BOSS_PYLON_BROKEN_DMG_MUL;
+  globalThis.BOSS_PYLON_BROKEN_DURATION_SEC = BOSS_PYLON_BROKEN_DURATION_SEC;
+  globalThis.BOSS_PYLON_RESPAWN_DELAY_SEC = BOSS_PYLON_RESPAWN_DELAY_SEC;
+}
+
 function spawnBossPylon(owner, pylonKind, x, y) {
   if (!owner || owner.hp <= 0 || typeof trees === 'undefined') return null;
   let ownedCnt = 0;
@@ -893,7 +903,7 @@ function spawnBossPylon(owner, pylonKind, x, y) {
   };
   trees.push(node);
   if (rings.length < 40) rings.push({ x: px, y: py, r: 58, color: col, t: 0.30, maxT: 0.30, kind: 'hex' });
-  addText(px, py - 34, `⚡ ${label} · 击破破防!`, col, 13, 1.35, true);
+  addText(px, py - 34, `⚡ ${label} · 击破破防+20%!`, col, 13, 1.35, true);
   return node;
 }
 if (typeof globalThis !== 'undefined') globalThis.spawnBossPylon = spawnBossPylon;
@@ -931,10 +941,36 @@ function hurtTree(tr, rawDmg) {
             color: pCol, t: 0.32, maxT: 0.32
           });
         }
+        // 统计该首领场上剩余未击破的阵眼棱柱数量
+        let remainingPylons = 0;
+        if (typeof trees !== 'undefined') {
+          for (let ti = 0; ti < trees.length; ti++) {
+            const ot = trees[ti];
+            if (ot && ot !== tr && ot.isBossPylon && ot.owner === boss && ot.hp > 0) remainingPylons++;
+          }
+        }
+        boss._pylonShieldCnt = (boss.variant === 'frost_queen' || boss.variant === 'plague_empress') ? remainingPylons : 0;
         boss.exposeT = Math.max(boss.exposeT || 0, 1.85);
-        addText(boss.x, boss.y - boss.r - 24, `💥 ${tr.pylonLabel || '阵眼'}崩碎 · 反噬破防!`, '#fde68a', 15, 1.4, true);
+        // 先结算阵眼崩碎的固定 4.2% 反噬真伤（不叠加后续 20% 易伤），再激活 20 秒真实破防
         if (typeof hurtEnemy === 'function' && !(boss.d5LastStandT > 0)) {
-          hurtEnemy(boss, Math.max(8, Math.round(boss.maxHp * 0.042)), true, null, true, { noProc: true, undodgeable: true, srcId: 'relic_proc' });
+          hurtEnemy(boss, Math.max(8, Math.round(boss.maxHp * 0.042)), true, null, true, {
+            noProc: true, undodgeable: true, isPylonBacklash: true, srcId: 'relic_proc'
+          });
+        }
+        if (boss.hp > 0) {
+          if (remainingPylons === 0) {
+            boss.pylonBrokenT = BOSS_PYLON_BROKEN_DURATION_SEC;
+            boss.pylonRespawnCd = BOSS_PYLON_RESPAWN_DELAY_SEC;
+            boss.arenaMechCd = 0;
+            beep(820, 0.14, 'triangle', 0.068);
+            if (rings.length < 40) rings.push({ x: boss.x, y: boss.y, r: 148, color: '#fde68a', t: 0.36, maxT: 0.36, kind: 'hex' });
+            addText(boss.x, boss.y - boss.r - 24, `💥 ${tr.pylonLabel || '阵眼'}击破 · 真实破防！首领承伤+20% (20s)`, '#fde68a', 15, 1.9, true);
+            if (typeof announce === 'function') {
+              announce(`💥 【${tr.pylonLabel || '共鸣阵眼'}】彻底击破！首领陷入 20 秒真实破防（承伤 +20%，20秒后方重新召唤）！`, '#fde68a', 3.4);
+            }
+          } else {
+            addText(boss.x, boss.y - boss.r - 24, `💥 ${tr.pylonLabel || '阵眼'}击破 · 再破${remainingPylons}柱触发20s破防+20%!`, pCol, 14, 1.55, true);
+          }
         }
       }
     }
@@ -1956,11 +1992,12 @@ function spawnSurvivalCrossJudgment(phase) {
   const hy = Math.max(120, Math.min(WORLD.h - 120, player.y + Math.sin(offAng) * offDist));
   const aimA = Math.atan2(player.y - hy, player.x - hx) + Math.PI * 0.25;
   const rotDir = Math.random() < 0.5 ? 1 : -1;
+  const crossLenMul = typeof getBossBeamLenMul === 'function' ? getBossBeamLenMul() : 1.0;
   spawnHazard(hx, hy, 42, baseDmg, phase >= 3 ? 0.96 : 1.08, {
     style: 'cross_beam',
     angle: aimA,
     rotSpd: rotDir * (phase >= 3 ? 0.52 : 0.40),
-    halfLen: phase >= 3 ? 215 : 190,
+    halfLen: Math.round((phase >= 3 ? 215 : 190) * crossLenMul),
     halfW: 16,
     color: theme.crossCol || '#c084fc',
     srcKey: 'trap_cross_star'
@@ -2063,7 +2100,7 @@ function createEnemy(x, y, type, variant = '') {
   const base = {
     x, y, hitFlash: 0, phase: Math.random() * 6.28, vx: 0, vy: 0, faceA: 0,
     burnT: 0, burnTick: 0, burnDmg: 0, chillT: 0, freezeT: 0, sunderT: 0, _touchCd: 0,
-    poisonT: 0, poisonTick: 0, poisonStacks: 0, exposeT: 0, _blkTxtCd: 0, elite: false
+    poisonT: 0, poisonTick: 0, poisonStacks: 0, exposeT: 0, pylonBrokenT: 0, pylonRespawnCd: 0, _vulnTxtCd: 0, _blkTxtCd: 0, elite: false
   };
 
   const lateCoinMul = wave >= 6 ? 0.80 : (wave === 5 ? 0.90 : 1.00);

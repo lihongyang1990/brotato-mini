@@ -1003,12 +1003,13 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
     }
   }
 
-  // 首领共鸣阵眼棱柱护佑减伤（场上存在存活阵眼时减免 28% 非破盾伤害，引导玩家优先转火击破阵眼）
-  if (e.type === 'boss' && (e._pylonShieldCnt || 0) > 0 && !ignoreShield) {
-    rawDmg *= 0.72;
+  // 首领共鸣阵眼棱柱护佑减伤（每座存活阵眼减免 14% 非破盾伤害，双柱最高 28%，引导玩家优先转火击破阵眼）
+  if ((e.type === 'boss' || e.type === 'special_boss') && (e._pylonShieldCnt || 0) > 0 && !ignoreShield && !(opts && opts.isPylonBacklash)) {
+    const shieldPct = Math.min(28, e._pylonShieldCnt * 14);
+    rawDmg *= (1 - shieldPct / 100);
     if (!opts.isDot && (!e._pylonTxtCd || e._pylonTxtCd <= 0)) {
       e._pylonTxtCd = 0.65;
-      addText(e.x, e.y - e.r - 14, '⚡ 阵眼棱障 -28%（击破棱柱破防）', '#72efdd', 12, 0.45, false);
+      addText(e.x, e.y - e.r - 14, `⚡ 阵眼棱障 -${shieldPct}%（击破棱柱破防+20%）`, '#72efdd', 12, 0.45, false);
     }
   }
 
@@ -1039,8 +1040,18 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
   // 1b) 【精钢磨刀石】近战破甲易伤印记：受破甲目标承受全源伤害 +12%
   if ((e.sunderT || 0) > 0) rawDmg *= 1.12;
   if (opts.isMelee && player && player.meleeSunder) e.sunderT = 3.2;
-  // 2) 首领大招后的【破绽暴露】窗口期承受额外高额伤害（近战 +25%，远程 +15%）
-  if (e.exposeT > 0) rawDmg *= (opts.isMelee ? 1.25 : 1.15);
+  // 2) 首领阵眼击破后的【20秒真实破防】（全源承伤增加 +20%）与常规技能收招【破绽暴露】（近战 +25%，远程 +15%）
+  if ((e.pylonBrokenT || 0) > 0 && !(opts && opts.isPylonBacklash)) {
+    const pVulnMul = typeof BOSS_PYLON_BROKEN_DMG_MUL === 'number' ? BOSS_PYLON_BROKEN_DMG_MUL : 1.20;
+    rawDmg *= pVulnMul;
+    if (e.exposeT > 0 && opts.isMelee && 1.25 > pVulnMul) rawDmg *= (1.25 / pVulnMul);
+    if (!opts.isDot && (!e._vulnTxtCd || e._vulnTxtCd <= 0)) {
+      e._vulnTxtCd = 1.45;
+      addText(e.x, e.y - e.r - 14, '◈ 真实破防 · 承伤+20%', '#fde68a', 12, 0.44, false);
+    }
+  } else if (e.exposeT > 0) {
+    rawDmg *= (opts.isMelee ? 1.25 : 1.15);
+  }
   // 3) 【剧毒】叠层腐蚀易伤：每层使目标承受伤害 +3%（若仅踩泥沼地形则易伤减半为 +1.5%）
   if (e.poisonT > 0 && e.poisonStacks > 0) rawDmg *= (1 + e.poisonStacks * 0.03);
   else if ((e.swampDotT || 0) > 0) rawDmg *= 1.015;
