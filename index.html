@@ -168,12 +168,13 @@
         <p class="home-subtitle">第 999 次救赎</p>
         <nav id="modePortalGrid" class="title-menu" aria-label="开始游戏">
           <button id="continueStoryBtn" class="title-link primary hidden" onclick="continueSpireStory()"><span class="title-diamond" aria-hidden="true">◇</span><span>继续登塔<small id="continueStoryHint"></small></span></button>
-          <button id="portalStoryBtn" class="title-link primary" onclick="openMenuStage('story')"><span class="title-diamond" aria-hidden="true">◇</span><span id="newStoryLabel">提灯启程</span></button>
+          <button id="portalStoryBtn" class="title-link primary" onclick="handleStoryPortalClick()"><span class="title-diamond" aria-hidden="true">◇</span><span id="newStoryLabel">提灯启程</span></button>
           <button id="portalEndlessBtn" class="title-link" onclick="openMenuStage('endless')"><span class="title-diamond" aria-hidden="true">◇</span><span>无尽试炼</span></button>
         </nav>
         <p class="home-poem">雨还没有停。灯在等你。</p>
       </div>
       <footer class="home-footer">
+        <button id="homeOutfitBtn" class="footer-link-btn" onclick="openZeroOutfitModal()"><span aria-hidden="true">✦</span> 寻光战装</button>
         <button class="footer-link-btn" onclick="openSpireGallery()"><span aria-hidden="true">▧</span> 演出预览</button>
         <button class="footer-link-btn" onclick="openCodex('weapons')">烬塔圣典</button>
         <button class="footer-link-btn home-settings" onclick="openSpireSettings()"><span aria-hidden="true">⚙</span> 设置</button>
@@ -277,6 +278,25 @@
       <header class="presentation-head"><div><p id="presentationOverline" class="prep-overline"></p><h2 id="presentationTitle"></h2></div><button id="presentationClose" class="quiet-button" onclick="closePresentationModal()" aria-label="关闭">关闭 ×</button></header>
       <div id="presentationBody" class="presentation-body"></div>
     </section>
+  </div>
+
+  <!-- 首次进游戏 / 主殿换装：主角「零」三套专属战装形象选择弹窗 -->
+  <div id="outfitModal" class="overlay log-modal outfit-modal hidden" role="dialog" aria-modal="true" aria-labelledby="outfitModalTitle" onclick="if(event.target===this)closeZeroOutfitModal()">
+    <div class="log-box outfit-modal-box">
+      <div class="log-head outfit-modal-head">
+        <div>
+          <span class="codex-kicker">ATTIRE SELECTION · 寻光战装择定</span>
+          <h2 id="outfitModalTitle">择定提灯形象 · 三套专属战装</h2>
+        </div>
+        <button type="button" class="icon-pill-btn" onclick="closeZeroOutfitModal()">✕ 关闭</button>
+      </div>
+      <p class="outfit-modal-sub">择定主角「零」的登塔形象，半身立绘、实机四帧动作精灵表与剧情对白将同步焕新（后续随时可在主界面或启程台一键换装）</p>
+      <div id="outfitModalGrid" class="outfit-modal-grid" role="radiogroup" aria-label="主角三套战装选择"></div>
+      <div class="outfit-modal-foot">
+        <button id="outfitDefaultToggle" type="button" class="ghost-pill-btn outfit-default-btn" onclick="selectZeroOutfitFromUI('default')">切换为初始守誓白衣</button>
+        <button id="outfitConfirmBtn" type="button" class="btn btn-go outfit-confirm-btn" onclick="confirmZeroOutfitModal()">◆ 身披此装 · 提灯启程 →</button>
+      </div>
+    </div>
   </div>
 
   <!-- 守誓遗物匣结算 -->

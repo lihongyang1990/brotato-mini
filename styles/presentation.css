@@ -39,7 +39,7 @@ body:not(.m-ui) .sub-topbar>.gold { justify-self:end; }
 #startMenu[data-stage="story"] .start-bg-vignette { background:linear-gradient(90deg,#0a162670,transparent 32%,#08141ee0 80%),linear-gradient(0deg,#07121de0,transparent 40%); }
 #menuStoryView .story-stage-body { max-width:1120px; width:100%; min-height:0; flex:1; margin:auto; grid-template-columns:minmax(0,1.05fr) minmax(360px,.95fr); gap:clamp(24px,4vw,52px); align-items:center; }
 #storyHeroShowcase.hero-spotlight-card { display:block; position:relative; background:none; border:0; box-shadow:none; overflow:hidden; border-radius:0; min-height:440px; }
-.prep-zero-portrait { position:absolute; height:104%; max-width:100%; width:auto; left:50%; transform:translateX(-50%); bottom:0; object-fit:contain; object-position:bottom; -webkit-mask-image:linear-gradient(0deg,transparent,black 22%,black 94%,transparent); mask-image:linear-gradient(0deg,transparent,black 22%,black 94%,transparent); }
+.prep-zero-portrait { position:absolute; height:98%; max-width:100%; width:auto; left:50%; transform:translateX(-50%); bottom:0; object-fit:contain; object-position:bottom; -webkit-mask-image:linear-gradient(0deg,transparent,black 18%,black 99.5%,transparent); mask-image:linear-gradient(0deg,transparent,black 18%,black 99.5%,transparent); }
 .prep-hero-caption { position:absolute; bottom:8%; left:4%; color:#e8eae5; text-shadow:0 2px 18px #08111f; }
 .prep-hero-caption>span { font-size:11px; letter-spacing:5px; color:#b8cbd0; }
 .prep-hero-caption h2 { font:38px/1.5 "Songti SC",serif; letter-spacing:4px; margin:8px 0; }
@@ -132,8 +132,8 @@ body:not(.m-ui) .sub-topbar>.gold { justify-self:end; }
   #menuStoryView .sub-topbar>.gold { display:none; }
   #menuStoryView .stage-mode-tabs { margin-left:auto; }
   #menuStoryView .story-stage-body { display:flex; flex-direction:column; gap:0; margin:0; overflow:visible; }
-  #storyHeroShowcase.hero-spotlight-card { flex-shrink:0; height:28vh; min-height:165px; max-height:230px; overflow:hidden; }
-  .prep-zero-portrait { height:190%; left:57%; bottom:-72%; }
+  #storyHeroShowcase.hero-spotlight-card { flex-shrink:0; height:30vh; min-height:185px; max-height:245px; overflow:hidden; }
+  .prep-zero-portrait { height:152%; left:58%; bottom:-54%; }
   .prep-hero-caption { bottom:14%; left:2%; }
   .prep-hero-caption>span { font-size:10px; }
   .prep-hero-caption h2 { font-size:30px; }

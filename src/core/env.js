@@ -346,6 +346,125 @@ const TIER_GLOW   = ['', 'rgba(255,255,255,0)', 'rgba(76,201,240,0.45)', 'rgba(1
 const TIER_NAMES  = ['', '普通', '精良', '史诗', '传说', '神话'];
 
 // ============================================================================
+// 👗 主角「零」三套可选高定战装形象与持久化配置（首次进游戏可选 + 随时切换）
+// ============================================================================
+const ZERO_OUTFIT_STORAGE_KEY = 'spire_zero_outfit_v1';
+const ZERO_OUTFIT_CHOSEN_KEY  = 'spire_zero_outfit_chosen_v1';
+const ZERO_PRIMARY_OUTFIT_IDS = ['witch', 'crimson', 'astral'];
+const ZERO_OUTFITS = {
+  witch: {
+    id: 'witch',
+    code: 'ATTIRE · I',
+    name: '星渊夜鸦 · 苍夜秘术魔女装',
+    shortName: '星渊魔女装',
+    captionSuffix: ' · 星渊魔女',
+    badge: '秘术魔女',
+    desc: '超大宽檐尖顶星芒魔女帽配苍夜丝绒披风，提灯折射深空紫晶微光。',
+    portrait: 'assets/spire/port_zero_witch.jpg',
+    chibi: 'assets/spire/hero_zero_witch.png',
+    sheetKey: 'zero_witch',
+    portraitKey: 'zero_witch',
+    accent: '#c084fc',
+    dashColor: '#c084fc'
+  },
+  crimson: {
+    id: 'crimson',
+    code: 'ATTIRE · II',
+    name: '绯夜狐火 · 守誓巫女战装',
+    shortName: '绯夜巫女装',
+    captionSuffix: ' · 绯夜巫女',
+    badge: '绯夜狐火',
+    desc: '玄黑织金羽织配绯红百褶战袴，斜戴白狐神乐半面与暖焰魂灯。',
+    portrait: 'assets/spire/port_zero_crimson.jpg',
+    chibi: 'assets/spire/hero_zero_crimson.png',
+    sheetKey: 'zero_crimson',
+    portraitKey: 'zero_crimson',
+    accent: '#fb7185',
+    dashColor: '#fb7185'
+  },
+  astral: {
+    id: 'astral',
+    code: 'ATTIRE · III',
+    name: '星穹礼赞 · 逆钟星使晚礼装',
+    shortName: '星穹晚礼装',
+    captionSuffix: ' · 星穹星使',
+    badge: '星穹礼赞',
+    desc: '星夜蓝渐变金丝礼裙配逆转时计胸针，手提黄铜浑天仪星灯。',
+    portrait: 'assets/spire/port_zero_astral.jpg',
+    chibi: 'assets/spire/hero_zero_astral.png',
+    sheetKey: 'zero_astral',
+    portraitKey: 'zero_astral',
+    accent: '#60a5fa',
+    dashColor: '#60a5fa'
+  },
+  default: {
+    id: 'default',
+    code: 'CLASSIC · 00',
+    name: '零号素衣 · 初始守誓白衣',
+    shortName: '初始白衣',
+    captionSuffix: ' · 白衣',
+    badge: '初始素衣',
+    desc: '第九百九十九次于石棺苏醒时的灰白守誓斗篷与苍青提灯。',
+    portrait: 'assets/spire/port_zero.jpg',
+    chibi: 'assets/spire/hero_zero.png',
+    sheetKey: 'zero',
+    portraitKey: 'zero',
+    accent: '#72efdd',
+    dashColor: '#72efdd'
+  }
+};
+
+let selectedZeroOutfit = (function () {
+  try {
+    const saved = typeof localStorage !== 'undefined' && localStorage ? localStorage.getItem(ZERO_OUTFIT_STORAGE_KEY) : null;
+    if (saved && ZERO_OUTFITS[saved]) return saved;
+  } catch (_) {}
+  return 'witch';
+})();
+
+function hasChosenZeroOutfit() {
+  try {
+    return !!(typeof localStorage !== 'undefined' && localStorage && localStorage.getItem(ZERO_OUTFIT_CHOSEN_KEY) === '1');
+  } catch (_) {
+    return false;
+  }
+}
+
+function getActiveZeroOutfitId() {
+  try {
+    if (player && player.cls === 'allrounder' && player.outfit && ZERO_OUTFITS[player.outfit]) {
+      return player.outfit;
+    }
+  } catch (_) {}
+  return ZERO_OUTFITS[selectedZeroOutfit] ? selectedZeroOutfit : 'witch';
+}
+
+function getActiveZeroOutfit() {
+  return ZERO_OUTFITS[getActiveZeroOutfitId()] || ZERO_OUTFITS.default;
+}
+
+function setSelectedZeroOutfit(outfitId, markChosen = true) {
+  const validId = ZERO_OUTFITS[outfitId] ? outfitId : 'witch';
+  selectedZeroOutfit = validId;
+  try {
+    if (player && player.cls === 'allrounder') {
+      player.outfit = validId;
+    }
+  } catch (_) {}
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage) {
+      localStorage.setItem(ZERO_OUTFIT_STORAGE_KEY, validId);
+      if (markChosen) localStorage.setItem(ZERO_OUTFIT_CHOSEN_KEY, '1');
+    }
+  } catch (_) {}
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmZeroOutfit === 'function') {
+    SpireAssets.warmZeroOutfit(validId);
+  }
+  if (typeof syncZeroOutfitUI === 'function') syncZeroOutfitUI();
+  return ZERO_OUTFITS[validId];
+}
+
+// ============================================================================
 // 🛡️ 网页端全链路资源完整性自检与启动门禁系统 (SpireBootGate)
 // 防止弱网/丢包/跨版本残缺缓存导致「内容没下载全但初始界面已刷出」引发运行 Bug
 // ============================================================================
