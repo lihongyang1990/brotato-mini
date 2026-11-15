@@ -107,19 +107,26 @@ const SpireAssets = (function () {
 
   // 角色单帧立绘兜底映射
   const HERO_MAP = {
-    allrounder:  'assets/spire/hero_zero.png',
-    brawler:     'assets/spire/hero_jinyu.png',
-    ranger:      'assets/spire/hero_astria.png',
-    engineer:    'assets/spire/hero_jialan.png',
-    ghost:       'assets/spire/hero_qingyu.png',
-    multitasker: 'assets/spire/hero_eclipse.png',
-    vampire:     'assets/spire/hero_jinyu.png',
-    bull:        'assets/spire/hero_jialan.png'
+    allrounder:    'assets/spire/hero_zero.png',
+    zero:          'assets/spire/hero_zero.png',
+    zero_witch:    'assets/spire/hero_zero_witch.png',
+    zero_crimson:  'assets/spire/hero_zero_crimson.png',
+    zero_astral:   'assets/spire/hero_zero_astral.png',
+    brawler:       'assets/spire/hero_jinyu.png',
+    ranger:        'assets/spire/hero_astria.png',
+    engineer:      'assets/spire/hero_jialan.png',
+    ghost:         'assets/spire/hero_qingyu.png',
+    multitasker:   'assets/spire/hero_eclipse.png',
+    vampire:       'assets/spire/hero_jinyu.png',
+    bull:          'assets/spire/hero_jialan.png'
   };
 
   // 已做质心与脚底基线严密对齐的 1024×256 四帧横版透明精灵表（F0待机 / F1左迈步 / F2右迈步 / F3招牌挥击）
   const HERO_SHEET_MAP = {
     zero:          'assets/spire/hero_zero_sheet.png',
+    zero_witch:    'assets/spire/hero_zero_witch_sheet.png',
+    zero_crimson:  'assets/spire/hero_zero_crimson_sheet.png',
+    zero_astral:   'assets/spire/hero_zero_astral_sheet.png',
     allrounder:    'assets/spire/hero_zero_sheet.png',
     jinyu:         'assets/spire/hero_jinyu_sheet.png',
     brawler:       'assets/spire/hero_jinyu_sheet.png',
@@ -143,6 +150,9 @@ const SpireAssets = (function () {
   // 设定集【左栏二次元半身立绘】高清映射（兼容角色 ID 与首领 variant ID）
   const PORTRAIT_MAP = {
     zero:             'assets/spire/port_zero.jpg',
+    zero_witch:       'assets/spire/port_zero_witch.jpg',
+    zero_crimson:     'assets/spire/port_zero_crimson.jpg',
+    zero_astral:      'assets/spire/port_zero_astral.jpg',
     allrounder:       'assets/spire/port_zero.jpg',
     jinyu:            'assets/spire/port_jinyu.jpg',
     brawler:          'assets/spire/port_jinyu.jpg',
@@ -344,19 +354,43 @@ const SpireAssets = (function () {
     return entry.ready ? entry : null;
   }
 
+  function _resolveZeroOutfitSheetKey(keyOrCls) {
+    if (keyOrCls === 'allrounder' && typeof getActiveZeroOutfit === 'function') {
+      return getActiveZeroOutfit().sheetKey || 'zero';
+    }
+    return keyOrCls;
+  }
+
   function getHeroSheet(keyOrCls, flash) {
-    const rel = HERO_SHEET_MAP[keyOrCls];
+    const effKey = _resolveZeroOutfitSheetKey(keyOrCls);
+    const rel = HERO_SHEET_MAP[effKey] || HERO_SHEET_MAP[keyOrCls];
     if (!rel) return null;
-    const ent = ensureSheetEntry(rel);
+    let ent = ensureSheetEntry(rel);
+    if (!ent && effKey !== 'zero' && keyOrCls === 'allrounder') {
+      ent = ensureSheetEntry(HERO_SHEET_MAP.zero);
+    }
     if (!ent) return null;
     return flash ? ent.flashView : ent.normalView;
   }
 
   function getHeroSprite(cls, flash) {
-    const rel = HERO_MAP[cls] || HERO_MAP.allrounder;
-    const ent = ensureSpriteEntry(rel, 256);
+    const effKey = _resolveZeroOutfitSheetKey(cls);
+    const rel = HERO_MAP[effKey] || HERO_MAP[cls] || HERO_MAP.allrounder;
+    let ent = ensureSpriteEntry(rel, 256);
+    if (!ent && effKey !== 'zero' && cls === 'allrounder') {
+      ent = ensureSpriteEntry(HERO_MAP.allrounder, 256);
+    }
     if (!ent) return null;
     return flash ? ent.flashView : ent.normalView;
+  }
+
+  function warmZeroOutfit(outfitId) {
+    if (typeof Image === 'undefined') return;
+    const o = (typeof ZERO_OUTFITS !== 'undefined' && ZERO_OUTFITS[outfitId]) ? ZERO_OUTFITS[outfitId] : null;
+    if (!o) return;
+    ensureSheetEntry(HERO_SHEET_MAP[o.sheetKey] || HERO_SHEET_MAP.zero);
+    ensureSpriteEntry(HERO_MAP[o.sheetKey] || HERO_MAP.allrounder, 256);
+    loadImage(o.portrait);
   }
 
   function getPropSprite(sceneId, flash) {
@@ -435,6 +469,12 @@ const SpireAssets = (function () {
     // monster, arena and alpha portrait uses the same lazy cache when needed.
     const jobs = [
       () => ensureSheetEntry(HERO_SHEET_MAP.zero),
+      () => {
+        if (typeof getActiveZeroOutfit === 'function') {
+          const ao = getActiveZeroOutfit();
+          if (ao && ao.sheetKey && ao.sheetKey !== 'zero') ensureSheetEntry(HERO_SHEET_MAP[ao.sheetKey]);
+        }
+      },
       () => getArenaBg('foundry'),
       () => ensureSpriteEntry(PROP_MAP.foundry, 224),
       ...['chaser', 'swarmer', 'stalker', 'magma_imp', 'shielder', 'shooter']
@@ -454,6 +494,7 @@ const SpireAssets = (function () {
     loadImage,
     getHeroSheet,
     getHeroSprite,
+    warmZeroOutfit,
     getPropSprite,
     pickMonsterPath,
     getMonsterSprite,

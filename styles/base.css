@@ -931,7 +931,7 @@ h2 {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 10%;
+  object-position: center 24%;
   display: block;
   filter: saturate(0.55) brightness(0.72);
   transition: filter 0.2s ease, transform 0.25s ease;
@@ -1028,15 +1028,16 @@ h2 {
 
 .spotlight-art-col {
   position: relative;
-  background: #060910;
+  background: radial-gradient(circle at 50% 40%, #242d3e 0%, #151b27 100%);
   overflow: hidden;
   border-right: 1px solid rgba(223, 192, 132, 0.18);
 }
 .spotlight-portrait {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center 10%;
+  object-fit: contain;
+  object-position: center bottom;
+  padding-top: 6px;
   display: block;
 }
 .spotlight-art-shade {
@@ -2990,4 +2991,254 @@ body:not(.m-ui) #shopCards .card.sold-out {
     opacity: 1;
     pointer-events: auto;
   }
+}
+
+/* =========================================================================
+   👗 主角「零」三套形象/战装选择仪式弹窗 (#outfitModal) + 整备衣橱切换条
+   ========================================================================= */
+.outfit-pill-btn {
+  border-color: rgba(223, 192, 132, 0.44);
+  color: var(--gold-bright);
+  background: rgba(24, 20, 16, 0.86);
+}
+
+.zero-outfit-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  margin-top: 6px;
+  background: rgba(8, 11, 19, 0.82);
+  border: 1px solid rgba(223, 192, 132, 0.24);
+  border-radius: 6px;
+}
+.zero-outfit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 4px;
+  background: rgba(15, 20, 32, 0.90);
+  border: 1px solid rgba(165, 176, 194, 0.24);
+  color: var(--slate);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.zero-outfit-pill.preview-btn {
+  border-color: rgba(223, 192, 132, 0.36);
+  color: var(--gold);
+}
+.zero-outfit-pill.active {
+  background: linear-gradient(180deg, rgba(38, 29, 18, 0.94), rgba(18, 14, 10, 0.98));
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  box-shadow: inset 0 -1.5px 0 var(--gold);
+}
+
+.outfit-modal-box {
+  max-width: 980px;
+  width: min(980px, 95vw);
+  height: auto;
+  max-height: calc(100dvh - 32px);
+}
+.outfit-modal-sub {
+  font-size: 12.5px;
+  color: var(--slate);
+  line-height: 1.5;
+  padding: 0 2px;
+}
+.outfit-modal-sub b { color: var(--gold-bright); }
+.outfit-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.outfit-pick-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(175deg, rgba(16, 21, 34, 0.96), rgba(8, 11, 18, 0.99));
+  border: 1px solid rgba(223, 192, 132, 0.26);
+  color: var(--ivory);
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.outfit-pick-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(223, 192, 132, 0.62);
+}
+.outfit-pick-card.active {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold), 0 14px 34px rgba(0, 0, 0, 0.72), 0 0 24px rgba(223, 192, 132, 0.16);
+}
+.outfit-pick-art {
+  position: relative;
+  width: 100%;
+  height: 288px;
+  background: radial-gradient(circle at 50% 42%, #252d3e 0%, #161c28 100%);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-bottom: 1px solid rgba(223, 192, 132, 0.22);
+}
+.outfit-pick-card[data-outfit="witch"] .outfit-pick-art { background: #282f3f; }
+.outfit-pick-card[data-outfit="crimson"] .outfit-pick-art { background: #1a202c; }
+.outfit-pick-card[data-outfit="astral"] .outfit-pick-art { background: #1f2531; }
+.outfit-pick-portrait,
+.outfit-pick-port {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  padding: 6px 8px 0;
+  display: block;
+  transition: transform 0.24s ease;
+}
+.outfit-pick-card:hover .outfit-pick-portrait,
+.outfit-pick-card.active .outfit-pick-portrait {
+  transform: scale(1.015);
+}
+.outfit-pick-art::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 54px;
+  background: linear-gradient(180deg, transparent 0%, rgba(8, 11, 18, 0.72) 100%);
+  pointer-events: none;
+}
+.outfit-pick-art .outfit-pick-code {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(8, 11, 18, 0.84);
+  border: 1px solid rgba(223, 192, 132, 0.32);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--gold);
+}
+.outfit-pick-chibi-box,
+.outfit-pick-chibi-wrap {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  background: rgba(8, 11, 18, 0.92);
+  border: 1px solid rgba(223, 192, 132, 0.44);
+  border-radius: 6px;
+  padding: 4px 7px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.75);
+}
+.outfit-pick-chibi {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  display: block;
+}
+.outfit-pick-chibi-box span,
+.outfit-pick-chibi-lbl {
+  font-size: 9px;
+  color: var(--gold);
+  letter-spacing: 0.4px;
+}
+.outfit-pick-meta,
+.outfit-pick-body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.outfit-pick-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.outfit-pick-code {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+.outfit-pick-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1.5px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--outfit-accent, rgba(223, 192, 132, 0.42));
+  color: var(--gold-bright);
+  background: rgba(255, 255, 255, 0.05);
+}
+.outfit-pick-name,
+.outfit-pick-title {
+  font-family: var(--font-serif);
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--ivory);
+  line-height: 1.28;
+}
+.outfit-pick-card.active .outfit-pick-name,
+.outfit-pick-card.active .outfit-pick-title { color: var(--gold-bright); }
+.outfit-pick-desc {
+  font-size: 11.5px;
+  color: var(--slate);
+  line-height: 1.48;
+  flex: 1;
+  margin: 0;
+}
+.outfit-pick-state {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+.outfit-pick-card.active .outfit-pick-state { color: var(--gold-bright); }
+.outfit-pick-cta {
+  margin-top: 4px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(223, 192, 132, 0.16);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.6px;
+}
+.outfit-pick-card.active .outfit-pick-cta { color: var(--gold-bright); }
+
+.outfit-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(223, 192, 132, 0.18);
+  flex-wrap: wrap;
+}
+.outfit-default-btn.active {
+  border-color: var(--astral);
+  color: #e0fbfc;
+  background: rgba(22, 46, 58, 0.88);
+}
+.outfit-confirm-btn {
+  min-width: 240px;
+  padding: 11px 22px;
 }

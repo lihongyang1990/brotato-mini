@@ -62,20 +62,182 @@ function _renderDiffButtons(containerId, descId) {
   }
 }
 
+let _outfitModalNextStage = '';
+
+function _buildZeroOutfitStripHtml(compact) {
+  if (typeof ZERO_OUTFITS === 'undefined') return '';
+  const curId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
+  const ids = ['witch', 'crimson', 'astral', 'default'];
+  const btns = ids.map(id => {
+    const o = ZERO_OUTFITS[id];
+    if (!o) return '';
+    const act = id === curId ? ' active' : '';
+    return `<button type="button" class="zero-outfit-pill${act}" data-outfit="${id}" onclick="selectZeroOutfitFromUI('${id}')">${o.shortName}</button>`;
+  }).join('');
+  const zoomBtn = compact ? '' : `<button type="button" class="zero-outfit-pill preview-btn" onclick="openZeroOutfitModal()" title="打开全尺寸三套战装预览">✦ 换装鉴赏</button>`;
+  return `<div class="zero-outfit-strip" role="group" aria-label="主角战装切换">${btns}${zoomBtn}</div>`;
+}
+
+function syncZeroOutfitUI() {
+  if (typeof ZERO_OUTFITS === 'undefined') return;
+  const curId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
+  const cur = ZERO_OUTFITS[curId] || ZERO_OUTFITS.witch;
+  const portUrl = _menuAssetUrl(cur.portrait);
+
+  // 1) Update Story Hero Showcase IN-PLACE so .prep-zero-portrait DOM node identity never changes!
+  const storyBox = document.getElementById('storyHeroShowcase');
+  if (storyBox && storyBox.dataset.heroId) {
+    const imgEl = storyBox.querySelector('.prep-zero-portrait');
+    if (imgEl && imgEl.getAttribute('data-outfit-id') !== curId) {
+      imgEl.setAttribute('data-outfit-id', curId);
+      imgEl.src = portUrl;
+    }
+    const sufEl = storyBox.querySelector('.prep-outfit-suffix');
+    if (sufEl) sufEl.textContent = cur.captionSuffix || ' · 白衣';
+    const pills = storyBox.querySelectorAll('.zero-outfit-pill[data-outfit]');
+    for (let i = 0; i < pills.length; i++) {
+      pills[i].classList.toggle('active', pills[i].getAttribute('data-outfit') === curId);
+    }
+  }
+
+  // 2) Update Outfit Modal cards if open
+  const grid = document.getElementById('outfitModalGrid');
+  if (grid && grid.children.length > 0) {
+    const cards = grid.querySelectorAll('.outfit-pick-card');
+    for (let i = 0; i < cards.length; i++) {
+      const cid = cards[i].getAttribute('data-outfit');
+      const isSel = cid === curId;
+      cards[i].classList.toggle('active', isSel);
+      cards[i].setAttribute('aria-checked', isSel ? 'true' : 'false');
+      const badge = cards[i].querySelector('.outfit-pick-state');
+      if (badge) badge.textContent = isSel ? '◆ 当前穿戴' : '点击换装';
+    }
+  }
+  const defBtn = document.getElementById('outfitDefaultToggle');
+  if (defBtn) {
+    defBtn.classList.toggle('gold', curId === 'default');
+    defBtn.classList.toggle('active', curId === 'default');
+    defBtn.textContent = curId === 'default' ? '◆ 当前穿戴：初始守誓白衣' : '切换为经典形象：初始守誓白衣';
+  }
+  const cfmBtn = document.getElementById('outfitConfirmBtn');
+  if (cfmBtn) {
+    cfmBtn.textContent = _outfitModalNextStage === 'story'
+      ? `◆ 身披「${cur.shortName}」· 提灯启程 →`
+      : `◆ 确认穿戴「${cur.shortName}」`;
+  }
+
+  // 3) Update Home Footer button label & Endless Zero showcase if active
+  const homeBtn = document.getElementById('homeOutfitBtn');
+  if (homeBtn) {
+    homeBtn.innerHTML = `<span aria-hidden="true">✦</span> 战装 · ${cur.shortName}`;
+  }
+  if (typeof menuStage !== 'undefined' && menuStage === 'endless') {
+    const cg = document.getElementById('classGrid');
+    if (cg) {
+      const zeroAvatarImg = cg.querySelector('.roster-avatar[data-cls="allrounder"] .roster-avatar-img');
+      if (zeroAvatarImg) zeroAvatarImg.src = portUrl;
+    }
+    if (selectedEndlessCls === 'allrounder') {
+      const zeroObj = CLASSES.find(c => c.id === 'allrounder');
+      if (zeroObj) _renderHeroSpotlight('endlessHeroShowcase', zeroObj, false);
+    }
+  }
+}
+
+function selectZeroOutfitFromUI(outfitId) {
+  if (typeof setSelectedZeroOutfit === 'function') {
+    setSelectedZeroOutfit(outfitId, true);
+    beep(560, 0.04, 'triangle', 0.035);
+  }
+}
+
+function openZeroOutfitModal(opts) {
+  const options = opts || {};
+  _outfitModalNextStage = options.nextStage || '';
+  const modal = document.getElementById('outfitModal');
+  const grid = document.getElementById('outfitModalGrid');
+  if (!modal || !grid || typeof ZERO_OUTFITS === 'undefined') {
+    if (_outfitModalNextStage) openMenuStage(_outfitModalNextStage);
+    return;
+  }
+  const curId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
+  grid.innerHTML = ZERO_PRIMARY_OUTFIT_IDS.map(id => {
+    const o = ZERO_OUTFITS[id];
+    const isSel = id === curId;
+    const pUrl = _menuAssetUrl(o.portrait);
+    const cUrl = _menuAssetUrl(o.chibi);
+    return `
+      <button type="button" class="outfit-pick-card${isSel ? ' active' : ''}" role="radio" aria-checked="${isSel ? 'true' : 'false'}" data-outfit="${id}" style="--outfit-accent:${o.accent}" onclick="selectZeroOutfitFromUI('${id}')">
+        <div class="outfit-pick-art">
+          <img src="${pUrl}" alt="${o.name}" class="outfit-pick-portrait" decoding="async">
+          <div class="outfit-pick-chibi-box" title="实机四帧动作形态">
+            <img src="${cUrl}" alt="${o.shortName} 实机精灵" class="outfit-pick-chibi" decoding="async">
+            <span>实机形态</span>
+          </div>
+          <span class="outfit-pick-code">${o.code}</span>
+        </div>
+        <div class="outfit-pick-meta">
+          <div class="outfit-pick-top">
+            <span class="outfit-pick-badge">${o.badge}</span>
+            <span class="outfit-pick-state">${isSel ? '◆ 当前穿戴' : '点击换装'}</span>
+          </div>
+          <div class="outfit-pick-name">${o.name}</div>
+          <p class="outfit-pick-desc">${o.desc}</p>
+        </div>
+      </button>`;
+  }).join('');
+  modal.classList.remove('hidden');
+  syncZeroOutfitUI();
+  beep(500, 0.045, 'triangle', 0.035);
+}
+
+function closeZeroOutfitModal() {
+  const modal = document.getElementById('outfitModal');
+  if (modal) modal.classList.add('hidden');
+  _outfitModalNextStage = '';
+}
+
+function confirmZeroOutfitModal() {
+  const curId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
+  if (typeof setSelectedZeroOutfit === 'function') setSelectedZeroOutfit(curId, true);
+  const next = _outfitModalNextStage;
+  closeZeroOutfitModal();
+  if (next) openMenuStage(next);
+}
+
+function handleStoryPortalClick() {
+  if (typeof bootIntegrityPassed !== 'undefined' && !bootIntegrityPassed) {
+    if (typeof SpireBootGate !== 'undefined' && SpireBootGate) SpireBootGate.runFullCheck('user_guard');
+    return;
+  }
+  if (typeof hasChosenZeroOutfit === 'function' && !hasChosenZeroOutfit()) {
+    openZeroOutfitModal({ nextStage: 'story' });
+    return;
+  }
+  openMenuStage('story');
+}
+
 function _renderHeroSpotlight(containerId, clsObj, isStoryLocked) {
   const box = document.getElementById(containerId);
   if (!box || !clsObj) return;
-  const portUrl = _menuAssetUrl(clsObj.portrait);
+  const isZero = clsObj.id === 'allrounder' && typeof getActiveZeroOutfit === 'function';
+  const activeOutfit = isZero ? getActiveZeroOutfit() : null;
+  const portUrl = _menuAssetUrl(activeOutfit ? activeOutfit.portrait : clsObj.portrait);
   if (isStoryLocked) {
     // The story hero never changes. Keep the decoded portrait when only the
-    // difficulty selection changes instead of replacing the image element.
-    if (box.dataset.heroId === clsObj.id) return;
+    // difficulty or outfit selection changes instead of replacing the image element.
+    if (box.dataset.heroId === clsObj.id) {
+      syncZeroOutfitUI();
+      return;
+    }
     box.dataset.heroId = clsObj.id;
-    box.innerHTML = `<img src="${portUrl}" alt="零，白衣提灯少女" class="prep-zero-portrait" decoding="async"><div class="prep-hero-caption"><span>提灯人</span><h2>零<span> · 白衣</span></h2><p>她忘记了自己的名字。<br>手中的灯，却仍为某个人亮着。</p></div>`;
+    const outfitId = activeOutfit ? activeOutfit.id : 'default';
+    const suf = activeOutfit ? activeOutfit.captionSuffix : ' · 白衣';
+    box.innerHTML = `<img src="${portUrl}" data-outfit-id="${outfitId}" alt="零，白衣提灯少女" class="prep-zero-portrait" decoding="async"><div class="prep-hero-caption"><span>提灯人</span><h2>零<span class="prep-outfit-suffix">${suf}</span></h2><p>她忘记了自己的名字。<br>手中的灯，却仍为某个人亮着。</p>${_buildZeroOutfitStripHtml(false)}</div>`;
     return;
   }
-  const chibiUrl = _menuAssetUrl(clsObj.chibi);
-  const roleTag = isStoryLocked ? '唯一主角 · 提灯人' : clsObj.tag;
+  const chibiUrl = _menuAssetUrl(activeOutfit ? activeOutfit.chibi : clsObj.chibi);
+  const roleTag = isStoryLocked ? '唯一主角 · 提灯人' : (activeOutfit ? activeOutfit.badge : clsObj.tag);
   const traitsArr = Array.isArray(clsObj.traits) ? clsObj.traits : [];
   const negTxt = clsObj.negTrait || '';
   const bioTxt = isStoryLocked
@@ -105,6 +267,7 @@ function _renderHeroSpotlight(containerId, clsObj, isStoryLocked) {
         </div>
         <div class="spotlight-name">${clsObj.name}</div>
       </div>
+      ${isZero ? _buildZeroOutfitStripHtml(true) : ''}
 
       <div class="dossier-tabs" role="tablist" aria-label="角色档案选项卡">
         <button type="button" class="dossier-tab${isTraitsTab ? ' active' : ''}" onclick="setHeroDossierTab('traits')">契约特质</button>
@@ -293,8 +456,9 @@ function initMenuUI() {
       btn.type = 'button';
       btn.setAttribute('role', 'tab');
       btn.setAttribute('aria-selected', isAct ? 'true' : 'false');
+      btn.setAttribute('data-cls', c.id);
       btn.className = 'roster-avatar' + (isAct ? ' active' : '');
-      const portUrl = _menuAssetUrl(c.portrait);
+      const portUrl = _menuAssetUrl((c.id === 'allrounder' && typeof getActiveZeroOutfit === 'function') ? getActiveZeroOutfit().portrait : c.portrait);
       const shortLbl = HERO_SHORT_NAMES[c.id] || c.name;
       btn.innerHTML = `
         <span class="ctab-head">
@@ -332,6 +496,8 @@ window.addEventListener('keydown', e => {
   const presentation = document.getElementById('presentationModal');
   if (presentation && !presentation.classList.contains('hidden')) return;
   if (k === 'escape') {
+    const om = document.getElementById('outfitModal');
+    if (om && !om.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeZeroOutfitModal(); return; }
     const cm = document.getElementById('codexModal');
     if (cm && !cm.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeCodex(); return; }
     const clm = document.getElementById('changelogModal');
@@ -697,7 +863,8 @@ function startGame(cls, opts) {
   diff = DIFFS[selectedDiff] || DIFFS[1] || DIFFS[0];
   inHurtPlayer = false;
   player = {
-    cls, x: WORLD.w / 2, y: WORLD.h / 2, r: 24.2, faceDir: 1, lookA: 0,
+    cls, outfit: cls === 'allrounder' && typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : '',
+    x: WORLD.w / 2, y: WORLD.h / 2, r: 24.2, faceDir: 1, lookA: 0,
     vx: 0, vy: 0, _leanA: 0, _hsCd: 0,
     dashCd: 0, dashMaxCd: cls === 'ghost' ? 2.5 : 3.2, dashT: 0, dashVx: 0, dashVy: 0,
     dashHasteT: 0, turretOverclockT: 0, magnetPulseT: 0,
@@ -748,7 +915,8 @@ function startGame(cls, opts) {
   syncSetHp();
   wave = 1; endlessMode = runEndless; pendingLevels = 0; pendingCrates = 0; freeRerollsLeft = 0; anvilUpgradedMsg = ''; shopOffers = []; waveCheckpoint = null;
   survivalTrialQueued = false; survivalTrialWave = false; survivalTrialHits = 0; survivalFissures = []; survivalSkyVolleys = [];
-  logInfo('GAME', `开局 ver=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '-'}, mode=${runEndless ? 'endless' : 'story'}, cls=${cls}, diff=${diff.badge}, sceneMode=${selectedScene}, ui=${uiMode}, world=${WORLD.w}x${WORLD.h}`);
+  if (typeof closeZeroOutfitModal === 'function') closeZeroOutfitModal();
+  logInfo('GAME', `开局 ver=${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '-'}, mode=${runEndless ? 'endless' : 'story'}, cls=${cls}, outfit=${player.outfit || '-'}, diff=${diff.badge}, sceneMode=${selectedScene}, ui=${uiMode}, world=${WORLD.w}x${WORLD.h}`);
   document.getElementById('startMenu').classList.add('hidden');
   document.getElementById('endMenu').classList.add('hidden');
   document.getElementById('pauseMenu').classList.add('hidden');
@@ -988,6 +1156,13 @@ function retryFailedWave(options) {
     : [];
 
   player = clonePlayerForCheckpoint(waveCheckpoint.player);
+  if (player.cls === 'allrounder') {
+    if (player.outfit && typeof ZERO_OUTFITS !== 'undefined' && ZERO_OUTFITS[player.outfit]) {
+      selectedZeroOutfit = player.outfit;
+    } else if (typeof getActiveZeroOutfitId === 'function') {
+      player.outfit = getActiveZeroOutfitId();
+    }
+  }
   player.shownBossPortraits = mergedPortraits;
   player.rarePortraitShown = Object.keys(mergedPortraits).length > 0;
   player.retryCount = nextRetryCount;
