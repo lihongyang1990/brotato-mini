@@ -369,6 +369,13 @@ function initMenuUI() {
   if (typeof refreshSpireHome === 'function') refreshSpireHome();
   // Build only the visible preparation screen. Opening the title/story menu
   // must not load six hidden portraits and rebuild every endless-mode card.
+  // Proactively prewarm & GPU-decode the opening story CGs (lightweight ~300KB .jpg twins)
+  // while the user is browsing the Home or Story screen so mobile opening dialogue has 0ms black screen!
+  if ((menuStage === 'home' || menuStage === 'story') && typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.preloadStoryEntry === 'function') {
+    const savedRun = (typeof SpireSave !== 'undefined' && SpireSave && typeof SpireSave.load === 'function') ? SpireSave.load() : null;
+    const targetFloor = (menuStage === 'home' && savedRun && savedRun.checkpoint && savedRun.checkpoint.wave) ? savedRun.checkpoint.wave : 1;
+    SpireDirector.preloadStoryEntry(targetFloor);
+  }
   if (menuStage === 'home') return;
   if (menuStage === 'story') {
     _renderDiffButtons('storyDiffTabs', 'storyDiffDesc');

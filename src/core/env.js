@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.16 手机端双指移动与瞬步完全解耦 + 0ms 瞬发触控瞬步 + 移动朝向独立记忆防反向撞怪）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.17 手机端剧情开局与过场背景图极速秒刷不黑屏：19张剧情原画压缩87.5% + 主殿预解码 + 双缓冲画框防闪黑 + 错峰预热）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,13 +16,23 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.16';
+const APP_VERSION = 'v2.1.17';
 const APP_BUILD_DATE = '2026-11-15';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.16', date: '2026-11-15', tag: '当前版本 · 手机端边走边瞬步零冲突 · 全首领体积+20% · 隐藏Boss召唤强指引 · 刷新分段回落',
+    ver: 'v2.1.17', date: '2026-11-15', tag: '当前版本 · 手机端开局零黑屏 · 怪物贴图独立通道绝不变圆球 · 商店一屏全显零下拉 · 全图鉴羁绊折叠屏占比80%+',
+    title: '📱 手机端四大体验深度重构：开局原画秒刷不黑屏（体积-87.5%） + 怪物贴图独立高优通道根治圆球 + 商店 2×2 一屏全显零下拉零遮挡 + 全图鉴流派羁绊可折叠精简',
+    items: [
+      '👾 彻底根治手机端怪物显示成纯色圆球：重构双优先级贴图加载器（战斗精灵独享 10 路高优绿色通道，后台大图限流 3 路绝不挤占小怪）、新增每请求 5 秒挂起看门狗超时断连自愈、移除小体积战斗精灵异步解码延迟并常驻轻量离屏画布防 WebKit 内存驱逐，首波核心小怪开机即刻预热，且弱网极端流式过渡期升级为哥特暗影魔偶剪影（彻底告别纯色圆球）！',
+      '🛒 手机端商店重构为【2×2 四宫格一屏全显 · 零下拉 · 零遮挡】：移除此前导致商品栏出现局促内部滚动条与双行顶栏的覆盖样式，竖屏与横屏统一采用 2×2 四宫格全显陈列，4 件商品、6 格随身兵装与刷新/下一层按钮 100% 同屏完整呈现无需下拉；同时将【踏入蚀界试炼】精简为 32px 单行胶囊契约条，绝不挤压或遮挡购买栏！',
+      '📖 手机端全图鉴【流派与四象元素羁绊】折叠优化：全图鉴兵装页顶部 8 大流派羁绊默认收束为 28px 单行摘要条（点击可展开/收起，点选任一流派直接筛选对应兵装并单条展示该羁绊），令下方兵装与遗物列表可视高度跃升至全屏 80% 以上！',
+      '🎬 手机端剧情开局与切镜背景图秒刷不黑屏（52.13MB → 6.53MB，骤降 87.5%）：为全部 19 张 V2/V3 宽银幕剧情原画生成原生 1672×941 高速双生版，配合主殿前置预解码与 .story-art-backdrop 双缓冲底图驻留层，彻底消除开场与切镜黑屏！'
+    ]
+  },
+  {
+    ver: 'v2.1.16', date: '2026-11-15', tag: '手机端边走边瞬步零冲突 · 全首领体积+20% · 隐藏Boss召唤强指引 · 刷新分段回落',
     title: '🎮 解决手机端移动与瞬步冲突 + 👑 全体首领体积增大 20% + ⛩️ 隐藏首领召唤祭坛全方位路线指引 + 💰 行商刷新价格分段回落（3/6/9/12层降50% · 其余层降20%）',
     items: [
       '⛩️ 可召唤隐藏首领祭坛提示与路线指引全面升级：祭坛刷新时新增主角脚下贴身【黄金双翼罗盘箭头 + 流动引魂金线】实时指向祭坛并显示剩余距离、顶部半透明常驻雷达胶囊（含实时唤醒读条）、屏幕边缘双环脉冲大锋矢信标以及祭坛冲天圣辉光柱与声呐扩散环，激战走位中也一眼锁定方向绝不错过！',
@@ -726,6 +736,7 @@ const SpireBootGate = (function () {
     const criticalList = [
       ['主殿背景原画', 'assets/spire/v2/title-clean.png', true],
       ['主角立绘档案', 'assets/spire/port_zero.jpg', true],
+      ['序章石棺原画', 'assets/spire/v3/awakening-coffin.png', false],
       ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png', false],
       ['风语行商立绘', 'assets/spire/port_qingyu.jpg', false],
       ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg', false]

@@ -1962,6 +1962,18 @@ body:not(.m-ui) #shopCards .card.sold-out {
   background: linear-gradient(135deg, #72efdd 0%, #c084fc 55%, #f6d379 100%);
   color: #0b101b;
 }
+.shop-trial-desk {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.shop-trial-mob,
+.shop-trial-btn-mob {
+  display: none;
+}
+.shop-trial-bar.is-armed .shop-trial-mob {
+  color: #72efdd;
+}
 .shop-trial-toggle:active {
   transform: scale(0.97);
 }
@@ -2585,6 +2597,7 @@ body:not(.m-ui) #shopCards .card.sold-out {
   display: flex;
   gap: 7px;
   flex-wrap: wrap;
+  flex-shrink: 0;
   background: rgba(8, 11, 18, 0.72);
   padding: 8px 12px;
   border-radius: 5px;
@@ -2594,6 +2607,30 @@ body:not(.m-ui) #shopCards .card.sold-out {
 }
 .codex-banner b { color: var(--gold-bright); font-weight: 600; }
 .codex-banner:empty { display: none; }
+.codex-syn-bar { display: none; }
+.codex-syn-list { display: flex; flex-wrap: wrap; gap: 7px; width: 100%; }
+.codex-syn-list .set-pill { cursor: pointer; transition: border-color 0.14s, background 0.14s; }
+.codex-syn-list .set-pill:hover { border-color: rgba(223, 192, 132, 0.55); background: rgba(223, 192, 132, 0.12); }
+.codex-active-set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+.codex-active-set-row .active-set-pill { flex: 1; min-width: 0; }
+.codex-syn-toggle {
+  flex-shrink: 0;
+  background: rgba(223, 192, 132, 0.14);
+  color: var(--gold-bright);
+  border: 1px solid rgba(223, 192, 132, 0.38);
+  border-radius: 4px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
 
 .codex-scroll {
   flex: 1;

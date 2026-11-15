@@ -1470,18 +1470,25 @@ function beginWave(retryMeta = null) {
   if (cxm) cxm.classList.add('hidden');
   document.getElementById('pauseMenu').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
-  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmWave === 'function') {
-    SpireAssets.warmWave(wave, curScene && curScene.id);
-  }
   const bwWrap = document.getElementById('bossBarWrap');
   if (bwWrap) {
     bwWrap.classList.remove('mythic');
     bwWrap.classList.toggle('hidden', !(isBossWave || isEliteWave));
   }
 
-  // 触发《烬塔残响》剧情演出导演：幕间转场 / 首领登场 CG / 左侧半身立绘 AVG 对话
+  // 触发《烬塔残响》剧情演出导演：优先于怪物贴图预热发起，确保手机端开局序章/层前对话背景图独占高优先级连接秒出不黑屏！
   if (hasDirector) {
     SpireDirector.onWaveStart(wave, curScene, spawnedPrimaryBossId, isRetry);
+  }
+
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmWave === 'function') {
+    const warmWaveNum = wave;
+    const warmSceneId = curScene && curScene.id;
+    if (hasDirector && SpireDirector.isActive() && typeof setTimeout === 'function') {
+      setTimeout(function () { SpireAssets.warmWave(warmWaveNum, warmSceneId); }, 450);
+    } else {
+      SpireAssets.warmWave(warmWaveNum, warmSceneId);
+    }
   }
 }
 

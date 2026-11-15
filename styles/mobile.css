@@ -164,48 +164,65 @@ body.m-ui .endless-go-btn {
 /* =========================================================================
    2. 手机端行商、共鸣强化、遗物匣、驻留弹窗与圣典下划线选项卡适配
    ========================================================================= */
+body.m-ui #shopMenu:not(.drawer-open) {
+  overflow: hidden;
+  justify-content: space-between;
+  gap: 4px;
+  padding-top: calc(5px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+}
 body.m-ui .shop-head {
-  padding: 6px 10px;
+  padding: 4px 8px;
   gap: 6px;
   flex-shrink: 0;
+  flex-wrap: nowrap;
+  align-items: center;
 }
-body.m-ui .shop-witch-portrait { width: 40px; height: 50px; cursor: pointer; }
-body.m-ui .shop-title-group { gap: 2px; }
-body.m-ui #shopTitle { font-size: 14px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-body.m-ui .shop-sub {
-  font-size: 10.5px;
-  line-height: 1.25;
-  padding: 1px 7px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+body.m-ui .shop-merchant-wrap { gap: 6px; flex: 1; min-width: 0; align-items: center; }
+body.m-ui .shop-witch-portrait { width: 30px; height: 36px; cursor: pointer; flex-shrink: 0; }
+body.m-ui .shop-title-group { gap: 1px; flex: 1; min-width: 0; }
+body.m-ui #shopTitle { font-size: 13px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.m-ui .shop-sub { display: none; }
+@media (min-height: 780px) {
+  body.m-portrait .shop-sub {
+    display: block;
+    font-size: 10px;
+    line-height: 1.2;
+    padding: 1px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
-body.m-ui .wallet-pill { height: 34px; font-size: 14.5px; padding: 0 10px; display: inline-flex; align-items: center; }
+body.m-ui .shop-wallet-group { gap: 4px; flex-shrink: 0; align-items: center; }
+body.m-ui .wallet-pill { height: 28px; font-size: 13px; padding: 0 8px; display: inline-flex; align-items: center; white-space: nowrap; }
+body.m-ui .shop-head .icon-pill-btn { height: 28px; min-height: 28px; padding: 0 7px; font-size: 11px; }
 
 body.m-ui .mob-drawer-btn {
   width: 100%;
-  min-height: 32px;
+  height: 28px;
+  min-height: 28px;
   background: rgba(13, 18, 29, 0.95);
   color: var(--ivory);
   border: 1px solid var(--gold-line);
   border-radius: 5px;
-  padding: 4px 10px;
-  font-size: 11.5px;
+  padding: 2px 8px;
+  font-size: 11px;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
   flex-shrink: 0;
   gap: 6px;
 }
-body.m-ui .mob-quick-stats { display: flex; gap: 7px; flex-wrap: nowrap; overflow: hidden; align-items: center; font-size: 11px; color: var(--slate); }
+body.m-ui .mob-quick-stats { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; align-items: center; font-size: 10.5px; color: var(--slate); }
 body.m-ui .mob-quick-stats b { color: var(--gold-bright); margin-left: 2px; }
 body.m-ui .mob-drawer-pill {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--gold-bright);
   background: rgba(223, 192, 132, 0.14);
   border: 1px solid rgba(223, 192, 132, 0.30);
-  padding: 2px 8px;
+  padding: 1px 7px;
   border-radius: 3px;
   white-space: nowrap;
 }
@@ -216,29 +233,45 @@ body.m-ui #shopMenu.drawer-open #shopCards,
 body.m-ui #shopMenu.drawer-open #shopTrialBar,
 body.m-ui #shopMenu.drawer-open .shop-bottom { display: none; }
 body.m-ui #shopTrialBar {
-  padding: 6px 9px;
-  gap: 8px;
+  padding: 3px 8px;
+  gap: 6px;
   flex-shrink: 0;
+  flex-direction: row;
+  align-items: center;
+  min-height: 32px;
 }
-body.m-ui .shop-trial-title { font-size: 12px; }
-body.m-ui .shop-trial-pill { font-size: 9.5px; padding: 1px 5px; }
-body.m-ui .shop-trial-desc {
-  font-size: 10.5px;
-  line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
+body.m-ui .shop-trial-desk,
+body.m-ui .shop-trial-btn-desk { display: none !important; }
+body.m-ui .shop-trial-mob {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f3e8ff;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
 }
+body.m-ui .shop-trial-btn-mob { display: inline; }
 body.m-ui .shop-trial-toggle {
-  min-height: 31px;
-  padding: 4px 10px;
-  font-size: 11.5px;
+  min-height: 26px;
+  height: 26px;
+  padding: 0 9px;
+  font-size: 11px;
+  border-radius: 5px;
 }
 body.m-ui #shopMenu.drawer-open #statsRow { flex-shrink: 0; }
 body.m-ui #shopMenu.drawer-open #setRow { flex: 1; min-height: 0; overflow-y: auto; align-content: flex-start; }
 
-body.m-ui #shopCards { flex: 1; min-height: 0; }
+body.m-ui #shopCards {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
 body.m-ui #shopCards .card:not(.sold-out) {
   min-height: 0;
   padding: 8px 9px;
@@ -332,12 +365,12 @@ body.m-ui .crate-btns .btn { height: 36px; font-size: 12.5px; padding: 0 8px; }
 body.m-ui .shop-bottom {
   flex-direction: column;
   align-items: stretch;
-  padding: 6px 9px;
-  gap: 4px;
+  padding: 4px 8px;
+  gap: 2px;
   flex-shrink: 0;
 }
-body.m-ui .arsenal-head { margin-bottom: 2px; }
-body.m-ui .slot-hint { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.m-ui .arsenal-head { margin-bottom: 1px; }
+body.m-ui .slot-hint { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.m-ui .slots {
   display: grid;
   grid-auto-flow: column;
@@ -346,26 +379,27 @@ body.m-ui .slots {
   width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
+  touch-action: pan-x;
 }
 body.m-ui .slots::-webkit-scrollbar { display: none; }
-body.m-ui .slot, body.m-ui .slot-empty { width: 100%; height: 46px; padding: 3px 2px; font-size: 10px; gap: 1px; }
-body.m-ui .slot-icon { font-size: 16px; }
-body.m-ui .slot-name { font-size: 9.5px; }
+body.m-ui .slot, body.m-ui .slot-empty { width: 100%; height: 42px; padding: 2px 2px; font-size: 9.5px; gap: 1px; }
+body.m-ui .slot-icon { font-size: 15px; }
+body.m-ui .slot-name { font-size: 9px; }
 body.m-ui .slot-sub { display: none !important; }
 
 body.m-ui .mob-shop-bar {
   width: 100%;
-  gap: 8px;
+  gap: 7px;
   align-items: center;
   background: rgba(12, 16, 26, 0.98);
-  padding: 6px 8px;
+  padding: 4px 7px;
   border: 1px solid var(--gold-line);
   border-radius: 6px;
   flex-shrink: 0;
 }
-body.m-ui .mob-shop-bar .btn { height: 42px; font-size: 13.5px; padding: 0 12px; justify-content: center; }
+body.m-ui .mob-shop-bar .btn { height: 36px; min-height: 36px; font-size: 13px; padding: 0 10px; justify-content: center; }
 body.m-ui .mob-shop-bar .btn-sec { flex: 1; }
-body.m-ui .mob-shop-bar .btn-go { flex: 1.4; font-size: 14px; }
+body.m-ui .mob-shop-bar .btn-go { flex: 1.45; font-size: 13.5px; }
 
 body.m-ui .modal-plaque {
   padding: 16px 15px;
@@ -412,13 +446,15 @@ body.m-ui .end-detail-evo-grid { grid-template-columns: minmax(0, 1fr); }
 
 body.m-ui .codex-box,
 body.m-ui .log-box {
-  padding: 12px 13px;
+  padding: 9px 10px;
   height: 100%;
-  max-height: calc(100dvh - 16px);
-  gap: 8px;
+  max-height: calc(100dvh - 12px);
+  gap: 5px;
 }
+body.m-ui .codex-head .codex-kicker { display: none; }
 body.m-ui .codex-head h2,
-body.m-ui .log-head h2 { font-size: 16.5px; }
+body.m-ui .log-head h2 { font-size: 15px; line-height: 1.2; }
+body.m-ui .codex-head .icon-pill-btn { height: 30px; min-height: 30px; padding: 0 9px; font-size: 11.5px; }
 body.m-ui .codex-tabs {
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -427,16 +463,85 @@ body.m-ui .codex-tabs {
   flex-shrink: 0;
 }
 body.m-ui .codex-tabs::-webkit-scrollbar { display: none; }
-body.m-ui .codex-tab { padding: 7px 11px 9px; font-size: 12.5px; gap: 5px; flex-shrink: 0; }
+body.m-ui .codex-tab { padding: 5px 9px 7px; font-size: 12px; gap: 4px; flex-shrink: 0; }
 body.m-ui .codex-filters {
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
   flex-shrink: 0;
+  padding: 3px 6px;
+  gap: 4px;
 }
 body.m-ui .codex-filters::-webkit-scrollbar { display: none; }
+body.m-ui .codex-filter { padding: 3px 9px; font-size: 11px; }
+body.m-ui .codex-banner {
+  padding: 4px 8px;
+  gap: 4px;
+  font-size: 11px;
+  line-height: 1.32;
+  flex-shrink: 0;
+}
+body.m-ui .codex-banner:not(.is-weapons-banner) {
+  max-height: 44px;
+  overflow: hidden;
+}
+body.m-ui .codex-banner.is-weapons-banner {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+body.m-ui .codex-syn-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--ivory);
+  padding: 1px 0;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+body.m-ui .codex-syn-summary {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--gold-bright);
+  font-weight: 600;
+}
+body.m-ui .codex-syn-pill {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  background: rgba(223, 192, 132, 0.16);
+  border: 1px solid rgba(223, 192, 132, 0.38);
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+body.m-ui .codex-banner.is-weapons-banner:not(.is-synergy-open) .codex-syn-list { display: none; }
+body.m-ui .codex-banner.is-weapons-banner.is-synergy-open .codex-syn-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 24dvh;
+  overflow-y: auto;
+  padding-top: 4px;
+  border-top: 1px solid rgba(223, 192, 132, 0.18);
+  overscroll-behavior: contain;
+}
+body.m-ui .codex-banner .set-pill { font-size: 10.5px; padding: 2px 6px; line-height: 1.3; }
 body.m-ui .codex-scroll,
-body.m-ui .log-view { min-height: 0; flex: 1; }
+body.m-ui .log-view { min-height: 0; flex: 1 1 0; }
+body.m-ui .codex-card { padding: 9px 11px; gap: 6px; }
+body.m-ui .codex-card-title { font-size: 14.5px; }
+body.m-ui .codex-card-desc { font-size: 12px; line-height: 1.45; }
 
 /* =========================================================================
    3. 手机竖屏 (m-portrait) 专属排版：2×3 对称人物选项卡 + 堆叠分栏
@@ -504,10 +609,80 @@ body.m-portrait .endless-stage-body {
   max-width: 460px;
   flex: 0 0 auto;
 }
+/* 手机竖屏商店 2×2 双列四宫格一屏全显：零下拉滚动、零契约遮挡 */
 body.m-portrait #shopCards {
-  grid-template-columns: 1fr;
-  grid-template-rows: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+body.m-portrait #shopCards .card:not(.sold-out) {
+  min-height: 0;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 4px;
+  overflow: hidden;
+}
+body.m-portrait #shopCards .card-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 3px;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+body.m-portrait #shopCards .card-head { gap: 6px; padding-right: 0; align-items: center; }
+body.m-portrait #shopCards .item-emblem { width: 26px; height: 26px; font-size: 14px; flex-shrink: 0; }
+body.m-portrait #shopCards .card-title { font-size: 12.5px; line-height: 1.18; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.m-portrait #shopCards .card-badges { gap: 3px; flex-wrap: nowrap; overflow: hidden; }
+body.m-portrait #shopCards .tag { font-size: 9px; padding: 1px 4px; flex-shrink: 0; }
+body.m-portrait #shopCards .card-desc {
+  font-size: 10.5px;
+  line-height: 1.28;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (min-height: 760px) {
+  body.m-portrait #shopCards .card-desc { -webkit-line-clamp: 4; }
+}
+body.m-portrait #shopCards .stat-chips { margin-top: auto; gap: 3px; flex-wrap: wrap; overflow: hidden; }
+body.m-portrait #shopCards .stat-chip { font-size: 9.5px; padding: 1px 4px; white-space: nowrap; }
+body.m-portrait #shopCards .card-side {
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  flex-shrink: 0;
+}
+body.m-portrait #shopCards .lock-pin {
+  width: auto;
+  min-width: 40px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 6px;
+  font-size: 10.5px;
+  flex-shrink: 0;
+}
+body.m-portrait #shopCards .card-actions { flex: 1; min-width: 0; }
+body.m-portrait #shopCards .card-actions .btn {
+  width: 100%;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 6px;
+  font-size: 11px;
+  justify-content: space-between;
+}
+body.m-portrait #shopCards .card.sold-out {
+  min-height: 0;
+  padding: 6px;
+  justify-content: center;
+  align-items: center;
 }
 body.m-portrait .codex-grid,
 body.m-portrait .codex-grid.wide { grid-template-columns: 1fr; gap: 8px; }
@@ -541,11 +716,20 @@ body.m-landscape .depart-summary-line { display: none; }
 body.m-landscape .btn-story-go,
 body.m-landscape .endless-go-btn { min-height: 36px; padding: 7px 12px; font-size: 13px; }
 
+body.m-landscape #shopMenu:not(.drawer-open) { gap: 3px; padding-top: calc(4px + env(safe-area-inset-top, 0px)); padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px)); }
 body.m-landscape #shopCards {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
+body.m-landscape #shopCards .card:not(.sold-out) { padding: 5px 8px; gap: 6px; overflow: hidden; }
+body.m-landscape #shopCards .item-emblem { width: 24px; height: 24px; font-size: 13px; }
+body.m-landscape #shopCards .card-title { font-size: 12px; }
+body.m-landscape #shopCards .card-desc { font-size: 10.5px; line-height: 1.24; -webkit-line-clamp: 2; }
+body.m-landscape #shopCards .stat-chip { font-size: 9.5px; padding: 0 4px; }
+body.m-landscape #shopCards .card-side { width: 88px; gap: 3px; }
+body.m-landscape #shopCards .lock-pin { height: 22px; min-height: 22px; font-size: 10px; padding: 0 5px; }
+body.m-landscape #shopCards .card-actions .btn { height: 26px; min-height: 26px; font-size: 11px; padding: 0 6px; }
 body.m-landscape .crate-card-wrap,
 body.m-landscape #lvlCards,
 body.m-landscape .codex-grid,
@@ -555,8 +739,7 @@ body.m-landscape .codex-grid.wide {
 }
 body.m-landscape .stats-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
-/* Small screens keep controls reachable; content scrolls instead of shrinking
-   purchase cards until their buttons are clipped. */
+/* Small screens keep controls reachable while #shopMenu fits strictly in one screen */
 #wrap { height: var(--app-height, 100vh); }
 body.m-ui .overlay {
   max-height: 100%;
@@ -568,9 +751,7 @@ body.m-ui .overlay {
 }
 body.m-ui .menu-stage { min-height: 0; overflow-x: hidden; overscroll-behavior: contain; }
 body.m-ui .ghost-pill-btn,
-body.m-ui .stage-mode-tab,
-body.m-ui .icon-pill-btn,
-body.m-ui .mob-drawer-btn { min-height: 44px; }
+body.m-ui .stage-mode-tab { min-height: 44px; }
 body.m-ui .hud { left: calc(10px + env(safe-area-inset-left, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); }
 body.m-ui .hud-left,
 body.m-ui .wave-badge,
@@ -583,27 +764,6 @@ body.m-ui .dash-touch-btn {
   height: 72px;
   touch-action: none;
 }
-body.m-ui .shop-merchant-wrap { gap: 9px; }
-body.m-ui .shop-wallet-group { gap: 6px; }
-body.m-ui .shop-title-group { flex: 1; }
-body.m-ui #shopTitle { white-space: normal; overflow: visible; font-size: 13px; }
-body.m-ui #shopCards {
-  grid-template-rows: none;
-  grid-auto-rows: max-content;
-  align-content: start;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  padding: 2px;
-}
-body.m-ui #shopCards .card:not(.sold-out) { min-height: 120px; }
-body.m-ui #shopCards .card-side { width: 88px; }
-body.m-ui #shopCards .card-desc { display: block; overflow: visible; -webkit-line-clamp: unset; }
-body.m-ui #shopCards .stat-chips,
-body.m-ui #shopCards .card-badges { flex-wrap: wrap; overflow: visible; }
-body.m-ui #shopCards .card-actions .btn,
-body.m-ui #shopCards .lock-pin { min-height: 44px; height: auto; }
-body.m-ui .slots { grid-auto-columns: minmax(54px, calc((100% - 25px) / 6)); touch-action: pan-x pan-y; }
 body.m-ui #shopMenu.drawer-open { overflow-y: auto; justify-content: flex-start; }
 body.m-ui #shopMenu.drawer-open #setRow { flex: 0 0 auto; overflow: visible; }
 body.m-ui #shopMenu.drawer-open .mob-shop-bar { position: sticky; bottom: 0; z-index: 2; }
@@ -639,10 +799,6 @@ body.m-ui .boss-cast-sub:not(.hidden) {
   margin-top: 4px;
   text-align: center;
 }
-body.m-portrait .shop-head { flex-wrap: wrap; }
-body.m-portrait .shop-merchant-wrap { flex-basis: 100%; }
-body.m-portrait .shop-wallet-group { width: 100%; justify-content: flex-end; }
-body.m-portrait .shop-wallet-group .wallet-pill { margin-right: auto; }
 
 /* A narrow landscape cannot fit the desktop HUD's three fixed-width panels. */
 body.m-landscape .hud {
@@ -666,14 +822,18 @@ body.m-landscape .pause-btn { grid-column: 3; grid-row: 2; justify-self: end; mi
 body.m-landscape .boss-bar-wrap { grid-column: 1 / -1; grid-row: 3; justify-self: center; width: min(420px, 85%); margin: 0; padding: 4px 9px; }
 body.m-landscape .boss-name { margin-bottom: 2px; font-size: 11px; }
 body.m-landscape .boss-cast-sub:not(.hidden) { margin-top: 2px; }
-@media (max-height: 430px) {
+@media (max-height: 450px) {
   body.m-landscape .shop-sub { display: none; }
-  body.m-landscape .shop-witch-portrait { height: 38px; width: 30px; }
-  body.m-landscape .shop-head { padding: 3px 7px; }
-  body.m-landscape .shop-bottom { padding: 4px 7px; }
-  body.m-landscape .slot-hint { font-size: 10px; }
-  body.m-landscape .slot, body.m-landscape .slot-empty { height: 44px; }
-  body.m-landscape .mob-shop-bar { padding: 4px 7px; }
+  body.m-landscape .shop-witch-portrait { height: 28px; width: 24px; }
+  body.m-landscape .shop-head { padding: 2px 7px; }
+  body.m-landscape .mob-drawer-btn { height: 24px; min-height: 24px; padding: 1px 7px; font-size: 10.5px; }
+  body.m-landscape #shopTrialBar { min-height: 26px; padding: 2px 7px; }
+  body.m-landscape .shop-trial-toggle { min-height: 22px; height: 22px; font-size: 10.5px; padding: 0 7px; }
+  body.m-landscape .shop-bottom { padding: 2px 7px; gap: 1px; }
+  body.m-landscape .slot-hint { font-size: 9.5px; }
+  body.m-landscape .slot, body.m-landscape .slot-empty { height: 34px; }
+  body.m-landscape .mob-shop-bar { padding: 3px 6px; }
+  body.m-landscape .mob-shop-bar .btn { height: 30px; min-height: 30px; font-size: 12px; }
 }
 
 body.m-ui .pause-audio-strip { padding: 6px 8px; gap: 6px 10px; }
