@@ -1816,28 +1816,35 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       crossHaz.color !== survivalFissures[0].color &&
       meteorChainHaz.some(h => h.chainStep >= 2 && Number.isFinite(h.prevX) && Number.isFinite(h.prevY))
     );
-    // 验证跨波累加刷新机制（首店 1 起，每次刷新 +2，下次进店仅恢复 50% 价格而非回 1）
+    // 验证跨波累加刷新机制（首店 1 起，每次刷新 +2；仅第 3/6/9/12 回合降低 50%，其余回合降低 20%）
     player.shopDiscount = 0;
     player.freeRerolls = 0;
     player.shopVisits = 0;
     player.shopRerollRaw = 1;
     player.mats = 9999;
+    wave = 1;
     openShop(true);
     const shop1InitOk = (rerollRawCost === 1 && rerollCost === 1 && player.shopVisits === 1);
     rerollShop(); // 1 -> 3
     rerollShop(); // 3 -> 5
     rerollShop(); // 5 -> 7
     rerollShop(); // 7 -> 9
-    const shop1AccumOk = (rerollRawCost === 9 && rerollCost === 9 && player.shopRerollRaw === 9);
-    openShop(true); // 恢复 50%: round(9 * 0.5) = 5（绝不回 1！）
-    const shop2HalfRecoverOk = (rerollRawCost === 5 && rerollCost === 5 && player.shopVisits === 2);
+    rerollShop(); // 9 -> 11
+    const shop1AccumOk = (rerollRawCost === 11 && rerollCost === 11 && player.shopRerollRaw === 11);
+    wave = 2;
+    openShop(true); // 非 3/6/9/12 回合：降低 20% -> round(11 * 0.80) = 9
+    const shop2NormalRecoverOk = (rerollRawCost === 9 && rerollCost === 9 && player.shopVisits === 2);
+    wave = 3;
+    openShop(true); // 第 3 回合：降低 50% -> round(9 * 0.50) = 5
+    const shop3HalfRecoverOk = (rerollRawCost === 5 && rerollCost === 5 && player.shopVisits === 3);
     rerollShop(); // 5 -> 7
     const shop2StepOk = (rerollRawCost === 7 && rerollCost === 7);
 
     const pickupSweepMobBalanceOk = (
       BASE_PICKUP_MAGNET === 143 &&
       Math.abs(UNCOLLECTED_MAT_SWEEP_RATE - 0.50) < 1e-9 &&
-      shop1InitOk && shop1AccumOk && shop2HalfRecoverOk && shop2StepOk &&
+      Math.abs(BOSS_SIZE_MUL - 1.20) < 1e-9 &&
+      shop1InitOk && shop1AccumOk && shop2NormalRecoverOk && shop3HalfRecoverOk && shop2StepOk &&
       Math.abs(MOB_DMG_MUL - 0.90) < 1e-9 &&
       Math.abs(YELLOW_ARROW_MOB_MUL - 0.80) < 1e-9 &&
       Math.abs(ELITE_MOB_COUNT_MUL - 0.70) < 1e-9 &&

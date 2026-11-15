@@ -1324,7 +1324,7 @@ function drawEnemySprite(e) {
   if (bossSheet && bossSheet.canvas) {
     // 传入 false 让 _stepEntityAnim 完全依据真实位移速度 (_smoothSpd > 22) 驱动迈步，站桩施法时绝不假跑，且施法/蓄力/出招全程切入第 4 帧出招立绘！
     const dt = _stepEntityAnim(e, now, false, targetFace, bossCastingOrActing);
-    const drawSize = Math.max(174, r * 3.20);
+    const drawSize = Math.max(209, r * 3.20);
     const footOffset = r * 0.90;
     const visFlip = Math.abs(e._visFlip) < 0.24 ? (e._visFlip < 0 ? -0.24 : 0.24) : e._visFlip;
 
@@ -1365,7 +1365,7 @@ function drawEnemySprite(e) {
     const spr = (typeof SpireAssets !== 'undefined') ? SpireAssets.getMonsterSprite(e, flash) : null;
 
     if ((isBoss || isMini) && spr && spr.canvas && (e.dashing || (e.tpWindupT || 0) > 0 || (e._actPoseT || 0) > 0.18)) {
-      const ghostSize = isBoss ? Math.max(166, r * 3.20) : Math.max(134, r * 3.08);
+      const ghostSize = isBoss ? Math.max(199, r * 3.20) : Math.max(161, r * 3.08);
       const gsc = ghostSize / Math.max(16, Math.max(spr.w, spr.h));
       const gdw = spr.w * gsc, gdh = spr.h * gsc;
       const backA = e.dashing ? (e.dashAng || 0) : (e._actAng || e.faceA || 0);
@@ -1384,8 +1384,8 @@ function drawEnemySprite(e) {
 
     if (spr && spr.canvas) {
       const targetSize = isBoss
-        ? Math.max(166, r * 3.20)
-        : (isMini ? Math.max(134, r * 3.08) : Math.max(60, r * 3.22));
+        ? Math.max(199, r * 3.20)
+        : (isMini ? Math.max(161, r * 3.08) : Math.max(60, r * 3.22));
       const sc = targetSize / Math.max(16, Math.max(spr.w, spr.h));
       const dw = spr.w * sc, dh = spr.h * sc;
       ctx.drawImage(spr.canvas, -dw * 0.5, -dh * 0.56, dw, dh);
@@ -1530,8 +1530,8 @@ function drawEnemySprite(e) {
       }
     }
     if (multiBossAlive >= 2) {
-      const bw = Math.max(66, r * 1.95);
-      const barY = e.y - r - 15;
+      const bw = Math.max(76, r * 1.95);
+      const barY = e.y - Math.max(r + 18, r * 1.85);
       const hpRatio = Math.max(0, Math.min(1, e.hp / Math.max(1, e.maxHp)));
       ctx.save();
       ctx.fillStyle = 'rgba(8, 10, 18, 0.84)';

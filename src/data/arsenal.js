@@ -238,14 +238,27 @@ const BASE_PICKUP_MAGNET = 143;
 const UNCOLLECTED_MAT_SWEEP_RATE = 0.50;
 const SHOP_REROLL_INIT_COST = 1;
 const SHOP_REROLL_STEP = 2;
-const SHOP_REROLL_RECOVERY_MUL = 0.50;
+const SHOP_REROLL_HALF_OFF_WAVES = [3, 6, 9, 12];
+const SHOP_REROLL_HALF_RECOVERY_MUL = 0.50;
+const SHOP_REROLL_RECOVERY_MUL = 0.80;
+const BOSS_SIZE_MUL = 1.20;
 const MOB_DMG_MUL = 0.90;
+function getShopRerollRecoveryMul(w) {
+  const wv = Math.round(Number(w) || 0);
+  return (wv === 3 || wv === 6 || wv === 9 || wv === 12)
+    ? SHOP_REROLL_HALF_RECOVERY_MUL
+    : SHOP_REROLL_RECOVERY_MUL;
+}
 if (typeof globalThis !== 'undefined') {
   globalThis.BASE_PICKUP_MAGNET = BASE_PICKUP_MAGNET;
   globalThis.UNCOLLECTED_MAT_SWEEP_RATE = UNCOLLECTED_MAT_SWEEP_RATE;
   globalThis.SHOP_REROLL_INIT_COST = SHOP_REROLL_INIT_COST;
   globalThis.SHOP_REROLL_STEP = SHOP_REROLL_STEP;
+  globalThis.SHOP_REROLL_HALF_OFF_WAVES = SHOP_REROLL_HALF_OFF_WAVES;
+  globalThis.SHOP_REROLL_HALF_RECOVERY_MUL = SHOP_REROLL_HALF_RECOVERY_MUL;
   globalThis.SHOP_REROLL_RECOVERY_MUL = SHOP_REROLL_RECOVERY_MUL;
+  globalThis.getShopRerollRecoveryMul = getShopRerollRecoveryMul;
+  globalThis.BOSS_SIZE_MUL = BOSS_SIZE_MUL;
   globalThis.MOB_DMG_MUL = MOB_DMG_MUL;
 }
 const BOSS_HP_MUL = 4.80;

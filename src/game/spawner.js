@@ -2070,6 +2070,7 @@ function createEnemy(x, y, type, variant = '') {
   const bossDefs = getBossDefs();
   const miniBossDefs = getMiniBossDefs();
   const specialRelics = getSpecialRelics();
+  const bossSizeMul = typeof BOSS_SIZE_MUL === 'number' ? BOSS_SIZE_MUL : 1.20;
   if (type === 'boss') {
     const bKey = (variant && bossDefs[variant]) ? variant : getFixedActBossForWave(wave);
     const bDef = bossDefs[bKey] || FALLBACK_BOSS_DEFS.butcher;
@@ -2092,7 +2093,7 @@ function createEnemy(x, y, type, variant = '') {
       ? (typeof getFloor16BossDodge === 'function' ? getFloor16BossDodge(diff) : 0)
       : 0;
     ent = {
-      ...base, r: 56, hp: bhp, maxHp: bhp, spd: bDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
+      ...base, r: Math.round(56 * bossSizeMul), hp: bhp, maxHp: bhp, spd: bDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
       dodge: bossDodge,
       color: bDef.color, type: 'boss', variant: bKey,
       bossTitle: `${bDef.icon} ${bDef.name}${isStoryBoss ? ' · 第一阶段' : ''}`,
@@ -2109,7 +2110,7 @@ function createEnemy(x, y, type, variant = '') {
     const twinMiniScale = (diff.dualElite && wave >= 10) ? 0.70 : 1;
     const mhp = Math.round((460 + wave * 95 + Math.pow(Math.max(0, Math.min(16, wave) - 3), 2.05) * 32) * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinMiniScale);
     ent = {
-      ...base, r: 45, hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(8.4 * dm),
+      ...base, r: Math.round(45 * bossSizeMul), hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(8.4 * dm),
       color: mDef.color, type: 'mini_boss', variant: mKey, bossTitle: `${mDef.icon} ${mDef.name}`,
       dashT: 2.3, meteorT: 4.4, skillT: 1.9, ringCd: 5.0, venomCd: 4.0, p2SkillT: 2.6,
       canPhase2: Math.random() < mythicRate, mythicPhase2: false, mat: 24
@@ -2126,7 +2127,7 @@ function createEnemy(x, y, type, variant = '') {
         : (relDef.bossId === 'plague_empress' ? 32
           : (relDef.bossId === 'crimson_lord' ? 30 : 26)));
     ent = {
-      ...base, r: 52, hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(9.0 * dm),
+      ...base, r: Math.round(52 * bossSizeMul), hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(9.0 * dm),
       color: relDef.bossColor, type: 'special_boss', variant: relDef.bossId, bossTitle: `${relDef.bossIcon} ${relDef.bossName}`,
       dashT: 2.1, skillT: 1.9, sigSkillT: 3.8, meteorT: 3.9, sumT: 5.8, terrainCd: 6.2, ringCd: 4.8,
       venomCd: 4.2, p2SkillT: 2.6, arenaMechCd: (relDef.bossId === 'abyss_devourer' ? 2.4 : 4.0),

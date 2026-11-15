@@ -2472,8 +2472,8 @@ function draw() {
         for (let k = 0; k < 4; k++) {
           const ba = sa + k * (Math.PI * 0.5);
           const sx = e.x + Math.cos(ba) * innerOff, sy = e.y + Math.sin(ba) * innerOff;
-          const ex = e.x + Math.cos(ba) * 168, ey = e.y + Math.sin(ba) * 168;
-          const curL = innerOff + (168 - innerOff) * sp;
+          const ex = e.x + Math.cos(ba) * 192, ey = e.y + Math.sin(ba) * 192;
+          const curL = innerOff + (192 - innerOff) * sp;
           ctx.strokeStyle = `rgba(226, 232, 240, ${0.16 + sp * 0.20})`; ctx.lineWidth = 18;
           ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
           ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 2.4; ctx.setLineDash([8, 5]);
@@ -2849,7 +2849,7 @@ function draw() {
       if (fogCullActive && Math.hypot(s.x - player.x, s.y - player.y) >= fogWorldCutR) continue;
       const p = Math.max(0, Math.min(1, 1 - s.t / Math.max(0.01, s.maxT)));
       const isBig = s.type === 'boss' || s.type === 'mini_boss' || s.type === 'special_boss';
-      const sz = Math.max(4, (isBig ? 26 : 13) * (0.8 + Math.sin(p * Math.PI * 4) * 0.15));
+      const sz = Math.max(4, (isBig ? 31 : 13) * (0.8 + Math.sin(p * Math.PI * 4) * 0.15));
       const sCol = s.type === 'special_boss' ? '#ffd166' : '#ff3b6b';
       ctx.globalAlpha = 0.14 + p * 0.18;
       ctx.fillStyle = sCol;
