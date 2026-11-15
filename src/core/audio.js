@@ -118,7 +118,11 @@ const AudioBank = {
   _resolveUrl(url) {
     if (!url) return '';
     const inlineMap = typeof window !== 'undefined' && window.__SPIRE_INLINE_ASSETS__;
-    return (inlineMap && inlineMap[url]) ? inlineMap[url] : url;
+    if (inlineMap && inlineMap[url]) return inlineMap[url];
+    if (!/^data:|\?/.test(url) && typeof APP_VERSION === 'string' && APP_VERSION) {
+      return url + '?v=' + encodeURIComponent(APP_VERSION);
+    }
+    return url;
   },
   _effectiveBgmGain(baseVol) {
     if (this.bgmMuted || this.bgmVol <= 0.005) return 0;

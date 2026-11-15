@@ -2394,6 +2394,72 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(stats.radialGradients, 0, "Mobile combat & UI suite must create ZERO per-frame radial gradients");
   assert.strictEqual(stats.shadowBlurs, 0, "Mobile combat & UI suite must use ZERO shadowBlur");
   assert.strictEqual(vm.runInContext("logErrCount", s), 0, "Zero runtime errors in Suite 4");
+
+  // v2.1.15 Mobile Resilience Check: WebKit 2D Canvas exhaustion fallback + transient image error auto-retry + BootGate progressive unlock
+  const mobResilience = vm.runInContext(`(() => {
+    // 1) Simulate iOS Safari 2D context exhaustion: createElement('canvas').getContext('2d') returns null
+    const origCreate = document.createElement.bind(document);
+    let nullCtxActive = true;
+    document.createElement = function (tag) {
+      const el = origCreate(tag);
+      if (String(tag).toLowerCase() === 'canvas' && nullCtxActive) {
+        el.getContext = () => null;
+      }
+      return el;
+    };
+    let allMonstersReadyUnderExhaustion = true;
+    try {
+      const sampleTypes = ['chaser', 'charger', 'frost_knight', 'sand_worm', 'rad_scorpion', 'brute', 'juggernaut', 'spore_mother'];
+      for (const tp of sampleTypes) {
+        const sNorm = SpireAssets.getMonsterSprite({ type: tp, elite: false }, false);
+        const sFlash = SpireAssets.getMonsterSprite({ type: tp, elite: false }, true);
+        const sElite = SpireAssets.getMonsterSprite({ type: tp, elite: true, eliteKind: 'frenzy' }, false);
+        if (!sNorm || !sNorm.canvas || !sFlash || !sFlash.canvas || !sElite || !sElite.canvas) {
+          allMonstersReadyUnderExhaustion = false;
+        }
+      }
+    } finally {
+      nullCtxActive = false;
+      document.createElement = origCreate;
+    }
+
+    // 2) Simulate transient cellular network drop on 1st attempt -> must auto-retry and succeed!
+    const OrigImg = Image;
+    let attempts = 0;
+    globalThis.Image = class FlakyMobileImage extends OrigImg {
+      set src(val) {
+        attempts++;
+        if (attempts === 1) {
+          this._src = String(val || '');
+          if (typeof this.onerror === 'function') this.onerror();
+          return;
+        }
+        super.src = val;
+      }
+    };
+    let retryRecovered = false;
+    try {
+      SpireAssets.loadImage('assets/spire/mob_sand_worm.png?test_flaky_1', img => {
+        retryRecovered = !!(img && img.naturalWidth > 0);
+      });
+    } finally {
+      globalThis.Image = OrigImg;
+    }
+
+    const versionedUrl = SpireAssets.resolve('assets/spire/mob_chaser.png');
+    return {
+      allMonstersReadyUnderExhaustion,
+      retryRecovered,
+      attemptsAtLeast2: attempts >= 2,
+      hasVersionQuery: versionedUrl.includes('?v='),
+      hasWarmWave: typeof SpireAssets.warmWave === 'function' && typeof SpireAssets.getBossSheet === 'function'
+    };
+  })()`, s);
+  assert.strictEqual(mobResilience.allMonstersReadyUnderExhaustion, true, "Mobile monsters must still render real sprites (never degrade into colored balls) even when offscreen canvas getContext('2d') returns null");
+  assert.strictEqual(mobResilience.retryRecovered, true, "SpireAssets.loadImage must auto-retry transient mobile network drops");
+  assert.strictEqual(mobResilience.attemptsAtLeast2, true, "Transient failure must trigger retry attempt");
+  assert.strictEqual(mobResilience.hasVersionQuery, true, "SpireAssets.resolve must append ?v= version tag to prevent broken partial cache");
+  assert.strictEqual(mobResilience.hasWarmWave, true, "SpireAssets must expose warmWave and getBossSheet");
 }
 
 // ============================================================================

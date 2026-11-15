@@ -238,120 +238,319 @@ const SpireAssets = (function () {
     iron_warden:      'assets/spire/mb_iron_warden.png'
   };
 
+  function _isCompactDevice() {
+    if (typeof window === 'undefined') return false;
+    if (typeof isTrueMobileDevice === 'function' && isTrueMobileDevice()) return true;
+    const vw = window.innerWidth || 9999;
+    const vh = window.innerHeight || 9999;
+    return Math.min(vw, vh) <= 920;
+  }
+
   function resolve(relPath) {
     if (!relPath) return '';
     if (typeof window !== 'undefined' && window.__SPIRE_INLINE_ASSETS__ && window.__SPIRE_INLINE_ASSETS__[relPath]) {
       return window.__SPIRE_INLINE_ASSETS__[relPath];
     }
+    if (!/^data:|\?/.test(relPath) && typeof APP_VERSION === 'string' && APP_VERSION) {
+      return relPath + '?v=' + encodeURIComponent(APP_VERSION);
+    }
     return relPath;
   }
 
-  function loadImage(relPath, onReady) {
+  // 移动端防拥塞图片并发调度器 + 3 次自动重试 + 失败冷却自愈（彻底杜绝单次蜂窝抖动导致怪物贴图永久变圆球）
+  const _loadQueue = [];
+  let _inflightLoads = 0;
+
+  function _pumpLoadQueue() {
+    const limit = _isCompactDevice() ? 6 : 12;
+    while (_inflightLoads < limit && _loadQueue.length > 0) {
+      const task = _loadQueue.shift();
+      if (task) task();
+    }
+  }
+
+  function loadImage(relPath, onReady, onFail) {
     if (!relPath || typeof Image === 'undefined') return null;
     let rec = _imgCache[relPath];
     if (rec) {
-      if (rec.ready && onReady) onReady(rec.img);
-      else if (onReady) rec.cbs.push(onReady);
-      return rec.ready ? rec.img : null;
+      if (rec.ready) {
+        if (onReady) {
+          try { onReady(rec.img); } catch (err) { if (typeof logWarn === 'function') logWarn('ASSET_CB', String(err)); }
+        }
+        return rec.img;
+      }
+      if (rec.loading) {
+        if (onReady) rec.cbs.push(onReady);
+        if (onFail) rec.failCbs.push(onFail);
+        return null;
+      }
+      if (rec.failed && Date.now() < (rec.retryAfter || 0)) {
+        if (onFail) {
+          try { onFail(); } catch (_) {}
+        }
+        return null;
+      }
+    } else {
+      rec = { img: null, ready: false, loading: false, failed: false, retryAfter: 0, cbs: [], failCbs: [] };
+      _imgCache[relPath] = rec;
     }
-    const img = new Image();
-    rec = { img, ready: false, cbs: onReady ? [onReady] : [] };
-    _imgCache[relPath] = rec;
-    img.decoding = 'async';
-    img.onload = function () {
-      rec.ready = img.naturalWidth > 0;
-      const list = rec.cbs.splice(0, rec.cbs.length);
-      for (let i = 0; i < list.length; i++) {
-        try { list[i](img); } catch (_) {}
+
+    if (onReady) rec.cbs.push(onReady);
+    if (onFail) rec.failCbs.push(onFail);
+    rec.loading = true;
+    rec.failed = false;
+
+    const baseUrl = resolve(relPath);
+    const isDataUri = /^data:/i.test(baseUrl);
+
+    const startAttempt = function (attempt) {
+      let settled = false;
+      const img = new Image();
+      rec.img = img;
+      img.decoding = 'async';
+
+      const releaseSlot = function () {
+        if (!isDataUri) {
+          _inflightLoads = Math.max(0, _inflightLoads - 1);
+          _pumpLoadQueue();
+        }
+      };
+
+      img.onload = function () {
+        if (settled) return;
+        settled = true;
+        releaseSlot();
+        const nw = img.naturalWidth || img.width || 0;
+        const nh = img.naturalHeight || img.height || 0;
+        if (nw > 0 && nh > 0) {
+          if (!img.width) img.width = nw;
+          if (!img.height) img.height = nh;
+          rec.ready = true;
+          rec.loading = false;
+          rec.failed = false;
+          rec.failCbs.length = 0;
+          const list = rec.cbs.splice(0, rec.cbs.length);
+          for (let i = 0; i < list.length; i++) {
+            try {
+              list[i](img);
+            } catch (err) {
+              if (typeof logWarn === 'function') logWarn('ASSET_CB', relPath + ': ' + String(err));
+            }
+          }
+        } else if (!isDataUri && attempt < 2) {
+          _enqueueAttempt(attempt + 1);
+        } else {
+          _handleFinalFailure();
+        }
+      };
+
+      img.onerror = function () {
+        if (settled) return;
+        settled = true;
+        releaseSlot();
+        if (!isDataUri && attempt < 2) {
+          _enqueueAttempt(attempt + 1);
+        } else {
+          _handleFinalFailure();
+        }
+      };
+
+      if (!isDataUri) _inflightLoads++;
+      if (attempt === 0 || isDataUri) {
+        img.src = baseUrl;
+      } else {
+        const clean = relPath.split('?')[0];
+        const verTag = (typeof APP_VERSION === 'string' && APP_VERSION) ? APP_VERSION : '1';
+        img.src = clean + '?v=' + encodeURIComponent(verTag) + '&_retry=' + attempt + '&_t=' + (Date.now() & 0xfffff);
       }
     };
-    img.onerror = function () { rec.cbs.length = 0; };
-    img.src = resolve(relPath);
-    return rec.ready ? img : null;
+
+    function _handleFinalFailure() {
+      rec.loading = false;
+      rec.ready = false;
+      rec.failed = true;
+      rec.retryAfter = Date.now() + 2200;
+      rec.cbs.length = 0;
+      const fList = rec.failCbs.splice(0, rec.failCbs.length);
+      for (let i = 0; i < fList.length; i++) {
+        try { fList[i](); } catch (_) {}
+      }
+      if (typeof logWarn === 'function') {
+        logWarn('ASSET_LOAD', '贴图加载暂未成功，将在冷却后自动重试: ' + relPath);
+      }
+    }
+
+    function _enqueueAttempt(attempt) {
+      if (isDataUri) {
+        startAttempt(attempt);
+        return;
+      }
+      const run = function () {
+        const limit = _isCompactDevice() ? 6 : 12;
+        if (_inflightLoads < limit) startAttempt(attempt);
+        else _loadQueue.push(function () { startAttempt(attempt); });
+      };
+      if (attempt > 0 && typeof setTimeout === 'function') {
+        setTimeout(run, attempt === 1 ? 280 : 750);
+      } else {
+        run();
+      }
+    }
+
+    _enqueueAttempt(0);
+    return rec.ready ? rec.img : null;
   }
 
-  // 高清 256~300px Retina 级单帧贴图与柔和受击高光预烘焙
+  // 离屏染色画布 LRU 池：严控手机 WebKit 活跃 2D Canvas 数量，驱逐时归零尺寸立即释放 GPU 显存，且 getContext('2d') 失败时 100% 无缝回退原图！
+  const _tintLru = [];
+  function _allocPooledCanvas(w, h, holder, prop) {
+    if (typeof document === 'undefined') return null;
+    const maxPool = _isCompactDevice() ? 24 : 72;
+    while (_tintLru.length >= maxPool) {
+      const oldest = _tintLru.shift();
+      if (oldest) {
+        if (oldest.holder && oldest.prop && oldest.holder[oldest.prop] && oldest.holder[oldest.prop].canvas === oldest.canvas) {
+          oldest.holder[oldest.prop] = null;
+        }
+        try { oldest.canvas.width = 0; oldest.canvas.height = 0; } catch (_) {}
+      }
+    }
+    try {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const g = c.getContext('2d');
+      if (!g || !(c.width > 0 && c.height > 0)) {
+        try { c.width = 0; c.height = 0; } catch (_) {}
+        return null;
+      }
+      if (holder && prop) {
+        _tintLru.push({ canvas: c, holder, prop });
+      }
+      return { canvas: c, ctx: g };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // 高清精灵贴图缓存：移动端直接以解码后的 HTMLImageElement 作为 normalView（零额外 Canvas 开销！），桌面端超采样缩放且失败自动回退 HTMLImageElement
   function ensureSpriteEntry(relPath, maxPx) {
     if (!relPath || typeof document === 'undefined') return null;
     const cap = maxPx || 256;
     const cacheKey = relPath + '@' + cap;
     let entry = _spriteBank[cacheKey];
-    if (entry) return entry.ready ? entry : null;
-    entry = { ready: false, normal: null, flash: null, normalView: null, flashView: null, w: cap, h: cap };
-    _spriteBank[cacheKey] = entry;
+    if (entry) {
+      if (entry.ready) return entry;
+      if (entry._loading) return null;
+    } else {
+      entry = { ready: false, _loading: false, rawImg: null, normal: null, flash: null, normalView: null, flashView: null, w: cap, h: cap };
+      _spriteBank[cacheKey] = entry;
+    }
+    entry._loading = true;
     loadImage(relPath, function (img) {
-      const nw = img.naturalWidth || 256, nh = img.naturalHeight || 256;
-      const scale = Math.min(1, cap / Math.max(nw, nh));
+      const nw = img.naturalWidth || img.width || 256;
+      const nh = img.naturalHeight || img.height || 256;
+      entry.rawImg = img;
+      const compact = _isCompactDevice();
+      const effCap = compact ? Math.min(cap, cap > 256 ? 192 : 160) : cap;
+      const scale = Math.min(1, effCap / Math.max(nw, nh));
       const tw = Math.max(16, Math.round(nw * scale));
       const th = Math.max(16, Math.round(nh * scale));
 
-      const cNorm = document.createElement('canvas');
-      cNorm.width = tw; cNorm.height = th;
-      const gn = cNorm.getContext('2d');
-      gn.imageSmoothingEnabled = true;
-      if ('imageSmoothingQuality' in gn) gn.imageSmoothingQuality = 'high';
-      gn.drawImage(img, 0, 0, tw, th);
+      let normSource = img;
+      let normW = nw;
+      let normH = nh;
+      if (!compact && (tw < nw || th < nh)) {
+        try {
+          const cNorm = document.createElement('canvas');
+          cNorm.width = tw;
+          cNorm.height = th;
+          const gn = cNorm.getContext('2d');
+          if (gn && cNorm.width > 0) {
+            gn.imageSmoothingEnabled = true;
+            if ('imageSmoothingQuality' in gn) gn.imageSmoothingQuality = 'high';
+            gn.drawImage(img, 0, 0, tw, th);
+            normSource = cNorm;
+            normW = tw;
+            normH = th;
+          } else {
+            cNorm.width = 0;
+            cNorm.height = 0;
+          }
+        } catch (_) {}
+      }
 
-      const cFlash = document.createElement('canvas');
-      cFlash.width = tw; cFlash.height = th;
-      const gf = cFlash.getContext('2d');
-      gf.drawImage(cNorm, 0, 0);
-      gf.globalCompositeOperation = 'source-atop';
-      gf.fillStyle = 'rgba(255, 250, 240, 0.32)';
-      gf.fillRect(0, 0, tw, th);
-
-      entry.normal = cNorm;
-      entry.flash = cFlash;
-      entry.w = tw;
-      entry.h = th;
-      // Stable views are shared by draw calls. Hundreds of sprites no longer
-      // allocate a short-lived wrapper every frame while reading this cache.
-      entry.normalView = { canvas: cNorm, w: tw, h: th };
-      entry.flashView = { canvas: cFlash, w: tw, h: th };
+      entry.normal = normSource;
+      entry.w = normW;
+      entry.h = normH;
+      entry.tintW = tw;
+      entry.tintH = th;
+      entry.normalView = { canvas: normSource, w: normW, h: normH };
+      entry._loading = false;
       entry.ready = true;
+    }, function () {
+      entry._loading = false;
     });
     return entry.ready ? entry : null;
   }
 
-  // 原生 1024×256（单格 256×256）四帧精灵表与柔和受击高光预烘焙
+  // 原生 1024×256（单格 256×256）四帧精灵表缓存：常规态直绘解码原图（零额外大画布开销），受击态按需惰性构建并带完备回退
   function ensureSheetEntry(relPath) {
     if (!relPath || typeof document === 'undefined') return null;
     let entry = _sheetBank[relPath];
-    if (entry) return entry.ready ? entry : null;
-    entry = { ready: false, normal: null, flash: null, normalView: null, flashView: null, cellW: 256, cellH: 256, frames: 4 };
-    _sheetBank[relPath] = entry;
+    if (entry) {
+      if (entry.ready) return entry;
+      if (entry._loading) return null;
+    } else {
+      entry = { ready: false, _loading: false, normal: null, flash: null, normalView: null, flashView: null, cellW: 256, cellH: 256, frames: 4, nw: 1024, nh: 256 };
+      _sheetBank[relPath] = entry;
+    }
+    entry._loading = true;
     loadImage(relPath, function (img) {
-      const nw = img.naturalWidth || 1024;
-      const nh = img.naturalHeight || 256;
+      const nw = img.naturalWidth || img.width || 1024;
+      const nh = img.naturalHeight || img.height || 256;
+      if (!img.width) img.width = nw;
+      if (!img.height) img.height = nh;
       const frames = nw >= nh * 3 ? 4 : 1;
       const cellW = Math.max(32, Math.floor(nw / frames));
       const cellH = Math.max(32, nh);
 
-      const cNorm = document.createElement('canvas');
-      cNorm.width = nw; cNorm.height = nh;
-      const gn = cNorm.getContext('2d');
-      gn.imageSmoothingEnabled = true;
-      if ('imageSmoothingQuality' in gn) gn.imageSmoothingQuality = 'high';
-      gn.drawImage(img, 0, 0, nw, nh);
-
-      const cFlash = document.createElement('canvas');
-      cFlash.width = nw; cFlash.height = nh;
-      const gf = cFlash.getContext('2d');
-      gf.drawImage(cNorm, 0, 0);
-      gf.globalCompositeOperation = 'source-atop';
-      gf.fillStyle = 'rgba(255, 250, 240, 0.32)';
-      gf.fillRect(0, 0, nw, nh);
-
-      entry.normal = cNorm;
-      entry.flash = cFlash;
+      entry.normal = img;
+      entry.nw = nw;
+      entry.nh = nh;
       entry.cellW = cellW;
       entry.cellH = cellH;
       entry.frames = frames;
-      entry.normalView = { canvas: cNorm, cellW, cellH, frames };
-      entry.flashView = { canvas: cFlash, cellW, cellH, frames };
+      entry.normalView = { canvas: img, cellW, cellH, frames };
+      entry._loading = false;
       entry.ready = true;
+    }, function () {
+      entry._loading = false;
     });
     return entry.ready ? entry : null;
+  }
+
+  function _getSheetFlashView(entry) {
+    if (!entry || !entry.normal) return null;
+    if (entry.flashView) return entry.flashView;
+    const nw = entry.nw || 1024;
+    const nh = entry.nh || 256;
+    const pair = _allocPooledCanvas(nw, nh, entry, 'flashView');
+    if (!pair) return entry.normalView;
+    try {
+      const gf = pair.ctx;
+      gf.imageSmoothingEnabled = true;
+      gf.drawImage(entry.normal, 0, 0, nw, nh);
+      gf.globalCompositeOperation = 'source-atop';
+      gf.fillStyle = 'rgba(255, 250, 240, 0.32)';
+      gf.fillRect(0, 0, nw, nh);
+      entry.flash = pair.canvas;
+      entry.flashView = { canvas: pair.canvas, cellW: entry.cellW, cellH: entry.cellH, frames: entry.frames };
+      return entry.flashView;
+    } catch (_) {
+      try { pair.canvas.width = 0; pair.canvas.height = 0; } catch (_e) {}
+      return entry.normalView;
+    }
   }
 
   function _resolveZeroOutfitSheetKey(keyOrCls) {
@@ -370,7 +569,18 @@ const SpireAssets = (function () {
       ent = ensureSheetEntry(HERO_SHEET_MAP.zero);
     }
     if (!ent) return null;
-    return flash ? ent.flashView : ent.normalView;
+    return flash ? _getSheetFlashView(ent) : ent.normalView;
+  }
+
+  function getBossSheet(variant, flash) {
+    if (!variant) return null;
+    if (BOSS_SPRITE_MAP[variant]) {
+      ensureSpriteEntry(BOSS_SPRITE_MAP[variant], 300);
+    }
+    if (HERO_SHEET_MAP[variant]) {
+      return getHeroSheet(variant, flash);
+    }
+    return null;
   }
 
   function getHeroSprite(cls, flash) {
@@ -381,7 +591,7 @@ const SpireAssets = (function () {
       ent = ensureSpriteEntry(HERO_MAP.allrounder, 256);
     }
     if (!ent) return null;
-    return flash ? ent.flashView : ent.normalView;
+    return flash ? (_buildTintedView(ent, 'flashView', 'rgba(255, 250, 240, 0.32)') || ent.normalView) : ent.normalView;
   }
 
   function warmZeroOutfit(outfitId) {
@@ -397,7 +607,7 @@ const SpireAssets = (function () {
     const rel = PROP_MAP[sceneId] || PROP_MAP.foundry;
     const ent = ensureSpriteEntry(rel, 224);
     if (!ent) return null;
-    return flash ? ent.flashView : ent.normalView;
+    return flash ? (_buildTintedView(ent, 'flashView', 'rgba(255, 250, 240, 0.32)') || ent.normalView) : ent.normalView;
   }
 
   function pickMonsterPath(e) {
@@ -414,18 +624,23 @@ const SpireAssets = (function () {
   function _buildTintedView(entry, cacheProp, tintCss) {
     if (!entry || !entry.normal) return null;
     if (entry[cacheProp]) return entry[cacheProp];
-    const tw = entry.w, th = entry.h;
-    const cTint = document.createElement('canvas');
-    cTint.width = tw; cTint.height = th;
-    const gt = cTint.getContext('2d');
-    if (gt) {
-      gt.drawImage(entry.normal, 0, 0);
+    const tw = entry.tintW || entry.w || 160;
+    const th = entry.tintH || entry.h || 160;
+    const pair = _allocPooledCanvas(tw, th, entry, cacheProp);
+    if (!pair) return entry.normalView;
+    try {
+      const gt = pair.ctx;
+      gt.imageSmoothingEnabled = true;
+      gt.drawImage(entry.normal, 0, 0, tw, th);
       gt.globalCompositeOperation = 'source-atop';
       gt.fillStyle = tintCss;
       gt.fillRect(0, 0, tw, th);
+      entry[cacheProp] = { canvas: pair.canvas, w: tw, h: th };
+      return entry[cacheProp];
+    } catch (_) {
+      try { pair.canvas.width = 0; pair.canvas.height = 0; } catch (_e) {}
+      return entry.normalView;
     }
-    entry[cacheProp] = { canvas: cTint, w: tw, h: th };
-    return entry[cacheProp];
   }
 
   function getMonsterSprite(e, flash) {
@@ -433,7 +648,7 @@ const SpireAssets = (function () {
     const isBig = e && (e.type === 'boss' || e.type === 'special_boss' || e.type === 'mini_boss' || e.type === 'juggernaut');
     const ent = ensureSpriteEntry(rel, isBig ? 300 : 256);
     if (!ent) return null;
-    if (flash) return ent.flashView;
+    if (flash) return _buildTintedView(ent, 'flashView', 'rgba(255, 250, 240, 0.32)') || ent.normalView;
     if (e && e.elite && !isBig) {
       if (e.eliteKind === 'frenzy') {
         return _buildTintedView(ent, 'frenzyView', 'rgba(255, 52, 86, 0.27)') || ent.normalView;
@@ -487,10 +702,44 @@ const SpireAssets = (function () {
     };
   }
 
+  function warmWave(waveNum, sceneId) {
+    if (typeof Image === 'undefined') return;
+    const w = Math.max(1, Number(waveNum) || 1);
+    const sc = sceneId || (w <= 4 ? 'foundry' : (w <= 8 ? 'glacier' : (w <= 12 ? 'wasteland' : 'desert')));
+    getArenaBg(sc);
+    ensureSpriteEntry(PROP_MAP[sc] || PROP_MAP.foundry, 224);
+
+    const mobs = ['chaser', 'stalker', 'swarmer', 'splitter', 'mini_slime', 'shooter'];
+    if (w >= 2) mobs.push('charger', 'shielder', 'iron_guard', 'rad_scorpion');
+    if (w >= 3) mobs.push('sand_worm', 'bomber', 'frost_knight', 'blade_duelist', 'frost_wisp', 'sniper_bug');
+    if (w >= 4) mobs.push('brute', 'magma_imp', 'spinner', 'mortar');
+    if (w >= 5) mobs.push('shadow_reaper', 'summoner', 'spore_mother');
+    if (w >= 6) mobs.push('juggernaut', 'healer');
+
+    for (let i = 0; i < mobs.length; i++) {
+      const mKey = mobs[i];
+      if (MONSTER_SPRITE_MAP[mKey]) {
+        ensureSpriteEntry(MONSTER_SPRITE_MAP[mKey], mKey === 'juggernaut' ? 300 : 256);
+      }
+    }
+
+    // 仅按当前层数按需预热即将登场的统领/首领，彻底告别首屏并发拉取 64 张立绘阻塞小怪贴图！
+    if (w === 2 || w === 6 || w === 10 || w === 14 || w > 16) {
+      const miniByAct = w <= 4 ? ['vanguard', 'pyro_lord'] : (w <= 8 ? ['glacial_valkyrie', 'venom_matriarch'] : (w <= 12 ? ['shadow_stalker', 'storm_siren'] : ['iron_warden']));
+      for (let j = 0; j < miniByAct.length; j++) {
+        getBossSheet(miniByAct[j], false);
+      }
+    }
+    if (w === 3 || w === 4 || w === 7 || w === 8 || w === 11 || w === 12 || w === 15 || w >= 16) {
+      const actBoss = w <= 4 ? 'butcher' : (w <= 8 ? 'frost_queen' : (w <= 12 ? 'void_weaver' : 'solar_seraph'));
+      getBossSheet(actBoss, false);
+    }
+  }
+
   function warmup() {
     if (typeof Image === 'undefined') return;
-    // Keep startup work bounded to the first playable area. Every other HD
-    // monster, arena and alpha portrait uses the same lazy cache when needed.
+    // Keep startup work bounded to the first playable area so first-screen UI and
+    // early-wave monster PNGs get full bandwidth on mobile cellular networks.
     const jobs = [
       () => ensureSheetEntry(HERO_SHEET_MAP.zero),
       () => {
@@ -501,7 +750,7 @@ const SpireAssets = (function () {
       },
       () => getArenaBg('foundry'),
       () => ensureSpriteEntry(PROP_MAP.foundry, 224),
-      ...['chaser', 'swarmer', 'stalker', 'magma_imp', 'shielder', 'shooter']
+      ...['chaser', 'swarmer', 'stalker', 'splitter', 'mini_slime', 'magma_imp', 'shielder', 'shooter']
         .map(k => () => ensureSpriteEntry(MONSTER_SPRITE_MAP[k], 256))
     ];
     const idle = typeof requestIdleCallback === 'function'
@@ -517,8 +766,10 @@ const SpireAssets = (function () {
     resolve,
     loadImage,
     getHeroSheet,
+    getBossSheet,
     getHeroSprite,
     warmZeroOutfit,
+    warmWave,
     getPropSprite,
     pickMonsterPath,
     getMonsterSprite,
@@ -638,44 +889,83 @@ const BOSS_PORTRAIT_DATA = {
 };
 
 const _bossCutoutCache = Object.create(null);
+const _bossCutoutOrder = [];
 
 function _compositeBossCutoutSlot(cacheKey, w, h, rgbRel, maskRel) {
   let rec = _bossCutoutCache[cacheKey];
-  if (rec) return rec.ready ? rec.canvas : null;
+  if (rec) {
+    if (rec.ready) return rec.canvas;
+    if (rec._loading) return null;
+  } else {
+    if (typeof document === 'undefined' || !rgbRel || !maskRel) return null;
+    rec = { ready: false, _loading: false, canvas: null, rgbImg: null, maskImg: null };
+    _bossCutoutCache[cacheKey] = rec;
+  }
   if (typeof document === 'undefined' || !rgbRel || !maskRel) return null;
-
-  rec = { ready: false, canvas: null, rgbImg: null, maskImg: null };
-  _bossCutoutCache[cacheKey] = rec;
+  rec._loading = true;
+  let failedPart = false;
 
   const tryFinish = function () {
     if (rec.ready || !rec.rgbImg || !rec.maskImg) return;
-    if (!(rec.rgbImg.naturalWidth > 0) || !(rec.maskImg.naturalWidth > 0)) return;
-    const c = document.createElement('canvas');
-    c.width = w;
-    c.height = h;
-    const g = c.getContext('2d');
-    if (!g) return;
-    g.imageSmoothingEnabled = true;
-    if ('imageSmoothingQuality' in g) g.imageSmoothingQuality = 'high';
-    g.clearRect(0, 0, w, h);
-    g.drawImage(rec.rgbImg, 0, 0, w, h);
-    g.globalCompositeOperation = 'destination-in';
-    g.drawImage(rec.maskImg, 0, 0, w, h);
-    g.globalCompositeOperation = 'source-over';
-    rec.canvas = c;
-    rec.ready = true;
+    const rw = rec.rgbImg.naturalWidth || rec.rgbImg.width || 0;
+    const mw = rec.maskImg.naturalWidth || rec.maskImg.width || 0;
+    if (!(rw > 0) || !(mw > 0)) {
+      rec._loading = false;
+      return;
+    }
+    // 严格限制常驻首领抠像离屏画布不超过 6 张，驱逐旧画布时归零尺寸释放显存，杜绝挤爆手机 Canvas 上限
+    while (_bossCutoutOrder.length >= 6) {
+      const oldKey = _bossCutoutOrder.shift();
+      const oldRec = oldKey ? _bossCutoutCache[oldKey] : null;
+      if (oldRec && oldRec !== rec) {
+        if (oldRec.canvas && typeof oldRec.canvas.getContext === 'function') {
+          try { oldRec.canvas.width = 0; oldRec.canvas.height = 0; } catch (_) {}
+        }
+        delete _bossCutoutCache[oldKey];
+      }
+    }
+    try {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const g = c.getContext('2d');
+      if (g && c.width > 0) {
+        g.imageSmoothingEnabled = true;
+        if ('imageSmoothingQuality' in g) g.imageSmoothingQuality = 'high';
+        g.clearRect(0, 0, w, h);
+        g.drawImage(rec.rgbImg, 0, 0, w, h);
+        g.globalCompositeOperation = 'destination-in';
+        g.drawImage(rec.maskImg, 0, 0, w, h);
+        g.globalCompositeOperation = 'source-over';
+        rec.canvas = c;
+        _bossCutoutOrder.push(cacheKey);
+      } else {
+        try { c.width = 0; c.height = 0; } catch (_) {}
+        rec.canvas = rec.rgbImg;
+      }
+    } catch (_) {
+      rec.canvas = rec.rgbImg;
+    }
+    rec.ready = !!rec.canvas;
+    rec._loading = false;
     rec.rgbImg = null;
     rec.maskImg = null;
+  };
+
+  const onPartFail = function () {
+    if (failedPart) return;
+    failedPart = true;
+    rec._loading = false;
   };
 
   SpireAssets.loadImage(rgbRel, function (img) {
     rec.rgbImg = img;
     tryFinish();
-  });
+  }, onPartFail);
   SpireAssets.loadImage(maskRel, function (img) {
     rec.maskImg = img;
     tryFinish();
-  });
+  }, onPartFail);
 
   return rec.ready ? rec.canvas : null;
 }
@@ -706,22 +996,13 @@ function getBossAnimePortrait(variant, isMythic = false) {
   return SpireAssets.getPortrait(key);
 }
 
-function preloadAllBossCutoutPortraits() {
+// 仅按需预热指定首领抠像（首领预警阶段提前 0.9s 触发），不再在开机瞬间并发拉取全部 64 张大图抢占移动端带宽与画布内存！
+function preloadAllBossCutoutPortraits(onlyVariant) {
   if (typeof Image === 'undefined' || typeof document === 'undefined') return;
-  const keys = Object.keys(BOSS_PORTRAIT_DATA);
-  const schedule = (typeof requestIdleCallback === 'function')
-    ? cb => requestIdleCallback(cb, { timeout: 1400 })
-    : cb => setTimeout(cb, 320);
-  schedule(function () {
-    for (let i = 0; i < keys.length; i++) {
-      getBossAnimePortrait(keys[i], false);
-      getBossAnimePortrait(keys[i], true);
-    }
-  });
-}
-// 后台空闲分帧预热首领与奇遇魔神立绘抠像缓存，杜绝血月魔君等立绘/贴图首次触发未就绪
-if (typeof Image !== 'undefined' && typeof document !== 'undefined') {
-  preloadAllBossCutoutPortraits();
+  if (onlyVariant && BOSS_PORTRAIT_DATA[onlyVariant]) {
+    getBossAnimePortrait(onlyVariant, false);
+    getBossAnimePortrait(onlyVariant, true);
+  }
 }
 
 function getSpireCutscenePack(variant) {

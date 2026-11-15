@@ -589,6 +589,8 @@ function _paintWeaponArt(g, id, tier, evoId) {
   }
 }
 
+let _sharedWeaponUrlCanvas = null;
+
 function getBakedWeaponSprite(id, tier = 1, evoId = '') {
   const safeTier = Math.max(1, Math.min(5, tier | 0));
   const key = `${id}|${safeTier}|${evoId || ''}`;
@@ -600,16 +602,24 @@ function getBakedWeaponSprite(id, tier = 1, evoId = '') {
   off.width = 192;
   off.height = 192;
   const g = off.getContext('2d');
-  if (g) {
-    g.save();
-    g.translate(96, 96);
-    g.scale(2.55, 2.55);
-    _paintWeaponArt(g, id, safeTier, evoId || '');
-    g.restore();
+  if (!g) {
+    try { off.width = 0; off.height = 0; } catch (_) {}
+    return null;
   }
-  if (_weaponSpriteCache.size >= 145) {
+  g.save();
+  g.translate(96, 96);
+  g.scale(2.55, 2.55);
+  _paintWeaponArt(g, id, safeTier, evoId || '');
+  g.restore();
+
+  // 角色同屏最多装备 6 把兵装：将常驻离屏武器画布上限从 145 收敛至 24 并主动归零淘汰画布，大幅节省手机 WebKit 2D Context 配额！
+  while (_weaponSpriteCache.size >= 24) {
     const oldestKey = _weaponSpriteCache.keys().next().value;
+    const oldCv = _weaponSpriteCache.get(oldestKey);
     _weaponSpriteCache.delete(oldestKey);
+    if (oldCv && oldCv !== off) {
+      try { oldCv.width = 0; oldCv.height = 0; } catch (_) {}
+    }
   }
   _weaponSpriteCache.set(key, off);
   return off;
@@ -619,13 +629,34 @@ function getWeaponArtDataUrl(id, tier = 1, evoId = '') {
   const safeTier = Math.max(1, Math.min(5, tier | 0));
   const key = `${id}|${safeTier}|${evoId || ''}`;
   if (_weaponDataUrlCache.has(key)) return _weaponDataUrlCache.get(key);
-  const off = getBakedWeaponSprite(id, safeTier, evoId || '');
+  if (typeof document === 'undefined') return '';
+
+  // 复用唯一一张共享临时画布导出圣典/行商图标 DataURL，0 新增常驻 Canvas 上下文占用！
   let url = '';
-  if (off && typeof off.toDataURL === 'function') {
-    try { url = off.toDataURL(); } catch (e) { url = ''; }
+  try {
+    if (!_sharedWeaponUrlCanvas) {
+      _sharedWeaponUrlCanvas = document.createElement('canvas');
+      _sharedWeaponUrlCanvas.width = 192;
+      _sharedWeaponUrlCanvas.height = 192;
+    }
+    const g = _sharedWeaponUrlCanvas.getContext('2d');
+    if (g) {
+      g.clearRect(0, 0, 192, 192);
+      g.save();
+      g.translate(96, 96);
+      g.scale(2.55, 2.55);
+      _paintWeaponArt(g, id, safeTier, evoId || '');
+      g.restore();
+      if (typeof _sharedWeaponUrlCanvas.toDataURL === 'function') {
+        url = _sharedWeaponUrlCanvas.toDataURL();
+      }
+    }
+  } catch (_) {
+    url = '';
   }
+
   if (url && url.indexOf('data:image/') === 0) {
-    if (_weaponDataUrlCache.size >= 145) {
+    if (_weaponDataUrlCache.size >= 160) {
       const oldestKey = _weaponDataUrlCache.keys().next().value;
       _weaponDataUrlCache.delete(oldestKey);
     }
@@ -654,6 +685,12 @@ function drawWeaponSprite(w) {
   const baked = getBakedWeaponSprite(id, w.tier || 1, w.evo || '');
   if (baked) {
     ctx.drawImage(baked, -37.5, -37.5, 75, 75);
+  } else {
+    ctx.save();
+    const fallbackScale = (75 / 192) * 2.55;
+    ctx.scale(fallbackScale, fallbackScale);
+    _paintWeaponArt(ctx, id, Math.max(1, Math.min(5, (w.tier || 1) | 0)), w.evo || '');
+    ctx.restore();
   }
   ctx.restore();
 }
