@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.11 按 E 四流派武器自适应觉醒大招：霹雳一闪残心 / 天穹剑雨 / 归墟黑洞 / 镇岳重型臼炮）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.17 按 [E] 四流派武器自适应觉醒大招：霹雳一闪残心 / 天穹剑雨 / 归墟黑洞 / 镇岳重型臼炮 + 移动端双指觉醒零冲突）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,18 +16,84 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.11';
+const APP_VERSION = 'v2.1.17';
 const APP_BUILD_DATE = '2026-11-15';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.11', date: '2026-11-15', tag: '当前版本 · 按 [E] 释放四流派武器自适应觉醒大招（霹雳一闪残心 / 剑雨 / 黑洞 / 镇岳臼炮）',
-    title: '⚡ 新增按 [E] 释放四流派武器自适应觉醒奥义（雷鸣八连·霹雳一闪残心 / 天穹剑阵·千刃破阵雨 / 归墟视界·引力坍缩黑洞 / 钟楼重工·镇岳重型臼炮） + 超清 60FPS 零渐变渲染',
+    ver: 'v2.1.17', date: '2026-11-15', tag: '当前版本 · 按 [E] 释放四流派武器自适应觉醒大招（霹雳一闪残心 / 剑雨 / 黑洞 / 镇岳臼炮）',
+    title: '⚡ 新增按 [E] 释放四流派武器自适应觉醒奥义（雷鸣八连·霹雳一闪残心 / 天穹剑阵·千刃破阵雨 / 归墟视界·引力坍缩黑洞 / 钟楼重工·镇岳重型臼炮） + 手机端边走边按觉醒 0ms 瞬发',
     items: [
       '⚡ 近战兵装流奥义【雷鸣八连 · 霹雳一闪残心】（按 E 键 / 触屏觉醒键）：化作 7 折 Ufotable 水墨金雷残影穿梭斩切敌阵与敌方弹幕，收刀纳鞘瞬间引爆全路径天雷落柱残心决算（全程无敌帧 + 动作残像清晰可见）！',
       '🗡️ 远程兵装流奥义【天穹剑阵 · 千刃破阵雨】& 🕳️ 秘术法杖流奥义【归墟视界 · 引力坍缩黑洞】：远程主导时降下大马士革冷钢飞剑雨与镇阵古巨剑终结轰击；秘术主导时生成卡冈图雅吸积盘黑洞强力聚怪吞噬弹幕并坍缩新星爆发！',
       '💣 发条构装流奥义【钟楼重工 · 镇岳重型臼炮】& 🛒 行商流派实时预览：构装主导时空投铸铁铆钉重型双联臼炮驻场轰炸（含炮管后坐力复位与弹壳抛射）；行商武器栏新增当前主修觉醒奥义实时徽章，且全部大招计入赛后输出统计！'
+    ]
+  },
+  {
+    ver: 'v2.1.16', date: '2026-11-15', tag: '手机端边走边瞬步零冲突 · 全首领体积+20% · 隐藏Boss召唤强指引 · 刷新分段回落',
+    title: '🎮 解决手机端移动与瞬步冲突 + 👑 全体首领体积增大 20% + ⛩️ 隐藏首领召唤祭坛全方位路线指引 + 💰 行商刷新价格分段回落（3/6/9/12层降50% · 其余层降20%）',
+    items: [
+      '⛩️ 可召唤隐藏首领祭坛提示与路线指引全面升级：祭坛刷新时新增主角脚下贴身【黄金双翼罗盘箭头 + 流动引魂金线】实时指向祭坛并显示剩余距离、顶部半透明常驻雷达胶囊（含实时唤醒读条）、屏幕边缘双环脉冲大锋矢信标以及祭坛冲天圣辉光柱与声呐扩散环，激战走位中也一眼锁定方向绝不错过！',
+      '👑 全体首领与统领体积增大 +20%：四幕主线/无尽首领（r: 56→67）、八大先锋统领（r: 45→54）与五大秘境/祭坛主宰（r: 52→62）的判定半径与立绘精灵尺寸统一放大 20%，战场压迫感与受击目标辨识度同步升级！',
+      '💰 行商跨层刷新价格回落机制调整：仅在第 3、6、9、12 四个关键整备回合刷新价格降低 50%（×0.50），其余所有回合刷新价格仅降低 20%（×0.80，保底 1 晶石），强化刷新节奏规划！',
+      '🕹️ 双指触控完全解耦（边走边按瞬步丝滑不断触）：重构移动端多指 Touch.identifier 追踪；左手推摇杆走位时，右手点击右下角【瞬步】按钮（或点偏在按钮边缘光环、在画布另一侧轻点）均改为 touchstart 0ms 瞬发响应，彻底解决此前多指下 onclick 被系统抑制按不出、点偏 1px 就清空摇杆导致角色罚站并乱缩放镜头的冲突！',
+      '🧭 独立移动朝向记忆（杜绝松手点瞬步反向撞进怪物堆）：新增独立移动朝向角 player.moveA 与摇杆近期拨动方向记忆（650ms），彻底剥离自动索敌角 player.lookA 对瞬步方向的污染——单手逃跑松开摇杆去点瞬步时，100% 沿刚才逃跑方向冲刺，绝不再反向冲进贴脸首领怀里！'
+    ]
+  },
+  {
+    ver: 'v2.1.15', date: '2026-11-15', tag: '手机端UI错位全面修复 · 缓存冲突静默自愈 · 怪物变球/丢贴图根治',
+    title: '📱 手机端竖屏/横屏全界面排版错位精修 + 🔄 首屏缓存冲突静默自愈与渐进式秒开 + 👾 根治移动端怪物变色球与贴图加载失败',
+    items: [
+      '👾 根治手机端怪物变成纯色圆球 / 刷不出贴图：定位并移除开机 320ms 并发拉取 64 张首领立绘与预占 32 张大画布导致的移动端带宽挤占及 WebKit 2D Canvas 上下文耗尽问题；移动端常规精灵与四帧动作表改为零额外 Canvas 直绘 HTMLImageElement、受击/精英染色改为按需惰性缓存并设上限兜底，贴图加载新增并发队列、3 次自动重试、失败冷却自愈与波前提前预热！',
+      '🔄 彻底告别「缓存版本不一致 / 资源未加载完全」频繁拦截：新增 HTML 防旧缓存响应头与旧版入口静默自动净缓存重拉自愈；当 20/20 核心脚本与 4/4 样式表校验通过后采用非阻塞渐进式原画预热（最长 0.9s 柔和缓冲即自动开启主殿），蜂窝网络波动不再误弹报错框！',
+      '📱 手机端竖屏与横屏 UI 全面对齐精修：修复主界面存档提示遮挡底栏、剧情启程台无裁切立绘与四战装切换条重叠裁切、换装弹窗确认键被挤出屏幕、战斗 HUD 血条/经验条高低错位及超长首领技能/临死挣扎字幕撑爆屏幕宽度、横屏整备台及结算按钮样式冲突等问题！'
+    ]
+  },
+  {
+    ver: 'v2.1.14', date: '2026-11-15', tag: 'D5第16层必入二阶浓雾 · 临死挣扎破框立绘+恐惧威压 · 独立建筑攻速重构(+20%基础塔攻速)',
+    title: '🌫️ D5 第 16 层首领 100% 必进二阶段并降临蚀日迷雾 + 🩸 临死挣扎破框立绘特写与主角恐惧减益（移速-15%/瞬步冷却+50%） + ⚙️ 参照《土豆兄弟》彻底解耦独立【建筑攻速】词条并提升 20% 基础塔攻速',
+    items: [
+      '🌫️ D5 第 16 层首领必入二阶段 + 蚀日浓雾降临：在最高厄度 D5 下，第 16 层首领（主线与无尽均含）100% 必定进入二阶段，且进入二阶段时全场翻涌【蚀日浓雾】，仅凭青焰魂灯照明迎敌（灯圈边缘提供首领方位与庇护印罗盘指引）！',
+      '🩸 首领【临死挣扎】新增破框立绘演出：在主线与无尽 D5 触发 10 秒临死挣扎瞬间，强制弹出首领二阶段破框立绘横幅（清晰提示锁血无敌、攻速+20%、伤敌汲血10% 与恐惧威压），一眼看清战场剧变！',
+      '😱 临死挣扎【恐惧威压】光环实装：任意首领处于垂死挣扎期间，主角因恐惧移动速度降低 15%（无视地形减速免疫），且【青焰瞬步】冲刺冷却时间增加 50%！',
+      '⚙️ 参照《土豆兄弟》彻底重构独立【建筑攻速】体系并提升 20% 基础塔攻速：修复此前角色自身攻速（atkSpd）与工程学伤害（techMul）双重叠乘进炮台冷却、又与每帧 dt 倍率二次叠乘导致炮台失控的根因，现角色攻速与工程学伤害 0% 影响建筑射速，炮台/图腾仅受独立【建筑攻速】词条、机巧羁绊、图腾共鸣与瞬步超频加成，并将基础塔攻速还原后额外提升 +20%（1.20x）！',
+      '🌌 饥饿黑影与【超巨黑洞引力奇点】新增 1.0 秒前置预警 + 吸引力大幅削弱 60%（×0.40）：开启黑洞奇点前新增完整 1.0 秒金色虚线边界与倒计时预警（期间零吸力且提前刷出双生【晨曦庇护印】），并将奇点吸积引力与【零号容器 · 饥饿黑影】本体引力全部削减 60%、移除奇点开启期间的双重吸力叠加！',
+      '👗 主角「零」三套专属战装形象自选（合并 PR #26）：首次启程仪式选装 + 全程自由切换【星渊魔女装 / 绯月执政官 / 星穹晚礼装 / 初始守誓白衣】，全场景无裁切半身立绘与 1024×256 四帧精灵表联动！'
+    ]
+  },
+  {
+    ver: 'v2.1.13', date: '2026-11-15', tag: '四大法杖真法术化 · 首领奥术特效重制 · 生存天外真伤(D1 10%→D5 20%) · 超巨黑洞引力奇点 · 召唤祭坛回归 · 双首领独立血条/二阶段',
+    title: '🪄 四大法杖全面重做为真元素技能（火球炎海/极寒暴风雪/连锁天雷/万蛊毒雾） + ✨ 首领技能奥术特效升级 + ☄️ 生存天外弹幕无视闪避护甲真伤 + 🌌 超巨黑洞强吸力奇点 + ⛩️ 召唤首领祭坛回归（接入无尽主宰） + 👑 双首领独立血条与独立进二阶段',
+    items: [
+      '🪄 四大法杖告别平庸发弹道，重做为真正元素大法术：【赤烬魂灯杖】轰出拖曳彗尾的陨炎大火球，命中大范围爆裂并在地面留下持续灼烧的【熔火炎海】；【永冻冰晶权杖】直接在敌群降下双旋六棱法阵与漫天冰雹的【极寒暴风雪】持续冰缓冻结；【雷鸣星轨魔杖】瞬发九霄落雷接多叉高频【奥术连锁闪电】（零飞行延迟弹射全屏）；【逆时秘银法杖】在目标脚下涌起翻滚毒泡的【万蛊蚀骨毒雾】高速叠满剧毒！',
+      '✨ 首领技能特效全面升级：预烘焙多色离屏奥术辉光贴图与事件视界贴图（0 实时渐变卡顿），重绘全首领大招星盘、旋转符文阵环、炮口聚变光晕、寒霜等离子束与神话二阶段圣印，彻底告别简陋几何块！',
+      '☄️ 蚀界生存试炼天外弹道全面强化为【无视闪避 · 无视护甲 · 无视护盾 · 不可斩切】的真实伤害保底：天外星枪、蚀界暗球、裂界走廊、天火流星等天外神罚保底造成玩家最大生命 D1 10% → D5 20% 的绝对真实伤害！',
+      '🌌 首领【超巨黑洞引力奇点】震撼实装（日蚀圣女 / 深渊噬魂魔 / 二阶段逆时主宰高频施放）：半径扩至 440px、牵引视界达 780px，直径近 300px 的纯黑事件视界与 6 条相对论紫金吸积盘旋臂统治全场，对玩家施加肉眼可见的强力向心拖拽吸力（唯有踏入双生【☀️ 晨曦庇护印】方可免疫吸力与湮灭）！',
+      '⛩️ 战场【秘境召唤首领祭坛】在主线剧情与无尽模式全面回归，并将无尽专属主宰【欧米茄 · 星晷机神】与【苍岚毒皇 · 腐殖母神】一并纳入祭坛召唤池（共 5 座特色祭坛，主动踏阵即可额外召唤强敌夺取首领秘宝）！',
+      '👑 双首领 / 多主宰各自拥有独立血量条且均可独立觉醒二阶段：顶部 HUD 新增多首领独立分栏血条且战场头顶同步显示独立血条，解除单波仅限 1 只觉醒二阶段的旧限制，双首领均可各自进二阶段狂暴作战！'
+    ]
+  },
+  {
+    ver: 'v2.1.12', date: '2026-11-15', tag: '双首领单秘宝 · 二阶段概率D1 30%→D5 50% · D5怪血+70%伤+50% · 寒晶4s→2s冰封 · 战斗HUD透光',
+    title: '🎁 双首领讨伐限掉 1 枚首领秘宝 + ⚡ 二阶段觉醒率 D1 30% → D5 50% 阶梯上升 + ⚖️ D5 怪血量+70%/伤害+50% + ❄️ 寒冰地形 D1 4s → D5 2s 冻结 + 🪟 死战/首领技能界面半透化',
+    items: [
+      '🎁 双首领讨伐单枚秘宝封顶：幕中双先锋统领与无尽双主宰同场时，斩破首只仅提示战果，仅在斩杀场上最后一只首领时掉落唯一 1 枚【首领秘宝箱】（整波封顶 1 枚），杜绝双首领重复爆两箱！',
+      '⚡ 首领隐藏二阶段觉醒概率按厄度阶梯上升（getPhase2AwakenRate）：D0/D1 设为 30%，D2~D4 依次上升至 35% / 40% / 45%，D5 提升至 50%（主线四幕守誓首领保持 100% 剧情二阶段）！',
+      '⚖️ D2~D5 怪物血量与伤害曲线上调回调：D0/D1 保持不变（D1 +14% 血 / +15% 伤），D5 回调至怪血量 +70%（1.70x）· 伤害 +50%（1.50x），D2~D4 同步等比例重排（+28%/+24%、+42%/+33%、+56%/+41%）！',
+      '❄️ 冰元素地形（碎冕寒晶方砖台）冻结触发时长重调（getIceFreezeTriggerSec）：玩家站立冰面触发冰封的累计时间调整为 D0/D1 4.0 秒、D2 3.5 秒、D3 3.0 秒、D4 2.5 秒、D5 2.0 秒！',
+      '🪟 「死战」倒计时、首领血条/技能条、顶部播报横幅与首领立绘切入全面增加透明度：将死战胶囊、首领血量与技能预警条、头顶蓄力铭牌、顶部事件横幅及无尽首领切入战幕统一改为高透光半透明玻璃质感（全面启用 pointer-events: none），不再遮挡战场走位与敌方弹幕！'
+    ]
+  },
+  {
+    ver: 'v2.1.11', date: '2026-11-15', tag: '四幕古典钢琴曲&二阶变奏 · 网页UI放大 · D2~D5曲线&行商刷新重调 · 双形态精英&首领升级',
+    title: '🎹 四幕专属古典钢琴曲与隐藏二阶段变奏实装 + 🖥️ 网页版 UI 全面放大 + ⚖️ D2~D5 数值/生存时长/16层首领闪避/行商刷新重调 + 👹 双形态精英与首领动作升级',
+    items: [
+      '🎹 四幕专属古典独奏钢琴原声（60s+）与首领二阶段变奏动态切换：为雨夜长桥、永冻冰窟、倒悬钟楼、日蚀镜界谱写 8 首清爽录音棚级古典钢琴曲（夜曲/圆舞曲/巴洛克赋格/月光慢板 + 四首隐藏二阶段激昂变奏），首领进入二阶段瞬间自动切换变奏曲！',
+      '🖥️ 网页版 UI 整体放大与高清易读化：大幅放大桌面端生命条(28px/15.5px粗体)、经验条、回合倒计时(46px超清大字)、晶石数(27px)、首领血条(新增实时血量与百分比数字)及行商货架/属性栏/圣典/结算全部文字！',
+      '⚖️ 难度曲线、生存试炼与行商经济精细回调：D1 保持不变，D5 怪血量/伤害下调至 +65%/+40%（D2~D4 同步更新）；蚀界生存试炼时长调整为 D1=30s → D5=45s；未拾取晶石波末结算还原至 50%；行商刷新改为每次 +2💎 累加，且每次新进商店仅恢复 50% 累积价格！',
+      '❤️ 后期血包阶梯管控 & 🌑 16 层首领闪避：10~16+ 层全难度血包掉落降低 30%，D2~D5 再阶梯递减至 -50%（D1 不变）；第 16 层【日蚀圣女】在 D2~D5 阶梯新增最高 25% 闪避（D1 不加）；潜渊骨蛇与旋刃陀螺偶刷新率回调至 0.80，狂化精英回调至 0.70！',
+      '💃 双形态狂化精英怪（红光血怒+20%攻移血 / 黄光亡语4金梭）、全首领施法动态身法与六大创新交互机制升级，D5 二阶段独享一次【10 秒临死挣扎】！'
     ]
   },
   {
@@ -344,6 +410,125 @@ const TIER_GLOW   = ['', 'rgba(255,255,255,0)', 'rgba(76,201,240,0.45)', 'rgba(1
 const TIER_NAMES  = ['', '普通', '精良', '史诗', '传说', '神话'];
 
 // ============================================================================
+// 👗 主角「零」三套可选高定战装形象与持久化配置（首次进游戏可选 + 随时切换）
+// ============================================================================
+const ZERO_OUTFIT_STORAGE_KEY = 'spire_zero_outfit_v1';
+const ZERO_OUTFIT_CHOSEN_KEY  = 'spire_zero_outfit_chosen_v1';
+const ZERO_PRIMARY_OUTFIT_IDS = ['witch', 'crimson', 'astral'];
+const ZERO_OUTFITS = {
+  witch: {
+    id: 'witch',
+    code: 'ATTIRE · I',
+    name: '星渊夜鸦 · 苍夜秘术魔女装',
+    shortName: '星渊魔女装',
+    captionSuffix: ' · 星渊魔女',
+    badge: '秘术魔女',
+    desc: '超大宽檐尖顶星芒魔女帽配苍夜丝绒披风，提灯折射深空紫晶微光。',
+    portrait: 'assets/spire/port_zero_witch.jpg',
+    chibi: 'assets/spire/hero_zero_witch.png',
+    sheetKey: 'zero_witch',
+    portraitKey: 'zero_witch',
+    accent: '#c084fc',
+    dashColor: '#c084fc'
+  },
+  crimson: {
+    id: 'crimson',
+    code: 'ATTIRE · II',
+    name: '绯夜狐火 · 守誓巫女战装',
+    shortName: '绯夜巫女装',
+    captionSuffix: ' · 绯夜巫女',
+    badge: '绯夜狐火',
+    desc: '玄黑织金羽织配绯红百褶战袴，斜戴白狐神乐半面与暖焰魂灯。',
+    portrait: 'assets/spire/port_zero_crimson.jpg',
+    chibi: 'assets/spire/hero_zero_crimson.png',
+    sheetKey: 'zero_crimson',
+    portraitKey: 'zero_crimson',
+    accent: '#fb7185',
+    dashColor: '#fb7185'
+  },
+  astral: {
+    id: 'astral',
+    code: 'ATTIRE · III',
+    name: '星穹礼赞 · 逆钟星使晚礼装',
+    shortName: '星穹晚礼装',
+    captionSuffix: ' · 星穹星使',
+    badge: '星穹礼赞',
+    desc: '星夜蓝渐变金丝礼裙配逆转时计胸针，手提黄铜浑天仪星灯。',
+    portrait: 'assets/spire/port_zero_astral.jpg',
+    chibi: 'assets/spire/hero_zero_astral.png',
+    sheetKey: 'zero_astral',
+    portraitKey: 'zero_astral',
+    accent: '#60a5fa',
+    dashColor: '#60a5fa'
+  },
+  default: {
+    id: 'default',
+    code: 'CLASSIC · 00',
+    name: '零号素衣 · 初始守誓白衣',
+    shortName: '初始白衣',
+    captionSuffix: ' · 白衣',
+    badge: '初始素衣',
+    desc: '第九百九十九次于石棺苏醒时的灰白守誓斗篷与苍青提灯。',
+    portrait: 'assets/spire/port_zero.jpg',
+    chibi: 'assets/spire/hero_zero.png',
+    sheetKey: 'zero',
+    portraitKey: 'zero',
+    accent: '#72efdd',
+    dashColor: '#72efdd'
+  }
+};
+
+let selectedZeroOutfit = (function () {
+  try {
+    const saved = typeof localStorage !== 'undefined' && localStorage ? localStorage.getItem(ZERO_OUTFIT_STORAGE_KEY) : null;
+    if (saved && ZERO_OUTFITS[saved]) return saved;
+  } catch (_) {}
+  return 'witch';
+})();
+
+function hasChosenZeroOutfit() {
+  try {
+    return !!(typeof localStorage !== 'undefined' && localStorage && localStorage.getItem(ZERO_OUTFIT_CHOSEN_KEY) === '1');
+  } catch (_) {
+    return false;
+  }
+}
+
+function getActiveZeroOutfitId() {
+  try {
+    if (player && player.cls === 'allrounder' && player.outfit && ZERO_OUTFITS[player.outfit]) {
+      return player.outfit;
+    }
+  } catch (_) {}
+  return ZERO_OUTFITS[selectedZeroOutfit] ? selectedZeroOutfit : 'witch';
+}
+
+function getActiveZeroOutfit() {
+  return ZERO_OUTFITS[getActiveZeroOutfitId()] || ZERO_OUTFITS.default;
+}
+
+function setSelectedZeroOutfit(outfitId, markChosen = true) {
+  const validId = ZERO_OUTFITS[outfitId] ? outfitId : 'witch';
+  selectedZeroOutfit = validId;
+  try {
+    if (player && player.cls === 'allrounder') {
+      player.outfit = validId;
+    }
+  } catch (_) {}
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage) {
+      localStorage.setItem(ZERO_OUTFIT_STORAGE_KEY, validId);
+      if (markChosen) localStorage.setItem(ZERO_OUTFIT_CHOSEN_KEY, '1');
+    }
+  } catch (_) {}
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmZeroOutfit === 'function') {
+    SpireAssets.warmZeroOutfit(validId);
+  }
+  if (typeof syncZeroOutfitUI === 'function') syncZeroOutfitUI();
+  return ZERO_OUTFITS[validId];
+}
+
+// ============================================================================
 // 🛡️ 网页端全链路资源完整性自检与启动门禁系统 (SpireBootGate)
 // 防止弱网/丢包/跨版本残缺缓存导致「内容没下载全但初始界面已刷出」引发运行 Bug
 // ============================================================================
@@ -369,11 +554,14 @@ const SpireBootGate = (function () {
       try {
         const base = (typeof location !== 'undefined' && location.pathname) ? location.pathname : './';
         const hash = (typeof location !== 'undefined' && location.hash) ? location.hash : '';
-        location.replace(base + '?_reload=' + Date.now() + hash);
+        location.replace(base + '?_v=' + encodeURIComponent(APP_VERSION) + '&_reload=' + Date.now() + hash);
       } catch (_) {}
     };
     try {
       const tasks = [];
+      if (typeof fetch === 'function' && typeof location !== 'undefined' && location.pathname) {
+        tasks.push(fetch(location.pathname, { cache: 'reload' }).catch(function () {}));
+      }
       if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
         tasks.push(navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))));
       }
@@ -386,6 +574,23 @@ const SpireBootGate = (function () {
       }
     } catch (_) {}
     go();
+  }
+
+  function trySilentAutoHeal(reason) {
+    try {
+      if (typeof sessionStorage === 'undefined' || typeof location === 'undefined') return false;
+      const healKey = 'spire_auto_heal_ver';
+      if (sessionStorage.getItem(healKey) === APP_VERSION) return false;
+      sessionStorage.setItem(healKey, APP_VERSION);
+      setStep(54, '正在自动同步最新版本缓存 (' + APP_VERSION + ')…');
+      if (typeof logInfo === 'function') {
+        logInfo('BOOT_AUTO_HEAL', '检测到旧缓存残留，执行单次静默净缓存刷新: ' + reason);
+      }
+      forceReloadClean();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   if (typeof window !== 'undefined') {
@@ -452,9 +657,11 @@ const SpireBootGate = (function () {
 
   function verifyModules() {
     const failures = [];
+    let staleHtmlMismatch = false;
     const gate = document.getElementById('bootGate');
     const htmlVer = gate && gate.getAttribute ? gate.getAttribute('data-html-version') : null;
     if (htmlVer && htmlVer !== APP_VERSION) {
+      staleHtmlMismatch = true;
       failures.push(`HTML 入口版本 (${htmlVer}) 与脚本版本 (${APP_VERSION}) 不一致（旧缓存残留）`);
     }
     for (let i = 0; i < failedNetTags.length; i++) {
@@ -484,13 +691,16 @@ const SpireBootGate = (function () {
       ['20/renderer', () => typeof draw === 'function' && typeof loop === 'function']
     ];
 
+    let modulesReady = true;
     for (let i = 0; i < checks.length; i++) {
       let ok = false;
       try { ok = !!checks[i][1](); } catch (_) { ok = false; }
-      if (!ok) failures.push(`模块未就绪或下载残缺: ${checks[i][0]}`);
+      if (!ok) {
+        modulesReady = false;
+        failures.push(`模块未就绪或下载残缺: ${checks[i][0]}`);
+      }
     }
 
-    const codeOk = failures.length === 0;
     let cssPending = false;
     if (typeof document !== 'undefined' && document.styleSheets && typeof document.styleSheets.length === 'number' && document.querySelectorAll) {
       const links = document.querySelectorAll('link[rel="stylesheet"]');
@@ -507,7 +717,8 @@ const SpireBootGate = (function () {
       }
     }
 
-    return { ok: failures.length === 0 && !cssPending, codeOk, cssPending, failures };
+    const codeOk = failures.length === 0;
+    return { ok: codeOk && !cssPending, codeOk, modulesReady, staleHtmlMismatch, cssPending, failures };
   }
 
   function verifyCriticalAssets() {
@@ -519,81 +730,60 @@ const SpireBootGate = (function () {
     }
 
     checkingImages = true;
+    // 20/20 核心脚本与 4/4 样式表已 100% 就绪：首屏原画通过 SpireAssets 共享缓存渐进预热，
+    // 最长仅柔和等待 900ms 即自动放行入殿，彻底根除手机蜂窝网络波动误弹“未加载完全/缓存冲突”拦截框！
     const criticalList = [
-      ['主殿背景原画', 'assets/spire/v2/title-clean.png'],
-      ['主角立绘档案', 'assets/spire/port_zero.jpg'],
-      ['风语行商立绘', 'assets/spire/port_qingyu.jpg'],
-      ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png'],
-      ['首幕地面石板贴图', 'assets/spire/arena_1_foundry.jpg']
+      ['主殿背景原画', 'assets/spire/v2/title-clean.png', true],
+      ['主角立绘档案', 'assets/spire/port_zero.jpg', true],
+      ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png', false],
+      ['风语行商立绘', 'assets/spire/port_qingyu.jpg', false],
+      ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg', false]
     ];
-    const total = criticalList.length;
+    const primaryTotal = 2;
+    let primaryDone = 0;
     let doneCount = 0;
-    let pending = total;
-    const imgFailures = [];
-    const startedAt = Date.now();
+    const total = criticalList.length;
+    const SOFT_ART_GRACE_MS = 900;
 
-    const finishOne = function (label, ok, relPath) {
-      if (finished) return;
+    const markDone = function (isPrimary) {
       doneCount++;
-      pending--;
-      if (!ok) imgFailures.push(`${label} (${relPath}) 下载或解码失败`);
-      const pct = 66 + Math.round((doneCount / total) * 34);
-      setStep(pct, `正在核验首屏核心原画 (${doneCount}/${total})…`);
-      if (pending <= 0) {
+      if (isPrimary) primaryDone++;
+      if (finished) return;
+      const pct = 72 + Math.round((doneCount / total) * 28);
+      setStep(pct, `核心代码已就绪 · 正在预热首屏原画 (${doneCount}/${total})…`);
+      if (primaryDone >= primaryTotal || doneCount >= total) {
         checkingImages = false;
-        if (imgFailures.length === 0) {
-          unlockGate('web_full_verified');
-        } else {
-          showFailure(imgFailures, true);
-        }
+        unlockGate(doneCount >= total ? 'web_full_verified' : 'web_primary_art_ready');
       }
     };
 
     for (let i = 0; i < total; i++) {
-      const label = criticalList[i][0];
       const rel = criticalList[i][1];
-      const baseResolved = (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.resolve === 'function')
-        ? SpireAssets.resolve(rel)
-        : rel;
-
-      const tryLoad = function (attempt) {
-        let settled = false;
-        const img = new Image();
-        img.onload = function () {
-          if (settled) return;
-          settled = true;
-          const validDim = (img.naturalWidth || img.width || 0) > 0 && (img.naturalHeight || img.height || 0) > 0;
-          if (validDim) finishOne(label, true, rel);
-          else if (attempt < 2 && !/^data:/i.test(baseResolved)) tryLoad(attempt + 1);
-          else finishOne(label, false, rel);
-        };
-        img.onerror = function () {
-          if (settled) return;
-          settled = true;
-          if (attempt < 2 && !/^data:/i.test(baseResolved)) {
-            tryLoad(attempt + 1);
-          } else {
-            finishOne(label, false, rel);
-          }
-        };
-        if (attempt === 0 || /^data:/i.test(baseResolved)) {
-          img.src = baseResolved + (/^data:|\?/.test(baseResolved) ? '' : ('?v=' + APP_VERSION));
-        } else {
-          const clean = baseResolved.split('?')[0];
-          img.src = clean + '?_retry=' + attempt + '&_t=' + Date.now();
-        }
+      const isPrimary = !!criticalList[i][2];
+      let settled = false;
+      const settle = function () {
+        if (settled) return;
+        settled = true;
+        markDone(isPrimary);
       };
-
-      tryLoad(0);
+      if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.loadImage === 'function') {
+        const cachedImg = SpireAssets.loadImage(rel, settle);
+        if (cachedImg) settle();
+      } else {
+        const img = new Image();
+        img.onload = settle;
+        img.onerror = settle;
+        img.src = rel + '?v=' + encodeURIComponent(APP_VERSION);
+      }
     }
 
-    if (!finished && pending > 0 && typeof setTimeout === 'function') {
+    if (!finished && typeof setTimeout === 'function') {
       setTimeout(function () {
-        if (!finished && pending > 0 && (Date.now() - startedAt) >= 10000) {
+        if (!finished) {
           checkingImages = false;
-          showFailure(['首屏核心原画响应超时（当前网络较慢或连接受阻）'], true);
+          unlockGate('code_verified_progressive_art');
         }
-      }, 11000);
+      }, SOFT_ART_GRACE_MS);
     }
   }
 
@@ -602,6 +792,17 @@ const SpireBootGate = (function () {
     const res = verifyModules();
     if (!res.codeOk) {
       if (source === 'window_load' || source === 'renderer_tail' || source === 'user_guard') {
+        // 情形 1：所有 20 个模块与样式均正常运行，仅外层旧缓存 index.html 的 data-html-version 落后 -> 先尝试单次静默净缓存刷新；若 WebView 强缓存仍未变则直接放行，绝不误拦！
+        if (res.staleHtmlMismatch && res.modulesReady && failedNetTags.length === 0 && !res.cssPending) {
+          if (trySilentAutoHeal('html_version_mismatch')) return false;
+          codeAllVerified = true;
+          unlockGate('tolerate_cached_html_shell');
+          return true;
+        }
+        // 情形 2：存在脚本/样式网络拉取残缺 -> 先自动静默净缓存重试一次，仅当重试后仍失败才展示手动修复面板
+        if (trySilentAutoHeal(res.failures[0] || 'module_or_net_failure')) {
+          return false;
+        }
         showFailure(res.failures, false);
       }
       return false;
@@ -611,11 +812,15 @@ const SpireBootGate = (function () {
       return false;
     }
     if (!res.ok) {
+      if (trySilentAutoHeal(res.failures[0] || 'css_incomplete')) return false;
       showFailure(res.failures, false);
       return false;
     }
+    try {
+      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('spire_auto_heal_ver');
+    } catch (_) {}
     codeAllVerified = true;
-    setStep(66, '20/20 核心模块校验通过 · 正在核验首屏原画…');
+    setStep(72, '20/20 核心模块校验通过 · 正在开启主殿…');
     verifyCriticalAssets();
     return bootIntegrityPassed;
   }

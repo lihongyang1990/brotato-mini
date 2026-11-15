@@ -8,14 +8,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="烬塔残响">
   <meta name="format-detection" content="telephone=no,email=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>烬塔残响：第999次救赎 · ECHOES OF THE ASHEN SPIRE</title>
-  <link rel="icon" type="image/jpeg" href="assets/spire/app_icon.jpg?v=2.1.11">
-  <link rel="apple-touch-icon" href="assets/spire/app_icon.jpg?v=2.1.11">
-  <link rel="manifest" href="manifest.json?v=2.1.11">
-  <link rel="stylesheet" href="styles/base.css?v=2.1.11">
-  <link rel="stylesheet" href="styles/mobile.css?v=2.1.11">
-  <link rel="stylesheet" href="styles/presentation.css?v=2.1.11">
-  <link rel="stylesheet" href="styles/narrative.css?v=2.1.11">
+  <link rel="icon" type="image/jpeg" href="assets/spire/app_icon.jpg?v=2.1.17">
+  <link rel="apple-touch-icon" href="assets/spire/app_icon.jpg?v=2.1.17">
+  <link rel="manifest" href="manifest.json?v=2.1.17">
+  <link rel="stylesheet" href="styles/base.css?v=2.1.17">
+  <link rel="stylesheet" href="styles/mobile.css?v=2.1.17">
+  <link rel="stylesheet" href="styles/presentation.css?v=2.1.17">
+  <link rel="stylesheet" href="styles/narrative.css?v=2.1.17">
 </head>
 <body>
 
@@ -24,7 +27,7 @@
   <canvas id="spireDirectorCv" class="director-cv hidden"></canvas>
 
   <!-- 首屏全链路资源完整性校验门禁（内联关键样式保证 0ms 遮挡未就绪界面，防止脚本/样式/贴图未下载全时提前操作触发 Bug） -->
-  <div id="bootGate" class="boot-gate" data-html-version="v2.1.11" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 36%,rgba(223,192,132,0.10),transparent 60%),#070a12;color:#efe8d8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;">
+  <div id="bootGate" class="boot-gate" data-html-version="v2.1.17" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 36%,rgba(223,192,132,0.10),transparent 60%),#070a12;color:#efe8d8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;">
     <div class="boot-gate-card" style="width:100%;max-width:460px;padding:28px 26px 24px;border:1px solid rgba(223,192,132,0.34);border-radius:12px;background:linear-gradient(180deg,rgba(15,20,32,0.96),rgba(8,11,19,0.98));box-shadow:0 24px 60px rgba(0,0,0,0.78);text-align:center;">
       <div style="font-size:11px;letter-spacing:0.22em;color:#dfc084;opacity:0.88;margin-bottom:8px;">ASHEN SPIRE · INTEGRITY CHECK</div>
       <h2 id="bootGateTitle" style="margin:0 0 8px;font-size:21px;font-weight:800;color:#fff6dc;letter-spacing:0.04em;">🕯️ 魂灯引渡 · 校验资源完整性</h2>
@@ -90,10 +93,14 @@
         </div>
       </div>
       <div id="bossBarWrap" class="boss-bar-wrap hidden">
-        <div class="boss-name">绯红断刃剑姬 · 烬羽</div>
-        <div class="bar bar-boss">
-          <div id="bossFill" class="bar-fill hp-fill" style="width:100%"></div>
+        <div id="bossPrimaryRow" class="boss-row">
+          <div class="boss-name">绯红断刃剑姬 · 烬羽</div>
+          <div class="bar bar-boss">
+            <div id="bossFill" class="bar-fill hp-fill" style="width:100%"></div>
+            <div id="bossHpText" class="bar-text boss-hp-text"></div>
+          </div>
         </div>
+        <div id="bossExtraBars" class="boss-extra-bars"></div>
         <div id="bossCastSub" class="boss-cast-sub hidden"></div>
       </div>
     </div>
@@ -110,12 +117,12 @@
   </div>
 
   <!-- 触屏端右下角拇指瞬步战技按钮（随 HUD 显隐联动） -->
-  <button id="dashTouchBtn" type="button" tabindex="-1" class="dash-touch-btn" onclick="this.blur();triggerSoulDash()" aria-label="发动青焰瞬步">
+  <button id="dashTouchBtn" type="button" tabindex="-1" class="dash-touch-btn" onclick="handleDashTouchClick(this)" aria-label="发动青焰瞬步">
     <span class="dash-touch-icon">◆</span>
     <span id="dashTouchLabel" class="dash-touch-lbl">瞬步</span>
   </button>
   <!-- 触屏端右下角流派觉醒大招 [E] 按钮（随 HUD 显隐联动） -->
-  <button id="ultTouchBtn" type="button" tabindex="-1" class="ult-touch-btn" onclick="this.blur();triggerUltimateSkill()" aria-label="发动流派觉醒大招">
+  <button id="ultTouchBtn" type="button" tabindex="-1" class="ult-touch-btn" onclick="handleUltTouchClick(this)" aria-label="发动流派觉醒大招">
     <span id="ultTouchIcon" class="ult-touch-icon">⚡</span>
     <span id="ultTouchLabel" class="ult-touch-lbl">觉醒</span>
   </button>
@@ -164,7 +171,7 @@
     <!-- 视图 A：极简书卷原画主界面 -->
     <section id="menuHomeView" class="menu-stage">
       <header class="home-topbar">
-        <span id="startVersionPill" class="home-ver-pill">ECHOES OF THE ASHEN SPIRE · v2.1.11</span>
+        <span id="startVersionPill" class="home-ver-pill">ECHOES OF THE ASHEN SPIRE · v2.1.17</span>
         <nav class="home-top-actions" aria-label="声音设置">
           <button id="menuAudioBtn" class="ghost-pill-btn" onclick="openAudioModal()">🔊 音量 · 28%</button>
           <button id="menuBgmBtn" class="ghost-pill-btn" onclick="toggleSpireAudio()">音景 · 开启</button>
@@ -176,12 +183,13 @@
         <p class="home-subtitle">第 999 次救赎</p>
         <nav id="modePortalGrid" class="title-menu" aria-label="开始游戏">
           <button id="continueStoryBtn" class="title-link primary hidden" onclick="continueSpireStory()"><span class="title-diamond" aria-hidden="true">◇</span><span>继续登塔<small id="continueStoryHint"></small></span></button>
-          <button id="portalStoryBtn" class="title-link primary" onclick="openMenuStage('story')"><span class="title-diamond" aria-hidden="true">◇</span><span id="newStoryLabel">提灯启程</span></button>
+          <button id="portalStoryBtn" class="title-link primary" onclick="handleStoryPortalClick()"><span class="title-diamond" aria-hidden="true">◇</span><span id="newStoryLabel">提灯启程</span></button>
           <button id="portalEndlessBtn" class="title-link" onclick="openMenuStage('endless')"><span class="title-diamond" aria-hidden="true">◇</span><span>无尽试炼</span></button>
         </nav>
         <p class="home-poem">雨还没有停。灯在等你。</p>
       </div>
       <footer class="home-footer">
+        <button id="homeOutfitBtn" class="footer-link-btn" onclick="openZeroOutfitModal()"><span aria-hidden="true">✦</span> 寻光战装</button>
         <button class="footer-link-btn" onclick="openSpireGallery()"><span aria-hidden="true">▧</span> 演出预览</button>
         <button class="footer-link-btn" onclick="openCodex('weapons')">烬塔圣典</button>
         <button class="footer-link-btn home-settings" onclick="openSpireSettings()"><span aria-hidden="true">⚙</span> 设置</button>
@@ -285,6 +293,25 @@
       <header class="presentation-head"><div><p id="presentationOverline" class="prep-overline"></p><h2 id="presentationTitle"></h2></div><button id="presentationClose" class="quiet-button" onclick="closePresentationModal()" aria-label="关闭">关闭 ×</button></header>
       <div id="presentationBody" class="presentation-body"></div>
     </section>
+  </div>
+
+  <!-- 首次进游戏 / 主殿换装：主角「零」三套专属战装形象选择弹窗 -->
+  <div id="outfitModal" class="overlay log-modal outfit-modal hidden" role="dialog" aria-modal="true" aria-labelledby="outfitModalTitle" onclick="if(event.target===this)closeZeroOutfitModal()">
+    <div class="log-box outfit-modal-box">
+      <div class="log-head outfit-modal-head">
+        <div>
+          <span class="codex-kicker">ATTIRE SELECTION · 寻光战装择定</span>
+          <h2 id="outfitModalTitle">择定提灯形象 · 三套专属战装</h2>
+        </div>
+        <button type="button" class="icon-pill-btn" onclick="closeZeroOutfitModal()">✕ 关闭</button>
+      </div>
+      <p class="outfit-modal-sub">择定主角「零」的登塔形象，半身立绘、实机四帧动作精灵表与剧情对白将同步焕新（后续随时可在主界面或启程台一键换装）</p>
+      <div id="outfitModalGrid" class="outfit-modal-grid" role="radiogroup" aria-label="主角三套战装选择"></div>
+      <div class="outfit-modal-foot">
+        <button id="outfitDefaultToggle" type="button" class="ghost-pill-btn outfit-default-btn" onclick="selectZeroOutfitFromUI('default')">切换为初始守誓白衣</button>
+        <button id="outfitConfirmBtn" type="button" class="btn btn-go outfit-confirm-btn" onclick="confirmZeroOutfitModal()">◆ 身披此装 · 提灯启程 →</button>
+      </div>
+    </div>
   </div>
 
   <!-- 守誓遗物匣结算 -->
@@ -408,7 +435,7 @@
   <div id="changelogModal" class="overlay log-modal hidden">
     <div class="log-box changelog-box">
       <div class="log-head">
-        <h2 id="changelogTitle">烬塔纪元志 · v2.1.11</h2>
+        <h2 id="changelogTitle">烬塔纪元志 · v2.1.17</h2>
         <button class="icon-pill-btn" onclick="closeChangelogModal()">✕ 关闭</button>
       </div>
       <div id="changelogList" class="changelog-list"></div>
@@ -476,26 +503,26 @@
   </div>
 </div>
 
-  <!-- 模块化脚本按依赖拓扑顺序统一 defer 加载（v2.1.11） -->
-  <script defer src="src/core/env.js?v=2.1.11"></script>
-  <script defer src="src/core/logger.js?v=2.1.11"></script>
-  <script defer src="src/data/scenes.js?v=2.1.11"></script>
-  <script defer src="src/data/boss_portraits.js?v=2.1.11"></script>
-  <script defer src="src/world/textures.js?v=2.1.11"></script>
-  <script defer src="src/ui/viewport.js?v=2.1.11"></script>
-  <script defer src="src/core/audio.js?v=2.1.11"></script>
-  <script defer src="src/data/arsenal.js?v=2.1.11"></script>
-  <script defer src="src/data/monsters.js?v=2.1.11"></script>
-  <script defer src="src/ui/codex.js?v=2.1.11"></script>
-  <script defer src="src/data/story-v2.js?v=2.1.11"></script>
-  <script defer src="src/game/director.js?v=2.1.11"></script>
-  <script defer src="src/ui/menus.js?v=2.1.11"></script>
-  <script defer src="src/ui/presentation.js?v=2.1.11"></script>
-  <script defer src="src/game/spawner.js?v=2.1.11"></script>
-  <script defer src="src/game/combat.js?v=2.1.11"></script>
-  <script defer src="src/game/update.js?v=2.1.11"></script>
-  <script defer src="src/ui/shop.js?v=2.1.11"></script>
-  <script defer src="src/render/sprites.js?v=2.1.11"></script>
-  <script defer src="src/render/renderer.js?v=2.1.11"></script>
+  <!-- 模块化脚本按依赖拓扑顺序统一 defer 加载（v2.1.17） -->
+  <script defer src="src/core/env.js?v=2.1.17"></script>
+  <script defer src="src/core/logger.js?v=2.1.17"></script>
+  <script defer src="src/data/scenes.js?v=2.1.17"></script>
+  <script defer src="src/data/boss_portraits.js?v=2.1.17"></script>
+  <script defer src="src/world/textures.js?v=2.1.17"></script>
+  <script defer src="src/ui/viewport.js?v=2.1.17"></script>
+  <script defer src="src/core/audio.js?v=2.1.17"></script>
+  <script defer src="src/data/arsenal.js?v=2.1.17"></script>
+  <script defer src="src/data/monsters.js?v=2.1.17"></script>
+  <script defer src="src/ui/codex.js?v=2.1.17"></script>
+  <script defer src="src/data/story-v2.js?v=2.1.17"></script>
+  <script defer src="src/game/director.js?v=2.1.17"></script>
+  <script defer src="src/ui/menus.js?v=2.1.17"></script>
+  <script defer src="src/ui/presentation.js?v=2.1.17"></script>
+  <script defer src="src/game/spawner.js?v=2.1.17"></script>
+  <script defer src="src/game/combat.js?v=2.1.17"></script>
+  <script defer src="src/game/update.js?v=2.1.17"></script>
+  <script defer src="src/ui/shop.js?v=2.1.17"></script>
+  <script defer src="src/render/sprites.js?v=2.1.17"></script>
+  <script defer src="src/render/renderer.js?v=2.1.17"></script>
 </body>
 </html>

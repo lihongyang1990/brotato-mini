@@ -118,7 +118,11 @@ const AudioBank = {
   _resolveUrl(url) {
     if (!url) return '';
     const inlineMap = typeof window !== 'undefined' && window.__SPIRE_INLINE_ASSETS__;
-    return (inlineMap && inlineMap[url]) ? inlineMap[url] : url;
+    if (inlineMap && inlineMap[url]) return inlineMap[url];
+    if (!/^data:|\?/.test(url) && typeof APP_VERSION === 'string' && APP_VERSION) {
+      return url + '?v=' + encodeURIComponent(APP_VERSION);
+    }
+    return url;
   },
   _effectiveBgmGain(baseVol) {
     if (this.bgmMuted || this.bgmVol <= 0.005) return 0;
@@ -205,40 +209,93 @@ AudioBank.registerSfx('cutscene_slash', 'assets/audio/cutscene_slash.wav', 0.40)
 AudioBank.registerSfx('cutscene_shatter', 'assets/audio/cutscene_shatter.wav', 0.40);
 
 const SCENE_AUDIO_MAP = {
-  foundry:   { url: 'assets/audio/scene_foundry_rain.wav',   vol: 0.28, notes: [293.66, 349.23, 440.00, 329.63, 261.63, 220.00], waveType: 'triangle', step: 0.72 },
-  glacier:   { url: 'assets/audio/scene_glacier_frost.wav',  vol: 0.26, notes: [523.25, 659.25, 880.00, 783.99, 659.25, 587.33], waveType: 'sine',     step: 0.64 },
-  wasteland: { url: 'assets/audio/scene_wasteland_clock.wav',vol: 0.27, notes: [369.99, 440.00, 554.37, 523.25, 440.00, 329.63], waveType: 'triangle', step: 0.50 },
-  desert:    { url: 'assets/audio/scene_desert_eclipse.wav', vol: 0.30, notes: [246.94, 293.66, 369.99, 440.00, 369.99, 293.66], waveType: 'sine',     step: 0.85 },
-  fungal:    { url: 'assets/audio/scene_fungal_wind.wav',    vol: 0.26, notes: [329.63, 392.00, 493.88, 587.33, 493.88, 392.00], waveType: 'sine',     step: 0.68 }
+  foundry: {
+    url: 'assets/audio/scene_foundry_rain.wav',
+    phase2Url: 'assets/audio/scene_foundry_phase2.wav',
+    vol: 0.28, phase2Vol: 0.31,
+    notes: [293.66, 349.23, 440.00, 329.63, 261.63, 220.00],
+    phase2Notes: [440.00, 466.16, 440.00, 349.23, 293.66, 329.63, 440.00, 587.33],
+    waveType: 'triangle', step: 0.72, phase2Step: 0.42
+  },
+  glacier: {
+    url: 'assets/audio/scene_glacier_frost.wav',
+    phase2Url: 'assets/audio/scene_glacier_phase2.wav',
+    vol: 0.27, phase2Vol: 0.30,
+    notes: [554.37, 587.33, 554.37, 440.00, 493.88, 554.37],
+    phase2Notes: [739.99, 659.25, 587.33, 554.37, 493.88, 440.00, 554.37, 739.99],
+    waveType: 'sine', step: 0.64, phase2Step: 0.38
+  },
+  wasteland: {
+    url: 'assets/audio/scene_wasteland_clock.wav',
+    phase2Url: 'assets/audio/scene_wasteland_phase2.wav',
+    vol: 0.27, phase2Vol: 0.30,
+    notes: [261.63, 392.00, 415.30, 392.00, 311.13, 293.66],
+    phase2Notes: [523.25, 466.16, 415.30, 392.00, 311.13, 392.00, 415.30, 523.25],
+    waveType: 'triangle', step: 0.50, phase2Step: 0.34
+  },
+  desert: {
+    url: 'assets/audio/scene_desert_eclipse.wav',
+    phase2Url: 'assets/audio/scene_desert_phase2.wav',
+    vol: 0.29, phase2Vol: 0.32,
+    notes: [246.94, 293.66, 369.99, 440.00, 369.99, 293.66],
+    phase2Notes: [293.66, 369.99, 440.00, 587.33, 554.37, 440.00, 369.99, 587.33],
+    waveType: 'sine', step: 0.85, phase2Step: 0.44
+  },
+  fungal: {
+    url: 'assets/audio/scene_fungal_wind.wav',
+    phase2Url: 'assets/audio/scene_foundry_phase2.wav',
+    vol: 0.26, phase2Vol: 0.29,
+    notes: [329.63, 392.00, 493.88, 587.33, 493.88, 392.00],
+    waveType: 'sine', step: 0.68, phase2Step: 0.42
+  }
 };
 
 const SpireAudio = {
   activeSceneId: 'foundry',
+  phase2Active: false,
   useSynthFallback: typeof Audio === 'undefined',
   noteIdx: 0,
   acc: 0,
-  syncScene(sceneId) {
+  _getTrackSpec(sceneId, isPhase2) {
     const sid = SCENE_AUDIO_MAP[sceneId] ? sceneId : 'foundry';
-    this.activeSceneId = sid;
     const cfg = SCENE_AUDIO_MAP[sid];
+    const p2 = !!(isPhase2 && cfg.phase2Url);
+    return {
+      sid,
+      cfg,
+      url: p2 ? cfg.phase2Url : cfg.url,
+      vol: p2 ? (cfg.phase2Vol || cfg.vol) : cfg.vol,
+      notes: (p2 && cfg.phase2Notes) ? cfg.phase2Notes : cfg.notes,
+      step: (p2 && cfg.phase2Step) ? cfg.phase2Step : cfg.step
+    };
+  },
+  syncScene(sceneId, isPhase2 = false) {
+    const spec = this._getTrackSpec(sceneId, isPhase2);
+    this.activeSceneId = spec.sid;
+    this.phase2Active = !!(isPhase2 && spec.cfg.phase2Url);
+    AudioBank.currentBgmUrl = spec.url;
     if (!AudioBank.bgmMuted && AudioBank.bgmVol > 0.005) {
-      const ok = AudioBank.playBgm(cfg.url, cfg.vol);
+      const ok = AudioBank.playBgm(spec.url, spec.vol);
       if (!ok) this.useSynthFallback = true;
     } else {
-      AudioBank.baseBgmVol = cfg.vol;
+      AudioBank.baseBgmVol = spec.vol;
       AudioBank.syncBgmVolume();
     }
     this.refreshButtons();
   },
+  enterPhase2(sceneId) {
+    const sid = sceneId || this.activeSceneId || 'foundry';
+    this.syncScene(sid, true);
+  },
   onUserUnlock() {
     if (AudioBank.bgmMuted || AudioBank.bgmVol <= 0.005) return;
-    const cfg = SCENE_AUDIO_MAP[this.activeSceneId] || SCENE_AUDIO_MAP.foundry;
-    if (AudioBank.bgm && AudioBank.bgm.paused) {
-      AudioBank.bgm.volume = AudioBank._effectiveBgmGain(cfg.vol);
+    const spec = this._getTrackSpec(this.activeSceneId, this.phase2Active);
+    if (AudioBank.bgm && AudioBank.bgm._relUrl === spec.url && AudioBank.bgm.paused) {
+      AudioBank.bgm.volume = AudioBank._effectiveBgmGain(spec.vol);
       const p = AudioBank.bgm.play();
       if (p && p.catch) p.catch(() => { this.useSynthFallback = true; });
-    } else if (!AudioBank.bgm) {
-      const ok = AudioBank.playBgm(cfg.url, cfg.vol);
+    } else if (!AudioBank.bgm || AudioBank.bgm._relUrl !== spec.url) {
+      const ok = AudioBank.playBgm(spec.url, spec.vol);
       if (!ok) this.useSynthFallback = true;
     }
   },
@@ -247,23 +304,23 @@ const SpireAudio = {
     const bgmPlaying = !!(AudioBank.bgm && !AudioBank.bgm.paused && !AudioBank.bgm.ended);
     if (bgmPlaying && !this.useSynthFallback) return;
     if (!actx || actx.state !== 'running' || typeof actx.createBiquadFilter !== 'function') return;
-    const cfg = SCENE_AUDIO_MAP[this.activeSceneId] || SCENE_AUDIO_MAP.foundry;
+    const spec = this._getTrackSpec(this.activeSceneId, this.phase2Active);
     this.acc += dt;
-    if (this.acc < cfg.step) return;
+    if (this.acc < spec.step) return;
     this.acc = 0;
-    const f = cfg.notes[this.noteIdx++ % cfg.notes.length];
+    const f = spec.notes[this.noteIdx++ % spec.notes.length];
     try {
       const synthGain = Math.max(0.0008, 0.012 * AudioBank.bgmVol);
       const o = actx.createOscillator(), g = actx.createGain();
-      o.type = cfg.waveType;
+      o.type = spec.cfg.waveType;
       o.frequency.setValueAtTime(f, actx.currentTime);
       g.gain.setValueAtTime(synthGain, actx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0004, actx.currentTime + cfg.step * 0.88);
+      g.gain.exponentialRampToValueAtTime(0.0004, actx.currentTime + spec.step * 0.88);
       o.connect(g); g.connect(actx.destination);
       o.onended = () => {
         try { o.disconnect(); g.disconnect(); } catch (_) {}
       };
-      o.start(); o.stop(actx.currentTime + cfg.step * 0.90);
+      o.start(); o.stop(actx.currentTime + spec.step * 0.90);
     } catch (_) {}
   },
   playCutsceneCue(variant, isMythic) {
@@ -325,7 +382,7 @@ function setBgmVolumePct(pct) {
   unlockAudio();
   const sid = (typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId;
   if (!AudioBank.bgm && cleanPct > 0) {
-    SpireAudio.syncScene(sid);
+    SpireAudio.syncScene(sid, SpireAudio.phase2Active);
   } else {
     AudioBank.syncBgmVolume();
   }
@@ -367,7 +424,7 @@ function resetAudioDefaults() {
   AudioBank.bgmVol = DEFAULT_BGM_VOL;
   AudioBank.sfxVol = DEFAULT_SFX_VOL;
   unlockAudio();
-  SpireAudio.syncScene((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId);
+  SpireAudio.syncScene((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId, SpireAudio.phase2Active);
   AudioBank.savePrefs();
   SpireAudio.refreshButtons();
   previewSfxVolume();
@@ -383,7 +440,7 @@ function toggleSpireAudio() {
       AudioBank.sfxVol = DEFAULT_SFX_VOL;
     }
     unlockAudio();
-    SpireAudio.syncScene((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId);
+    SpireAudio.syncScene((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId, SpireAudio.phase2Active);
     beep(587.33, 0.06, 'triangle', 0.045);
   }
   AudioBank.savePrefs();

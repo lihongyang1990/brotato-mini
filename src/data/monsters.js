@@ -5,32 +5,32 @@ const BOSS_DEFS = {
   butcher: {
     id: 'butcher', icon: '🦊', sprite: 'assets/spire/hero_jinyu.png', portrait: 'assets/spire/port_jinyu.jpg',
     name: '绯红断刃剑姬 · 烬羽', epithet: '一层守桥挚友 · 第998道残火', color: '#e63946', spd: 90,
-    desc: '佩戴半截白狐假面、死守雨夜孤桥九百九十八世的昔日剑卫：拔刀锁定居合一闪斩线、释放【红莲外环剑域（贴身风眼安全）】、倾泻专属场景熔池并唤出浪人残偶；33% 概率燃尽魂火觉醒二阶段，必展二阶隐藏立绘并额外解锁专属终式【绯夜八荒剑狱】！'
+    desc: '死守雨夜孤桥九百九十八世的昔日剑卫：展开【血誓决斗剑域】（圈内见切应战可刷新瞬步并令其破防，逃出剑圈将遭违誓追魂一闪）、释放【血眼回天斩（内圈风眼安全）】与连环居合；二阶段解锁终式【绯夜八荒剑狱】，D5 二阶段濒死更会触发一次 10 秒【临死挣扎】！'
   },
   frost_queen: {
     id: 'frost_queen', icon: '❄️', sprite: 'assets/spire/hero_astria.png', portrait: 'assets/spire/port_astria.jpg',
     name: '永冻星使 · 艾丝特莉亚', epithet: '二层冰封王城之主 · 碎冕星瞳', color: '#00bbf9', spd: 84,
-    desc: '遵从你千年前遗愿冰封全城子民的挚友星使：架设双轨寒晶导轨掠袭、绽放螺旋霜星花瓣弹、吟唱【眠冬外环暴雪】并凝结专属寒冰台；33% 概率碎冕觉醒二阶段，必展二阶隐藏立绘并额外解锁专属终式【绝对零度四翼极光环】！'
+    desc: '遵从遗愿冰封王城的挚友星使：升起可破坏的【双生极光共鸣棱柱】（拉起极光冰弦并赋予棱障减伤，优先击破冰棱柱可斩断护盾并反噬破防！）、扫射极光冰束与六合冰牢；二阶段解锁【绝对零度四翼极光环】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   mech_colossus: {
     id: 'mech_colossus', icon: '⚙️', sprite: 'assets/spire/boss_mech_colossus.png', portrait: 'assets/spire/port_jialan.jpg',
     name: '倒悬机神 · 伽蓝重装态', epithet: '三层逆转发条钟楼镇守者', color: '#f77f00', spd: 78,
-    desc: '伽蓝操控的倒悬钟楼重装镇塔巨像：双肩发条火炮交叉齐射、改造本层专属地形、轰击星晷外环震波并投放齿轮陀螺偶；33% 概率超载觉醒二阶段，必展二阶隐藏立绘并额外解锁专属终式【末日熔核锯刃风暴】！'
+    desc: '伽蓝操控的钟楼重装巨像：部署可破坏的【超导磁暴引力桩】牵引猎物（击破引力桩可超载反噬机神破防）、横扫熔核加特林与钢铁矩阵排炮；二阶段解锁终式【末日熔核锯刃风暴】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   void_weaver: {
     id: 'void_weaver', icon: '🕰️', sprite: 'assets/spire/hero_jialan.png', portrait: 'assets/spire/port_jialan.jpg',
     name: '紫电弦月人偶 · 伽蓝', epithet: '三层星晷断罪少主 · 逆命傀儡师', color: '#9d4edd', spd: 86,
-    desc: '头插黄金骷髅发条的毒舌人偶少主：施展逆钟折跃与十字激光网、扫射高压【炼金秘毒龙息喷流】并操控双刃剑偶；觉醒二阶段后额外解锁专属终式【逆时米字次元断罪】！'
+    desc: '倒悬钟楼的毒舌人偶少主：刻印【逆时回溯锚点】并生成青色【断时解锚阵】（及时踏入解锚阵可反噬破防，否则将被强制时空拽回！），折跃投出回旋逆时弦月刃；二阶段解锁【逆时米字断罪光网】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   plague_empress: {
     id: 'plague_empress', icon: '🍃', sprite: 'assets/spire/hero_qingyu.png', portrait: 'assets/spire/port_qingyu.jpg',
     name: '残羽魔女 · 青羽试炼影', epithet: '风语守望者 · 最后的温柔锁', color: '#52b788', spd: 85,
-    desc: '守望九百九十九次轮回的残羽魔女幻影：蓄力横扫高压扇形【万蛊剧毒吐息喷流】、旋舞双螺旋苍翠风翎弹幕并唤出灵体；觉醒二阶段额外解锁专属终式【双龙剧毒吐息狂潮】！'
+    desc: '守望轮回的残羽魔女幻影：培植可破坏的【万蛊共生母苞】护体（击破母苞触发反噬破防）、横扫高压【万蛊剧毒吐息】并旋舞双螺旋风翎弹；二阶段解锁终式【双龙万蛊毒息】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   solar_seraph: {
     id: 'solar_seraph', icon: '🌑', sprite: 'assets/spire/hero_eclipse.png', portrait: 'assets/spire/port_eclipse.jpg',
     name: '第999号 · 日蚀圣女', epithet: '终层镜中真我 · 蚀日天灾神骸', color: '#ff9f1c', spd: 88,
-    desc: '端坐黑水圣所巨镜之中的你真正的神明本体：锁定黑金圣枪导轨贯日突刺、释放阴阳双曜并震塌黑曜断层；第 16 层终战必定揭下黑纱觉醒二阶段并解锁专属终式【黑日神罚天体崩落】！'
+    desc: '黑水圣所镜中的神明真我（D2~D5 享最高 25% 镜影残像闪避）：展开【黑日引力奇点】牵引全场并投射双生金色【晨曦庇护印】（踏入庇护印可免疫黑日新星并令圣女破防！）、施放阴阳双曜；二阶段解锁【黑日神罚天体崩落】，D5 二阶段濒死必触发一次 10 秒【临死挣扎】！'
   }
 };
 
@@ -72,7 +72,7 @@ const MINI_BOSS_DEFS = {
   }
 };
 
-// 战场随机刷新的 3 座记忆共鸣祭坛
+// 战场随机刷新的 5 座记忆共鸣召唤祭坛（主线与无尽均会降临，包含无尽专属双主宰）
 const SPECIAL_RELICS = [
   {
     id: 'blood_altar', icon: '🏮', name: '雨夜断刃祭坛', color: '#ff2a55',
@@ -90,7 +90,19 @@ const SPECIAL_RELICS = [
     id: 'void_cube', icon: '🌑', name: '黑曜蚀日残镜', color: '#c77dff',
     bossId: 'abyss_devourer', bossIcon: '👁️', bossName: '零号容器 · 饥饿黑影', epithet: '提灯深处的天灾倒影', bossColor: '#7209b7',
     rewardDesc: '击败必爆：💎26 封魂晶石 + 🎁×1 守誓遗物匣 + 本局永久 +12% 全体伤害赐福！（若觉醒二阶段必爆传说圣遗物）',
-    bossDesc: '从黑曜石残镜溢出的天灾本源黑影：横扫高压蚀日毒雾龙息、释放双螺旋蚀日弹幕、暗物质外环坍缩并分裂黑水蚀影眷属；觉醒二阶段额外解锁黑日神罚终式。'
+    bossDesc: '从黑曜石残镜溢出的天灾本源黑影：展开震撼全场的【黑洞引力奇点】强吸猎物、横扫蚀日毒雾龙息并分裂黑水蚀影眷属！'
+  },
+  {
+    id: 'clockwork_altar', icon: '⚙️', name: '星晷重装祭坛', color: '#f77f00',
+    bossId: 'mech_colossus', bossIcon: '⚙️', bossName: '倒悬机神 · 伽蓝重装态', epithet: '无尽钟楼重装主宰 · 祭坛降临', bossColor: '#f77f00',
+    rewardDesc: '击败必爆：💎34 封魂晶石 + 🎁×1 守誓遗物匣 + 本局永久 +14% 工程伤害与 +8% 攻速赐福！',
+    bossDesc: '跨层召唤无尽首领【倒悬机神·伽蓝重装态】：部署超导磁暴引力桩牵引猎物、横扫熔核加特林与钢铁排炮，亦可独立觉醒二阶段！'
+  },
+  {
+    id: 'verdant_altar', icon: '🍃', name: '苍岚残羽祭坛', color: '#52b788',
+    bossId: 'plague_empress', bossIcon: '🍃', bossName: '残羽魔女 · 青羽试炼影', epithet: '无尽风语守望魔女 · 祭坛降临', bossColor: '#52b788',
+    rewardDesc: '击败必爆：💎32 封魂晶石 + 🎁×1 守誓遗物匣 + 本局永久 +10 最大生命与 +1.5/秒 再生赐福！',
+    bossDesc: '跨层召唤无尽首领【残羽魔女·青羽试炼影】：培植万蛊共生母苞护体、横扫高压剧毒吐息与双螺旋风翎弹，亦可独立觉醒二阶段！'
   }
 ];
 
@@ -142,7 +154,7 @@ const MONSTER_CODEX = [
   { id: 'b_void',       cat: 'boss',   sprite: 'assets/spire/hero_jialan.png',          icon: '🕰️', name: '紫电弦月人偶 · 伽蓝',    badge: '第三幕守誓主宰', wave: '第 12 层固定镇守', stats: '❤️巨额主宰级 · 🎬专属剧场演出',   desc: BOSS_DEFS.void_weaver.desc },
   { id: 'b_mech',       cat: 'boss',   sprite: 'assets/spire/boss_mech_colossus.png',   icon: '⚙️', name: '倒悬机神 · 伽蓝重装态',  badge: '钟楼重装主宰',   wave: '无尽深渊双王镇守', stats: '❤️巨额主宰级 · 🔥双肩熔炮齐射',   desc: BOSS_DEFS.mech_colossus.desc },
   { id: 'b_plague',     cat: 'boss',   sprite: 'assets/spire/hero_qingyu.png',          icon: '🍃', name: '残羽魔女 · 青羽试炼影',  badge: '风语守誓主宰',   wave: '无尽深渊试炼幻影', stats: '❤️巨额主宰级 · 🎬专属剧场演出',   desc: BOSS_DEFS.plague_empress.desc },
-  { id: 'b_solar',      cat: 'boss',   sprite: 'assets/spire/hero_eclipse.png',         icon: '🌑', name: '第999号 · 日蚀圣女',     badge: '终幕镜中真我',   wave: '第 16 层最终决战', stats: '❤️巨额主宰级 · 🎬必入神话二阶段', desc: BOSS_DEFS.solar_seraph.desc },
+  { id: 'b_solar',      cat: 'boss',   sprite: 'assets/spire/hero_eclipse.png',         icon: '🌑', name: '第999号 · 日蚀圣女',     badge: '终幕镜中真我',   wave: '第 16 层最终决战', stats: '❤️巨额主宰级 · 💨D2~D5最高25%闪避 · 🎬必入二阶段', desc: BOSS_DEFS.solar_seraph.desc },
 
   // 3 大记忆祭坛召唤 Boss（无尽深渊奇遇）
   { id: 'sb_crimson',   cat: 'special', sprite: 'assets/spire/sb_crimson_lord.png',     icon: '🦊', name: '烬羽 · 第998世残响',     badge: '🏮 记忆祭坛首领', wave: '无尽深渊 · 激活雨夜断刃祭坛', stats: '🎁×1 遗物匣 + 💎30 + 满血恢复',     desc: `${SPECIAL_RELICS[0].bossDesc}<br><b>${SPECIAL_RELICS[0].rewardDesc}</b>` },

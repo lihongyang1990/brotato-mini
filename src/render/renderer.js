@@ -1176,14 +1176,17 @@ function draw() {
   drawCrispArenaBalustrade(vL, vR, vT, vB, activeSceneId);
 
   if (state !== 'menu') {
-    // 蚀界生存试炼 · 魂灯迷雾世界空间视野半径（严密剔除雾外全部怪物、怪血条、刷怪红叉与普通敌弹，外圈浓雾 100% 不可透视怪物！）
-    const _stFog = (typeof survivalTrialWave !== 'undefined' && survivalTrialWave && player && typeof survivalTrialState === 'object' && survivalTrialState) ? survivalTrialState : null;
-    const _fogIntroP = _stFog ? Math.max(0.05, Math.min(1, _stFog.fogIntroP || 0)) : ((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) ? 1 : 0);
+    // 蚀界生存试炼 & D5 第 16 层二阶段蚀日浓雾 · 魂灯迷雾世界空间视野半径（严密剔除雾外全部怪物、怪血条、刷怪红叉与普通敌弹，外圈浓雾 100% 不可透视怪物！）
+    const _d5P2Fog = typeof isD5Floor16Phase2FogActive === 'function' && isD5Floor16Phase2FogActive();
+    const _anyFogWave = !!((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) || _d5P2Fog);
+    const _stFog = (player && typeof survivalTrialState === 'object' && survivalTrialState && (_anyFogWave || (survivalTrialState.fogIntroP || 0) > 0.01)) ? survivalTrialState : null;
+    const _fogIntroP = _stFog ? Math.max(_anyFogWave ? 0.05 : 0, Math.min(1, _stFog.fogIntroP || 0)) : (_anyFogWave ? 1 : 0);
     const _fogBoostP = (_stFog && _stFog.lanternBoostT > 0) ? Math.min(1, _stFog.lanternBoostT / 1.25) : 0;
-    const _fogTargetWorldR = (238 + _fogBoostP * 70) + Math.sin(now * 0.0042) * 3.5;
+    const _fogBaseWorldR = _d5P2Fog ? 268 : 238;
+    const _fogTargetWorldR = (_fogBaseWorldR + _fogBoostP * 72) + Math.sin(now * 0.0042) * 3.5;
     const _fogScreenClearR = Math.max(64, (Math.hypot(viewW, viewH) * (1 - _fogIntroP)) + (_fogTargetWorldR * camZoom) * _fogIntroP);
     const fogEffWorldR = _fogScreenClearR / Math.max(0.25, camZoom);
-    const fogCullActive = !!(typeof survivalTrialWave !== 'undefined' && survivalTrialWave && player && _fogIntroP > 0.35);
+    const fogCullActive = !!(player && _fogIntroP > 0.35);
     const fogWorldInnerR = fogEffWorldR * 0.90;
     const fogWorldCutR = fogEffWorldR * 1.25;
 
@@ -1286,21 +1289,42 @@ function draw() {
       ctx.restore();
     }
 
-    // 稀有地图奇遇召唤圣物（扩容巨型双环六芒星召唤祭坛 + 六方符文柱 + 站立读条进度环）
+    // 稀有地图奇遇召唤圣物（扩容巨型双环六芒星召唤祭坛 + 冲天圣辉光柱 + 脉冲声呐环 + 站立读条进度环）
     for (let i = 0; i < relics.length; i++) {
       const rel = relics[i];
       const rr = Math.max(28, rel.r || 88);
       const col = (rel.def && rel.def.color) || '#ffd166';
+      const bName = (rel.def && (rel.def.bossName || rel.def.name)) || '秘境主宰';
       const prog = Math.max(0, Math.min(1, (rel.charge || 0) / Math.max(0.1, rel.need || 1.1)));
+      drawVfxGlow(ctx, 'glowGold', rel.x, rel.y, rr * 1.32, 0.34 + prog * 0.22);
       ctx.save();
       ctx.translate(rel.x, rel.y);
-      ctx.globalAlpha = 0.13 + Math.sin(rel.pulse) * 0.04 + prog * 0.10;
+      // 向外扩散的声呐脉冲唤醒环，远距离一眼锁定祭坛方位
+      const sonarP = (rel.pulse * 0.42) % 1;
+      ctx.globalAlpha = (1 - sonarP) * 0.46;
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.arc(0, 0, rr * (1.02 + sonarP * 0.56), 0, Math.PI * 2); ctx.stroke();
+
+      ctx.globalAlpha = 0.16 + Math.sin(rel.pulse) * 0.05 + prog * 0.12;
       ctx.fillStyle = col;
       ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.fill();
+      // 冲天圣辉光柱（纯多边形叠层，0 实时渐变）
+      ctx.globalAlpha = 0.16 + Math.sin(rel.pulse * 1.8) * 0.05 + prog * 0.16;
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.moveTo(-22, 0); ctx.lineTo(-10, -150); ctx.lineTo(10, -150); ctx.lineTo(22, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.24 + prog * 0.20;
+      ctx.fillStyle = '#fffbeb';
+      ctx.beginPath();
+      ctx.moveTo(-9, 0); ctx.lineTo(-3, -150); ctx.lineTo(3, -150); ctx.lineTo(9, 0);
+      ctx.closePath(); ctx.fill();
+
       // 外圈顺时针铭文虚线阵
-      ctx.globalAlpha = 0.88;
+      ctx.globalAlpha = 0.92;
       ctx.strokeStyle = col;
-      ctx.lineWidth = 2.8;
+      ctx.lineWidth = 3.0;
       ctx.save();
       ctx.rotate(rel.pulse * 0.32);
       ctx.setLineDash([14, 8]);
@@ -1310,16 +1334,16 @@ function draw() {
         const ka = (Math.PI * 2 * k) / 6;
         const px = Math.cos(ka) * (rr * 0.94), py = Math.sin(ka) * (rr * 0.94);
         ctx.fillStyle = '#1b1429';
-        ctx.beginPath(); ctx.arc(px, py, 5.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px, py, 5.5, 0, Math.PI * 2); ctx.fill();
         ctx.stroke();
       }
       ctx.restore();
       // 内圈逆时针六芒星秘法副环
       ctx.save();
       ctx.rotate(-rel.pulse * 0.45);
-      ctx.globalAlpha = 0.56 + prog * 0.30;
+      ctx.globalAlpha = 0.62 + prog * 0.30;
       ctx.strokeStyle = '#ffe8a3';
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 2.0;
       const inR = rr * 0.66;
       ctx.beginPath(); ctx.arc(0, 0, inR, 0, Math.PI * 2); ctx.stroke();
       for (let t = 0; t < 2; t++) {
@@ -1334,37 +1358,44 @@ function draw() {
       }
       ctx.restore();
       if (prog > 0.01) {
-        ctx.globalAlpha = 0.95;
+        ctx.globalAlpha = 0.96;
         ctx.strokeStyle = '#ffe8a3';
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 6.5;
         ctx.beginPath(); ctx.arc(0, 0, rr + 6, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha = 0.65;
-        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.68;
+        ctx.lineWidth = 3.2;
         ctx.beginPath(); ctx.arc(0, 0, rr * 0.66, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2); ctx.stroke();
       }
       const bobY = Math.sin(rel.pulse * 1.5) * 4.5;
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#1b1429';
       ctx.strokeStyle = col;
-      ctx.lineWidth = 2.8;
+      ctx.lineWidth = 3.0;
       ctx.beginPath();
-      ctx.moveTo(0, -22 + bobY); ctx.lineTo(19, bobY); ctx.lineTo(0, 22 + bobY); ctx.lineTo(-19, bobY);
+      ctx.moveTo(0, -24 + bobY); ctx.lineTo(21, bobY); ctx.lineTo(0, 24 + bobY); ctx.lineTo(-21, bobY);
       ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.font = '22px -apple-system, sans-serif';
+      ctx.font = '23px -apple-system, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText((rel.def && rel.def.icon) || '✨', 0, bobY + 1);
-      ctx.textBaseline = 'alphabetic';
+      // 祭坛头顶高对比胶囊铭牌
       ctx.font = '800 13.5px -apple-system, sans-serif';
-      ctx.fillStyle = '#120d18';
-      const lbl = prog > 0.03 ? `⚡ 召唤共鸣 ${Math.round(prog * 100)}%` : `✨ ${rel.def ? rel.def.name : '奇遇圣物'} (站入阵内召唤Boss)`;
-      ctx.fillText(lbl, 1.5, -rr - 12 + 1.5);
-      ctx.fillStyle = prog > 0.03 ? '#ffd166' : '#f8f5ff';
-      ctx.fillText(lbl, 0, -rr - 12);
+      const lbl = prog > 0.03
+        ? `⚡ 正在唤醒【${bName}】 ${Math.round(prog * 100)}%`
+        : `⛩️ 隐藏Boss祭坛：【${bName}】（踏阵召唤）`;
+      const ltw = Math.max(180, ctx.measureText(lbl).width + 24);
+      const lby = -rr - 32;
+      ctx.fillStyle = 'rgba(15, 11, 26, 0.86)';
+      ctx.strokeStyle = prog > 0.03 ? '#ffd166' : col;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.roundRect(-ltw * 0.5, lby, ltw, 24, 12); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText(lbl, 0, lby + 12.5);
+      ctx.textBaseline = 'alphabetic';
       ctx.restore();
     }
 
-    // 蚀界生存试炼：地脉撕裂裂缝（0.9s 震颤裂纹预警 -> 喷涌熔蚀裂谷）与天外贯星梭/平行剑阵走廊轨迹导引线（0渐变0模糊）
+    // 蚀界生存试炼差异化地面/弹道预警（地脉锯齿分叉裂谷 vs 曜金双轨斜纹激光走廊 vs 绯红虚线流光飞矢，0渐变0模糊）
     if (typeof survivalFissures !== 'undefined' && survivalFissures.length > 0) {
       const fNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.001;
       for (let i = 0; i < survivalFissures.length; i++) {
@@ -1373,10 +1404,11 @@ function draw() {
         const minFX = Math.min(f.x1, f.x2) - 48, maxFX = Math.max(f.x1, f.x2) + 48;
         const minFY = Math.min(f.y1, f.y2) - 48, maxFY = Math.max(f.y1, f.y2) + 48;
         if (maxFX < vL || minFX > vR || maxFY < vT || minFY > vB) continue;
-        const fCol = f.color || '#ff6b35';
+        const fCol = f.color || '#ff7b29';
         const deepCol = f.deepColor || '#450a0a';
         const dx = f.x2 - f.x1, dy = f.y2 - f.y1;
         const len = Math.max(1, Math.hypot(dx, dy));
+        const ux = dx / len, uy = dy / len;
         const nx = -dy / len, ny = dx / len;
         const hw = Math.max(8, f.halfW || 20);
         const jags = f.jags;
@@ -1387,18 +1419,54 @@ function draw() {
         ctx.lineJoin = 'round';
         if (f.windupT > 0) {
           const p = Math.max(0, Math.min(1, 1 - f.windupT / Math.max(0.05, f.maxWindup || 0.9)));
-          const trem = Math.sin(fNow * 38 + i) * 2.2 * p;
-          ctx.globalAlpha = 0.14 + p * 0.24;
-          ctx.strokeStyle = fCol;
-          ctx.lineWidth = hw * 2;
+          const trem = Math.sin(fNow * 42 + i) * 2.4 * p;
+          const rimW = hw * (0.55 + p * 0.45);
+          // 1) 不规则锯齿断层包络带（绝非笔直激光条，呈现大地崩裂边缘）
+          ctx.globalAlpha = 0.16 + p * 0.22;
+          ctx.fillStyle = deepCol;
           ctx.beginPath();
           ctx.moveTo(f.x1 + nx * trem, f.y1 + ny * trem);
+          for (let k = 0; k < jagCnt; k++) {
+            const t = (k + 1) / (jagCnt + 1);
+            const off = jags[k] * hw * 0.42 + rimW;
+            ctx.lineTo(f.x1 + dx * t + nx * (off + trem), f.y1 + dy * t + ny * (off + trem));
+          }
           ctx.lineTo(f.x2 + nx * trem, f.y2 + ny * trem);
+          for (let k = jagCnt - 1; k >= 0; k--) {
+            const t = (k + 1) / (jagCnt + 1);
+            const off = jags[k] * hw * 0.42 - rimW;
+            ctx.lineTo(f.x1 + dx * t + nx * (off + trem), f.y1 + dy * t + ny * (off + trem));
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.globalAlpha = 0.56 + p * 0.30;
+          ctx.strokeStyle = fCol;
+          ctx.lineWidth = 1.9;
+          ctx.setLineDash([7, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // 2) 横向蔓延碎地支脉裂纹（清晰区分于平滑飞矢与走廊光栅）
+          ctx.globalAlpha = 0.62 + p * 0.30;
+          ctx.strokeStyle = fCol;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          for (let k = 0; k < jagCnt; k++) {
+            const t = (k + 1) / (jagCnt + 1);
+            const cOff = jags[k] * hw * 0.52 + trem;
+            const bx = f.x1 + dx * t + nx * cOff;
+            const by = f.y1 + dy * t + ny * cOff;
+            const side = k % 2 === 0 ? 1 : -1;
+            const ribLen = hw * (0.62 + p * 0.52);
+            ctx.moveTo(bx, by);
+            ctx.lineTo(bx + (nx * side + ux * 0.36) * ribLen, by + (ny * side + uy * 0.36) * ribLen);
+          }
           ctx.stroke();
 
-          ctx.globalAlpha = 0.72 + p * 0.26;
-          ctx.strokeStyle = '#fde68a';
-          ctx.lineWidth = 2.4 + p * 1.6;
+          // 3) 中央硫黄地脉主锯齿裂痕 + 首尾震源菱桩
+          ctx.globalAlpha = 0.80 + p * 0.20;
+          ctx.strokeStyle = '#fde047';
+          ctx.lineWidth = 2.4 + p * 1.8;
           ctx.beginPath();
           ctx.moveTo(f.x1, f.y1);
           for (let k = 0; k < jagCnt; k++) {
@@ -1408,6 +1476,20 @@ function draw() {
           }
           ctx.lineTo(f.x2, f.y2);
           ctx.stroke();
+
+          const stakeR = 5.5 + p * 2.5;
+          ctx.fillStyle = '#fde047';
+          for (let ep = 0; ep < 2; ep++) {
+            const ex = ep === 0 ? f.x1 : f.x2;
+            const ey = ep === 0 ? f.y1 : f.y2;
+            ctx.beginPath();
+            ctx.moveTo(ex + ux * stakeR, ey + uy * stakeR);
+            ctx.lineTo(ex + nx * stakeR * 0.72, ey + ny * stakeR * 0.72);
+            ctx.lineTo(ex - ux * stakeR, ey - uy * stakeR);
+            ctx.lineTo(ex - nx * stakeR * 0.72, ey - ny * stakeR * 0.72);
+            ctx.closePath();
+            ctx.fill();
+          }
         } else {
           const remP = Math.max(0, Math.min(1, (f.activeT || 0) / Math.max(0.1, f.maxActive || 3.8)));
           const fade = remP < 0.18 ? (remP / 0.18) : 1;
@@ -1444,6 +1526,7 @@ function draw() {
     }
 
     if (typeof survivalSkyVolleys !== 'undefined' && survivalSkyVolleys.length > 0) {
+      const svNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.001;
       for (let i = 0; i < survivalSkyVolleys.length; i++) {
         const v = survivalSkyVolleys[i];
         if (!v) continue;
@@ -1451,30 +1534,249 @@ function draw() {
         const minVY = Math.min(v.sy, v.ey) - 36, maxVY = Math.max(v.sy, v.ey) + 36;
         if (maxVX < vL || minVX > vR || maxVY < vT || minVY > vB) continue;
         const p = Math.max(0, Math.min(1, 1 - (v.windupT || 0) / Math.max(0.05, v.maxWindup || 0.8)));
-        const vCol = v.color || '#fb7185';
+        const dx = v.ex - v.sx, dy = v.ey - v.sy;
+        const len = Math.max(1, Math.hypot(dx, dy));
+        const ux = dx / len, uy = dy / len;
+        const nx = -uy, ny = ux;
         ctx.save();
-        ctx.lineCap = 'round';
         if (v.kind === 'corridor_beam') {
-          const bw = Math.max(10, (v.halfW || 17) * 2);
-          ctx.globalAlpha = 0.12 + p * 0.24;
+          // 【平行天罚光栅走廊】：曜金双实线硬边界 + 斜向封锁警示条纹 + 向心充能快门（瞬爆宽激光墙）
+          const vCol = v.color || '#fbbf24';
+          const hw = Math.max(8, v.halfW || 18);
+          ctx.lineCap = 'butt';
+          ctx.globalAlpha = 0.09 + p * 0.16;
           ctx.strokeStyle = vCol;
-          ctx.lineWidth = bw;
+          ctx.lineWidth = hw * 2;
           ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
-          ctx.globalAlpha = 0.55 + p * 0.42;
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.6 + p * 2.0;
+
+          // 向心收拢快门能量芯（p->1 时填满整个走廊宽度）
+          ctx.globalAlpha = 0.22 + p * 0.34;
+          ctx.strokeStyle = v.coreColor || '#fef9c3';
+          ctx.lineWidth = Math.max(2, hw * 2 * p);
           ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
+
+          // 两侧实线封锁导轨（精确标示安全走廊边界）
+          ctx.globalAlpha = 0.72 + p * 0.26;
+          ctx.strokeStyle = '#fde68a';
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.moveTo(v.sx + nx * hw, v.sy + ny * hw);
+          ctx.lineTo(v.ex + nx * hw, v.ey + ny * hw);
+          ctx.moveTo(v.sx - nx * hw, v.sy - ny * hw);
+          ctx.lineTo(v.ex - nx * hw, v.ey - ny * hw);
+          ctx.stroke();
+
+          // 视野内斜向警示斑马纹（一眼区分于弹道飞矛）
+          const step = 64;
+          ctx.globalAlpha = 0.34 + p * 0.24;
+          ctx.strokeStyle = vCol;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          for (let d = 32; d < len - 32; d += step) {
+            const cx = v.sx + ux * d, cy = v.sy + uy * d;
+            if (cx < vL - 50 || cx > vR + 50 || cy < vT - 50 || cy > vB + 50) continue;
+            ctx.moveTo(cx - nx * hw * 0.85 - ux * 11, cy - ny * hw * 0.85 - uy * 11);
+            ctx.lineTo(cx + nx * hw * 0.85 + ux * 11, cy + ny * hw * 0.85 + uy * 11);
+          }
+          ctx.stroke();
         } else {
-          ctx.globalAlpha = 0.14 + p * 0.26;
+          // 【天外贯星剑梭】：绯红窄虚线弹道轨 + 顺向推进流光尖矢（提示飞矛即将沿此方向高速射过）
+          const vCol = v.color || '#ff4d6d';
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.globalAlpha = 0.48 + p * 0.42;
           ctx.strokeStyle = vCol;
-          ctx.lineWidth = 12 * (1 - p * 0.35);
+          ctx.lineWidth = 2.1;
+          ctx.setLineDash([12, 9]);
           ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
-          ctx.globalAlpha = 0.58 + p * 0.38;
-          ctx.strokeStyle = v.coreColor || '#ffffff';
-          ctx.lineWidth = 1.5 + p * 1.4;
-          ctx.beginPath(); ctx.moveTo(v.sx, v.sy); ctx.lineTo(v.ex, v.ey); ctx.stroke();
+          ctx.setLineDash([]);
+
+          // 沿飞行方向动态推进的流光尖矢 › › ›
+          const chevSpacing = 98;
+          const travel = (svNow * 250) % chevSpacing;
+          const wingBack = 9.5, wingW = 6.2;
+          ctx.globalAlpha = 0.58 + p * 0.40;
+          ctx.strokeStyle = v.coreColor || '#ffe4e6';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          for (let d = travel + 24; d < len - 24; d += chevSpacing) {
+            const tipX = v.sx + ux * d, tipY = v.sy + uy * d;
+            if (tipX < vL - 30 || tipX > vR + 30 || tipY < vT - 30 || tipY > vB + 30) continue;
+            ctx.moveTo(tipX - ux * wingBack + nx * wingW, tipY - uy * wingBack + ny * wingW);
+            ctx.lineTo(tipX, tipY);
+            ctx.lineTo(tipX - ux * wingBack - nx * wingW, tipY - uy * wingBack - ny * wingW);
+          }
+          ctx.stroke();
         }
         ctx.restore();
+      }
+    }
+
+    // 法杖四大元素专精地面持续领域渲染（熔火燎原炎海 / 极寒暴风雪冰封阵 / 万蛊蚀骨剧毒迷雾，预烘焙辉光贴图 + 零实时渐变）
+    if (typeof spellZones !== 'undefined' && spellZones.length > 0) {
+      for (let zi = 0; zi < spellZones.length; zi++) {
+        const z = spellZones[zi];
+        const zr = Math.max(24, z.r || 92);
+        if (z.x + zr + 32 < vL || z.x - zr - 32 > vR || z.y + zr + 32 < vT || z.y - zr - 32 > vB) continue;
+        const elapsed = Math.max(0, (z.maxT || 2.4) - (z.t || 0));
+        const fade = Math.max(0.08, Math.min(1, elapsed / 0.22) * Math.min(1, (z.t || 0) / 0.32));
+        const seed = z.seed || (zi * 1.37);
+        if (z.kind === 'fire_patch') {
+          drawVfxGlow(ctx, 'glowOrange', z.x, z.y, zr * 1.24, 0.52 * fade);
+          drawVfxGlow(ctx, 'glowRed', z.x, z.y, zr * 0.86, 0.38 * fade);
+          ctx.save();
+          ctx.translate(z.x, z.y);
+          ctx.globalAlpha = 0.22 * fade;
+          ctx.fillStyle = '#9a031e';
+          ctx.beginPath(); ctx.arc(0, 0, zr * 0.96, 0, Math.PI * 2); ctx.fill();
+          // 旋转八芒熔火日冕阵环
+          const rotA = now * 0.0016 + seed;
+          ctx.save();
+          ctx.rotate(rotA);
+          ctx.globalAlpha = 0.78 * fade;
+          ctx.strokeStyle = '#ff6b35';
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          for (let k = 0; k < 16; k++) {
+            const ka = (Math.PI * 2 * k) / 16;
+            const rr = k % 2 === 0 ? zr : zr * 0.80;
+            k === 0 ? ctx.moveTo(Math.cos(ka) * rr, Math.sin(ka) * rr) : ctx.lineTo(Math.cos(ka) * rr, Math.sin(ka) * rr);
+          }
+          ctx.closePath();
+          ctx.stroke();
+          ctx.strokeStyle = '#ffd166';
+          ctx.lineWidth = 1.7;
+          ctx.beginPath(); ctx.arc(0, 0, zr * 0.62, 0, Math.PI * 2); ctx.stroke();
+          // 地表熔岩裂纹
+          for (let k = 0; k < 5; k++) {
+            const ca = (Math.PI * 2 * k) / 5 + 0.3;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(ca) * 8, Math.sin(ca) * 8);
+            ctx.lineTo(Math.cos(ca + 0.16) * (zr * 0.44), Math.sin(ca + 0.16) * (zr * 0.44));
+            ctx.lineTo(Math.cos(ca - 0.08) * (zr * 0.78), Math.sin(ca - 0.08) * (zr * 0.78));
+            ctx.stroke();
+          }
+          ctx.restore();
+          // 升腾跳跃的烈焰火舌与火星
+          for (let fk = 0; fk < 7; fk++) {
+            const cyc = ((now * 0.0024 + fk * 0.143 + seed) % 1);
+            const fa = fk * 0.897 + seed * 2.1;
+            const fd = zr * (0.18 + ((fk * 37) % 62) * 0.01);
+            const fx = Math.cos(fa) * fd;
+            const fy = Math.sin(fa) * fd - cyc * 18;
+            const fh = (11 + (fk % 3) * 5) * (1 - cyc * 0.45);
+            const fw = (5.5 + (fk % 2) * 2.5) * (1 - cyc * 0.35);
+            ctx.globalAlpha = (1 - cyc * 0.75) * 0.86 * fade;
+            ctx.fillStyle = cyc < 0.42 ? '#fff3b0' : (cyc < 0.74 ? '#ff9f1c' : '#e63946');
+            ctx.beginPath();
+            ctx.moveTo(fx - fw, fy + 4);
+            ctx.quadraticCurveTo(fx - fw * 0.4, fy - fh * 0.6, fx + Math.sin(now * 0.015 + fk) * 3, fy - fh);
+            ctx.quadraticCurveTo(fx + fw * 0.4, fy - fh * 0.6, fx + fw, fy + 4);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.restore();
+        } else if (z.kind === 'blizzard') {
+          drawVfxGlow(ctx, 'glowCyan', z.x, z.y, zr * 1.26, 0.50 * fade);
+          ctx.save();
+          ctx.translate(z.x, z.y);
+          ctx.globalAlpha = 0.18 * fade;
+          ctx.fillStyle = '#0284c7';
+          ctx.beginPath(); ctx.arc(0, 0, zr * 0.98, 0, Math.PI * 2); ctx.fill();
+          // 外层顺时针六棱冰晶法阵 + 内层逆时针雪花星芒
+          ctx.save();
+          ctx.rotate(now * 0.0014 + seed);
+          ctx.globalAlpha = 0.82 * fade;
+          ctx.strokeStyle = '#72efdd';
+          ctx.lineWidth = 2.3;
+          ctx.beginPath();
+          for (let k = 0; k < 6; k++) {
+            const ka = (Math.PI * 2 * k) / 6;
+            k === 0 ? ctx.moveTo(Math.cos(ka) * zr, Math.sin(ka) * zr) : ctx.lineTo(Math.cos(ka) * zr, Math.sin(ka) * zr);
+          }
+          ctx.closePath();
+          ctx.stroke();
+          ctx.strokeStyle = '#e0fbfc';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          for (let k = 0; k < 3; k++) {
+            const ka = (Math.PI * k) / 3;
+            ctx.moveTo(Math.cos(ka) * -zr * 0.84, Math.sin(ka) * -zr * 0.84);
+            ctx.lineTo(Math.cos(ka) * zr * 0.84, Math.sin(ka) * zr * 0.84);
+          }
+          ctx.stroke();
+          ctx.restore();
+          // 呼啸盘旋的暴风寒流气旋弧
+          ctx.lineCap = 'round';
+          for (let wk = 0; wk < 3; wk++) {
+            const wa = -now * 0.0052 + wk * ((Math.PI * 2) / 3) + seed;
+            const wr = zr * (0.38 + wk * 0.22);
+            ctx.globalAlpha = 0.64 * fade;
+            ctx.strokeStyle = wk % 2 === 0 ? '#bae6fd' : '#67e8f9';
+            ctx.lineWidth = 2.6 - wk * 0.4;
+            ctx.beginPath();
+            ctx.arc(0, 0, wr, wa, wa + 1.65);
+            ctx.stroke();
+          }
+          // 高速斜掠坠落的暴风雪冰雹流线与晶莹雪花
+          for (let hk = 0; hk < 10; hk++) {
+            const cyc = ((now * 0.0034 + hk * 0.103 + seed) % 1);
+            const lane = ((hk * 29) % 100) / 100 - 0.5;
+            const sx = lane * zr * 1.45 + (1 - cyc) * 26 - 13;
+            const sy = (cyc - 0.5) * zr * 1.35;
+            if (sx * sx + sy * sy > zr * zr * 0.96) continue;
+            ctx.globalAlpha = (1 - Math.abs(cyc - 0.5) * 1.5) * 0.92 * fade;
+            ctx.strokeStyle = '#f0f9ff';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            ctx.moveTo(sx + 9, sy - 16);
+            ctx.lineTo(sx, sy);
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(sx, sy, 2.4, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.restore();
+        } else if (z.kind === 'poison_mist') {
+          drawVfxGlow(ctx, 'glowGreen', z.x, z.y, zr * 1.26, 0.48 * fade);
+          drawVfxGlow(ctx, 'glowViolet', z.x, z.y, zr * 0.80, 0.28 * fade);
+          ctx.save();
+          ctx.translate(z.x, z.y);
+          // 翻涌交叠的浓稠万蛊剧毒云团
+          for (let pk = 0; pk < 6; pk++) {
+            const pa = now * 0.0009 * (pk % 2 === 0 ? 1 : -1) + (Math.PI * 2 * pk) / 6 + seed;
+            const pd = zr * (0.32 + (pk % 2) * 0.16);
+            const px = Math.cos(pa) * pd, py = Math.sin(pa) * pd;
+            const pr = zr * (0.46 + 0.06 * Math.sin(now * 0.004 + pk));
+            ctx.globalAlpha = 0.22 * fade;
+            ctx.fillStyle = pk % 3 === 0 ? '#7209b7' : (pk % 2 === 0 ? '#10b981' : '#52b788');
+            ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
+          }
+          // 炼金蚀骨咒文外环
+          ctx.save();
+          ctx.rotate(-now * 0.0012 + seed);
+          ctx.globalAlpha = 0.74 * fade;
+          ctx.strokeStyle = '#80ed99';
+          ctx.lineWidth = 2.2;
+          ctx.setLineDash([12, 7]);
+          ctx.beginPath(); ctx.arc(0, 0, zr * 0.94, 0, Math.PI * 2); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+          // 咕嘟上浮破裂的荧光毒泡
+          for (let bk = 0; bk < 8; bk++) {
+            const cyc = ((now * 0.0019 + bk * 0.125 + seed) % 1);
+            const ba = bk * 0.785 + seed * 1.7;
+            const bd = zr * (0.16 + ((bk * 41) % 68) * 0.01);
+            const bx = Math.cos(ba) * bd;
+            const by = Math.sin(ba) * bd - cyc * 14;
+            const br2 = (3.2 + (bk % 3) * 2.1) * (0.65 + cyc * 0.65);
+            ctx.globalAlpha = (1 - cyc * 0.70) * 0.85 * fade;
+            ctx.fillStyle = bk % 2 === 0 ? '#bef264' : '#c77dff';
+            ctx.strokeStyle = '#ecfccb';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.arc(bx, by, br2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          }
+          ctx.restore();
+        }
       }
     }
 
@@ -1483,7 +1785,7 @@ function draw() {
       const h = hazards[i];
       const hr = Math.max(4, h.r || 40);
       const st = h.style || 'circle';
-      const boundR = Math.max(hr, h.halfLen || 0) + (st === 'mortar_shell' ? 150 : 16);
+      const boundR = Math.max(hr, h.halfLen || 0) + (st === 'mortar_shell' ? 150 : 28);
       if (h.x + boundR < vL || h.x - boundR > vR || h.y + boundR < vT || h.y - boundR > vB) continue;
       const p = Math.max(0, Math.min(1, 1 - (h.t || 0) / Math.max(0.01, h.maxT || 1)));
       const hCol = h.color || '#ff3b6b';
@@ -1491,16 +1793,29 @@ function draw() {
         const inR = h.innerSafeR;
         const curOuter = inR + (hr - inR) * p;
         const bandW = Math.max(1.5, curOuter - inR);
+        drawVfxGlow(ctx, 'glowRed', h.x, h.y, hr * 1.12, 0.24 + p * 0.24);
+        drawVfxGlow(ctx, 'glowCyan', h.x, h.y, inR * 1.06, 0.26);
         ctx.save();
-        ctx.globalAlpha = 0.16 + p * 0.26;
+        ctx.globalAlpha = 0.18 + p * 0.28;
         ctx.strokeStyle = hCol;
         ctx.lineWidth = bandW;
         ctx.beginPath(); ctx.arc(h.x, h.y, inR + bandW * 0.5, 0, Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha = 0.88;
-        ctx.lineWidth = 2.6;
+        ctx.globalAlpha = 0.90;
+        ctx.lineWidth = 2.8;
         ctx.beginPath(); ctx.arc(h.x, h.y, hr, 0, Math.PI * 2); ctx.stroke();
+        // 外环旋转毁灭刃齿刻度
+        const spinT = now * 0.0022;
+        ctx.strokeStyle = '#ffd166';
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        for (let tk = 0; tk < 12; tk++) {
+          const ta = spinT + (Math.PI * 2 * tk) / 12;
+          ctx.moveTo(h.x + Math.cos(ta) * (hr - 9), h.y + Math.sin(ta) * (hr - 9));
+          ctx.lineTo(h.x + Math.cos(ta + 0.08) * (hr + 5), h.y + Math.sin(ta + 0.08) * (hr + 5));
+        }
+        ctx.stroke();
         ctx.strokeStyle = '#72efdd';
-        ctx.lineWidth = 2.4;
+        ctx.lineWidth = 2.6;
         ctx.setLineDash([8, 6]);
         ctx.beginPath(); ctx.arc(h.x, h.y, inR, 0, Math.PI * 2); ctx.stroke();
         ctx.setLineDash([]);
@@ -1514,31 +1829,57 @@ function draw() {
         const hLen = Math.max(60, h.halfLen || hr);
         const hW = Math.max(10, h.halfW || 22);
         const baseAng = h.angle || 0;
+        drawVfxGlow(ctx, 'glowViolet', h.x, h.y, Math.min(135, hLen * 0.55), 0.34 + p * 0.28);
         ctx.save();
         ctx.translate(h.x, h.y);
         for (let k = 0; k < 2; k++) {
           ctx.save();
           ctx.rotate(baseAng + k * Math.PI * 0.5);
           const curW = hW * (0.28 + p * 0.72);
-          ctx.globalAlpha = 0.11 + p * 0.22;
+          ctx.globalAlpha = 0.13 + p * 0.24;
           ctx.fillStyle = hCol;
           ctx.fillRect(-hLen, -curW, hLen * 2, curW * 2);
-          ctx.globalAlpha = 0.80;
+          ctx.globalAlpha = 0.84;
           ctx.strokeStyle = hCol;
-          ctx.lineWidth = 1.9;
+          ctx.lineWidth = 2.0;
           ctx.setLineDash([10, 6]);
           ctx.beginPath();
           ctx.moveTo(-hLen, -hW); ctx.lineTo(hLen, -hW);
           ctx.moveTo(-hLen, hW); ctx.lineTo(hLen, hW);
           ctx.stroke();
           ctx.setLineDash([]);
-          ctx.globalAlpha = 0.48 + p * 0.48;
+          ctx.globalAlpha = 0.52 + p * 0.46;
           ctx.strokeStyle = '#f3d9fa';
-          ctx.lineWidth = 1.6 + p * 2.4;
+          ctx.lineWidth = 1.8 + p * 2.6;
           ctx.beginPath();
           ctx.moveTo(-hLen, 0); ctx.lineTo(hLen, 0);
           ctx.stroke();
           ctx.restore();
+        }
+        if (Math.abs(h.rotSpd || 0) > 0.01) {
+          const rotDir = h.rotSpd > 0 ? 1 : -1;
+          const arcR = Math.min(hLen * 0.46, 76);
+          ctx.globalAlpha = 0.62 + p * 0.32;
+          ctx.strokeStyle = '#e9d5ff';
+          ctx.fillStyle = '#f3e8ff';
+          ctx.lineWidth = 1.8;
+          for (let q = 0; q < 4; q++) {
+            const qa = baseAng + q * Math.PI * 0.5 + Math.PI * 0.25;
+            const a0 = qa - rotDir * 0.24;
+            const a1 = qa + rotDir * 0.24;
+            ctx.beginPath();
+            ctx.arc(0, 0, arcR, a0, a1, rotDir < 0);
+            ctx.stroke();
+            const tx = Math.cos(a1) * arcR, ty = Math.sin(a1) * arcR;
+            const tanA = a1 + rotDir * Math.PI * 0.5;
+            const pxA = -Math.sin(tanA), pyA = Math.cos(tanA);
+            ctx.beginPath();
+            ctx.moveTo(tx + Math.cos(tanA) * 6.5, ty + Math.sin(tanA) * 6.5);
+            ctx.lineTo(tx - Math.cos(tanA) * 3.5 + pxA * 4.0, ty - Math.sin(tanA) * 3.5 + pyA * 4.0);
+            ctx.lineTo(tx - Math.cos(tanA) * 3.5 - pxA * 4.0, ty - Math.sin(tanA) * 3.5 - pyA * 4.0);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
         ctx.rotate(baseAng + Math.PI * 0.25);
         const cSz = 9 + p * 6;
@@ -1555,27 +1896,28 @@ function draw() {
         // 唤灵师：次元裂空斜斩痕（梭形裂隙 + 锯齿紫电，非圆圈）
         const hLen = Math.max(60, h.halfLen || hr);
         const hW = Math.max(12, h.halfW || 26);
+        drawVfxGlow(ctx, 'glowViolet', h.x, h.y, Math.min(125, hLen * 0.50), 0.30 + p * 0.28);
         ctx.save();
         ctx.translate(h.x, h.y);
         ctx.rotate(h.angle || 0);
-        ctx.globalAlpha = 0.14 + p * 0.26;
+        ctx.globalAlpha = 0.16 + p * 0.28;
         ctx.fillStyle = hCol;
         ctx.beginPath();
         ctx.moveTo(-hLen, 0);
         ctx.quadraticCurveTo(0, -hW * 1.32 * p, hLen, 0);
         ctx.quadraticCurveTo(0, hW * 1.32 * p, -hLen, 0);
         ctx.fill();
-        ctx.globalAlpha = 0.86;
+        ctx.globalAlpha = 0.88;
         ctx.strokeStyle = hCol;
-        ctx.lineWidth = 2.2;
+        ctx.lineWidth = 2.3;
         ctx.beginPath();
         ctx.moveTo(-hLen, 0);
         ctx.quadraticCurveTo(0, -hW * 1.32, hLen, 0);
         ctx.quadraticCurveTo(0, hW * 1.32, -hLen, 0);
         ctx.stroke();
-        ctx.globalAlpha = 0.65 + p * 0.35;
+        ctx.globalAlpha = 0.68 + p * 0.32;
         ctx.strokeStyle = '#f8f0fc';
-        ctx.lineWidth = 2.0 + p * 2.0;
+        ctx.lineWidth = 2.0 + p * 2.2;
         ctx.beginPath();
         ctx.moveTo(-hLen, 0);
         for (let s = 1; s < 6; s++) {
@@ -1588,9 +1930,10 @@ function draw() {
         ctx.restore();
       } else if (st === 'mortar_shell') {
         // 发条臼炮：八角机械火控准星 + 空中高抛榴弹实体飞行轨迹
+        drawVfxGlow(ctx, 'glowOrange', h.x, h.y, hr * 1.18, 0.24 + p * 0.28);
         ctx.save();
         ctx.translate(h.x, h.y);
-        ctx.globalAlpha = 0.11 + p * 0.20;
+        ctx.globalAlpha = 0.12 + p * 0.22;
         ctx.fillStyle = hCol;
         ctx.beginPath();
         for (let k = 0; k < 8; k++) {
@@ -1611,7 +1954,6 @@ function draw() {
         }
         ctx.closePath();
         ctx.stroke();
-        // 收缩锁定内准星与四向刻度尺
         const lockR = Math.max(6, hr * (1 - p * 0.72));
         ctx.strokeStyle = '#ffd166';
         ctx.lineWidth = 2.0;
@@ -1658,10 +2000,12 @@ function draw() {
           ctx.restore();
         }
       } else if (st === 'frost_hex') {
-        // 极寒冰晶六棱阵
+        // 极寒冰晶六棱星盘阵（柔青冰霜辉光 + 双层旋冰棱 + 顶点冰钻）
+        drawVfxGlow(ctx, 'glowCyan', h.x, h.y, hr * 1.28, 0.30 + p * 0.34);
         ctx.save();
         ctx.translate(h.x, h.y);
-        ctx.globalAlpha = 0.13 + p * 0.22;
+        ctx.rotate(p * 0.28);
+        ctx.globalAlpha = 0.15 + p * 0.24;
         ctx.fillStyle = hCol;
         ctx.beginPath();
         for (let k = 0; k < 6; k++) {
@@ -1671,7 +2015,7 @@ function draw() {
         }
         ctx.closePath();
         ctx.fill();
-        ctx.globalAlpha = 0.88;
+        ctx.globalAlpha = 0.90;
         ctx.strokeStyle = hCol;
         ctx.lineWidth = 2.4;
         ctx.beginPath();
@@ -1682,23 +2026,29 @@ function draw() {
         }
         ctx.closePath();
         ctx.stroke();
-        ctx.globalAlpha = 0.55 + p * 0.35;
+        ctx.globalAlpha = 0.62 + p * 0.35;
         ctx.strokeStyle = '#e0fbfc';
-        ctx.lineWidth = 1.6;
+        ctx.lineWidth = 1.7;
         ctx.beginPath();
         for (let k = 0; k < 3; k++) {
           const ka = (Math.PI * k) / 3;
-          ctx.moveTo(Math.cos(ka) * -hr * 0.78, Math.sin(ka) * -hr * 0.78);
-          ctx.lineTo(Math.cos(ka) * hr * 0.78, Math.sin(ka) * hr * 0.78);
+          ctx.moveTo(Math.cos(ka) * -hr * 0.82, Math.sin(ka) * -hr * 0.82);
+          ctx.lineTo(Math.cos(ka) * hr * 0.82, Math.sin(ka) * hr * 0.82);
         }
         ctx.stroke();
+        ctx.fillStyle = '#f0f9ff';
+        for (let k = 0; k < 6; k++) {
+          const ka = (Math.PI * 2 * k) / 6;
+          ctx.beginPath(); ctx.arc(Math.cos(ka) * hr, Math.sin(ka) * hr, 2.8 + p * 1.6, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.restore();
       } else if (st === 'flame_pillar') {
-        // 熔火烈阳八芒星阵
+        // 熔火烈阳八芒圣柱阵（炽橙烈焰辉光 + 双旋日冕纹 + 曜金核环）
+        drawVfxGlow(ctx, 'glowOrange', h.x, h.y, hr * 1.30, 0.34 + p * 0.36);
         ctx.save();
         ctx.translate(h.x, h.y);
-        ctx.rotate(p * 0.55);
-        ctx.globalAlpha = 0.14 + p * 0.24;
+        ctx.rotate(p * 0.65);
+        ctx.globalAlpha = 0.16 + p * 0.26;
         ctx.fillStyle = hCol;
         ctx.beginPath();
         for (let k = 0; k < 16; k++) {
@@ -1709,9 +2059,9 @@ function draw() {
         }
         ctx.closePath();
         ctx.fill();
-        ctx.globalAlpha = 0.88;
+        ctx.globalAlpha = 0.90;
         ctx.strokeStyle = hCol;
-        ctx.lineWidth = 2.3;
+        ctx.lineWidth = 2.4;
         ctx.beginPath();
         for (let k = 0; k < 16; k++) {
           const ka = (Math.PI * 2 * k) / 16;
@@ -1721,19 +2071,23 @@ function draw() {
         }
         ctx.closePath();
         ctx.stroke();
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.arc(0, 0, Math.max(4, hr * 0.42 * p), 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
       } else if (st === 'thunder_sigil') {
-        // 天雷落雷星芒菱印
+        // 天雷落雷星芒菱印（金紫雷耀辉光 + 旋转雷篆方阵 + 聚雷光针）
+        drawVfxGlow(ctx, 'glowGold', h.x, h.y, hr * 1.28, 0.32 + p * 0.36);
         ctx.save();
         ctx.translate(h.x, h.y);
-        ctx.rotate(-p * 0.7);
-        ctx.globalAlpha = 0.13 + p * 0.24;
+        ctx.rotate(-p * 0.75);
+        ctx.globalAlpha = 0.15 + p * 0.26;
         ctx.fillStyle = hCol;
         ctx.beginPath();
         ctx.moveTo(0, -hr * p); ctx.lineTo(hr * p, 0); ctx.lineTo(0, hr * p); ctx.lineTo(-hr * p, 0);
         ctx.closePath();
         ctx.fill();
-        ctx.globalAlpha = 0.90;
+        ctx.globalAlpha = 0.92;
         ctx.strokeStyle = hCol;
         ctx.lineWidth = 2.4;
         ctx.beginPath();
@@ -1742,16 +2096,19 @@ function draw() {
         ctx.stroke();
         const sq = hr * 0.68;
         ctx.strokeStyle = '#fff3b0';
-        ctx.lineWidth = 1.7;
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
         ctx.rect(-sq, -sq, sq * 2, sq * 2);
+        ctx.moveTo(-hr * 0.45, 0); ctx.lineTo(hr * 0.45, 0);
+        ctx.moveTo(0, -hr * 0.45); ctx.lineTo(0, hr * 0.45);
         ctx.stroke();
         ctx.restore();
       } else if (st === 'venom_mire') {
-        // 剧毒腐殖花瓣泥潭
+        // 剧毒腐殖花瓣泥潭（翡绿蛊雾辉光 + 蠕动毒蕾波纹 + 中心毒核）
+        drawVfxGlow(ctx, 'glowGreen', h.x, h.y, hr * 1.28, 0.32 + p * 0.30);
         ctx.save();
         ctx.translate(h.x, h.y);
-        ctx.globalAlpha = 0.14 + p * 0.22;
+        ctx.globalAlpha = 0.16 + p * 0.24;
         ctx.fillStyle = hCol;
         ctx.beginPath();
         for (let k = 0; k < 24; k++) {
@@ -1762,7 +2119,7 @@ function draw() {
         }
         ctx.closePath();
         ctx.fill();
-        ctx.globalAlpha = 0.84;
+        ctx.globalAlpha = 0.88;
         ctx.strokeStyle = hCol;
         ctx.lineWidth = 2.3;
         ctx.beginPath();
@@ -1774,15 +2131,96 @@ function draw() {
         }
         ctx.closePath();
         ctx.stroke();
+        ctx.fillStyle = '#d9f99d';
+        ctx.globalAlpha = 0.55 + p * 0.35;
+        for (let bk = 0; bk < 3; bk++) {
+          const ba = p * 3.2 + bk * 2.09;
+          ctx.beginPath(); ctx.arc(Math.cos(ba) * hr * 0.36, Math.sin(ba) * hr * 0.36, 3.0 + p * 2.0, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.restore();
       } else {
-        ctx.globalAlpha = 0.12 + p * 0.22;
+        // 首领通用奥术轰击圆阵：元素柔光晕 + 外圈符文虚线环 + 四向内敛星芒准星（告别简陋单圆圈）
+        const glowKey = (hCol.includes('72ef') || hCol.includes('38bd') || hCol.includes('48ca')) ? 'glowCyan'
+          : ((hCol.includes('c77d') || hCol.includes('c084') || hCol.includes('9d4e') || hCol.includes('e879')) ? 'glowViolet'
+          : ((hCol.includes('ffd1') || hCol.includes('fde6') || hCol.includes('fbbf')) ? 'glowGold'
+          : ((hCol.includes('52b7') || hCol.includes('80ed') || hCol.includes('a3e6')) ? 'glowGreen' : 'glowRed')));
+        drawVfxGlow(ctx, glowKey, h.x, h.y, hr * 1.24, 0.26 + p * 0.30);
+        ctx.save();
+        ctx.translate(h.x, h.y);
+        ctx.globalAlpha = 0.14 + p * 0.24;
         ctx.fillStyle = hCol;
-        ctx.beginPath(); ctx.arc(h.x, h.y, Math.max(0.5, hr * p), 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 0.82;
+        ctx.beginPath(); ctx.arc(0, 0, Math.max(0.5, hr * p), 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.88;
         ctx.strokeStyle = hCol;
         ctx.lineWidth = 2.4;
-        ctx.beginPath(); ctx.arc(h.x, h.y, hr, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.stroke();
+        ctx.rotate(now * 0.0020 + i * 0.7);
+        ctx.globalAlpha = 0.66 + p * 0.28;
+        ctx.strokeStyle = '#fff3b0';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([7, 6]);
+        ctx.beginPath(); ctx.arc(0, 0, Math.max(4, hr * 0.76), 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        const tickIn = hr * (0.92 - p * 0.30);
+        ctx.beginPath();
+        for (let tk = 0; tk < 4; tk++) {
+          const ta = tk * Math.PI * 0.5;
+          ctx.moveTo(Math.cos(ta) * (hr + 4), Math.sin(ta) * (hr + 4));
+          ctx.lineTo(Math.cos(ta) * tickIn, Math.sin(ta) * tickIn);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (h.chainStep > 0) {
+        ctx.save();
+        if (Number.isFinite(h.prevX) && Number.isFinite(h.prevY)) {
+          ctx.globalAlpha = 0.52 + p * 0.30;
+          ctx.strokeStyle = hCol;
+          ctx.lineWidth = 1.8;
+          ctx.setLineDash([7, 6]);
+          ctx.beginPath();
+          ctx.moveTo(h.prevX, h.prevY);
+          ctx.lineTo(h.x, h.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        const fallRem = Math.max(0, 1 - p);
+        const fallX = h.x + fallRem * 36;
+        const fallY = h.y - fallRem * 92;
+        ctx.globalAlpha = 0.45 + p * 0.48;
+        ctx.strokeStyle = h.shrapnel > 0 ? '#fef08a' : '#bae6fd';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(fallX + 14, fallY - 34);
+        ctx.lineTo(fallX, fallY);
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(fallX, fallY, 3.2 + p * 2.0, 0, Math.PI * 2);
+        ctx.fill();
+        if (h.shrapnel > 0) {
+          ctx.globalAlpha = 0.86;
+          ctx.strokeStyle = '#fde047';
+          ctx.lineWidth = 2.4;
+          for (let sk = 0; sk < 4; sk++) {
+            const sa = sk * Math.PI * 0.5;
+            ctx.beginPath();
+            ctx.moveTo(h.x + Math.cos(sa) * (hr + 2), h.y + Math.sin(sa) * (hr + 2));
+            ctx.lineTo(h.x + Math.cos(sa) * (hr + 13), h.y + Math.sin(sa) * (hr + 13));
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 0.92;
+        ctx.font = '800 13px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#090d16';
+        ctx.lineWidth = 3.2;
+        const stepTxt = h.shrapnel > 0 ? `★${h.chainStep}` : `${h.chainStep}`;
+        ctx.strokeText(stepTxt, h.x, h.y);
+        ctx.fillStyle = h.shrapnel > 0 ? '#fef08a' : '#e0f2fe';
+        ctx.fillText(stepTxt, h.x, h.y);
+        ctx.restore();
       }
     }
     ctx.globalAlpha = 1;
@@ -1821,55 +2259,84 @@ function draw() {
         ctx.beginPath(); ctx.arc(ax2, ay2, 7.5, 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
       } else if ((e.sigWindupT || 0) > 0) {
-        // v2.5.0 四幕固定守誓首领标志性杀招几何预警法阵（0渐变0滤镜，几何辨识度极高）
+        // 四幕固定守誓首领与无尽主宰标志性杀招奥术星盘法阵（预烘焙离屏辉光贴图 + 双旋符文阵环 + 能量聚核，告别生硬几何块）
         const sProg = Math.max(0.05, Math.min(1, 1 - e.sigWindupT / Math.max(0.1, e.sigMaxW || 0.88)));
         const baseA = Number.isFinite(e.sigBaseA) ? e.sigBaseA : 0;
         ctx.save();
         ctx.lineCap = 'round';
         if (e.sigKind === 'frost_prism') {
-          // 艾丝特莉亚 · 六棱极光冰晶阵
-          ctx.strokeStyle = `rgba(125, 211, 252, ${0.30 + sProg * 0.55})`;
-          ctx.lineWidth = 2.4;
+          // 艾丝特莉亚 · 六棱极光冰晶大星阵
+          drawVfxGlow(ctx, 'glowCyan', e.x, e.y, 210 * (0.45 + sProg * 0.55), 0.42 + sProg * 0.28);
+          ctx.strokeStyle = `rgba(125, 211, 252, ${0.34 + sProg * 0.55})`;
+          ctx.lineWidth = 2.6;
           ctx.beginPath(); ctx.arc(e.x, e.y, 172 * sProg, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = 'rgba(224, 242, 254, 0.52)';
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([10, 6]);
+          ctx.beginPath(); ctx.arc(e.x, e.y, 186, now * 0.002, now * 0.002 + Math.PI * 2); ctx.stroke();
+          ctx.setLineDash([]);
           for (let tri = 0; tri < 2; tri++) {
+            ctx.strokeStyle = tri === 0 ? '#7dd3fc' : '#e0f2fe';
+            ctx.lineWidth = 2.2;
             ctx.beginPath();
             for (let k = 0; k < 3; k++) {
-              const pa = baseA + tri * (Math.PI / 3) + (k * Math.PI * 2) / 3;
+              const pa = baseA + tri * (Math.PI / 3) + (k * Math.PI * 2) / 3 + (tri === 0 ? sProg * 0.16 : -sProg * 0.16);
               const px = e.x + Math.cos(pa) * 172, py = e.y + Math.sin(pa) * 172;
               k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
             }
             ctx.closePath(); ctx.stroke();
           }
-          ctx.fillStyle = `rgba(56, 189, 248, ${0.18 + sProg * 0.25})`;
           for (let k = 0; k < 6; k++) {
             const ha = baseA + (k / 6) * Math.PI * 2;
-            ctx.beginPath(); ctx.arc(e.x + Math.cos(ha) * 172, e.y + Math.sin(ha) * 172, 18 + sProg * 14, 0, Math.PI * 2); ctx.fill();
+            const hx = e.x + Math.cos(ha) * 172, hy = e.y + Math.sin(ha) * 172;
+            drawVfxGlow(ctx, 'glowCyan', hx, hy, 26 + sProg * 18, 0.55);
+            ctx.fillStyle = '#f0f9ff';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(hx, hy - 9); ctx.lineTo(hx + 7, hy); ctx.lineTo(hx, hy + 9); ctx.lineTo(hx - 7, hy);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
           }
         } else if (e.sigKind === 'chrono_dial') {
-          // 伽蓝 · 十二刻星晷逆时针法盘
+          // 伽蓝 · 十二刻星晷逆时针天体仪法盘
           const dialR = 168;
-          ctx.strokeStyle = `rgba(253, 230, 138, ${0.34 + sProg * 0.52})`;
-          ctx.lineWidth = 2.4;
+          drawVfxGlow(ctx, 'glowViolet', e.x, e.y, dialR * 1.18, 0.36 + sProg * 0.24);
+          drawVfxGlow(ctx, 'glowGold', e.x, e.y, dialR * 0.72 * sProg, 0.42);
+          ctx.strokeStyle = `rgba(253, 230, 138, ${0.40 + sProg * 0.52})`;
+          ctx.lineWidth = 2.6;
           ctx.beginPath(); ctx.arc(e.x, e.y, dialR, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = 'rgba(233, 213, 255, 0.68)';
+          ctx.lineWidth = 1.7;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath(); ctx.arc(e.x, e.y, dialR - 22, 0, Math.PI * 2); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.strokeStyle = '#fde68a';
+          ctx.lineWidth = 2.2;
           ctx.beginPath(); ctx.arc(e.x, e.y, Math.max(8, dialR * sProg), 0, Math.PI * 2); ctx.stroke();
           for (let k = 0; k < 12; k++) {
             const ta = baseA + (k / 12) * Math.PI * 2;
-            ctx.strokeStyle = k % 3 === 0 ? '#fde68a' : 'rgba(192, 132, 252, 0.75)';
-            ctx.lineWidth = k % 3 === 0 ? 3.0 : 1.8;
+            ctx.strokeStyle = k % 3 === 0 ? '#fde68a' : 'rgba(192, 132, 252, 0.85)';
+            ctx.lineWidth = k % 3 === 0 ? 3.2 : 1.9;
             ctx.beginPath();
-            ctx.moveTo(e.x + Math.cos(ta) * (dialR - 16), e.y + Math.sin(ta) * (dialR - 16));
-            ctx.lineTo(e.x + Math.cos(ta) * (dialR + 8), e.y + Math.sin(ta) * (dialR + 8));
+            ctx.moveTo(e.x + Math.cos(ta) * (dialR - 18), e.y + Math.sin(ta) * (dialR - 18));
+            ctx.lineTo(e.x + Math.cos(ta) * (dialR + 9), e.y + Math.sin(ta) * (dialR + 9));
             ctx.stroke();
           }
           const handA = baseA - sProg * Math.PI * 2;
-          ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 3.2;
-          ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(handA) * (dialR - 12), e.y + Math.sin(handA) * (dialR - 12)); ctx.stroke();
+          ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 3.4;
+          ctx.beginPath();
+          ctx.moveTo(e.x, e.y);
+          ctx.lineTo(e.x + Math.cos(handA) * (dialR - 12), e.y + Math.sin(handA) * (dialR - 12));
+          ctx.moveTo(e.x, e.y);
+          ctx.lineTo(e.x + Math.cos(-handA * 0.5) * (dialR * 0.54), e.y + Math.sin(-handA * 0.5) * (dialR * 0.54));
+          ctx.stroke();
         } else if (e.sigKind === 'eclipse_lances') {
-          // 日蚀圣女 · 黑日圣枪外环锁定信标
+          // 日蚀圣女 · 黑日圣枪外环星轨信标
           const tx = Number.isFinite(e.sigTargetX) ? e.sigTargetX : e.x;
           const ty = Number.isFinite(e.sigTargetY) ? e.sigTargetY : e.y;
-          ctx.strokeStyle = `rgba(253, 230, 138, ${0.28 + sProg * 0.55})`;
-          ctx.lineWidth = 2.0;
+          drawVfxGlow(ctx, 'glowGold', tx, ty, 120 * sProg, 0.32);
+          ctx.strokeStyle = `rgba(253, 230, 138, ${0.34 + sProg * 0.55})`;
+          ctx.lineWidth = 2.2;
           ctx.setLineDash([9, 7]);
           ctx.beginPath(); ctx.arc(tx, ty, 230, 0, Math.PI * 2); ctx.stroke();
           for (let k = 0; k < 6; k++) {
@@ -1877,67 +2344,93 @@ function draw() {
             const sx = Math.max(48, Math.min(WORLD.w - 48, tx + Math.cos(ba) * 230));
             const sy = Math.max(48, Math.min(WORLD.h - 48, ty + Math.sin(ba) * 230));
             const fireA = Math.atan2(ty - sy, tx - sx) + (k % 2 === 0 ? 0.22 : -0.22);
-            ctx.strokeStyle = 'rgba(253, 230, 138, 0.72)';
+            drawVfxGlow(ctx, 'glowGold', sx, sy, 28, 0.65);
+            ctx.setLineDash([]);
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.24)';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + Math.cos(fireA) * 320 * sProg, sy + Math.sin(fireA) * 320 * sProg);
+            ctx.stroke();
+            ctx.setLineDash([9, 7]);
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 2.2;
             ctx.beginPath();
             ctx.moveTo(sx, sy);
             ctx.lineTo(sx + Math.cos(fireA) * 320 * sProg, sy + Math.sin(fireA) * 320 * sProg);
             ctx.stroke();
             ctx.setLineDash([]);
-            ctx.fillStyle = '#fde68a';
-            ctx.beginPath(); ctx.arc(sx, sy, 7.5, 0, Math.PI * 2); ctx.fill();
-            ctx.setLineDash([9, 7]);
+            ctx.fillStyle = '#fffbeb';
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath(); ctx.arc(sx, sy, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
           }
           ctx.setLineDash([]);
         } else if (e.sigKind === 'omega_cross_beam') {
-          // 欧米茄 · 十字重型等离子歼灭主炮充能导轨（发射口外移，与真实激光判定 1:1 对齐）
+          // 欧米茄 · 十字重型等离子歼灭主炮充能导轨（炮口聚变辉光 + 等离子束核）
           const innerOff = (e.r || 42) + 18;
+          drawVfxGlow(ctx, 'glowOrange', e.x, e.y, innerOff * 1.55, 0.45 + sProg * 0.35);
           for (let k = 0; k < 4; k++) {
             const ba = baseA + k * (Math.PI * 0.5);
             const sx = e.x + Math.cos(ba) * innerOff, sy = e.y + Math.sin(ba) * innerOff;
             const ex = e.x + Math.cos(ba) * 460, ey = e.y + Math.sin(ba) * 460;
             const curLen = innerOff + (460 - innerOff) * sProg;
-            ctx.strokeStyle = `rgba(251, 146, 60, ${0.15 + sProg * 0.24})`;
-            ctx.lineWidth = 22;
+            drawVfxGlow(ctx, 'glowOrange', sx, sy, 26 + sProg * 14, 0.68);
+            ctx.strokeStyle = `rgba(251, 146, 60, ${0.18 + sProg * 0.26})`;
+            ctx.lineWidth = 24;
             ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-            ctx.strokeStyle = '#fde68a';
+            ctx.strokeStyle = 'rgba(254, 240, 138, 0.45)';
+            ctx.lineWidth = 7;
+            ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(e.x + Math.cos(ba) * curLen, e.y + Math.sin(ba) * curLen); ctx.stroke();
+            ctx.strokeStyle = '#fffbeb';
             ctx.lineWidth = 2.8;
             ctx.setLineDash([12, 8]);
             ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(e.x + Math.cos(ba) * curLen, e.y + Math.sin(ba) * curLen); ctx.stroke();
             ctx.setLineDash([]);
           }
-          ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2.6;
+          ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2.8;
           ctx.beginPath(); ctx.arc(e.x, e.y, innerOff, 0, Math.PI * 2); ctx.stroke();
         } else if (e.sigKind === 'venom_vortex') {
           // 苍岚毒皇 · 万蛊翠岚龙卷阵
-          ctx.strokeStyle = `rgba(110, 231, 183, ${0.32 + sProg * 0.52})`;
-          ctx.lineWidth = 2.4;
+          drawVfxGlow(ctx, 'glowGreen', e.x, e.y, 195 * (0.45 + sProg * 0.55), 0.44 + sProg * 0.26);
+          ctx.strokeStyle = `rgba(110, 231, 183, ${0.36 + sProg * 0.52})`;
+          ctx.lineWidth = 2.6;
           ctx.beginPath(); ctx.arc(e.x, e.y, 168 * sProg, 0, Math.PI * 2); ctx.stroke();
           for (let k = 0; k < 10; k++) {
-            const ba = baseA + (k / 10) * Math.PI * 2 + sProg * 0.5;
-            ctx.strokeStyle = k % 2 === 0 ? '#a3e635' : '#6ee7b7';
-            ctx.lineWidth = 2.2;
+            const ba = baseA + (k / 10) * Math.PI * 2 + sProg * 0.65;
+            ctx.strokeStyle = k % 2 === 0 ? '#bef264' : '#6ee7b7';
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.moveTo(e.x + Math.cos(ba) * 42, e.y + Math.sin(ba) * 42);
-            ctx.lineTo(e.x + Math.cos(ba + 0.25) * 176 * sProg, e.y + Math.sin(ba + 0.25) * 176 * sProg);
+            ctx.moveTo(e.x + Math.cos(ba) * 36, e.y + Math.sin(ba) * 36);
+            ctx.quadraticCurveTo(
+              e.x + Math.cos(ba + 0.22) * 108 * sProg,
+              e.y + Math.sin(ba + 0.22) * 108 * sProg,
+              e.x + Math.cos(ba + 0.44) * 176 * sProg,
+              e.y + Math.sin(ba + 0.44) * 176 * sProg
+            );
             ctx.stroke();
           }
         } else {
-          // 烬羽 · 断刃·八荒血月斩
+          // 烬羽 · 断刃·八荒血月斩法阵（绯红血月辉光 + 弧月剑气刃芒）
           const ways = (e.hp < e.maxHp * 0.55 || overtime || e.mythicPhase2) ? 8 : 4;
+          drawVfxGlow(ctx, 'glowRed', e.x, e.y, 185 * (0.45 + sProg * 0.55), 0.42 + sProg * 0.30);
+          ctx.strokeStyle = 'rgba(253, 164, 175, 0.58)';
+          ctx.lineWidth = 2.0;
+          ctx.setLineDash([10, 6]);
+          ctx.beginPath(); ctx.arc(e.x, e.y, 108 + sProg * 48, 0, Math.PI * 2); ctx.stroke();
+          ctx.setLineDash([]);
           for (let k = 0; k < ways; k++) {
             const ba = baseA + (k / ways) * Math.PI * 2;
             const ex = e.x + Math.cos(ba) * 235, ey = e.y + Math.sin(ba) * 235;
-            ctx.strokeStyle = `rgba(251, 113, 133, ${0.16 + sProg * 0.22})`;
+            ctx.strokeStyle = `rgba(251, 113, 133, ${0.18 + sProg * 0.24})`;
             ctx.lineWidth = 18;
             ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(ex, ey); ctx.stroke();
-            ctx.strokeStyle = '#fda4af';
-            ctx.lineWidth = 2.4;
-            ctx.setLineDash([8, 6]);
+            ctx.strokeStyle = '#ffd166';
+            ctx.lineWidth = 2.6;
             ctx.beginPath();
-            ctx.moveTo(e.x, e.y);
+            ctx.moveTo(e.x + Math.cos(ba) * 24, e.y + Math.sin(ba) * 24);
             ctx.lineTo(e.x + Math.cos(ba) * 235 * sProg, e.y + Math.sin(ba) * 235 * sProg);
             ctx.stroke();
-            ctx.setLineDash([]);
           }
         }
         ctx.restore();
@@ -1950,6 +2443,7 @@ function draw() {
         const tpCol = e.tpWarnColor || '#c77dff';
         const tx = e.tpDestX, ty = e.tpDestY;
         const destR = Math.max(30, (e.r || 28) * 1.18);
+        drawVfxGlow(ctx, 'glowViolet', tx, ty, destR * 1.45, 0.34 + tpProg * 0.36);
         ctx.save();
         ctx.lineCap = 'round';
         // 1) 起跳点残相坍缩环与跃迁牵引虚线
@@ -1990,7 +2484,7 @@ function draw() {
         ctx.beginPath(); ctx.arc(0, 0, 4.2 + tpProg * 2.2, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
       }
-      // 艾丝特莉亚 / 凛霜统领先导轨预警后缓旋的双翼/四翼极光冰束（内圈发射口外移 + 匹配精准窄光柱判定）
+      // 艾丝特莉亚 / 凛霜统领先导轨预警后缓旋的双翼/四翼极光冰束（枪口冰耀辉光 + 螺旋寒晶流粒子）
       if ((e.beamWindupT || 0) > 0 || (e.beamSweepT || 0) > 0) {
         const innerOff = (e.r || 36) + (e.type === 'mini_boss' ? 18 : 20);
         const bLen = e.type === 'mini_boss' ? 325 : (e.beamSweepQuad ? 380 : 345);
@@ -2000,34 +2494,50 @@ function draw() {
         ctx.lineCap = 'round';
         if ((e.beamWindupT || 0) > 0) {
           const wProg = Math.max(0.1, Math.min(1, 1 - e.beamWindupT / Math.max(0.1, e.beamWindupMax || 0.55)));
+          drawVfxGlow(ctx, 'glowCyan', e.x, e.y, innerOff * 1.35, 0.34 + wProg * 0.28);
           for (let bi = 0; bi < beamCnt; bi++) {
             const ba = ba0 + (bi / beamCnt) * Math.PI * 2;
             const bx1 = e.x + Math.cos(ba) * innerOff, by1 = e.y + Math.sin(ba) * innerOff;
             const bx2 = e.x + Math.cos(ba) * bLen, by2 = e.y + Math.sin(ba) * bLen;
             const curL = innerOff + (bLen - innerOff) * wProg;
-            ctx.strokeStyle = `rgba(56, 189, 248, ${0.14 + wProg * 0.20})`;
+            drawVfxGlow(ctx, 'glowCyan', bx1, by1, 24, 0.58);
+            ctx.strokeStyle = `rgba(56, 189, 248, ${0.16 + wProg * 0.22})`;
             ctx.lineWidth = 18;
             ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
             ctx.strokeStyle = '#e0f2fe';
-            ctx.lineWidth = 2.4;
+            ctx.lineWidth = 2.6;
             ctx.setLineDash([9, 6]);
             ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(e.x + Math.cos(ba) * curL, e.y + Math.sin(ba) * curL); ctx.stroke();
             ctx.setLineDash([]);
           }
         } else {
+          drawVfxGlow(ctx, 'glowCyan', e.x, e.y, innerOff * 1.48, 0.52);
           for (let bi = 0; bi < beamCnt; bi++) {
             const ba = ba0 + (bi / beamCnt) * Math.PI * 2;
-            const bx1 = e.x + Math.cos(ba) * innerOff, by1 = e.y + Math.sin(ba) * innerOff;
-            const bx2 = e.x + Math.cos(ba) * bLen, by2 = e.y + Math.sin(ba) * bLen;
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
-            ctx.lineWidth = 18;
+            const ca = Math.cos(ba), sa = Math.sin(ba);
+            const bx1 = e.x + ca * innerOff, by1 = e.y + sa * innerOff;
+            const bx2 = e.x + ca * bLen, by2 = e.y + sa * bLen;
+            drawVfxGlow(ctx, 'glowCyan', bx1, by1, 34, 0.72);
+            drawVfxGlow(ctx, 'glowCyan', bx2, by2, 28, 0.52);
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.30)';
+            ctx.lineWidth = 22;
             ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
             ctx.strokeStyle = '#7dd3fc';
-            ctx.lineWidth = 7.5;
+            ctx.lineWidth = 9.0;
             ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2.8;
+            ctx.lineWidth = 3.2;
             ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
+            // 沿激光束奔涌的寒霜等离子光点
+            ctx.fillStyle = '#f0f9ff';
+            for (let pk = 0; pk < 4; pk++) {
+              const pf = ((now * 0.0042 + pk * 0.25) % 1);
+              const pd = innerOff + (bLen - innerOff) * pf;
+              const wob = Math.sin(now * 0.02 + pk * 2.1) * 5;
+              ctx.beginPath();
+              ctx.arc(e.x + ca * pd - sa * wob, e.y + sa * pd + ca * wob, 3.2, 0, Math.PI * 2);
+              ctx.fill();
+            }
           }
         }
         ctx.restore();
@@ -2074,6 +2584,7 @@ function draw() {
             const na = (e.venomAimA || 0) + nozzles[ni];
             const mx = e.x + Math.cos(na) * (e.r * 0.56);
             const my = e.y + Math.sin(na) * (e.r * 0.56);
+            drawVfxGlow(ctx, 'glowGreen', mx, my, 42, 0.65 * bAlpha);
             // 1) 外层翻涌祖母绿毒雾锥幕
             ctx.globalAlpha = 0.28 * bAlpha;
             ctx.fillStyle = '#10b981';
@@ -2120,7 +2631,7 @@ function draw() {
         }
         ctx.restore();
       }
-      // 隐藏二阶段【专属额外终式】地面高辨识度蓄力法阵预警
+      // 隐藏二阶段【专属额外终式】地面高辨识度神话圣辉蓄力大法阵
       if ((e.p2WindupT || 0) > 0) {
         const p2Prog = Math.max(0.08, Math.min(1, 1 - e.p2WindupT / Math.max(0.1, e.p2WindupMax || 0.78)));
         const baseA = Number.isFinite(e.p2BaseA) ? e.p2BaseA : 0;
@@ -2130,48 +2641,67 @@ function draw() {
           const gx = Number.isFinite(e.p2TargetX) ? e.p2TargetX : e.x;
           const gy = Number.isFinite(e.p2TargetY) ? e.p2TargetY : e.y;
           const span = 520;
+          drawVfxGlow(ctx, 'glowGold', gx, gy, 145 * (0.5 + p2Prog * 0.5), 0.52);
+          drawVfxGlow(ctx, 'glowViolet', gx, gy, 95, 0.45);
           for (let k = 0; k < 4; k++) {
             const la = baseA + k * (Math.PI * 0.25);
             const x1 = gx - Math.cos(la) * span, y1 = gy - Math.sin(la) * span;
             const x2 = gx + Math.cos(la) * span, y2 = gy + Math.sin(la) * span;
-            ctx.strokeStyle = `rgba(253, 230, 138, ${0.14 + p2Prog * 0.22})`;
-            ctx.lineWidth = 20;
+            ctx.strokeStyle = `rgba(253, 230, 138, ${0.16 + p2Prog * 0.24})`;
+            ctx.lineWidth = 22;
             ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
             ctx.strokeStyle = k % 2 === 0 ? '#fde68a' : '#e879f9';
-            ctx.lineWidth = 2.2;
+            ctx.lineWidth = 2.5;
             ctx.setLineDash([10, 7]);
             ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
             ctx.setLineDash([]);
           }
+          ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2.6;
+          ctx.beginPath(); ctx.arc(gx, gy, 68 * (1.2 - p2Prog * 0.45), 0, Math.PI * 2); ctx.stroke();
         } else if (e.p2Kind === 'p2_absolute_zero') {
           const innerOff = (e.r || 36) + (e.type === 'mini_boss' ? 18 : 20);
+          drawVfxGlow(ctx, 'glowCyan', e.x, e.y, 135 * (0.5 + p2Prog * 0.5), 0.55);
           for (let k = 0; k < 4; k++) {
             const ba = baseA + k * (Math.PI * 0.5);
             const sx = e.x + Math.cos(ba) * innerOff, sy = e.y + Math.sin(ba) * innerOff;
             const ex = e.x + Math.cos(ba) * 380, ey = e.y + Math.sin(ba) * 380;
-            ctx.strokeStyle = `rgba(125, 211, 252, ${0.16 + p2Prog * 0.22})`;
-            ctx.lineWidth = 18;
+            drawVfxGlow(ctx, 'glowCyan', sx, sy, 28, 0.62);
+            ctx.strokeStyle = `rgba(125, 211, 252, ${0.18 + p2Prog * 0.24})`;
+            ctx.lineWidth = 20;
             ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-            ctx.strokeStyle = '#e0f2fe'; ctx.lineWidth = 2.4; ctx.setLineDash([9, 6]);
+            ctx.strokeStyle = '#e0f2fe'; ctx.lineWidth = 2.6; ctx.setLineDash([9, 6]);
             ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
             ctx.setLineDash([]);
           }
         } else if (e.p2Kind === 'p2_twin_venom') {
+          drawVfxGlow(ctx, 'glowGreen', e.x, e.y, 128 * (0.5 + p2Prog * 0.5), 0.50);
           for (let ni = 0; ni < 2; ni++) {
             const na = baseA + ni * Math.PI;
-            ctx.fillStyle = `rgba(163, 230, 53, ${0.14 + p2Prog * 0.16})`;
+            ctx.fillStyle = `rgba(163, 230, 53, ${0.15 + p2Prog * 0.18})`;
             ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.arc(e.x, e.y, 278, na - 0.36, na + 0.36); ctx.closePath(); ctx.fill();
-            ctx.strokeStyle = '#d9f99d'; ctx.lineWidth = 2.2; ctx.setLineDash([8, 6]);
+            ctx.strokeStyle = '#d9f99d'; ctx.lineWidth = 2.4; ctx.setLineDash([8, 6]);
             ctx.beginPath(); ctx.arc(e.x, e.y, 278 * p2Prog, na - 0.36, na + 0.36); ctx.stroke(); ctx.setLineDash([]);
           }
         } else {
           const cx = (e.p2Kind === 'p2_eclipse_apocalypse' || e.p2Kind === 'p2_crimson_prison') && Number.isFinite(e.p2TargetX) ? e.p2TargetX : e.x;
           const cy = (e.p2Kind === 'p2_eclipse_apocalypse' || e.p2Kind === 'p2_crimson_prison') && Number.isFinite(e.p2TargetY) ? e.p2TargetY : e.y;
+          const rad = 148 * (0.45 + p2Prog * 0.55);
+          drawVfxGlow(ctx, e.p2Kind === 'p2_crimson_prison' ? 'glowRed' : 'glowGold', cx, cy, rad * 1.28, 0.52);
           ctx.strokeStyle = '#ffd166';
-          ctx.lineWidth = 2.8;
+          ctx.lineWidth = 3.0;
           ctx.setLineDash([12, 6]);
-          ctx.beginPath(); ctx.arc(cx, cy, 145 * (0.45 + p2Prog * 0.55), 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.stroke();
           ctx.setLineDash([]);
+          ctx.strokeStyle = '#fffbeb';
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          for (let k = 0; k < 8; k++) {
+            const ka = now * 0.0025 + (Math.PI * 2 * k) / 8;
+            const rr = k % 2 === 0 ? rad * 0.88 : rad * 0.54;
+            k === 0 ? ctx.moveTo(cx + Math.cos(ka) * rr, cy + Math.sin(ka) * rr) : ctx.lineTo(cx + Math.cos(ka) * rr, cy + Math.sin(ka) * rr);
+          }
+          ctx.closePath();
+          ctx.stroke();
         }
         ctx.restore();
       }
@@ -2179,27 +2709,28 @@ function draw() {
         const gProg = Math.max(0.08, Math.min(1, 1 - e.laserGridT / Math.max(0.1, e.laserGridMaxT || 0.85)));
         const gx = e.laserGridX, gy = e.laserGridY, ga = e.laserGridA || 0;
         const span = 560;
+        drawVfxGlow(ctx, 'glowViolet', gx, gy, 115, 0.42 + gProg * 0.30);
         ctx.save();
         ctx.lineCap = 'round';
         for (let k = 0; k < 2; k++) {
           const la = ga + k * (Math.PI * 0.5);
           const x1 = gx - Math.cos(la) * span, y1 = gy - Math.sin(la) * span;
           const x2 = gx + Math.cos(la) * span, y2 = gy + Math.sin(la) * span;
-          ctx.strokeStyle = `rgba(199, 125, 255, ${0.14 + gProg * 0.26})`;
+          ctx.strokeStyle = `rgba(199, 125, 255, ${0.16 + gProg * 0.28})`;
           ctx.lineWidth = 24;
           ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
           ctx.strokeStyle = '#fde68a';
-          ctx.lineWidth = 2.4;
+          ctx.lineWidth = 2.6;
           ctx.setLineDash([10, 7]);
           ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
           ctx.setLineDash([]);
         }
-        ctx.strokeStyle = '#e0aaff'; ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#e0aaff'; ctx.lineWidth = 2.6;
         ctx.beginPath(); ctx.arc(gx, gy, Math.max(12, 54 * (1 - gProg * 0.6)), 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
       }
       if (e.lockedAim !== undefined && !e.dashing && !((e.sigWindupT || 0) > 0) && !e.aimA) {
-        // 5 大差异化冲刺招式几何预警（尖角楔阵轨 horn_wedge / 重装铁门轨 battering_ram / 居合一闪细斩线 iai_slash / 双轨寒冰棱镜轨 frost_rail / 圣枪雷电导轨 spear_conduit）
+        // 5 大差异化冲刺招式奥术流光预警（起点蓄势光晕 + 终点落点圣印 + 动感能量流）
         const warnLen = Math.max(48, e.dashWarnLen || 255);
         const ca = Math.cos(e.lockedAim), sa = Math.sin(e.lockedAim);
         const nx = -sa, ny = ca;
@@ -2209,6 +2740,9 @@ function draw() {
         const dStyle = e.dashStyle || 'corridor';
         const mainCol = e.dashWarnColor || '#ff4d6d';
         const bandW = Math.max(14, e.r * 1.12);
+        const dashGlowKey = dStyle === 'frost_rail' ? 'glowCyan' : (dStyle === 'spear_conduit' ? 'glowGold' : (dStyle === 'horn_wedge' ? 'glowOrange' : 'glowRed'));
+        drawVfxGlow(ctx, dashGlowKey, e.x, e.y, (e.r || 32) * 1.45, 0.30 + prog * 0.35);
+        drawVfxGlow(ctx, dashGlowKey, endX, endY, 38 + prog * 18, 0.28 + prog * 0.32);
         ctx.save();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -2241,7 +2775,7 @@ function draw() {
           ctx.beginPath(); ctx.arc(endX, endY, 54, e.lockedAim - 0.95, e.lockedAim + 0.95); ctx.stroke();
           ctx.setLineDash([]);
         } else if (dStyle === 'iai_slash') {
-          // 2) 烬羽 / 提线斩首偶：极细居合拔刀寒芒斩线 + 刀镡十字星芒 + 落点 X 斩印（彻底告别粗红条！）
+          // 2) 烬羽 / 提线斩首偶：极细居合拔刀寒芒斩线 + 刀镡十字星芒 + 落点 X 斩印
           ctx.strokeStyle = mainCol;
           ctx.globalAlpha = 0.28 + prog * 0.25;
           ctx.lineWidth = 9;
@@ -2424,8 +2958,8 @@ function draw() {
         for (let k = 0; k < 4; k++) {
           const ba = sa + k * (Math.PI * 0.5);
           const sx = e.x + Math.cos(ba) * innerOff, sy = e.y + Math.sin(ba) * innerOff;
-          const ex = e.x + Math.cos(ba) * 168, ey = e.y + Math.sin(ba) * 168;
-          const curL = innerOff + (168 - innerOff) * sp;
+          const ex = e.x + Math.cos(ba) * 192, ey = e.y + Math.sin(ba) * 192;
+          const curL = innerOff + (192 - innerOff) * sp;
           ctx.strokeStyle = `rgba(226, 232, 240, ${0.16 + sp * 0.20})`; ctx.lineWidth = 18;
           ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
           ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 2.4; ctx.setLineDash([8, 5]);
@@ -2434,6 +2968,282 @@ function draw() {
         }
         ctx.restore();
       }
+      // 首领与召唤祭坛秘境主宰创新交互机关地面法阵渲染（血誓决斗剑域 / 逆时锚点与断时解锚阵 / 超巨黑洞引力奇点与晨曦庇护圣印）
+      if (e.type === 'boss' || e.type === 'special_boss') {
+        if (e.duelRing) {
+          const dr = e.duelRing;
+          const drRatio = Math.max(0, Math.min(1, dr.t / Math.max(0.1, dr.maxT || 3.3)));
+          drawVfxGlow(ctx, 'glowRed', dr.x, dr.y, dr.r * 0.68, 0.26);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(251, 113, 133, 0.85)';
+          ctx.lineWidth = 3.2;
+          ctx.setLineDash([14, 8]);
+          ctx.beginPath(); ctx.arc(dr.x, dr.y, dr.r, 0, Math.PI * 2); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.strokeStyle = '#fde68a';
+          ctx.lineWidth = 2.4;
+          ctx.beginPath(); ctx.arc(dr.x, dr.y, dr.r - 9, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * drRatio); ctx.stroke();
+          for (let bk = 0; bk < 2; bk++) {
+            const ba = (dr.bladeA || 0) + bk * Math.PI;
+            const bx = dr.x + Math.cos(ba) * dr.r, by = dr.y + Math.sin(ba) * dr.r;
+            drawVfxGlow(ctx, 'glowRed', bx, by, 26, 0.62);
+            ctx.save();
+            ctx.translate(bx, by);
+            ctx.rotate(ba + Math.PI * 0.5);
+            ctx.fillStyle = '#ff2a55';
+            ctx.strokeStyle = '#fde68a';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            ctx.moveTo(20, 0); ctx.lineTo(-11, -9); ctx.lineTo(-4, 0); ctx.lineTo(-11, 9);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+        if (e.chronoAnchor) {
+          const ca = e.chronoAnchor;
+          drawVfxGlow(ctx, 'glowGold', ca.ax, ca.ay, 44, 0.45);
+          drawVfxGlow(ctx, 'glowCyan', ca.dx, ca.dy, ca.dr * 1.38, 0.48);
+          ctx.save();
+          if (player) {
+            ctx.strokeStyle = 'rgba(253, 230, 138, 0.78)';
+            ctx.lineWidth = 2.2;
+            ctx.setLineDash([7, 5]);
+            ctx.beginPath(); ctx.moveTo(ca.ax, ca.ay); ctx.lineTo(player.x, player.y); ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          ctx.strokeStyle = '#fde68a';
+          ctx.lineWidth = 2.6;
+          ctx.beginPath(); ctx.arc(ca.ax, ca.ay, 30, 0, Math.PI * 2); ctx.stroke();
+          const hAng = ca.spin || 0;
+          ctx.beginPath();
+          ctx.moveTo(ca.ax, ca.ay); ctx.lineTo(ca.ax + Math.cos(hAng) * 23, ca.ay + Math.sin(hAng) * 23);
+          ctx.moveTo(ca.ax, ca.ay); ctx.lineTo(ca.ax + Math.cos(-hAng * 0.4) * 16, ca.ay + Math.sin(-hAng * 0.4) * 16);
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(114, 239, 221, 0.22)';
+          ctx.strokeStyle = '#72efdd';
+          ctx.lineWidth = 2.8;
+          ctx.beginPath();
+          for (let hk = 0; hk < 6; hk++) {
+            const ha = (Math.PI * 2 * hk) / 6 + (ca.spin || 0) * 0.25;
+            const hx = ca.dx + Math.cos(ha) * ca.dr, hy = ca.dy + Math.sin(ha) * ca.dr;
+            if (hk === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+          }
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.font = '900 12px -apple-system, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#72efdd';
+          ctx.fillText('✨ 断时解锚阵', ca.dx, ca.dy + 4);
+          ctx.restore();
+        }
+        if (e.eclipseSingularity) {
+          // 🌌 超巨黑日引力奇点（1.0s 前置高能预警 -> 全场吸积盘旋臂 + 坍缩引力透镜波 + 纯黑事件视界巨核 + 玩家引力流线 + 晨曦庇护圣印）
+          const es = e.eclipseSingularity;
+          const inWindup = (es.windupT || 0) > 0;
+          const wp = inWindup ? Math.max(0, Math.min(1, 1 - es.windupT / Math.max(0.1, es.maxWindupT || 1.0))) : 1;
+          const ep = inWindup ? 0 : Math.max(0, Math.min(1, 1 - es.t / Math.max(0.1, es.maxT || 3.25)));
+          const esR = Math.max(180, es.r || 440);
+          const pullRMax = es.pullRange || Math.max(540, esR * 1.72);
+          const spin = (es.spin || 0) + now * 0.0022;
+          drawVfxGlow(ctx, 'glowViolet', e.x, e.y, esR * (inWindup ? 0.42 + wp * 0.56 : 1.04), inWindup ? (0.18 + wp * 0.24) : (0.48 + ep * 0.26));
+          ctx.save();
+          ctx.lineCap = 'round';
+          if (inWindup) {
+            // 1.0s 高能蓄力预警阶段：醒目脉冲边界圈 + 蓄能扩散环 + 倒计时铭牌（此时尚无吸力，提前亮出双生晨曦庇护印！）
+            const pulseA = 0.55 + Math.sin(now * 0.018) * 0.30;
+            ctx.strokeStyle = 'rgba(253, 224, 71, 0.36)';
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([14, 14]);
+            ctx.beginPath(); ctx.arc(e.x, e.y, pullRMax, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = `rgba(36, 10, 68, ${0.08 + wp * 0.14})`;
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = `rgba(253, 224, 71, ${pulseA.toFixed(2)})`;
+            ctx.lineWidth = 3.0;
+            ctx.setLineDash([20, 12]);
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR, spin * 0.35, spin * 0.35 + Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            // 由中心向外推开的蓄力充能环（到达外环瞬间开启黑洞吸力）
+            const chargeR = Math.max(32, esR * (0.12 + wp * 0.88));
+            ctx.strokeStyle = 'rgba(216, 180, 254, 0.85)';
+            ctx.lineWidth = 2.6;
+            ctx.beginPath(); ctx.arc(e.x, e.y, chargeR, 0, Math.PI * 2); ctx.stroke();
+            // 中心坍缩奇点胚胎环
+            const seedR = 26 + wp * 46;
+            ctx.fillStyle = 'rgba(8, 2, 20, 0.72)';
+            ctx.strokeStyle = '#fde047';
+            ctx.lineWidth = 2.6;
+            ctx.beginPath(); ctx.arc(e.x, e.y, seedR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.font = '900 14px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.strokeStyle = '#140626';
+            ctx.lineWidth = 3.4;
+            const warnTxt = `⚠️ 黑洞引力预警 ${es.windupT.toFixed(1)}s`;
+            ctx.strokeText(warnTxt, e.x, e.y - e.r - 42);
+            ctx.fillStyle = '#fde047';
+            ctx.fillText(warnTxt, e.x, e.y - e.r - 42);
+          } else {
+            // 1) 超远外围引力牵引视界虚线圈与向心吞噬星尘流线
+            ctx.strokeStyle = 'rgba(192, 132, 252, 0.30)';
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([16, 14]);
+            ctx.beginPath(); ctx.arc(e.x, e.y, pullRMax, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            for (let sk = 0; sk < 14; sk++) {
+              const cyc = ((now * 0.0017 + sk * 0.0714) % 1);
+              const sa = sk * 0.4488 - spin * 0.35;
+              const rOuter = pullRMax * (1 - cyc * 0.72);
+              const rInner = Math.max(48, rOuter - 58 - cyc * 34);
+              ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.65;
+              ctx.strokeStyle = sk % 3 === 0 ? '#fde68a' : '#d8b4fe';
+              ctx.lineWidth = 1.8 + cyc * 1.2;
+              ctx.beginPath();
+              ctx.moveTo(e.x + Math.cos(sa) * rOuter, e.y + Math.sin(sa) * rOuter);
+              ctx.lineTo(e.x + Math.cos(sa + 0.14) * rInner, e.y + Math.sin(sa + 0.14) * rInner);
+              ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            // 2) 黑洞湮灭杀伤区边界日蚀符文巨环
+            ctx.fillStyle = `rgba(18, 4, 38, ${0.26 + ep * 0.22})`;
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(216, 180, 254, 0.88)';
+            ctx.lineWidth = 3.2;
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = '#ffd166';
+            ctx.lineWidth = 2.0;
+            ctx.setLineDash([18, 10]);
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR - 10, -spin * 0.4, -spin * 0.4 + Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            // 3) 6 条高速卷入奇点的相对论紫金吸积盘旋臂
+            for (let arm = 0; arm < 6; arm++) {
+              const a0 = spin * 1.35 + (arm * Math.PI * 2) / 6;
+              ctx.strokeStyle = arm % 2 === 0 ? 'rgba(253, 230, 138, 0.72)' : 'rgba(192, 132, 252, 0.78)';
+              ctx.lineWidth = arm % 2 === 0 ? 3.4 : 4.2;
+              ctx.beginPath();
+              for (let seg = 0; seg <= 10; seg++) {
+                const frac = seg / 10;
+                const rad = esR * (0.92 - frac * 0.76);
+                const ang = a0 + frac * 2.15;
+                const px = e.x + Math.cos(ang) * rad;
+                const py = e.y + Math.sin(ang) * rad;
+                seg === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+              }
+              ctx.stroke();
+            }
+            // 4) 3 道持续向中心急速坍缩的引力透镜波环
+            for (let rw = 0; rw < 3; rw++) {
+              const cyc = ((ep * 2.8 + rw * 0.333) % 1);
+              const waveR = Math.max(44, esR * (1 - cyc * 0.84));
+              ctx.globalAlpha = (1 - cyc * 0.45) * 0.68;
+              ctx.strokeStyle = rw === 0 ? '#fef08a' : '#e9d5ff';
+              ctx.lineWidth = 2.8 - rw * 0.4;
+              ctx.beginPath(); ctx.arc(e.x, e.y, waveR, 0, Math.PI * 2); ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            // 5) 预烘焙超巨纯黑事件视界深渊核与光子金环（直径近 300px，震撼全场）
+            const bhCoreR = Math.min(168, Math.max(116, esR * 0.35)) * (0.90 + ep * 0.18);
+            if (typeof vfxSprites !== 'undefined' && vfxSprites.blackHoleCore) {
+              ctx.drawImage(vfxSprites.blackHoleCore, e.x - bhCoreR, e.y - bhCoreR, bhCoreR * 2, bhCoreR * 2);
+            } else {
+              ctx.fillStyle = '#020008';
+              ctx.strokeStyle = '#fef08a';
+              ctx.lineWidth = 3.2;
+              ctx.beginPath(); ctx.arc(e.x, e.y, bhCoreR * 0.36, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            }
+            // 6) 对主角的直观引力拖拽流线（让玩家清晰看见自己正被黑洞拉扯！）
+            if (player && player.hp > 0) {
+              const pdx = e.x - player.x, pdy = e.y - player.y;
+              const pDist = Math.hypot(pdx, pdy);
+              if (pDist > 36 && pDist < pullRMax) {
+                const pux = pdx / pDist, puy = pdy / pDist;
+                const pnx = -puy, pny = pux;
+                for (let lk = -1; lk <= 1; lk++) {
+                  const flow = ((now * 0.0045 + (lk + 1) * 0.31) % 1);
+                  const startOff = 18 + flow * Math.min(180, pDist * 0.55);
+                  const endOff = Math.min(pDist - 24, startOff + 48);
+                  if (endOff > startOff + 8) {
+                    const lat = lk * 13 * (1 - flow * 0.5);
+                    ctx.globalAlpha = (1 - flow * 0.65) * 0.82;
+                    ctx.strokeStyle = lk === 0 ? '#fde68a' : '#c084fc';
+                    ctx.lineWidth = lk === 0 ? 2.6 : 1.9;
+                    ctx.beginPath();
+                    ctx.moveTo(player.x + pux * startOff + pnx * lat, player.y + puy * startOff + pny * lat);
+                    ctx.lineTo(player.x + pux * endOff + pnx * lat * 0.4, player.y + puy * endOff + pny * lat * 0.4);
+                    ctx.stroke();
+                  }
+                }
+                ctx.globalAlpha = 1;
+              }
+            }
+          }
+          // 7) 双生【☀️ 晨曦庇护圣印】（站在金印内完全免疫黑洞引力拖拽与坍缩湮灭）
+          const seals = [[es.s1x, es.s1y], [es.s2x, es.s2y]];
+          for (let sk = 0; sk < 2; sk++) {
+            const sx0 = seals[sk][0], sy0 = seals[sk][1];
+            const sr = Math.max(48, es.safeR || 72);
+            drawVfxGlow(ctx, 'sanctuaryGlow', sx0, sy0, sr * 1.52, 0.74);
+            ctx.save();
+            ctx.translate(sx0, sy0);
+            ctx.fillStyle = 'rgba(254, 240, 138, 0.24)';
+            ctx.strokeStyle = '#fde68a';
+            ctx.lineWidth = 3.0;
+            ctx.beginPath(); ctx.arc(0, 0, sr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.save();
+            ctx.rotate(-now * 0.0022 + sk);
+            ctx.strokeStyle = '#fffbeb';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            for (let rk = 0; rk < 16; rk++) {
+              const ra = (Math.PI * 2 * rk) / 16;
+              const rr = rk % 2 === 0 ? sr * 0.88 : sr * 0.64;
+              rk === 0 ? ctx.moveTo(Math.cos(ra) * rr, Math.sin(ra) * rr) : ctx.lineTo(Math.cos(ra) * rr, Math.sin(ra) * rr);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
+            ctx.font = '900 13px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.strokeStyle = '#1c1008';
+            ctx.lineWidth = 3.2;
+            ctx.strokeText('☀️ 晨曦庇护', 0, 5);
+            ctx.fillStyle = '#fffbeb';
+            ctx.fillText('☀️ 晨曦庇护', 0, 5);
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+      }
+    }
+
+    // 首领共鸣阵眼棱柱能量连线与双生极光冰弦绘制
+    if (trees.length > 0) {
+      let cryoA = null, cryoB = null;
+      ctx.save();
+      for (let ti = 0; ti < trees.length; ti++) {
+        const tr = trees[ti];
+        if (!tr || !tr.isBossPylon || tr.hp <= 0 || !tr.owner || tr.owner.hp <= 0) continue;
+        const pCol = tr.pylonColor || '#72efdd';
+        ctx.strokeStyle = pCol;
+        ctx.globalAlpha = 0.58;
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath(); ctx.moveTo(tr.x, tr.y - 6); ctx.lineTo(tr.owner.x, tr.owner.y - 8); ctx.stroke();
+        ctx.setLineDash([]);
+        if (tr.pylonKind === 'cryo_obelisk') {
+          if (!cryoA) cryoA = tr;
+          else if (!cryoB && tr.owner === cryoA.owner) cryoB = tr;
+        }
+      }
+      if (cryoA && cryoB) {
+        ctx.globalAlpha = 0.88;
+        ctx.strokeStyle = '#7dd3fc';
+        ctx.lineWidth = 5.0;
+        ctx.beginPath(); ctx.moveTo(cryoA.x, cryoA.y - 4); ctx.lineTo(cryoB.x, cryoB.y - 4); ctx.stroke();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(cryoA.x, cryoA.y - 4); ctx.lineTo(cryoB.x, cryoB.y - 4); ctx.stroke();
+      }
+      ctx.restore();
     }
 
     // 地面扩散冲击圈与多形态震波阵（圆环 / 六棱星芒 / 八芒烈焰 / 翡翠十字圣愈脉冲，零大面积圆盘过绘）
@@ -2525,7 +3335,7 @@ function draw() {
       if (fogCullActive && Math.hypot(s.x - player.x, s.y - player.y) >= fogWorldCutR) continue;
       const p = Math.max(0, Math.min(1, 1 - s.t / Math.max(0.01, s.maxT)));
       const isBig = s.type === 'boss' || s.type === 'mini_boss' || s.type === 'special_boss';
-      const sz = Math.max(4, (isBig ? 26 : 13) * (0.8 + Math.sin(p * Math.PI * 4) * 0.15));
+      const sz = Math.max(4, (isBig ? 31 : 13) * (0.8 + Math.sin(p * Math.PI * 4) * 0.15));
       const sCol = s.type === 'special_boss' ? '#ffd166' : '#ff3b6b';
       ctx.globalAlpha = 0.14 + p * 0.18;
       ctx.fillStyle = sCol;
@@ -2541,7 +3351,7 @@ function draw() {
     // 角色浅浅的收集（磁吸拾取）范围地面光圈（仅显示轻量细线收集圈，零实心填充过绘，不显示攻击射程圈）
     if (state === 'wave' && player && player.hp > 0) {
       const pulseActive = (player.magnetPulseT || 0) > 0;
-      const targetMagR = Math.max(28, (player.magnet || 130) + (pulseActive ? 135 : 0));
+      const targetMagR = Math.max(28, (player.magnet || 143) + (pulseActive ? 135 : 0));
       player._visMagR = player._visMagR === undefined
         ? targetMagR
         : player._visMagR + (targetMagR - player._visMagR) * 0.20;
@@ -2552,7 +3362,83 @@ function draw() {
       ctx.beginPath();
       ctx.arc(player.x, player.y, magR, 0, Math.PI * 2);
       ctx.stroke();
+      if (typeof isBossLastStandFearActive === 'function' && isBossLastStandFearActive()) {
+        const fPulse = Math.sin(now * 0.012);
+        const fRad = 32 + fPulse * 2.5;
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.58)';
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([7, 5]);
+        ctx.beginPath();
+        ctx.arc(player.x, player.y + 4, fRad, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       ctx.restore();
+
+      // 隐藏首领召唤祭坛：角色脚下贴身黄金罗盘箭头 + 流动引魂金线（玩家视线聚焦主角时 0 延迟一眼看清方向！）
+      if (relics.length > 0) {
+        const rel = relics[0];
+        const dxR = rel.x - player.x, dyR = rel.y - player.y;
+        const distR = Math.hypot(dxR, dyR);
+        const relR = rel.r || 88;
+        if (distR > relR + 18) {
+          const angR = Math.atan2(dyR, dxR);
+          const ux = dxR / distR, uy = dyR / distR;
+          const orbitR = 68 + Math.sin(now * 0.008) * 4;
+          const ax = player.x + ux * orbitR, ay = player.y + uy * orbitR;
+          const lineEndDist = Math.max(orbitR + 18, distR - relR - 6);
+          // 1) 流动金色虚线牵引轨
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255, 209, 102, 0.42)';
+          ctx.lineWidth = 2.4;
+          ctx.setLineDash([12, 10]);
+          ctx.lineDashOffset = -((now * 0.085) % 22);
+          ctx.beginPath();
+          ctx.moveTo(player.x + ux * (orbitR + 14), player.y + uy * (orbitR + 14));
+          ctx.lineTo(player.x + ux * lineEndDist, player.y + uy * lineEndDist);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+          // 2) 角色身畔高对比金色双翼罗盘锋矢
+          drawVfxGlow(ctx, 'glowGold', ax, ay, 24, 0.52);
+          ctx.save();
+          ctx.translate(ax, ay);
+          ctx.rotate(angR);
+          ctx.fillStyle = '#ffd166';
+          ctx.strokeStyle = '#1b1429';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(15, 0);
+          ctx.lineTo(-8, -9.5);
+          ctx.lineTo(-3, 0);
+          ctx.lineTo(-8, 9.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#fffbeb';
+          ctx.beginPath();
+          ctx.moveTo(11, 0); ctx.lineTo(-2, -3.5); ctx.lineTo(-2, 3.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          // 3) 箭头旁距离微铭牌
+          const stepsM = Math.max(1, Math.round((distR - relR) / 28));
+          const tagY = ay + (uy > 0.25 ? 20 : -16);
+          ctx.save();
+          ctx.font = '800 11.5px -apple-system, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const tagTxt = `⛩️召唤Boss ${stepsM}m`;
+          const tagW = Math.max(78, ctx.measureText(tagTxt).width + 12);
+          ctx.fillStyle = 'rgba(15, 11, 26, 0.78)';
+          ctx.strokeStyle = 'rgba(255, 209, 102, 0.85)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.roundRect(ax - tagW * 0.5, tagY - 9, tagW, 18, 9); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#fde68a';
+          ctx.fillText(tagTxt, ax, tagY + 0.5);
+          ctx.restore();
+        }
+      }
     }
 
     // 晶石、血包与异星战利品箱绘制
@@ -2610,7 +3496,8 @@ function draw() {
     renderList.length = 0;
     for (let i = 0; i < trees.length; i++) {
       const tr = trees[i];
-      if (tr.hp <= 0 || tr.x + 40 < vL || tr.x - 40 > vR || tr.y + 40 < vT || tr.y - 40 > vB) continue;
+      const tPad = tr.isBossPylon ? 110 : 40;
+      if (tr.hp <= 0 || tr.x + tPad < vL || tr.x - tPad > vR || tr.y + tPad < vT || tr.y - tPad > vB) continue;
       tr._rk = 3;
       renderList.push(tr);
     }
@@ -2762,7 +3649,7 @@ function draw() {
       ctx.restore();
     }
 
-    // 连锁电弧（双层青紫电芒 + 白芯折线 + 视口裁剪）
+    // 连锁电弧与九霄落雷（支持法杖粗壮奥术雷柱 + 落点紫金电光晕 + 白芯折线 + 视口裁剪）
     for (let i = 0; i < lightnings.length; i++) {
       const lt = lightnings[i];
       const pts = lt.pts;
@@ -2770,19 +3657,24 @@ function draw() {
       const p0 = pts[0], pN = pts[pts.length - 1];
       if ((p0.x < vL && pN.x < vL) || (p0.x > vR && pN.x > vR) || (p0.y < vT && pN.y < vT) || (p0.y > vB && pN.y > vB)) continue;
       const alpha = Math.max(0.04, lt.t / Math.max(0.01, lt.maxT));
+      const baseW = lt.width || 3.5;
+      if (baseW >= 4.2) {
+        drawVfxGlow(ctx, 'glowViolet', pN.x, pN.y, 34, alpha * 0.55);
+      }
       ctx.save();
       ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-      ctx.globalAlpha = alpha * 0.42;
-      ctx.strokeStyle = lt.color; ctx.lineWidth = 8 * alpha;
+      ctx.globalAlpha = alpha * 0.45;
+      ctx.strokeStyle = lt.color; ctx.lineWidth = baseW * 2.4 * alpha;
       ctx.beginPath();
       for (let idx = 0; idx < pts.length; idx++) {
         idx === 0 ? ctx.moveTo(pts[idx].x, pts[idx].y) : ctx.lineTo(pts[idx].x, pts[idx].y);
       }
       ctx.stroke();
       ctx.globalAlpha = alpha;
-      ctx.lineWidth = 3.5 * alpha;
+      ctx.lineWidth = baseW * alpha;
       ctx.stroke();
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = lt.coreColor || '#ffffff';
+      ctx.lineWidth = Math.max(1.5, baseW * 0.44);
       ctx.stroke();
       ctx.restore();
     }
@@ -2790,7 +3682,7 @@ function draw() {
     // 四流派【觉醒大招】高空浓墨雷光、飞剑、重炮榴弹与爆轰贴图层
     drawUltAerialEffects(vL, vR, vT, vB, now);
 
-    // 投射物绘制（火焰气流、电浆球、冰锥、弹弓圆石、旋转手里剑、火箭弹头、带辉光曳光弹）
+    // 投射物绘制（火焰气流、电浆球、陨炎大火球、冰锥、弹弓圆石、旋转手里剑、火箭弹头、带辉光曳光弹）
     for (let i = 0; i < bullets.length; i++) {
       const b = bullets[i];
       if (b.x < vL || b.x > vR || b.y < vT || b.y > vB) continue;
@@ -2808,6 +3700,34 @@ function draw() {
         ctx.beginPath(); ctx.arc(b.x, b.y, br, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         ctx.fillStyle = '#ffffff';
         ctx.beginPath(); ctx.arc(b.x, b.y, br * 0.45, 0, Math.PI * 2); ctx.fill();
+      } else if (b.isFireball) {
+        // 赤烬魂灯杖【陨炎火球术】：炽橙预烘焙辉光 + 狂暴拖曳彗尾 + 旋转熔火日冕 + 炽白炎核
+        drawVfxGlow(ctx, 'glowOrange', b.x, b.y, br * 2.95, 0.80);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.angle || 0);
+        const tailFlick = Math.sin(now * 0.035 + i * 1.7) * 3.5;
+        ctx.fillStyle = 'rgba(230, 57, 70, 0.78)';
+        ctx.beginPath();
+        ctx.moveTo(br * 0.3, -br * 0.98);
+        ctx.quadraticCurveTo(-br * 1.9, -br * 0.65 + tailFlick * 0.4, -br * 3.5, tailFlick);
+        ctx.quadraticCurveTo(-br * 1.9, br * 0.65 + tailFlick * 0.4, br * 0.3, br * 0.98);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ff9f1c';
+        ctx.beginPath();
+        ctx.moveTo(br * 0.45, -br * 0.68);
+        ctx.quadraticCurveTo(-br * 1.25, -br * 0.32, -br * 2.35, tailFlick * 0.55);
+        ctx.quadraticCurveTo(-br * 1.25, br * 0.32, br * 0.45, br * 0.68);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fb5607';
+        ctx.strokeStyle = '#ffd166';
+        ctx.lineWidth = 2.0;
+        ctx.beginPath(); ctx.arc(0, 0, br, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fffbeb';
+        ctx.beginPath(); ctx.arc(br * 0.16, 0, br * 0.50, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
       } else if (b.isStaffOrb) {
         // 法杖秘术奥术星弹：柔彩元素法环 + 旋转四芒符文核 + 纯白星芯
         ctx.save();
@@ -3283,27 +4203,28 @@ function draw() {
     ctx.textAlign = 'center';
     let lastFontSize = -1;
     const denseTexts = texts.length > 18;
+    const desktopTextScale = isTouch ? 1.0 : 1.18;
     for (let i = 0; i < texts.length; i++) {
       const t = texts[i];
       if (t.x < vL || t.x > vR || t.y < vT || t.y > vB) continue;
       const life = Math.max(0, t.t / Math.max(0.01, t.maxT));
-      const scale = t.important
+      const scale = (t.important
         ? (life > 0.90 ? 1 + (1 - life) * 2.2 : 1)
         : (t.isCritPop
             ? (life > 0.76 ? 1 + Math.sin(((1 - life) / 0.24) * Math.PI) * 0.42 : 1)
-            : (life > 0.8 ? 1 + (1 - life) * 1.7 : 1));
+            : (life > 0.8 ? 1 + (1 - life) * 1.7 : 1))) * desktopTextScale;
       ctx.globalAlpha = t.important ? Math.min(1, life / 0.22) : Math.min(1, life * 1.9);
-      const fSize = (Math.max(10, Math.round(t.size * scale)) + 1) & ~1;
+      const fSize = (Math.max(11, Math.round(t.size * scale)) + 1) & ~1;
       if (fSize !== lastFontSize) {
         lastFontSize = fSize;
         ctx.font = `900 ${fSize}px -apple-system, sans-serif`;
       }
       if (t.important) {
-        const padX = 9, pillH = fSize + 9;
+        const padX = 11, pillH = fSize + 10;
         if (!(t._baseW > 0)) {
           t._baseW = ctx.measureText(t.txt).width / Math.max(0.5, scale);
         }
-        const tw = Math.min(340, Math.max(44, t._baseW * scale + padX * 2));
+        const tw = Math.min(400, Math.max(48, t._baseW * scale + padX * 2));
         ctx.fillStyle = 'rgba(15, 11, 26, 0.78)';
         ctx.strokeStyle = t.color;
         ctx.lineWidth = 1.4;
@@ -3330,16 +4251,20 @@ function draw() {
 
   ctx.restore();
 
-  // 蚀界生存试炼 · 沉浸浓雾提灯视野系统（预烘焙 100% 纯黑不透怪外圈遮罩 + 动态翻涌迷雾云团 + 机关幽芒预警与灯圈来袭箭头，战斗帧 0 createRadialGradient / 0 shadowBlur）
-  if (typeof survivalTrialWave !== 'undefined' && survivalTrialWave && player && state !== 'menu' && viewW > 40 && viewH > 40) {
+  // 蚀界生存试炼 & D5 第 16 层二阶段蚀日浓雾 · 沉浸浓雾提灯视野系统（预烘焙 100% 纯黑不透怪外圈遮罩 + 动态翻涌迷雾云团 + 机关幽芒预警与灯圈来袭/首领方位箭头，战斗帧 0 渐变 / 0 模糊）
+  const _d5P2FogOverlay = typeof isD5Floor16Phase2FogActive === 'function' && isD5Floor16Phase2FogActive();
+  const _hasResidualFog = !!(typeof survivalTrialState === 'object' && survivalTrialState && (survivalTrialState.fogIntroP || 0) > 0.015);
+  if (((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) || _d5P2FogOverlay || _hasResidualFog) && player && state !== 'menu' && viewW > 40 && viewH > 40) {
     const st = (typeof survivalTrialState === 'object' && survivalTrialState) ? survivalTrialState : null;
-    const introP = st ? Math.max(0.05, Math.min(1, st.fogIntroP || 0)) : 1;
+    const activeFogNow = !!((typeof survivalTrialWave !== 'undefined' && survivalTrialWave) || _d5P2FogOverlay);
+    const introP = st ? Math.max(activeFogNow ? 0.05 : 0, Math.min(1, st.fogIntroP || 0)) : 1;
     const boostP = (st && st.lanternBoostT > 0) ? Math.min(1, st.lanternBoostT / 1.25) : 0;
     const fNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.001;
     const lx = viewW * 0.5 + sx + (player.x - cam.x) * camZoom;
     const ly = viewH * 0.5 + sy + (player.y - cam.y) * camZoom;
     const diag = Math.hypot(viewW, viewH);
-    const targetWorldR = (238 + boostP * 70) + Math.sin(fNow * 4.2) * 3.5;
+    const baseWorldR = _d5P2FogOverlay ? 268 : 238;
+    const targetWorldR = (baseWorldR + boostP * 72) + Math.sin(fNow * 4.2) * 3.5;
     const clearR = Math.max(64, (diag * (1 - introP)) + (targetWorldR * camZoom) * introP);
     const scId = (curScene && curScene.id) || 'foundry';
     const fogRgb = (typeof SOUL_FOG_PALETTE !== 'undefined' && SOUL_FOG_PALETTE[scId]) || [5, 8, 15];
@@ -3419,7 +4344,7 @@ function draw() {
     ctx.arc(lx, ly, r0, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 迷雾机关幽芒预警：仅让天外剑轨、地脉裂缝与旋转十字棱镜透出微光，绝不透出任何怪物！
+    // 迷雾机关幽芒预警：差异化透出锯齿地脉裂谷、双轨光栅、虚线剑梭与旋转紫晶十字，绝不透出任何怪物！
     if (typeof survivalFissures !== 'undefined' && survivalFissures.length > 0) {
       ctx.lineCap = 'round';
       for (let i = 0; i < survivalFissures.length; i++) {
@@ -3429,10 +4354,25 @@ function draw() {
         const sy1 = viewH * 0.5 + sy + (f.y1 - cam.y) * camZoom;
         const sx2 = viewW * 0.5 + sx + (f.x2 - cam.x) * camZoom;
         const sy2 = viewH * 0.5 + sy + (f.y2 - cam.y) * camZoom;
-        ctx.globalAlpha = (f.windupT > 0 ? 0.40 : 0.34) * introP;
-        ctx.strokeStyle = f.color || '#ff6b35';
-        ctx.lineWidth = Math.max(2.2, (f.windupT > 0 ? 2.6 : 4.2) * camZoom);
-        ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+        const dxs = sx2 - sx1, dys = sy2 - sy1;
+        const slen = Math.hypot(dxs, dys) || 1;
+        const snx = -dys / slen, sny = dxs / slen;
+        const jags = f.jags;
+        ctx.globalAlpha = (f.windupT > 0 ? 0.44 : 0.38) * introP;
+        ctx.strokeStyle = f.color || '#ff7b29';
+        ctx.lineWidth = Math.max(2.2, (f.windupT > 0 ? 2.8 : 4.2) * camZoom);
+        ctx.beginPath();
+        ctx.moveTo(sx1, sy1);
+        if (jags && jags.length > 2) {
+          const nPts = jags.length;
+          for (let k = 1; k < nPts - 1; k++) {
+            const t = k / (nPts - 1);
+            const off = jags[k] * 11 * camZoom;
+            ctx.lineTo(sx1 + dxs * t + snx * off, sy1 + dys * t + sny * off);
+          }
+        }
+        ctx.lineTo(sx2, sy2);
+        ctx.stroke();
       }
     }
     if (typeof survivalSkyVolleys !== 'undefined' && survivalSkyVolleys.length > 0) {
@@ -3445,10 +4385,24 @@ function draw() {
         const sx2 = viewW * 0.5 + sx + (v.ex - cam.x) * camZoom;
         const sy2 = viewH * 0.5 + sy + (v.ey - cam.y) * camZoom;
         const vp = Math.max(0, Math.min(1, 1 - (v.windupT || 0) / Math.max(0.05, v.maxWindup || 0.8)));
-        ctx.globalAlpha = (0.26 + vp * 0.26) * introP;
-        ctx.strokeStyle = v.color || '#fde68a';
-        ctx.lineWidth = v.kind === 'corridor_beam' ? Math.max(2.0, 3.2 * camZoom) : 2.0;
-        ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+        ctx.globalAlpha = (0.28 + vp * 0.28) * introP;
+        ctx.strokeStyle = v.color || (v.kind === 'corridor_beam' ? '#fbbf24' : '#ff4d6d');
+        if (v.kind === 'corridor_beam') {
+          const dxs = sx2 - sx1, dys = sy2 - sy1;
+          const slen = Math.hypot(dxs, dys) || 1;
+          const hwPx = Math.max(4, (v.halfW || 25) * camZoom);
+          const ox = (-dys / slen) * hwPx, oy = (dxs / slen) * hwPx;
+          ctx.lineWidth = Math.max(1.8, 2.4 * camZoom);
+          ctx.beginPath();
+          ctx.moveTo(sx1 + ox, sy1 + oy); ctx.lineTo(sx2 + ox, sy2 + oy);
+          ctx.moveTo(sx1 - ox, sy1 - oy); ctx.lineTo(sx2 - ox, sy2 - oy);
+          ctx.stroke();
+        } else {
+          ctx.lineWidth = 2.1;
+          ctx.setLineDash([8, 7]);
+          ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
     }
     if (typeof hazards !== 'undefined' && hazards.length > 0) {
@@ -3459,8 +4413,8 @@ function draw() {
         const hcx = viewW * 0.5 + sx + (h.x - cam.x) * camZoom;
         const hcy = viewH * 0.5 + sy + (h.y - cam.y) * camZoom;
         const spanPx = (h.halfLen || 190) * camZoom;
-        ctx.globalAlpha = 0.34 * introP;
-        ctx.strokeStyle = h.color || '#f43f5e';
+        ctx.globalAlpha = 0.36 * introP;
+        ctx.strokeStyle = h.color || '#c084fc';
         ctx.lineWidth = Math.max(1.8, 2.4 * camZoom);
         for (let k = 0; k < 2; k++) {
           const la = (h.angle || 0) + k * Math.PI * 0.5;
@@ -3472,7 +4426,7 @@ function draw() {
       }
     }
 
-    // 提灯灯圈边缘来袭方位箭头（▲ 金色=屏外蓄力瞄准中，绯红=天外贯星梭逼近，紫电=冥渊雷涡切入）
+    // 提灯灯圈边缘差异化来袭标识（▲ 绯红燕尾梭=天外贯星剑梭，❖ 青紫旋涡星芒=游弋冥渊雷涡）
     const chevR = Math.max(28, r0 - 10);
     if (typeof survivalSkyVolleys !== 'undefined' && survivalSkyVolleys.length > 0) {
       for (let i = 0; i < survivalSkyVolleys.length; i++) {
@@ -3486,15 +4440,15 @@ function draw() {
         ctx.save();
         ctx.translate(cxA, cyA);
         ctx.rotate(angToSrc);
-        ctx.globalAlpha = (0.56 + vp * 0.40) * introP;
-        ctx.fillStyle = '#fde68a';
-        ctx.strokeStyle = '#120d18';
+        ctx.globalAlpha = (0.58 + vp * 0.38) * introP;
+        ctx.fillStyle = '#fda4af';
+        ctx.strokeStyle = '#4c0519';
         ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.moveTo(8.5, 0);
-        ctx.lineTo(-4.5, -5.2);
-        ctx.lineTo(-2.2, 0);
-        ctx.lineTo(-4.5, 5.2);
+        ctx.moveTo(8.8, 0);
+        ctx.lineTo(-4.6, -5.0);
+        ctx.lineTo(-2.0, 0);
+        ctx.lineTo(-4.6, 5.0);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -3503,6 +4457,7 @@ function draw() {
     }
     if (typeof eBullets !== 'undefined' && eBullets.length > 0) {
       const worldClearR = r0 / Math.max(0.25, camZoom);
+      const spinT = ((typeof _frameNow !== 'undefined' ? _frameNow : performance.now()) * 0.0045);
       for (let i = 0; i < eBullets.length; i++) {
         const b = eBullets[i];
         if (!b || !b.isCelestial) continue;
@@ -3516,20 +4471,93 @@ function draw() {
         const cyB = ly + Math.sin(angToB) * chevR;
         ctx.save();
         ctx.translate(cxB, cyB);
-        ctx.rotate(angToB);
-        ctx.globalAlpha = 0.92 * introP;
-        ctx.fillStyle = b.isVortexTrap ? '#c084fc' : '#fb7185';
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.3;
-        ctx.beginPath();
-        ctx.moveTo(10.0, 0);
-        ctx.lineTo(-5.0, -6.0);
-        ctx.lineTo(-2.4, 0);
-        ctx.lineTo(-5.0, 6.0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        ctx.globalAlpha = 0.94 * introP;
+        if (b.isVortexTrap) {
+          ctx.strokeStyle = '#2dd4bf';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, 7.6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.rotate(spinT + i * 0.9);
+          ctx.fillStyle = '#a855f7';
+          ctx.strokeStyle = '#f0fdfa';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          for (let k = 0; k < 8; k++) {
+            const kr = (k % 2 === 0) ? 7.2 : 2.6;
+            const ka = (Math.PI * k) / 4;
+            if (k === 0) ctx.moveTo(Math.cos(ka) * kr, Math.sin(ka) * kr);
+            else ctx.lineTo(Math.cos(ka) * kr, Math.sin(ka) * kr);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.rotate(angToB);
+          ctx.fillStyle = '#ff4d6d';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.moveTo(10.5, 0);
+          ctx.lineTo(-5.0, -5.8);
+          ctx.lineTo(-2.2, 0);
+          ctx.lineTo(-5.0, 5.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
         ctx.restore();
+      }
+    }
+    if (_d5P2FogOverlay && typeof enemies !== 'undefined' && enemies.length > 0) {
+      const worldClearR = r0 / Math.max(0.25, camZoom);
+      for (let i = 0; i < enemies.length; i++) {
+        const be = enemies[i];
+        if (!be || be.hp <= 0 || (be.type !== 'boss' && be.type !== 'special_boss')) continue;
+        if (be.eclipseSingularity && Number.isFinite(be.eclipseSingularity.s1x)) {
+          const es = be.eclipseSingularity;
+          const sancts = [{ x: es.s1x, y: es.s1y }, { x: es.s2x, y: es.s2y }];
+          for (let sk = 0; sk < sancts.length; sk++) {
+            const sc = sancts[sk];
+            const dxs = sc.x - player.x, dys = sc.y - player.y;
+            if (Math.hypot(dxs, dys) > worldClearR * 0.85) {
+              const angS = Math.atan2(dys, dxs);
+              ctx.save();
+              ctx.translate(lx + Math.cos(angS) * (chevR - 3), ly + Math.sin(angS) * (chevR - 3));
+              ctx.rotate(angS);
+              ctx.globalAlpha = 0.88 * introP;
+              ctx.fillStyle = '#fde047';
+              ctx.strokeStyle = '#78350f';
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.moveTo(7.5, 0); ctx.lineTo(0, -5.2); ctx.lineTo(-5.5, 0); ctx.lineTo(0, 5.2);
+              ctx.closePath();
+              ctx.fill(); ctx.stroke();
+              ctx.restore();
+            }
+          }
+        }
+        const dxE = be.x - player.x, dyE = be.y - player.y;
+        const distE = Math.hypot(dxE, dyE);
+        if (distE > worldClearR * 0.86) {
+          const angE = Math.atan2(dyE, dxE);
+          ctx.save();
+          ctx.translate(lx + Math.cos(angE) * chevR, ly + Math.sin(angE) * chevR);
+          ctx.rotate(angE);
+          ctx.globalAlpha = 0.94 * introP;
+          ctx.fillStyle = (be.d5LastStandT || 0) > 0 ? '#ffd166' : '#ff2a55';
+          ctx.strokeStyle = '#fffbeb';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(12.2, 0);
+          ctx.lineTo(-5.8, -6.8);
+          ctx.lineTo(-2.4, 0);
+          ctx.lineTo(-5.8, 6.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
       }
     }
     ctx.restore();
@@ -3592,8 +4620,8 @@ function draw() {
 
   // 屏幕顶部战术事件持久播报横幅（停留 3~4 秒，带剩余时间条，确保玩家不错过任何奇遇/环境异象）
   if (state === 'wave' && typeof banners !== 'undefined' && banners.length > 0) {
-    const baseY = uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 98);
-    const fSize = uiMode === 'desktop' ? 14 : 12.5;
+    const baseY = uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 118);
+    const fSize = uiMode === 'desktop' ? 16.5 : 12.5;
     ctx.save();
     ctx.font = `800 ${fSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = 'center';
@@ -3611,56 +4639,120 @@ function draw() {
         b._tw = ctx.measureText(b.txt).width;
         b._fSize = fSize;
       }
-      const tw = Math.min(maxW, Math.max(190, b._tw + 34));
-      const bh = uiMode === 'desktop' ? 32 : 28;
+      const tw = Math.min(maxW, Math.max(220, b._tw + 40));
+      const bh = uiMode === 'desktop' ? 37 : 28;
       const bx = viewW * 0.5 - tw * 0.5;
       const by = baseY + i * (bh + 7) - (1 - enterP) * 8;
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = 'rgba(17, 13, 29, 0.90)';
+      ctx.fillStyle = 'rgba(17, 13, 29, 0.48)';
       ctx.strokeStyle = b.color || '#ffd166';
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.roundRect(bx, by, tw, bh, 9);
       ctx.fill();
+      ctx.globalAlpha = alpha * 0.66;
       ctx.stroke();
       const progW = Math.max(0, (tw - 14) * Math.max(0, Math.min(1, b.t / maxT)));
       if (progW > 1) {
-        ctx.globalAlpha = alpha * 0.65;
+        ctx.globalAlpha = alpha * 0.56;
         ctx.fillStyle = b.color || '#ffd166';
         ctx.fillRect(bx + 7, by + bh - 3.5, progW, 2);
       }
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = alpha * 0.94;
+      ctx.strokeStyle = 'rgba(5, 7, 15, 0.85)';
+      ctx.lineWidth = 3.2;
+      ctx.strokeText(b.txt, viewW * 0.5, by + bh * 0.5 - 0.5, tw - 18);
       ctx.fillStyle = '#f8f5ff';
       ctx.fillText(b.txt, viewW * 0.5, by + bh * 0.5 - 0.5, tw - 18);
     }
     ctx.restore();
   }
 
-  // 地图奇遇圣物在视野外时，于屏幕边缘绘制醒目方向指引信标
+  // 地图隐藏首领召唤祭坛现世期间：顶部半透明常驻雷达提示胶囊 + 屏幕边缘高辨识度方向指引信标（浓雾下同样穿透可见！）
   if (state === 'wave' && relics.length > 0) {
     const rel = relics[0];
+    const rNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now());
+    const rPulse = 0.5 + 0.5 * Math.sin(rNow * 0.007);
+    const bIcon = (rel.def && rel.def.icon) || '⛩️';
+    const bName = (rel.def && (rel.def.bossName || rel.def.name)) || '秘境主宰';
+    const rCol = (rel.def && rel.def.color) || '#ffd166';
+    const rProg = Math.max(0, Math.min(1, (rel.charge || 0) / Math.max(0.1, rel.need || 1.15)));
+    const distWorld = player ? Math.hypot(rel.x - player.x, rel.y - player.y) : 0;
+    const stepsM = Math.max(0, Math.round(Math.max(0, distWorld - (rel.r || 88)) / 28));
+
+    // 1) 顶部常驻半透明雷达胶囊（自动避让临时播报 banners，绝不遮挡走位）
+    const bannerCnt = (typeof banners !== 'undefined' && banners) ? banners.length : 0;
+    const bannerBaseY = uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 118);
+    const bannerStepH = (uiMode === 'desktop' ? 37 : 28) + 7;
+    const pillY = bannerBaseY + bannerCnt * bannerStepH;
+    const pillFont = uiMode === 'desktop' ? 13.5 : 11.5;
+    const pillH = uiMode === 'desktop' ? 30 : 25;
+    const pillTxt = rProg > 0.02
+      ? `⚡ 正在共鸣召唤隐藏Boss【${bIcon}${bName}】 ${Math.round(rProg * 100)}% · 请保持在阵内`
+      : `⛩️ 隐藏Boss可召唤：【${bIcon}${bName}】(${stepsM}m) · 沿脚下金箭头踏阵必掉首领秘宝`;
+    ctx.save();
+    ctx.font = `800 ${pillFont}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const maxPillW = Math.max(190, viewW - 24);
+    const pillW = Math.min(maxPillW, Math.max(210, ctx.measureText(pillTxt).width + 30));
+    const pillX = viewW * 0.5 - pillW * 0.5;
+    ctx.fillStyle = 'rgba(18, 13, 32, 0.56)';
+    ctx.strokeStyle = rProg > 0.02 ? '#ffd166' : `rgba(255, 209, 102, ${(0.58 + rPulse * 0.36).toFixed(2)})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, pillH * 0.5); ctx.fill(); ctx.stroke();
+    if (rProg > 0.02) {
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.78)';
+      ctx.fillRect(pillX + 10, pillY + pillH - 3.5, Math.max(2, (pillW - 20) * rProg), 2.2);
+    }
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillText(pillTxt, viewW * 0.5, pillY + pillH * 0.5, pillW - 18);
+    ctx.restore();
+
+    // 2) 视野外（或浓雾遮蔽外）屏幕边缘高辨识度脉冲方向信标 + 距离铭牌
     const rxScreen = (rel.x - cam.x) * camZoom + viewW * 0.5;
     const ryScreen = (rel.y - cam.y) * camZoom + viewH * 0.5;
-    const pad = 42;
-    if (rxScreen < pad || rxScreen > viewW - pad || ryScreen < 84 || ryScreen > viewH - pad) {
+    const pad = 52;
+    const fogActiveNow = (typeof isSoulFogActive === 'function' && isSoulFogActive()) || (typeof isD5Floor16Phase2FogActive === 'function' && isD5Floor16Phase2FogActive());
+    const offScreenOrFogged = rxScreen < pad || rxScreen > viewW - pad || ryScreen < 92 || ryScreen > viewH - pad || (fogActiveNow && distWorld > 220);
+    if (offScreenOrFogged) {
       const ang = Math.atan2(ryScreen - viewH * 0.5, rxScreen - viewW * 0.5);
-      const px = Math.max(54, Math.min(viewW - 54, rxScreen));
-      const py = Math.max(96, Math.min(viewH - 56, ryScreen));
+      const px = Math.max(62, Math.min(viewW - 62, rxScreen));
+      const py = Math.max(106, Math.min(viewH - 68, ryScreen));
       ctx.save();
       ctx.translate(px, py);
-      ctx.fillStyle = 'rgba(24, 16, 36, 0.88)';
-      ctx.strokeStyle = (rel.def && rel.def.color) || '#ffd166';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // 脉冲外扩金环
+      ctx.strokeStyle = `rgba(255, 209, 102, ${(0.85 - rPulse * 0.45).toFixed(2)})`;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath(); ctx.arc(0, 0, 24 + rPulse * 9, 0, Math.PI * 2); ctx.stroke();
+      // 信标圆章主体
+      ctx.fillStyle = 'rgba(22, 14, 36, 0.90)';
+      ctx.strokeStyle = rCol;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.arc(0, 0, 23, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // 方向大锋矢
       ctx.save();
       ctx.rotate(ang);
       ctx.fillStyle = '#ffd166';
-      ctx.beginPath(); ctx.moveTo(28, 0); ctx.lineTo(19, -6); ctx.lineTo(19, 6); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#120d18';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(36 + rPulse * 3, 0); ctx.lineTo(23, -8); ctx.lineTo(25, 0); ctx.lineTo(23, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.restore();
-      ctx.font = '16px -apple-system, sans-serif';
+      ctx.font = '18px -apple-system, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText((rel.def && rel.def.icon) || '✨', 0, 1);
+      ctx.fillText(bIcon, 0, 1);
+      // 信标下方距离提示小签
+      ctx.font = '800 11px -apple-system, sans-serif';
+      const edgeLbl = `隐藏Boss ${stepsM}m`;
+      const ew = Math.max(68, ctx.measureText(edgeLbl).width + 12);
+      const ey = py > viewH - 105 ? -34 : 33;
+      ctx.fillStyle = 'rgba(15, 11, 26, 0.88)';
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect(-ew * 0.5, ey - 8.5, ew, 17, 8.5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText(edgeLbl, 0, ey + 0.5);
       ctx.restore();
     }
   }
@@ -3702,10 +4794,11 @@ function draw() {
     ctx.restore();
   }
 
-  // 👑 首领登场（一阶段 33% 概率）/ 神话二阶段觉醒（二阶段 33% 概率觉醒且 100% 必出立绘）全屏斜向破框立绘横幅
-  // 完整展示 4.0 秒后进入 0.85 秒丝滑上浮消逝动画（0 radialGradient / 0 shadowBlur）
-  if (state === 'wave' && endlessMode &&
+  // 👑 首领登场 / 神话二阶段觉醒 / D5 临死挣扎（主线与无尽均强制展示立绘）半透明斜向破框立绘横幅
+  // 完整展示后进入 0.85 秒丝滑上浮消逝动画（0 渐变分配 / 0 模糊滤镜 · 高透光不挡走位与弹幕）
+  if (state === 'wave' &&
       typeof bossCutscene !== 'undefined' && bossCutscene && bossCutscene.t > 0 &&
+      (endlessMode || bossCutscene.mode === 'last_stand') &&
       !(typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.isBlockingGameplay === 'function' && SpireDirector.isBlockingGameplay())) {
     const bc = bossCutscene;
     const fadeDur = Math.max(0.35, bc.fadeDur || 0.85);
@@ -3718,7 +4811,8 @@ function draw() {
     const exitP = rawExit * rawExit * (3 - 2 * rawExit);
     const alpha = enterP * exitP;
     const dissolveLift = (1 - exitP) * 20;
-    const isMythic = bc.mode === 'mythic_phase2';
+    const isLastStand = bc.mode === 'last_stand';
+    const isMythic = bc.mode === 'mythic_phase2' || isLastStand;
     const mainCol = isMythic ? '#ff2a55' : (bc.color || '#e11d48');
     const accCol = isMythic ? '#ffd166' : (bc.accent || '#f6d379');
     const portraitPortrait = viewW < 620;
@@ -3727,19 +4821,19 @@ function draw() {
 
     if (alpha > 0.008) {
       ctx.save();
-      // 1. 全屏戏剧暗化衬底 + 破晓瞬闪刀光
-      ctx.globalAlpha = 0.78 * alpha;
+      // 1. 全屏清透氛围衬底（大幅降低遮挡度，确保玩家与弹幕清晰可见）+ 破晓微闪
+      ctx.globalAlpha = 0.26 * alpha;
       ctx.fillStyle = isMythic ? '#13040b' : '#060913';
       ctx.fillRect(0, 0, viewW, viewH);
       if (elapsed < 0.12) {
-        ctx.globalAlpha = (1 - elapsed / 0.12) * 0.38;
+        ctx.globalAlpha = (1 - elapsed / 0.12) * 0.16;
         ctx.fillStyle = isMythic ? '#ffd166' : '#ffffff';
         ctx.fillRect(0, 0, viewW, viewH);
       }
 
-      // 2. 上下电影级黑金封幅与中央棱钻饰纹
+      // 2. 上下电影级半透黑金封幅与中央棱钻饰纹
       const barH = Math.round(Math.min(isShortLand ? 38 : 54, viewH * 0.082) * enterP * (0.35 + 0.65 * exitP));
-      ctx.globalAlpha = 0.95 * alpha;
+      ctx.globalAlpha = 0.48 * alpha;
       ctx.fillStyle = '#04060c';
       ctx.fillRect(0, 0, viewW, barH);
       ctx.fillRect(0, viewH - barH, viewW, barH);
@@ -3747,7 +4841,7 @@ function draw() {
       ctx.fillRect(0, Math.max(0, barH - 1.8), viewW, 1.8);
       ctx.fillRect(0, viewH - barH, viewW, 1.8);
 
-      // 3. 双层斜切破框战幕横幅（底层主题色错位衬带 + 主层曜黑流金渐变带 + 内嵌细金线）
+      // 3. 双层斜切半透战幕横幅（底层主题色错位衬带 + 主层半透曜黑渐变带 + 内嵌细金线）
       const cy = viewH * 0.5 - dissolveLift * 0.45;
       const bandBaseH = portraitPortrait ? 252 : (isShortLand ? 168 : 210);
       const bandH = bandBaseH * (0.86 + 0.14 * exitP);
@@ -3755,7 +4849,7 @@ function draw() {
       const xL = -24, xR = viewW + 24;
 
       // 3a. 错位主题色暗影斜带
-      ctx.globalAlpha = 0.34 * alpha;
+      ctx.globalAlpha = 0.18 * alpha;
       ctx.fillStyle = mainCol;
       ctx.beginPath();
       ctx.moveTo(xL, cy - bandH * 0.5 + slant + 8);
@@ -3765,8 +4859,8 @@ function draw() {
       ctx.closePath();
       ctx.fill();
 
-      // 3b. 主战幕斜带（线性金属暗泽渐变）
-      ctx.globalAlpha = 0.96 * alpha;
+      // 3b. 主战幕斜带（半透金属暗泽渐变，透过战幕可直视战场与敌弹）
+      ctx.globalAlpha = 0.54 * alpha;
       const ribGrad = ctx.createLinearGradient(0, cy - bandH * 0.5, viewW, cy + bandH * 0.5);
       if (isMythic) {
         ribGrad.addColorStop(0, '#14040c');
@@ -3811,7 +4905,7 @@ function draw() {
       ctx.fillStyle = isMythic ? '#ffd166' : '#ffffff';
       ctx.font = `italic 900 ${portraitPortrait ? 44 : 74}px -apple-system, BlinkMacSystemFont, sans-serif`;
       ctx.textAlign = 'right';
-      ctx.fillText(isMythic ? 'PHASE II · AWAKENING' : 'PHASE I · SOVEREIGN', viewW - 24, cy + (portraitPortrait ? 86 : 58));
+      ctx.fillText(isLastStand ? 'LAST STAND · UNDYING DREAD' : (isMythic ? 'PHASE II · AWAKENING' : 'PHASE I · SOVEREIGN'), viewW - 24, cy + (portraitPortrait ? 86 : 58));
 
       // 斜向流光速度线
       const slope = (-2 * slant) / Math.max(1, xR - xL);
@@ -3863,14 +4957,18 @@ function draw() {
       ctx.restore();
 
       // 4. 破框半身立绘（一阶段夏装 / 二阶段隐藏泳装）与主宰铭文排印
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = 0.84 * alpha;
       const slideOffset = (1 - enterP) * 64;
-      const phaseBadgeTxt = isMythic ? '⚡ PHASE II · 神话二阶立绘解封' : '👑 PHASE I · 首领降临立绘';
+      const phaseBadgeTxt = isLastStand
+        ? '🩸 D5 绝境死战 · 临死挣扎'
+        : (isMythic ? '⚡ PHASE II · 神话二阶立绘解封' : '👑 PHASE I · 首领降临立绘');
       const personaShort = personaSpec ? personaSpec.personaName.split(' · ')[0] : '';
       const skinTitle = personaSpec
-        ? (isMythic
-          ? `🔥 隐藏二阶 · ${personaShort}「${personaSpec.mythicTitle || personaSpec.summerTitle}」`
-          : `✨ 一阶夏装 · ${personaShort}「${personaSpec.summerTitle}」`)
+        ? (isLastStand
+          ? `🩸 不灭死战 · ${personaShort}「${personaSpec.mythicTitle || personaSpec.summerTitle}」`
+          : (isMythic
+            ? `🔥 隐藏二阶 · ${personaShort}「${personaSpec.mythicTitle || personaSpec.summerTitle}」`
+            : `✨ 一阶夏装 · ${personaShort}「${personaSpec.summerTitle}」`))
         : (bc.subtitle || '🕯️ 守誓主宰显圣');
 
       if (portraitPortrait) {
@@ -3880,7 +4978,7 @@ function draw() {
         ctx.textAlign = 'center';
         const pillW = Math.min(viewW - 36, 248);
         const pillY = cy + 36;
-        ctx.fillStyle = isMythic ? 'rgba(225, 29, 72, 0.34)' : 'rgba(15, 23, 42, 0.82)';
+        ctx.fillStyle = isMythic ? 'rgba(225, 29, 72, 0.28)' : 'rgba(15, 23, 42, 0.48)';
         ctx.strokeStyle = accCol;
         ctx.lineWidth = 1.4;
         ctx.beginPath();
@@ -3975,7 +5073,7 @@ function draw() {
           const tipH = isShortLand ? 24 : 29;
           const tipY = cy + (isShortLand ? 34 : 44);
           const tipW = Math.min(maxTxtW, Math.max(240, bc.extraTag.length * (isShortLand ? 12.5 : 14) + 28));
-          ctx.fillStyle = isMythic ? 'rgba(217, 4, 41, 0.34)' : 'rgba(15, 23, 42, 0.72)';
+          ctx.fillStyle = isMythic ? 'rgba(217, 4, 41, 0.28)' : 'rgba(15, 23, 42, 0.46)';
           ctx.strokeStyle = isMythic ? '#ffd166' : 'rgba(246, 211, 121, 0.55)';
           ctx.lineWidth = 1.4;
           ctx.beginPath();

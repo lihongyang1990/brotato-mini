@@ -135,7 +135,10 @@ function makeEl(tag = "div", stats = null, drawCalls = null, owner = null) {
     },
     get id() { return this._attrs.id || ''; },
     set id(v) { this._attrs.id = String(v); if (owner) owner.els[String(v)] = this; },
-    get innerHTML() { return this._html; },
+    get innerHTML() {
+      if (this._html || children.length === 0) return this._html;
+      return children.map(c => `<${c.tagName.toLowerCase()}${c.className ? ` class="${c.className}"` : ''}>${c.innerHTML || c.textContent || ''}</${c.tagName.toLowerCase()}>`).join('');
+    },
     set innerHTML(v) {
       this._html = String(v); ownText = ''; this.replaceChildren();
       const stack = [this];
@@ -450,10 +453,15 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
     function __defeatStoryBoss() {
       const boss = __spawnPendingBoss();
       if (!boss) throw new Error('Missing story boss on floor ' + wave);
-      hurtEnemy(boss, boss.maxHp + 99999, true);
+      hurtEnemy(boss, boss.maxHp + 99999, true, null, false, { undodgeable: true });
+      if (boss.d5LastStandT > 0) throw new Error('Phase 1 must never trigger D5 Last Stand');
       __drainDirector();
       if (boss.storyStage !== 2 || boss.hp <= 0) throw new Error('Boss did not enter phase two');
-      hurtEnemy(boss, boss.maxHp + 99999, true);
+      hurtEnemy(boss, boss.maxHp + 99999, true, null, false, { undodgeable: true });
+      if (diff && diff.id === 5 && boss.d5LastStandT > 0) {
+        for (let k = 0; k < 105; k++) { player.hp = player.maxHp = 99999; update(0.10); }
+        hurtEnemy(boss, boss.maxHp + 99999, true, null, false, { undodgeable: true });
+      }
       if (wave < MAX_WAVE) {
         if (state !== 'wave' || !spireFloorFlow.bossDefeated) {
           throw new Error('Early story boss defeat on floor ' + wave + ' must keep wave active to farm mobs');
@@ -506,7 +514,7 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
       }
     }
     if (evoIds.size !== 72) return { ok: false, reason: 'Expected 72 unique evolutions, got ' + evoIds.size };
-    if (!(getMidLateWaveHpMul(1) < 0.80 && getMidLateWaveHpMul(4) < 1.0 && getMidLateWaveHpMul(8) > 1.3 && getMidLateWaveHpMul(10) >= 1.90 && Math.abs(getMidLateWaveHpMul(16) - 3.0) <= 1e-6)) {
+    if (!(getMidLateWaveHpMul(1) < 0.80 && getMidLateWaveHpMul(4) < 1.0 && getMidLateWaveHpMul(8) > 1.3 && getMidLateWaveHpMul(10) >= 1.70 && Math.abs(getMidLateWaveHpMul(16) - 3.0) <= 1e-6)) {
       return { ok: false, reason: 'Bad midLateHpMul curve' };
     }
     if (!(getMidLateWaveDmgMul(1) < 0.80 && getMidLateWaveDmgMul(4) < 1.0 && getMidLateWaveDmgMul(8) > 1.3 && getMidLateWaveDmgMul(10) >= 1.70 && Math.abs(getMidLateWaveDmgMul(16) - 2.45) <= 1e-6)) {
@@ -912,7 +920,16 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       const p2 = getBossAnimePortrait(k, true);
       return p1 && p2 && p1 !== p2 && p1.width === 440 && p1.height === 516 && p2.width === 440 && p2.height === 516;
     });
-    const ratesValid = (RARE_PORTRAIT_RATE === 0.33 && PHASE2_AWAKEN_RATE === 0.33 && BOSS_CUTSCENE_SHOW_SEC === 4.0);
+    const ratesValid = (
+      RARE_PORTRAIT_RATE === 0.33 &&
+      PHASE2_AWAKEN_RATE === 0.30 &&
+      getPhase2AwakenRate(DIFFS[1]) === 0.30 &&
+      getPhase2AwakenRate(DIFFS[2]) === 0.35 &&
+      getPhase2AwakenRate(DIFFS[3]) === 0.40 &&
+      getPhase2AwakenRate(DIFFS[4]) === 0.45 &&
+      getPhase2AwakenRate(DIFFS[5]) === 0.50 &&
+      BOSS_CUTSCENE_SHOW_SEC === 4.0
+    );
 
     // Render Phase 1 & Phase 2 cut-in banners across entrance, 4s hold, and 0.85s dissolve fade-out
     endlessMode = true;
@@ -945,7 +962,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(actionAudit.dashArtsTested, 6, "All 6 heroes must execute their signature Soul Dash arts & slice projectiles");
   assert.strictEqual(actionAudit.sigBossesVerified, 4, "All 4 Fixed Act Bosses must telegraph and unleash their signature named skills");
   assert.strictEqual(actionAudit.all32PortraitsReady, true, "All 16 Bosses must provide distinct 440x516 Phase 1 & Phase 2 cutout portraits (32 total)");
-  assert.strictEqual(actionAudit.ratesValid, true, "Phase 1 portrait rate & Phase 2 awaken rate must both be 33% (0.33), with 4.0s display");
+  assert.strictEqual(actionAudit.ratesValid, true, "Phase 1 portrait rate must be 33% and Phase 2 awaken rate must scale D1=30% -> D5=50%, with 4.0s display");
   assert(actionAudit.p1Dur >= 4.8 && actionAudit.p1Dur <= 4.9, "Boss portrait cut-in banner must display for 4.0s plus smooth fade-out (~4.85s total)");
   assert.strictEqual(actionAudit.p2Guaranteed, true, "Triggering Phase 2 awakening must 100% guarantee displaying the Phase 2 portrait banner");
 
@@ -981,9 +998,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     emit('touchcancel', []);
     const canceled = !joy.active && joy.mag === 0 && joy.dx === 0 && joy.dy === 0;
 
-    finger = touch(31, 90, 600); emit('touchstart', [finger]);
-    finger = touch(31, 130, 600); emit('touchmove', [finger]);
-    let second = touch(32, 230, 600); emit('touchstart', [finger, second], [second]);
+    finger = touch(31, 90, 600);
+    let second = touch(32, 230, 600);
+    emit('touchstart', [finger, second]);
     const zoomBeforePinch = camZoom;
     second = touch(32, 280, 600); emit('touchmove', [finger, second]);
     const pinchOnlyZooms = camZoom > zoomBeforePinch && !joy.active && joy.mag === 0;
@@ -1039,6 +1056,87 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     return { portraitWorld, landscapeKeepsCombat, browserChromeKeepsCombat, freshRunUsesOrientation };
   })()`, s);
   for (const [key, value] of Object.entries(rotation)) assert.strictEqual(value, true, 'Mobile rotation invariant: ' + key);
+}
+
+// Protagonist Zero 3-Outfit First-Entry Ritual & Uncropped Portrait / Sheet Sync Suite
+{
+  const { sandbox: s, stats } = createEnv(false, 1440, 900, 2);
+  s.window.dispatch("pointerdown", {});
+
+  const outfitCheck = vm.runInContext(`(() => {
+    const initialUnchosen = hasChosenZeroOutfit() === false;
+    handleStoryPortalClick();
+    const modalOpenedFirstTime = !document.getElementById('outfitModal').classList.contains('hidden') && menuStage === 'home';
+    const gridCount = document.getElementById('outfitModalGrid').children.length;
+
+    const sheetChecks = {};
+    for (const oid of ['witch', 'crimson', 'astral', 'default']) {
+      selectZeroOutfitFromUI(oid, false);
+      const sh = SpireAssets.getHeroSheet('allrounder', false);
+      const sp = SpireAssets.getHeroSprite('allrounder', false);
+      sheetChecks[oid] = !!(sh && sh.cellW === 256 && sh.cellH === 256 && sh.frames === 4 && sp && sp.w > 64 && getActiveZeroOutfitId() === oid);
+    }
+    selectZeroOutfitFromUI('witch', false);
+    confirmZeroOutfitModal();
+    const confirmedToStory = hasChosenZeroOutfit() === true &&
+      document.getElementById('outfitModal').classList.contains('hidden') &&
+      menuStage === 'story';
+    const storyPortNode1 = document.querySelector('#storyHeroShowcase .prep-zero-portrait');
+    const storyPortWitchOk = !!(storyPortNode1 && storyPortNode1.src.includes('port_zero_witch'));
+    selectZeroOutfitFromUI('astral', true);
+    const storyPortNode2 = document.querySelector('#storyHeroShowcase .prep-zero-portrait');
+    const lazyNodePreserved = (storyPortNode1 === storyPortNode2 && storyPortNode2.src.includes('port_zero_astral'));
+
+    openMenuStage('home');
+    handleStoryPortalClick();
+    const secondClickDirect = menuStage === 'story' && document.getElementById('outfitModal').classList.contains('hidden');
+
+    selectZeroOutfitFromUI('crimson', true);
+    startStoryMode();
+    for (let guard = 0; guard < 40 && SpireDirector.isActive(); guard++) {
+      const elL = document.querySelector('.story-portrait-left');
+      if (elL && elL.src && elL.src.includes('port_zero_')) break;
+      SpireDirector.advanceOrSkip(true);
+    }
+    __drainDirector();
+    if (!(document.querySelector('.story-portrait-left') && document.querySelector('.story-portrait-left').src)) {
+      SpireDirector.onShopEntered(1);
+      for (let guard = 0; guard < 20 && SpireDirector.isActive(); guard++) {
+        const elL = document.querySelector('.story-portrait-left');
+        if (elL && elL.src && elL.src.includes('port_zero_')) break;
+        SpireDirector.advanceOrSkip(true);
+      }
+      __drainDirector();
+    }
+    const avgLeftEl = document.querySelector('.story-portrait-left');
+    const avgLeftSrc = (avgLeftEl && avgLeftEl.src) || '';
+    const avgOutfitSynced = avgLeftSrc.includes('port_zero_crimson');
+    const playerOutfitSynced = (player.outfit === 'crimson');
+    draw();
+
+    return {
+      initialUnchosen, modalOpenedFirstTime, gridCount,
+      allSheetsOk: Object.values(sheetChecks).every(Boolean),
+      confirmedToStory, storyPortWitchOk, lazyNodePreserved, secondClickDirect,
+      avgOutfitSynced, playerOutfitSynced
+    };
+  })()`, s);
+
+  assert.strictEqual(outfitCheck.initialUnchosen, true, "Fresh profile must start with unchosen outfit ritual flag");
+  assert.strictEqual(outfitCheck.modalOpenedFirstTime, true, "First click on Story Portal must open 3-outfit selection modal");
+  assert.strictEqual(outfitCheck.gridCount, 3, "Outfit modal must display the 3 bespoke protagonist outfits");
+  assert.strictEqual(outfitCheck.allSheetsOk, true, "All 3 protagonist outfits + classic white must resolve crisp 1024x256 4-frame sheets & sprites");
+  assert.strictEqual(outfitCheck.confirmedToStory, true, "Confirming outfit modal must persist selection and transition to Story preparation");
+  assert.strictEqual(outfitCheck.storyPortWitchOk, true, "Story preparation portrait must reflect chosen Witch outfit");
+  assert.strictEqual(outfitCheck.lazyNodePreserved, true, "Switching outfits must update portrait src in-place without destroying DOM node");
+  assert.strictEqual(outfitCheck.secondClickDirect, true, "Subsequent Story Portal clicks must enter Story preparation directly");
+  assert.strictEqual(outfitCheck.avgOutfitSynced, true, "AVG story dialogue portrait must dynamically match chosen protagonist outfit");
+  assert.strictEqual(outfitCheck.playerOutfitSynced, true, "Active player entity must carry chosen outfit ID");
+  const baseCssText = fs.readFileSync(path.join(ROOT, "styles/base.css"), "utf8");
+  assert(/\.outfit-pick-portrait[\s\S]{0,180}object-fit:\s*contain/.test(baseCssText), "Outfit modal portrait CSS must style .outfit-pick-portrait with object-fit: contain so full heads & hats never crop");
+  assert.strictEqual(stats.radialGradients, 0, "Outfit suite must create ZERO per-frame radial gradients");
+  assert.strictEqual(stats.shadowBlurs, 0, "Outfit suite must use ZERO shadowBlur");
+  assert.strictEqual(vm.runInContext("logErrCount", s), 0, "Zero runtime errors in Outfit suite");
 }
 
 {
@@ -1189,7 +1287,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       if (terrains.length === 0 || kinds.size !== 1) singleTerrainOk = false;
     }
 
-    // 5) Reworked Frost Terrain: 5s progressive slow -> 1s freeze -> thaw; 1s exit grace; monster -20% slow & never frozen
+    // 5) Reworked Frost Terrain (D1 baseline unchanged): 5s progressive slow -> 1s freeze -> thaw; 1s exit grace; monster -20% slow & never frozen
+    selectedDiff = 1;
+    diff = DIFFS[1];
     endlessMode = true;
     selectedScene = 'glacier';
     wave = 2;
@@ -1204,13 +1304,15 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     terrains.push(ensureTerrainGeometry({ kind: 'ice_sheet', shape: 'square_slab', x: player.x, y: player.y, r: 220, rot: 0, pulse: 0 }));
     const iceMob = createEnemy(player.x + 36, player.y, 'chaser');
     iceMob.hp = 99999; iceMob.maxHp = 99999; iceMob.dmg = 0;
+    diff = DIFFS[1]; selectedDiff = 1;
     for (let k = 0; k < 50; k++) {
       spawnAcc = 99;
       iceMob.x = player.x + 36; iceMob.y = player.y;
       update(0.05);
     }
     const midGauge = player.frostGauge;
-    const midSlowOk = midGauge > 2.2 && midGauge < 2.8 && player.terrainSpdMul < 0.94 && player.terrainSpdMul >= 0.80 && player.iceFreezeT === 0;
+    // On D1 (4.0s trigger -> fillRate = 1.25/s), 2.5s accumulates 3.125/5.00
+    const midSlowOk = midGauge > 2.95 && midGauge < 3.30 && player.terrainSpdMul < 0.90 && player.terrainSpdMul >= 0.80 && player.iceFreezeT === 0;
     const mobSlow20Ok = Math.abs((iceMob._terrainSpdMul || 1) - 0.80) < 0.001 && iceMob.freezeT === 0;
     // Leave terrain: 0.8s within 1s grace must hold frostGauge; +0.6s after grace must decay
     terrains.length = 0;
@@ -1218,18 +1320,33 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     const graceHeldOk = Math.abs(player.frostGauge - midGauge) < 0.02;
     for (let k = 0; k < 12; k++) { spawnAcc = 99; update(0.05); }
     const decayAfterGraceOk = player.frostGauge < midGauge - 0.45;
-    // Accumulate to 5.0s: max slow right before 5.0s is strictly capped at -20% (>= 0.80) -> freeze 1.0s -> thaw
+    // Accumulate on D1 (4.0s): max slow right before 5.0 gauge is strictly capped at -20% (>= 0.80) -> freeze 1.0s -> thaw
     terrains.push(ensureTerrainGeometry({ kind: 'ice_sheet', shape: 'square_slab', x: player.x, y: player.y, r: 220, rot: 0, pulse: 0 }));
-    player.frostGauge = 4.92;
+    player.frostGauge = 4.90;
     spawnAcc = 99; update(0.05);
     const maxSlowCap20Ok = player.iceFreezeT === 0 && player.terrainSpdMul >= 0.80 && player.terrainSpdMul <= 0.81;
     for (let k = 0; k < 3; k++) { spawnAcc = 99; update(0.05); }
-    const frozeAt5sOk = maxSlowCap20Ok && player.iceFreezeT > 0.80 && player.frostGauge === 0;
+    const frozeAtD1Ok = maxSlowCap20Ok && player.iceFreezeT > 0.80 && player.frostGauge === 0;
     draw();
     terrains.length = 0;
-    for (let k = 0; k < 24; k++) { spawnAcc = 99; update(0.05); }
+    for (let k = 0; k < 28; k++) { spawnAcc = 99; update(0.05); }
     const thawedAfter1sOk = player.iceFreezeT === 0;
-    const frostTerrainOk = midSlowOk && mobSlow20Ok && graceHeldOk && decayAfterGraceOk && frozeAt5sOk && thawedAfter1sOk;
+    // Verify D1=4.0s..D5=2.0s ladder & D5 freezes in 2.0s (40 * 0.05s)
+    const iceLadderOk = (
+      getIceFreezeTriggerSec(DIFFS[1]) === 4.0 &&
+      getIceFreezeTriggerSec(DIFFS[2]) === 3.5 &&
+      getIceFreezeTriggerSec(DIFFS[3]) === 3.0 &&
+      getIceFreezeTriggerSec(DIFFS[4]) === 2.5 &&
+      getIceFreezeTriggerSec(DIFFS[5]) === 2.0
+    );
+    diff = DIFFS[5]; selectedDiff = 5;
+    player.frostGauge = 0; player.frostLeaveGrace = 0; player.iceFreezeT = 0; player.frostThawImmT = 0;
+    terrains.push(ensureTerrainGeometry({ kind: 'ice_sheet', shape: 'square_slab', x: player.x, y: player.y, r: 220, rot: 0, pulse: 0 }));
+    for (let k = 0; k < 41; k++) { spawnAcc = 99; update(0.05); }
+    const frozeAtD5In2sOk = player.iceFreezeT > 1.0 && player.frostGauge === 0;
+    terrains.length = 0; player.iceFreezeT = 0;
+    diff = DIFFS[1]; selectedDiff = 1;
+    const frostTerrainOk = midSlowOk && mobSlow20Ok && graceHeldOk && decayAfterGraceOk && frozeAtD1Ok && thawedAfter1sOk && iceLadderOk && frozeAtD5In2sOk;
 
     // 6) Boss Venom-Spray VFX + Hidden Phase-2 Exclusive Skill
     endlessMode = true;
@@ -1345,8 +1462,10 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       Math.abs(NEEDLE_RANGED_MUL - 0.70) < 1e-6 &&
       typeof YELLOW_ARROW_MOB_MUL === 'number' &&
       Math.abs(YELLOW_ARROW_MOB_MUL - 0.80) < 1e-6 &&
+      typeof YELLOW_RANGED_SPINNER_MUL === 'number' &&
+      Math.abs(YELLOW_RANGED_SPINNER_MUL - 0.80) < 1e-6 &&
       typeof ELITE_MOB_COUNT_MUL === 'number' &&
-      Math.abs(ELITE_MOB_COUNT_MUL - 0.80) < 1e-6 &&
+      Math.abs(ELITE_MOB_COUNT_MUL - 0.70) < 1e-6 &&
       NEEDLE_RANGED_TYPES.has('frost_wisp') &&
       NEEDLE_RANGED_TYPES.has('shooter') &&
       NEEDLE_RANGED_TYPES.has('rad_scorpion') &&
@@ -1394,13 +1513,23 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
 
     nextWave();
     __drainDirector();
+    const trialDurLadderOk = (
+      typeof getSurvivalTrialDuration === 'function' &&
+      getSurvivalTrialDuration(DIFFS[0]) === 30 &&
+      getSurvivalTrialDuration(DIFFS[1]) === 30 &&
+      getSurvivalTrialDuration(DIFFS[2]) === 34 &&
+      getSurvivalTrialDuration(DIFFS[3]) === 38 &&
+      getSurvivalTrialDuration(DIFFS[4]) === 41 &&
+      getSurvivalTrialDuration(DIFFS[5]) === 45
+    );
     const startedTrialOk = (
+      trialDurLadderOk &&
       state === 'wave' &&
       survivalTrialWave === true &&
       survivalTrialQueued === false &&
       wave === 2 &&
-      waveTime === 40 &&
-      waveMaxTime === 40 &&
+      waveTime === 34 &&
+      waveMaxTime === 34 &&
       player.r >= 24
     );
 
@@ -1633,7 +1762,606 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     closeEndSummaryDetail();
     const detailClosed = document.getElementById('endDetailModal').classList.contains('hidden');
     const postGameSummaryOk = (!!bmSprite && endSumHtml.includes('赤烬魂灯杖') && endSumHtml.includes('伽蓝') && endSumHtml.includes('openEndSummaryDetail') && detailWpnOpened && detailMobOpened && detailClosed);
-    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk);
+    const goldAndRangedBoostOk = (
+      Math.abs(CRYSTAL_YIELD_MUL - 0.77) < 1e-9 &&
+      Math.abs(getWaveMatRate(1) - 0.92 * 0.77) < 1e-9 &&
+      Math.abs(WEAPONS.pistol.dmg - 22.55) < 1e-9 &&
+      Math.abs(WEAPONS.smg.dmg - 8.58) < 1e-9 &&
+      Math.abs(WEAPONS.sniper.dmg - 57.2) < 1e-9 &&
+      Math.abs(WEAPONS.rocket.dmg - 46.2) < 1e-9 &&
+      Math.abs(WEAPONS.emp_cannon.dmg - 41.8) < 1e-9 &&
+      Math.abs(WEAPONS.stick.dmg - 18.0) < 1e-9 &&
+      Math.abs(WEAPONS.ember_staff.dmg - 23.0) < 1e-9
+    );
+    // Floor 6-10 monster HP -10% overall (W5 & W11..16 unchanged)
+    const midWave6To10HpOk = (
+      Math.abs(getMidLateWaveHpMul(5) - 0.95) < 1e-9 &&
+      Math.abs(getMidLateWaveHpMul(6) - 1.062) < 1e-9 &&
+      Math.abs(getMidLateWaveHpMul(10) - 1.728) < 1e-9 &&
+      getMidLateWaveHpMul(11) > 1.92 &&
+      Math.abs(getMidLateWaveHpMul(16) - 3.00) < 1e-9
+    );
+    // D1 unchanged (1.14 / 1.15), D5 tuned to +70% HP (1.70) & +50% DMG (1.50), D2-D4 scaled proportionally & strictly monotonic
+    const diffRebalanceOk = (
+      DIFFS[1].hpMul === 1.14 && DIFFS[1].dmgMul === 1.15 && DIFFS[1].spdMul === 0.98 && DIFFS[1].spawnMul === 1.05 && DIFFS[1].eliteRate === 0.05 && DIFFS[1].shopTax === 1.00 &&
+      DIFFS[2].hpMul === 1.28 && DIFFS[2].dmgMul === 1.24 &&
+      DIFFS[3].hpMul === 1.42 && DIFFS[3].dmgMul === 1.33 &&
+      DIFFS[4].hpMul === 1.56 && DIFFS[4].dmgMul === 1.41 &&
+      DIFFS[5].hpMul === 1.70 && DIFFS[5].dmgMul === 1.50 && DIFFS[5].spdMul === 1.08 && DIFFS[5].spawnMul === 1.27 && DIFFS[5].eliteRate === 0.144 && DIFFS[5].shopTax === 1.11 &&
+      DIFFS[1].hpMul < DIFFS[2].hpMul && DIFFS[2].hpMul < DIFFS[3].hpMul && DIFFS[3].hpMul < DIFFS[4].hpMul && DIFFS[4].hpMul < DIFFS[5].hpMul &&
+      DIFFS[1].dmgMul < DIFFS[2].dmgMul && DIFFS[2].dmgMul < DIFFS[3].dmgMul && DIFFS[3].dmgMul < DIFFS[4].dmgMul && DIFFS[4].dmgMul < DIFFS[5].dmgMul
+    );
+    // Differentiated Survival Trial telegraphs (distinct colors, chainStep metadata, full mist+world render pass)
+    state = 'wave';
+    survivalTrialWave = true;
+    survivalSkyVolleys.length = 0;
+    survivalFissures.length = 0;
+    hazards.length = 0;
+    eBullets.length = 0;
+    const svTheme = getSurvivalTrialTheme();
+    spawnSurvivalCelestialVolley(svTheme, 24);
+    spawnSurvivalCorridor(svTheme, 24);
+    spawnSurvivalFissure(svTheme, 24);
+    spawnSurvivalCrossJudgment(svTheme, 24);
+    spawnSurvivalMeteorChain(svTheme, 24);
+    spawnSurvivalAbyssVortex(svTheme, 24);
+    // Add an active incoming celestial lance bullet outside Soul Lantern rim to test both rim icon branches
+    eBullets.push({ x: player.x + 360, y: player.y, vx: -420, vy: 0, r: 8, dmg: 18, color: svTheme.lanceCol, shape: 'celestial_lance', isCelestial: true, life: 2.5 });
+    const lanceVolley = survivalSkyVolleys.find(v => v.kind === 'lance');
+    const corridorVolley = survivalSkyVolleys.find(v => v.kind === 'corridor_beam');
+    const crossHaz = hazards.find(h => h.style === 'cross_beam');
+    const meteorChainHaz = hazards.filter(h => h.chainStep > 0);
+    draw();
+    survivalTrialWave = false;
+    const distinctTelegraphsOk = Boolean(
+      lanceVolley && corridorVolley && survivalFissures.length > 0 && crossHaz && meteorChainHaz.length >= 3 &&
+      lanceVolley.color !== corridorVolley.color &&
+      crossHaz.color !== survivalFissures[0].color &&
+      meteorChainHaz.some(h => h.chainStep >= 2 && Number.isFinite(h.prevX) && Number.isFinite(h.prevY))
+    );
+    // 验证跨波累加刷新机制（首店 1 起，每次刷新 +2；仅第 3/6/9/12 回合降低 50%，其余回合降低 20%）
+    player.shopDiscount = 0;
+    player.freeRerolls = 0;
+    player.shopVisits = 0;
+    player.shopRerollRaw = 1;
+    player.mats = 9999;
+    wave = 1;
+    openShop(true);
+    const shop1InitOk = (rerollRawCost === 1 && rerollCost === 1 && player.shopVisits === 1);
+    rerollShop(); // 1 -> 3
+    rerollShop(); // 3 -> 5
+    rerollShop(); // 5 -> 7
+    rerollShop(); // 7 -> 9
+    rerollShop(); // 9 -> 11
+    const shop1AccumOk = (rerollRawCost === 11 && rerollCost === 11 && player.shopRerollRaw === 11);
+    wave = 2;
+    openShop(true); // 非 3/6/9/12 回合：降低 20% -> round(11 * 0.80) = 9
+    const shop2NormalRecoverOk = (rerollRawCost === 9 && rerollCost === 9 && player.shopVisits === 2);
+    wave = 3;
+    openShop(true); // 第 3 回合：降低 50% -> round(9 * 0.50) = 5
+    const shop3HalfRecoverOk = (rerollRawCost === 5 && rerollCost === 5 && player.shopVisits === 3);
+    rerollShop(); // 5 -> 7
+    const shop2StepOk = (rerollRawCost === 7 && rerollCost === 7);
+
+    const pickupSweepMobBalanceOk = (
+      BASE_PICKUP_MAGNET === 143 &&
+      Math.abs(UNCOLLECTED_MAT_SWEEP_RATE - 0.50) < 1e-9 &&
+      Math.abs(BOSS_SIZE_MUL - 1.20) < 1e-9 &&
+      shop1InitOk && shop1AccumOk && shop2NormalRecoverOk && shop3HalfRecoverOk && shop2StepOk &&
+      Math.abs(MOB_DMG_MUL - 0.90) < 1e-9 &&
+      Math.abs(YELLOW_ARROW_MOB_MUL - 0.80) < 1e-9 &&
+      Math.abs(ELITE_MOB_COUNT_MUL - 0.70) < 1e-9 &&
+      Math.abs(YELLOW_RANGED_SPINNER_MUL - 0.80) < 1e-9
+    );
+    // D1 -> D5 progressive terrain impact (+0% -> +30%) & terrain size (+0% -> +50%), D1 strictly unchanged
+    const terrainDiffScaleOk = (() => {
+      if (!(
+        Math.abs(getDiffTerrainImpactMul(DIFFS[0]) - 1.00) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[1]) - 1.00) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[2]) - 1.075) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[3]) - 1.15) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[4]) - 1.225) < 1e-9 &&
+        Math.abs(getDiffTerrainImpactMul(DIFFS[5]) - 1.30) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[0]) - 1.00) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[1]) - 1.00) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[2]) - 1.125) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[3]) - 1.25) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[4]) - 1.375) < 1e-9 &&
+        Math.abs(getDiffTerrainSizeMul(DIFFS[5]) - 1.50) < 1e-9
+      )) return false;
+      diff = DIFFS[1]; selectedDiff = 1;
+      const d1EffSize = getEffectiveTerrainSizeMul();
+      diff = DIFFS[5]; selectedDiff = 5;
+      const d5EffSize = getEffectiveTerrainSizeMul();
+      if (!(Math.abs(d1EffSize - 1.05) < 1e-9 && Math.abs(d5EffSize - 1.05 * 1.50) < 1e-9)) return false;
+      for (const sid of ['foundry', 'glacier', 'wasteland', 'desert']) {
+        curScene = SCENES.find(sc => sc.id === sid) || SCENES[0];
+        spawnArenaTerrains();
+        if (terrains.length < 4) return false;
+      }
+      return true;
+    })();
+
+    // D5-exclusive Boss Phase-2 10s Last Stand (invulnerable 10s, +20% attack speed, +10% maxHp heal per player hit, triggers ONLY once & ONLY on D5 Phase 2)
+    const d5BossLastStandOk = (() => {
+      endlessMode = true;
+      state = 'wave';
+      wave = 8;
+      // 1) D4 Phase-2 Boss must NOT trigger Last Stand
+      diff = DIFFS[4]; selectedDiff = 4;
+      enemies.length = 0; trees.length = 0; eBullets.length = 0;
+      const d4Boss = createEnemy(player.x + 180, player.y, 'boss', 'butcher');
+      d4Boss.mythicPhase2 = true; d4Boss.canPhase2 = false; d4Boss.hp = 500; d4Boss.maxHp = 5000;
+      hurtEnemy(d4Boss, 99999, true);
+      if (d4Boss.hp > 0 || d4Boss._d5LastStandUsed) return false;
+
+      // 2) D5 Phase-1 Boss transitions into Phase-2 without consuming Last Stand; lethal hit in Phase-2 triggers 10s Last Stand once
+      diff = DIFFS[5]; selectedDiff = 5;
+      enemies.length = 0;
+      const d5Boss = createEnemy(player.x + 180, player.y, 'boss', 'butcher');
+      d5Boss.canPhase2 = true; d5Boss.mythicPhase2 = false; d5Boss.hp = 500; d5Boss.maxHp = 5000;
+      player.waveMythicAwakened = false;
+      hurtEnemy(d5Boss, 99999, true);
+      bossCutscene = null;
+      if (!d5Boss.mythicPhase2 || d5Boss._d5LastStandUsed || d5Boss.d5LastStandT > 0) return false;
+
+      d5Boss.maxHp = 6000; d5Boss.hp = 400;
+      hurtEnemy(d5Boss, 99999, true);
+      if (!(d5Boss._d5LastStandUsed === true && d5Boss.hp === 1 && Math.abs(d5Boss.d5LastStandT - 10.0) < 1e-6 && D5_LAST_STAND_ASPD_MUL === 1.20)) return false;
+      if (!bossCutscene || bossCutscene.mode !== 'last_stand') return false;
+      draw(); // Verify last_stand portrait banner renders cleanly with 0 radialGradient & 0 shadowBlur
+      bossCutscene = null;
+
+      // Invulnerability during 10s window
+      hurtEnemy(d5Boss, 99999, true);
+      if (d5Boss.hp !== 1) return false;
+
+      // +10% maxHp heal per non-dodged hit on player (dodged hit & terrain hit must NOT heal Boss)
+      player.maxHp = 1000; player.hp = 1000; player.armor = 0; player.shield = 0;
+      player.dodge = 1.0; player.dodgeCap = 1.0;
+      hurtPlayer(50, false, d5Boss);
+      if (d5Boss.hp !== 1) return false;
+      player.dodge = 0; player.dodgeCap = 0.80;
+      hurtPlayer(50, false, 'terrain_lava');
+      if (d5Boss.hp !== 1) return false;
+      hurtPlayer(50, false, d5Boss);
+      if (d5Boss.hp !== 1 + Math.round(6000 * 0.10)) return false;
+      // Shield-absorbed hit by Boss also counts as damaging player -> heals +10%
+      player.shield = 200;
+      hurtPlayer(40, true, 'butcher');
+      if (d5Boss.hp !== 1 + Math.round(6000 * 0.10) * 2) return false;
+      draw();
+
+      // Tick past 10s -> invulnerability expires, exposeT opens, and next lethal hit kills Boss permanently (never triggers twice!)
+      d5Boss.x = player.x + 420; d5Boss.y = player.y;
+      for (let k = 0; k < 105; k++) {
+        player.hp = 1000;
+        spawnAcc = 99;
+        update(0.10);
+      }
+      if (d5Boss.d5LastStandT > 0 || !(d5Boss.exposeT > 0)) return false;
+      hurtEnemy(d5Boss, 999999, true);
+      return d5Boss.hp <= 0;
+    })();
+
+    // Innovative interactive counterplay mechanics across all 6 Bosses + clean 2D render pass
+    const bossMechanicsOverhaulOk = (() => {
+      endlessMode = true;
+      state = 'wave';
+      bossCutscene = null; pendingBossCutscene = null;
+      if (typeof SpireDirector !== 'undefined' && SpireDirector) SpireDirector.update(0.20);
+      diff = DIFFS[2]; selectedDiff = 2;
+      enemies.length = 0; trees.length = 0; eBullets.length = 0; hazards.length = 0;
+      player.weapons = []; player.maxHp = 5000; player.hp = 5000;
+
+      // 1) Butcher Blood-Oath Duel Arena: completing inside grants player haste + Boss exposeT
+      const b1 = createEnemy(1320, 900, 'boss', 'butcher');
+      b1.hp = 50000; b1.maxHp = 50000; b1.arenaMechCd = 0.01;
+      player.x = 1380; player.y = 900;
+      update(0.05);
+      if (!b1.duelRing) return false;
+      draw();
+      b1.duelRing.t = 0.03;
+      update(0.05);
+      if (b1.duelRing !== null || !(b1.exposeT >= 2.0)) return false;
+
+      // 2) Frost Queen Twin Cryo-Obelisks: grant -28% barrier DR while alive; shattering deals backlash & exposeT
+      enemies.length = 0; trees.length = 0;
+      const b2 = createEnemy(1320, 900, 'boss', 'frost_queen');
+      b2.hp = 50000; b2.maxHp = 50000; b2.arenaMechCd = 0.01;
+      update(0.05);
+      const pylons = trees.filter(t => t && t.isBossPylon && t.pylonKind === 'cryo_obelisk');
+      if (pylons.length !== 2) return false;
+      draw();
+      const hpBeforePylonShatter = b2.hp;
+      hurtTree(pylons[0], 99999);
+      if (!(b2.hp < hpBeforePylonShatter && b2.exposeT >= 1.5)) return false;
+
+      // 3) Void Weaver Chrono-Anchor + Dispel Pad counterplay
+      enemies.length = 0; trees.length = 0;
+      const b3 = createEnemy(1320, 900, 'boss', 'void_weaver');
+      b3.hp = 50000; b3.maxHp = 50000; b3.arenaMechCd = 0.01;
+      player.x = 1120; player.y = 900;
+      update(0.05);
+      if (!b3.chronoAnchor) return false;
+      draw();
+      player.x = b3.chronoAnchor.dx; player.y = b3.chronoAnchor.dy;
+      update(0.05);
+      if (b3.chronoAnchor !== null || !(b3.exposeT >= 1.8)) return false;
+
+      // 4) Solar Seraph Eclipse Singularity + Golden Dawn Sanctuary Seals
+      enemies.length = 0;
+      const b4 = createEnemy(1320, 900, 'boss', 'solar_seraph');
+      b4.hp = 50000; b4.maxHp = 50000; b4.arenaMechCd = 0.01;
+      player.x = 1100; player.y = 900;
+      update(0.05);
+      if (!b4.eclipseSingularity || !Number.isFinite(b4.eclipseSingularity.s1x)) return false;
+      draw();
+      player.x = b4.eclipseSingularity.s1x;
+      player.y = b4.eclipseSingularity.s1y;
+      b4.eclipseSingularity.windupT = 0;
+      b4.eclipseSingularity.t = 0.02;
+      const hpBeforeNova = player.hp;
+      update(0.05);
+      if (b4.eclipseSingularity !== null || player.hp !== hpBeforeNova || !(b4.exposeT >= 2.0)) return false;
+
+      // 5) Endless Bosses (mech_colossus & plague_empress) destructible pylons + render pass
+      enemies.length = 0; trees.length = 0;
+      const b5 = createEnemy(1220, 900, 'boss', 'mech_colossus');
+      b5.hp = 50000; b5.maxHp = 50000; b5.arenaMechCd = 0.01;
+      const b6 = createEnemy(1460, 900, 'boss', 'plague_empress');
+      b6.hp = 50000; b6.maxHp = 50000; b6.arenaMechCd = 0.01;
+      update(0.05);
+      draw();
+      const hasMagnetAndCocoon = trees.some(t => t && t.pylonKind === 'magnet_core') && trees.some(t => t && t.pylonKind === 'venom_cocoon');
+      enemies.length = 0; trees.length = 0; eBullets.length = 0; hazards.length = 0;
+      diff = DIFFS[2]; selectedDiff = 2;
+      return hasMagnetAndCocoon;
+    })();
+
+    // Dual-form Elite Monsters (frenzy red +20% aspd/spd/hp vs deathrattle yellow 4-arrow burst) + Dynamic Boss Cast Pose/Phenomena
+    const eliteFormsAndBossCastAnimOk = (() => {
+      if (typeof applyEliteAffix !== 'function' || ELITE_FRENZY_BONUS_MUL !== 1.20 || typeof triggerBossActionPose !== 'function') return false;
+      state = 'wave'; wave = 6; survivalTrialWave = false;
+      enemies.length = 0; eBullets.length = 0;
+
+      const origRand = Math.random;
+      Math.random = () => 0.999999; // prevent random auto-elite on createEnemy so we can compare exact base stats
+      const eFrenzy = createEnemy(1100, 900, 'shooter');
+      const eDeath = createEnemy(1260, 900, 'shooter');
+      Math.random = origRand;
+
+      const baseSpd = eFrenzy.spd;
+      applyEliteAffix(eFrenzy, 'frenzy');
+      applyEliteAffix(eDeath, 'deathrattle');
+
+      if (eFrenzy.eliteKind !== 'frenzy' || eDeath.eliteKind !== 'deathrattle') return false;
+      if (Math.abs(eFrenzy.spd / baseSpd - 1.20) > 0.001 || Math.abs(eDeath.spd / baseSpd - 1.00) > 0.001) return false;
+      if (eFrenzy.hp !== Math.round(eDeath.hp * 1.20) || eFrenzy.eliteAspdMul !== 1.20 || eDeath.eliteAspdMul !== 1.00) return false;
+
+      // Verify frenzy elite ticks shotT 20% faster than deathrattle elite
+      eFrenzy.shotT = 2.40;
+      eDeath.shotT = 2.40;
+      player.x = 1180; player.y = 650;
+      update(0.50);
+      if (Math.abs((2.40 - eFrenzy.shotT) - (2.40 - eDeath.shotT) * 1.20) > 0.02) return false;
+
+      // Render pass for both elite forms (crimson vs golden tint + badges)
+      draw();
+
+      // Deathrattle gating: frenzy spawns 0 yellow arrows; deathrattle spawns 4 yellow lance arrows
+      eBullets.length = 0;
+      hurtEnemy(eFrenzy, 999999, true);
+      if (eBullets.length !== 0) return false;
+      hurtEnemy(eDeath, 999999, true);
+      if (eBullets.length !== 4 || !eBullets.every(b => b.shape === 'lance' && b.color === '#fbbf24')) return false;
+
+      // Dynamic Boss skill-casting pose & phenomena render pass across all 6 Bosses
+      enemies.length = 0; eBullets.length = 0;
+      for (const bv of ['frost_queen', 'void_weaver', 'solar_seraph', 'mech_colossus', 'plague_empress', 'butcher']) {
+        const b = createEnemy(1320, 900, 'boss', bv);
+        b.hp = 50000; b.maxHp = 50000;
+        b.sigWindupT = 0.45; b.sigMaxW = 0.90;
+        triggerBossActionPose(b, bv === 'mech_colossus' ? 'recoil' : (bv === 'butcher' ? 'slash' : 'cast_up'), 0.3, 0.5, '#fde68a');
+        draw();
+        if (!(b._actPoseT > 0)) return false;
+        enemies.length = 0;
+      }
+      return true;
+    })();
+
+    // Late-game (W10-16+) heal pack drop curve (-30% base, then D1=1.00 -> D5=0.50 stepped reduction + ground crowd cap) + Floor 16 Boss 25% dodge + Boss HP HUD text
+    const lateHealDropAndBoss16DodgeOk = (() => {
+      if (typeof getEffectiveHealDropMul !== 'function' || typeof getGroundHealCrowdFactor !== 'function') return false;
+      for (let wv = 1; wv <= 9; wv++) {
+        for (let di = 0; di < DIFFS.length; di++) {
+          if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[di]) - 1.00) > 1e-9) return false;
+        }
+      }
+      for (const wv of [10, 12, 16, 18]) {
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[0]) - 0.70) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[1]) - 0.70) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[2]) - 0.6125) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[3]) - 0.5250) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[4]) - 0.4375) > 1e-9) return false;
+        if (Math.abs(getEffectiveHealDropMul(wv, DIFFS[5]) - 0.3500) > 1e-9) return false;
+      }
+      drops.length = 0;
+      if (getGroundHealCrowdFactor() !== 1.0) return false;
+      for (let i = 0; i < 6; i++) drops.push({ x: 500 + i * 10, y: 500, kind: 'heal', bob: 0 });
+      if (getGroundHealCrowdFactor() !== 0.5) return false;
+      for (let i = 0; i < 5; i++) drops.push({ x: 600 + i * 10, y: 500, kind: 'heal', bob: 0 });
+      if (getGroundHealCrowdFactor() !== 0) return false;
+      drops.length = 0;
+
+      // Floor 16 Boss stepped dodge verification: D0/D1 = 0%, D2..D5 -> 6.25% / 12.5% / 18.75% / 25%
+      if (typeof getFloor16BossDodge !== 'function') return false;
+      if (getFloor16BossDodge(DIFFS[0]) !== 0 || getFloor16BossDodge(DIFFS[1]) !== 0) return false;
+      if (Math.abs(getFloor16BossDodge(DIFFS[2]) - 0.0625) > 1e-9) return false;
+      if (Math.abs(getFloor16BossDodge(DIFFS[3]) - 0.1250) > 1e-9) return false;
+      if (Math.abs(getFloor16BossDodge(DIFFS[4]) - 0.1875) > 1e-9) return false;
+      if (Math.abs(getFloor16BossDodge(DIFFS[5]) - 0.2500) > 1e-9) return false;
+
+      state = 'wave'; endlessMode = false; diff = DIFFS[1]; selectedDiff = 1;
+      enemies.length = 0; texts.length = 0;
+      wave = 8;
+      const b8 = createEnemy(1320, 900, 'boss', 'frost_queen');
+      if ((b8.dodge || 0) !== 0) return false;
+      enemies.length = 0;
+      wave = 16;
+      const b16D1 = createEnemy(1320, 900, 'boss', 'solar_seraph');
+      if ((b16D1.dodge || 0) !== 0) return false;
+      enemies.length = 0;
+      diff = DIFFS[5]; selectedDiff = 5;
+      const b16 = createEnemy(1320, 900, 'boss', 'solar_seraph');
+      if (Math.abs((b16.dodge || 0) - 0.25) > 1e-9) return false;
+      enemies.push(b16);
+      hudAcc = 1.0;
+      update(0.05);
+      const bossHpDom = document.getElementById('bossHpText');
+      if (!bossHpDom || !String(bossHpDom.textContent || '').includes('%')) return false;
+
+      const hp0 = b16.hp;
+      const origRand = Math.random;
+      Math.random = () => 0.12; // < 0.25 -> must dodge!
+      hurtEnemy(b16, 500, false, 0);
+      if (b16.hp !== hp0 || !texts.some(t => String(t.txt).includes('闪避'))) {
+        Math.random = origRand;
+        return false;
+      }
+      // DoT must NOT be dodged even when random < 0.25
+      hurtEnemy(b16, 200, false, null, true, { isDot: true, dotColor: '#ff9f1c', noProc: true });
+      if (!(b16.hp < hp0)) {
+        Math.random = origRand;
+        return false;
+      }
+      const hpAfterDot = b16.hp;
+      Math.random = () => 0.80; // >= 0.25 -> normal attack hits!
+      hurtEnemy(b16, 500, false, 0);
+      Math.random = origRand;
+      if (!(b16.hp < hpAfterDot)) return false;
+      enemies.length = 0;
+
+      // 5) 4-Chapter Stage-1 Classical Piano BGM + Boss Phase-2 Variation BGM auto-switching & shop/wave reset
+      endlessMode = true;
+      for (const [sid, s1Url, p2Url] of [
+        ['foundry', 'assets/audio/scene_foundry_rain.wav', 'assets/audio/scene_foundry_phase2.wav'],
+        ['glacier', 'assets/audio/scene_glacier_frost.wav', 'assets/audio/scene_glacier_phase2.wav'],
+        ['wasteland', 'assets/audio/scene_wasteland_clock.wav', 'assets/audio/scene_wasteland_phase2.wav'],
+        ['desert', 'assets/audio/scene_desert_eclipse.wav', 'assets/audio/scene_desert_phase2.wav']
+      ]) {
+        curScene = SCENES.find(sc => sc.id === sid) || SCENES[0];
+        SpireAudio.syncScene(sid);
+        if (SpireAudio.activeSceneId !== sid || SpireAudio.phase2Active !== false || AudioBank.currentBgmUrl !== s1Url) return false;
+        const p2Boss = createEnemy(1320, 900, 'boss', 'butcher');
+        p2Boss.canPhase2 = true;
+        p2Boss.mythicPhase2 = false;
+        player.waveMythicAwakened = false;
+        if (!triggerBossMythicPhase2(p2Boss)) return false;
+        if (SpireAudio.phase2Active !== true || AudioBank.currentBgmUrl !== p2Url) return false;
+        openShop(true);
+        if (SpireAudio.phase2Active !== false || AudioBank.currentBgmUrl !== s1Url) return false;
+      }
+      enemies.length = 0; bossCutscene = null; pendingBossCutscene = null;
+      if (typeof SpireDirector !== 'undefined' && SpireDirector) SpireDirector.update(0.20);
+      state = 'wave';
+      return true;
+    })();
+
+    // Twin Boss / Dual Commander wave must drop ONLY 1 Boss Relic Crate total (never 2)
+    const twinBossSingleCrateOk = (() => {
+      endlessMode = true;
+      state = 'wave';
+      wave = 20;
+      diff = DIFFS[5]; selectedDiff = 5;
+      enemies.length = 0; spawns.length = 0; drops.length = 0;
+      player.waveBossCrateDropped = false;
+      const tb1 = createEnemy(player.x + 150, player.y, 'boss', 'butcher');
+      const tb2 = createEnemy(player.x - 150, player.y, 'boss', 'frost_queen');
+      tb1.canPhase2 = false; tb2.canPhase2 = false;
+      hurtEnemy(tb1, tb1.maxHp + 999999, true);
+      const cratesAfterFirst = drops.filter(d => d.kind === 'crate' && d.isBoss && !d.isMythic).length;
+      hurtEnemy(tb2, tb2.maxHp + 999999, true);
+      const cratesAfterSecond = drops.filter(d => d.kind === 'crate' && d.isBoss && !d.isMythic).length;
+      if (cratesAfterFirst !== 0 || cratesAfterSecond !== 1) return false;
+
+      // Dual mini_boss commanders must also drop ONLY 1 Boss Relic Crate total
+      enemies.length = 0; spawns.length = 0; drops.length = 0;
+      player.waveBossCrateDropped = false;
+      const mb1 = createEnemy(player.x + 140, player.y, 'mini_boss', 'vanguard');
+      const mb2 = createEnemy(player.x - 140, player.y, 'mini_boss', 'pyro_lord');
+      mb1.canPhase2 = false; mb2.canPhase2 = false;
+      hurtEnemy(mb1, mb1.maxHp + 999999, true);
+      hurtEnemy(mb2, mb2.maxHp + 999999, true);
+      const cmdCrates = drops.filter(d => d.kind === 'crate' && d.isBoss && !d.isMythic).length;
+      return cmdCrates === 1;
+    })();
+
+    // v2.1.13: 4 Staff Spells + Survival True DMG (D1 10% -> D5 20%) + Colossal Black Hole + 5 Summon Altars + Dual-Boss Independent HP & Phase-2
+    const v2113Ok = (() => {
+      // 1) Survival Trial Unblockable True Damage Floor (D1=10% -> D5=20%, ignores dodge/armor/shield)
+      if (Math.abs(getSurvivalTrueDmgFloorPct(1) - 0.10) > 1e-6) return false;
+      if (Math.abs(getSurvivalTrueDmgFloorPct(5) - 0.20) > 1e-6) return false;
+      survivalTrialWave = true;
+      state = 'wave';
+      selectedDiff = 1; diff = DIFFS[1];
+      player.maxHp = 200; player.hp = 200; player.dodge = 0.90; player.armor = 999; player.shield = 120; player.invuln = 0;
+      hurtPlayer(1, true, 'trap_sky_lance');
+      if (player.hp > 180.01 || player.shield !== 120) return false; // 10% of 200 = 20 HP directly off HP, ignoring dodge/armor/shield!
+      selectedDiff = 5; diff = DIFFS[5];
+      player.hp = 200;
+      hurtPlayer(1, true, 'trap_void_orb');
+      if (player.hp > 160.01) return false; // 20% of 200 = 40 HP True Damage on D5!
+      survivalTrialWave = false;
+      player.dodge = 0; player.armor = 0; player.shield = 0; player.hp = 200;
+
+      // 2) 5 Summon Boss Altars (including mech_colossus & plague_empress) & active in Story Mode
+      if (!Array.isArray(SPECIAL_RELICS) || SPECIAL_RELICS.length !== 5) return false;
+      const altarBossIds = SPECIAL_RELICS.map(r => r.bossId);
+      if (!altarBossIds.includes('mech_colossus') || !altarBossIds.includes('plague_empress')) return false;
+      const summMech = createEnemy(900, 700, 'special_boss', 'mech_colossus');
+      const summEmp = createEnemy(1100, 700, 'special_boss', 'plague_empress');
+      if (summMech.variant !== 'mech_colossus' || summEmp.variant !== 'plague_empress') return false;
+
+      // 3) Dual Boss Independent Phase-2 Awakening & Independent HUD HP Bars
+      enemies.length = 0; spawns.length = 0; spellZones.length = 0; bullets.length = 0; lightnings.length = 0;
+      const db1 = createEnemy(player.x + 180, player.y, 'boss', 'butcher');
+      const db2 = createEnemy(player.x - 180, player.y, 'boss', 'frost_queen');
+      db1.canPhase2 = true; db1.mythicPhase2 = false; db1.hp = Math.round(db1.maxHp * 0.72);
+      db2.canPhase2 = true; db2.mythicPhase2 = false; db2.hp = Math.round(db2.maxHp * 0.41);
+      if (!triggerBossMythicPhase2(db1)) return false;
+      if (!triggerBossMythicPhase2(db2)) return false; // Second boss MUST ALSO awaken Phase 2 independently!
+      if (!db1.mythicPhase2 || !db2.mythicPhase2) return false;
+      bossCutscene = null; pendingBossCutscene = null;
+      if (typeof SpireDirector !== 'undefined' && SpireDirector) SpireDirector.update(0.20);
+      hudAcc = 1.0;
+      db2.hp = Math.round(db2.maxHp * 0.45);
+      update(0.016);
+      const extraHtml = document.getElementById('bossExtraBars').innerHTML;
+      if (!extraHtml.includes('boss-sub-row') || !extraHtml.includes('45%')) return false;
+
+      // 4) 4 Staff True Spellcasting Skills + Canvas VFX render check
+      enemies.length = 0; bullets.length = 0; spellZones.length = 0; lightnings.length = 0;
+      const dummyA = createEnemy(player.x + 120, player.y, 'grunt');
+      const dummyB = createEnemy(player.x + 195, player.y + 24, 'grunt');
+      dummyA.hp = 99999; dummyA.maxHp = 99999;
+      dummyB.hp = 99999; dummyB.maxHp = 99999;
+      player.weapons = [
+        { id: 'ember_staff', tier: 2, cd: 0 },
+        { id: 'frost_scepter', tier: 2, cd: 0 },
+        { id: 'storm_rod', tier: 2, cd: 0 },
+        { id: 'chrono_staff', tier: 2, cd: 0 }
+      ];
+      update(0.02);
+      const hasFireball = bullets.some(b => b.isFireball);
+      const hasBlizzard = spellZones.some(z => z.kind === 'blizzard');
+      const hasPoisonMist = spellZones.some(z => z.kind === 'poison_mist');
+      const hasChainLightning = lightnings.length >= 2;
+      if (!hasFireball || !hasBlizzard || !hasPoisonMist || !hasChainLightning) return false;
+      // Advance fireball into dummyA to spawn 'fire_patch' molten sea
+      const fb = bullets.find(b => b.isFireball);
+      fb.x = dummyA.x; fb.y = dummyA.y;
+      update(0.02);
+      if (!spellZones.some(z => z.kind === 'fire_patch')) return false;
+
+      // 5) Colossal Black Hole Gravity Skill (1.0s pre-suction warning + r >= 430 + suction nerfed by 60%)
+      enemies.length = 0; terrains.length = 0; trees.length = 0;
+      const bhBoss = createEnemy(900, 600, 'special_boss', 'abyss_devourer');
+      bhBoss.arenaMechCd = 0.01;
+      enemies.push(bhBoss);
+      player.x = 1260; player.y = 600;
+      tickBossArenaMechanic(bhBoss, 0.02);
+      if (!bhBoss.eclipseSingularity || bhBoss.eclipseSingularity.r < 430) return false;
+      if (!(bhBoss.eclipseSingularity.windupT >= 0.98)) return false;
+      // Ensure sanctuaries don't overlap player test position
+      bhBoss.eclipseSingularity.s1x = 500; bhBoss.eclipseSingularity.s1y = 500;
+      bhBoss.eclipseSingularity.s2x = 500; bhBoss.eclipseSingularity.s2y = 700;
+      const distBefore = Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y);
+      // During the 1.0s warning phase, player must NOT be pulled yet!
+      tickBossArenaMechanic(bhBoss, 0.50);
+      draw(); // Verify 1.0s warning telegraph renders with 0 radialGradient & 0 shadowBlur!
+      if (Math.abs(Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y) - distBefore) > 1e-6) return false;
+      tickBossArenaMechanic(bhBoss, 0.50); // Finish the remaining 0.50s of the 1.0s warning
+      if (bhBoss.eclipseSingularity.windupT !== 0) return false;
+      tickBossArenaMechanic(bhBoss, 0.20); // Now active suction ticks for 0.20s
+      const distAfter = Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y);
+      const pulledDist = distBefore - distAfter;
+      // Suction nerfed by 60% (* 0.40): ~15.9px pull in 0.20s (down from ~39.7px), noticeable yet escapable!
+      if (!(pulledDist > 10 && pulledDist < 22)) return false;
+      bhBoss.sigWindupT = 0.5; bhBoss.sigMaxW = 0.9; bhBoss.sigKind = 'frost_prism';
+      draw(); // Verify all new VFX (spellZones, blackHoleCore, sigWindupT, dual-boss overhead) render with 0 radialGradient & 0 shadowBlur!
+      enemies.length = 0; spellZones.length = 0; bullets.length = 0;
+      return true;
+    })();
+
+    // v2.1.14: D5 Floor 16 Guaranteed Phase-2 + Phase-2 Soul Fog + Last Stand Portrait & Fear (-15% Spd / +50% Dash CD) + Independent Structure Aspd (+20% Base = 1.20)
+    const v2114Ok = (() => {
+      // 1) Independent Structure Attack Speed (+20% base = 1.20, player atkSpd & techBonus must NOT affect turret fire rate!)
+      player.weapons = [];
+      player.atkSpd = 0;
+      player.techBonus = 0;
+      player.turretAspdBonus = 0;
+      player.turretOverclockT = 0;
+      const baseTurretAspd = getEffectiveTurretAspdMul(1);
+      if (Math.abs(baseTurretAspd - 1.20) > 1e-6) return false;
+      // Crank player atkSpd (+300%) and techBonus (+400%) -> turret attack speed MUST remain 1.20!
+      player.atkSpd = 3.0;
+      player.techBonus = 4.0;
+      if (Math.abs(getEffectiveTurretAspdMul(1) - 1.20) > 1e-6) return false;
+      // Dedicated turretAspdBonus (+32%) MUST scale turret attack speed cleanly
+      player.turretAspdBonus = 0.32;
+      if (Math.abs(getEffectiveTurretAspdMul(1) - +(1.20 * 1.32).toFixed(6)) > 1e-5) return false;
+      player.atkSpd = 0; player.techBonus = 0; player.turretAspdBonus = 0;
+
+      // 2) D5 Floor 16 Boss 100% Guaranteed Phase-2 (even in Endless Mode when Math.random is 0.9999) + Phase-2 Soul Fog
+      endlessMode = true;
+      state = 'wave';
+      wave = 16;
+      selectedDiff = 5; diff = DIFFS[5];
+      enemies.length = 0;
+      const origR = Math.random;
+      Math.random = () => 0.999999;
+      const f16Boss = createEnemy(player.x + 260, player.y, 'boss', 'solar_seraph');
+      Math.random = origR;
+      if (f16Boss.canPhase2 !== true) return false;
+      enemies.push(f16Boss);
+      if (isD5Floor16Phase2FogActive() !== false) return false;
+      triggerBossMythicPhase2(f16Boss);
+      bossCutscene = null;
+      if (!f16Boss.mythicPhase2 || isD5Floor16Phase2FogActive() !== true || isSoulFogActive() !== true) return false;
+      update(0.5);
+      if (!(survivalTrialState.fogIntroP > 0.40)) return false;
+      draw(); // Verify D5 Floor 16 Phase-2 Soul Fog + Boss Rim Compass render with 0 radialGradient & 0 shadowBlur!
+
+      // 3) Last Stand Cut-in Portrait (works in Story Mode too!) + Player Fear (-15% Move Speed, +50% Dash Cooldown)
+      endlessMode = false;
+      player.spdMul = 1.0; player.noSlow = true; player.dashHasteT = 0; player.dashCdMul = 1; player.cls = 'allrounder';
+      const spdBeforeFear = getEffectiveSpdMul();
+      player.dashCd = 0; player.dashT = 0; bossCutscene = null;
+      triggerSoulDash();
+      const dashCdNormal = player.dashMaxCd;
+      player.dashCd = 0; player.dashT = 0;
+
+      f16Boss.hp = 10;
+      hurtEnemy(f16Boss, 99999, true, null, false, { undodgeable: true });
+      if (!bossCutscene || bossCutscene.mode !== 'last_stand') return false;
+      draw(); // Verify Story Mode Last Stand portrait renders cleanly!
+      bossCutscene = null;
+      if (!isBossLastStandFearActive()) return false;
+      const spdDuringFear = getEffectiveSpdMul();
+      if (Math.abs(spdDuringFear - spdBeforeFear * 0.85) > 1e-3) return false;
+      triggerSoulDash();
+      const dashCdFeared = player.dashMaxCd;
+      if (Math.abs(dashCdFeared - dashCdNormal * 1.50) > 1e-4) return false;
+
+      player.noSlow = false; player.dashCd = 0; player.dashT = 0;
+      enemies.length = 0; survivalTrialState.fogIntroP = 0;
+      endlessMode = true;
+      return true;
+    })();
+
+    const v219Detail = { hiddenBoostOk, earlyMobHpOk, trialGoldCompOk, tpWarnLadderOk, armorCurveOk, lifestealRuleOk, mobNeverBigCoin, bossHasBigCoin, postGameSummaryOk, goldAndRangedBoostOk, midWave6To10HpOk, diffRebalanceOk, distinctTelegraphsOk, pickupSweepMobBalanceOk, terrainDiffScaleOk, d5BossLastStandOk, bossMechanicsOverhaulOk, eliteFormsAndBossCastAnimOk, lateHealDropAndBoss16DodgeOk, twinBossSingleCrateOk, v2113Ok, v2114Ok };
+    const v219Ok = Object.values(v219Detail).every(v => v === true);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,
@@ -1644,7 +2372,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       hpAfterBossNuke, invulnAfterHit, consecutiveHitRegistered,
       wCnt, iCnt, hCnt, mCnt, sCnt, diedCleanly, retryOk,
       singleTerrainOk, frostTerrainOk, bossVenomAndP2Ok, midBulletBossKillOk, earlyTankShiftOk, needleShiftOk,
-      survivalTrialOk, v219Ok
+      survivalTrialOk, v219Ok, v219Detail
     };
   })()`, s);
 
@@ -1681,11 +2409,114 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(coreCheck.earlyTankShiftOk, true, "Waves 1..10 must reduce tanky melee by 15%, keep ranged unchanged, and increase ordinary fodder mobs");
   assert.strictEqual(coreCheck.needleShiftOk, true, "White-needle ranged monsters must be reduced by 30% with freed weight transferred 1:1 to melee");
   assert.strictEqual(coreCheck.survivalTrialOk, true, "Survival Trial must enforce 40s duration, 7 trap types (+50% density/+20% dmg), opaque mist Soul Lantern culling 100% outer mobs, live coupon discount, upper-torso bullet hits, and Purple+ crates");
-  assert.strictEqual(coreCheck.v219Ok, true, "v2.1.9 Staffs, +10% hidden boost cap, D1->D5 teleport warning (D5=50% D1), Brotato Armor/Lifesteal, coin probability, Blood-Moon sprite, and Post-Game Summary must all pass");
+  assert.strictEqual(coreCheck.v219Ok, true, `v2.1.9..v2.1.14 checks must all pass (failed: ${JSON.stringify(Object.entries(coreCheck.v219Detail).filter(([, v]) => v !== true))})`);
   assert(els.retryWaveBtn.textContent.includes("重试"), "Player defeat must offer a floor retry control");
   assert.strictEqual(stats.radialGradients, 0, "Mobile combat & UI suite must create ZERO per-frame radial gradients");
   assert.strictEqual(stats.shadowBlurs, 0, "Mobile combat & UI suite must use ZERO shadowBlur");
   assert.strictEqual(vm.runInContext("logErrCount", s), 0, "Zero runtime errors in Suite 4");
+
+  // v2.1.15 Mobile Resilience Check: WebKit 2D Canvas exhaustion fallback + transient image error auto-retry + BootGate progressive unlock
+  const mobResilience = vm.runInContext(`(() => {
+    // 1) Simulate iOS Safari 2D context exhaustion: createElement('canvas').getContext('2d') returns null
+    const origCreate = document.createElement.bind(document);
+    let nullCtxActive = true;
+    document.createElement = function (tag) {
+      const el = origCreate(tag);
+      if (String(tag).toLowerCase() === 'canvas' && nullCtxActive) {
+        el.getContext = () => null;
+      }
+      return el;
+    };
+    let allMonstersReadyUnderExhaustion = true;
+    try {
+      const sampleTypes = ['chaser', 'charger', 'frost_knight', 'sand_worm', 'rad_scorpion', 'brute', 'juggernaut', 'spore_mother'];
+      for (const tp of sampleTypes) {
+        const sNorm = SpireAssets.getMonsterSprite({ type: tp, elite: false }, false);
+        const sFlash = SpireAssets.getMonsterSprite({ type: tp, elite: false }, true);
+        const sElite = SpireAssets.getMonsterSprite({ type: tp, elite: true, eliteKind: 'frenzy' }, false);
+        if (!sNorm || !sNorm.canvas || !sFlash || !sFlash.canvas || !sElite || !sElite.canvas) {
+          allMonstersReadyUnderExhaustion = false;
+        }
+      }
+    } finally {
+      nullCtxActive = false;
+      document.createElement = origCreate;
+    }
+
+    // 2) Simulate transient cellular network drop on 1st attempt -> must auto-retry and succeed!
+    const OrigImg = Image;
+    let attempts = 0;
+    globalThis.Image = class FlakyMobileImage extends OrigImg {
+      set src(val) {
+        attempts++;
+        if (attempts === 1) {
+          this._src = String(val || '');
+          if (typeof this.onerror === 'function') this.onerror();
+          return;
+        }
+        super.src = val;
+      }
+    };
+    let retryRecovered = false;
+    try {
+      SpireAssets.loadImage('assets/spire/mob_sand_worm.png?test_flaky_1', img => {
+        retryRecovered = !!(img && img.naturalWidth > 0);
+      });
+    } finally {
+      globalThis.Image = OrigImg;
+    }
+
+    const versionedUrl = SpireAssets.resolve('assets/spire/mob_chaser.png');
+    return {
+      allMonstersReadyUnderExhaustion,
+      retryRecovered,
+      attemptsAtLeast2: attempts >= 2,
+      hasVersionQuery: versionedUrl.includes('?v='),
+      hasWarmWave: typeof SpireAssets.warmWave === 'function' && typeof SpireAssets.getBossSheet === 'function'
+    };
+  })()`, s);
+  assert.strictEqual(mobResilience.allMonstersReadyUnderExhaustion, true, "Mobile monsters must still render real sprites (never degrade into colored balls) even when offscreen canvas getContext('2d') returns null");
+  assert.strictEqual(mobResilience.retryRecovered, true, "SpireAssets.loadImage must auto-retry transient mobile network drops");
+  assert.strictEqual(mobResilience.attemptsAtLeast2, true, "Transient failure must trigger retry attempt");
+  assert.strictEqual(mobResilience.hasVersionQuery, true, "SpireAssets.resolve must append ?v= version tag to prevent broken partial cache");
+  assert.strictEqual(mobResilience.hasWarmWave, true, "SpireAssets must expose warmWave and getBossSheet");
+
+  // v2.1.16 Mobile Multi-Touch Move + Dash Non-Conflict Check
+  const touchConflictCheck = vm.runInContext(`(() => {
+    state = 'wave';
+    bossCutscene = null;
+    player.hp = player.maxHp;
+    player.dashCd = 0;
+    player.dashT = 0;
+    player.vx = 0;
+    player.vy = 0;
+    // Simulate fleeing LEFT (moveA = PI) while nearest monster is to the RIGHT (lookA = 0)
+    player.moveA = Math.PI;
+    player.lookA = 0;
+    joy.active = false;
+    joy.lastAt = 0;
+    const fired1 = triggerSoulDash();
+    const fledLeftNotIntoBoss = fired1 && player.dashVx < -500;
+
+    // Simulate active left-thumb joystick pointing UP-LEFT while right-thumb triggers dash via handleDashTouchClick
+    player.dashCd = 0;
+    player.dashT = 0;
+    joy.active = true;
+    joy.id = 11;
+    joy.dx = -0.8;
+    joy.dy = -0.6;
+    joy.mag = 1;
+    joy.lockedMove = true;
+    _lastTouchDashAt = 0;
+    const fired2 = handleDashTouchClick(null);
+    const joyStillIntact = joy.active === true && joy.id === 11 && joy.dx === -0.8;
+    const dashedAlongJoy = fired2 && player.dashVx < -400 && player.dashVy < -300;
+    resetJoy();
+    return { fledLeftNotIntoBoss, joyStillIntact, dashedAlongJoy };
+  })()`, s);
+  assert.strictEqual(touchConflictCheck.fledLeftNotIntoBoss, true, "Releasing thumb before tapping Dash must dash along player.moveA (escape direction), NEVER into nearest monster (player.lookA)");
+  assert.strictEqual(touchConflictCheck.joyStillIntact, true, "Triggering mobile Dash while moving must keep active joystick untouched");
+  assert.strictEqual(touchConflictCheck.dashedAlongJoy, true, "Mobile Dash while moving must dash along active joystick vector");
 }
 
 // ============================================================================
@@ -1877,9 +2708,12 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     assert(map && typeof map === "object", "window.__SPIRE_INLINE_ASSETS__ must be populated");
     for (const key of [
       "assets/spire/port_zero.jpg", "assets/spire/port_jinyu.jpg", "assets/spire/port_astria.jpg",
+      "assets/spire/port_zero_witch.jpg", "assets/spire/port_zero_crimson.jpg", "assets/spire/port_zero_astral.jpg",
+      "assets/spire/hero_zero_witch_sheet.png", "assets/spire/hero_zero_crimson_sheet.png", "assets/spire/hero_zero_astral_sheet.png",
       "assets/spire/port_jialan.jpg", "assets/spire/port_qingyu.jpg", "assets/spire/port_eclipse.jpg",
       "assets/spire/hero_zero_sheet.png", "assets/spire/hero_jinyu_sheet.png", "assets/spire/hero_astria_sheet.png",
       "assets/spire/hero_jialan_sheet.png", "assets/spire/hero_qingyu_sheet.png", "assets/spire/hero_eclipse_sheet.png",
+      "assets/spire/scene_1_arena.jpg", "assets/spire/scene_2_arena.jpg", "assets/spire/scene_3_arena.jpg", "assets/spire/scene_4_arena.jpg",
       "assets/spire/cut_intro_1.jpg", "assets/spire/cut_intro_2.jpg", "assets/spire/cut_intro_3.jpg",
       "assets/spire/cut_defeat_act1_1.jpg", "assets/spire/cut_defeat_act4_2.jpg",
       "assets/spire/v2/title-clean.png", "assets/spire/v2/wind-pavilion.png", "assets/spire/v2/player-defeat-clean.png",
@@ -1891,9 +2725,41 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     ]) {
       assert(typeof map[key] === "string" && map[key].startsWith("data:image/"), `Single-file bundle missing inline data URI for ${key}`);
     }
-    assert(typeof map["assets/audio/scene_foundry_rain.wav"] === "string" && map["assets/audio/scene_foundry_rain.wav"].startsWith("data:audio/"), "Single-file bundle must inline scene audio WAV assets");
+    for (const wavKey of [
+      "assets/audio/scene_foundry_rain.wav",
+      "assets/audio/scene_foundry_phase2.wav",
+      "assets/audio/scene_glacier_frost.wav",
+      "assets/audio/scene_glacier_phase2.wav",
+      "assets/audio/scene_wasteland_clock.wav",
+      "assets/audio/scene_wasteland_phase2.wav",
+      "assets/audio/scene_desert_eclipse.wav",
+      "assets/audio/scene_desert_phase2.wav"
+    ]) {
+      assert(typeof map[wavKey] === "string" && map[wavKey].startsWith("data:audio/"), `Single-file bundle must inline scene audio WAV asset: ${wavKey}`);
+    }
   } finally {
     if (tempBuilt && fs.existsSync(singlePath)) fs.unlinkSync(singlePath);
+  }
+}
+
+// Ensure every static assets/... literal in HTML, manifest, CSS, and JS modules exists on disk
+{
+  const scanFiles = [
+    path.join(ROOT, "index.html"),
+    path.join(ROOT, "manifest.json"),
+    ...cssFiles.map(f => path.join(ROOT, f)),
+    ...jsFiles.map(f => path.join(ROOT, f))
+  ];
+  for (const fp of scanFiles) {
+    const raw = fs.readFileSync(fp, "utf8");
+    const clean = fp.endsWith(".js")
+      ? raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1")
+      : raw;
+    for (const m of clean.matchAll(/["'`](assets\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+)(?:\?[^"'`]*)?["'`]/g)) {
+      const relAsset = m[1];
+      const absAsset = path.join(ROOT, relAsset);
+      assert(fs.existsSync(absAsset) && fs.statSync(absAsset).size > 0, `Referenced asset missing on disk in ${path.relative(ROOT, fp)}: ${relAsset}`);
+    }
   }
 }
 

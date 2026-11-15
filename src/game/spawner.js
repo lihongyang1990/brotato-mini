@@ -19,7 +19,9 @@ const FALLBACK_MINI_BOSS_DEFS = {
 const FALLBACK_SPECIAL_RELICS = [
   { id: 'blood_altar', icon: '🏮', name: '雨夜断刃祭坛', color: '#ff2a55', bossId: 'crimson_lord', bossIcon: '🦊', bossName: '烬羽 · 第998世残响', epithet: '不肯熄灭的绯红剑魂', bossColor: '#d90429' },
   { id: 'golden_idol', icon: '🕰️', name: '黄金逆钟星盘', color: '#ffd166', bossId: 'golden_golem', bossIcon: '🏆', bossName: '黄金发条圣柜巨神', epithet: '封存千年晶尘的机神', bossColor: '#f59e0b' },
-  { id: 'void_cube', icon: '🌑', name: '黑曜蚀日残镜', color: '#c77dff', bossId: 'abyss_devourer', bossIcon: '👁️', bossName: '零号容器 · 饥饿黑影', epithet: '提灯深处的天灾倒影', bossColor: '#7209b7' }
+  { id: 'void_cube', icon: '🌑', name: '黑曜蚀日残镜', color: '#c77dff', bossId: 'abyss_devourer', bossIcon: '👁️', bossName: '零号容器 · 饥饿黑影', epithet: '提灯深处的天灾倒影', bossColor: '#7209b7' },
+  { id: 'clockwork_altar', icon: '⚙️', name: '星晷重装祭坛', color: '#f77f00', bossId: 'mech_colossus', bossIcon: '⚙️', bossName: '倒悬机神 · 伽蓝重装态', epithet: '无尽钟楼重装主宰 · 祭坛降临', bossColor: '#f77f00' },
+  { id: 'verdant_altar', icon: '🍃', name: '苍岚残羽祭坛', color: '#52b788', bossId: 'plague_empress', bossIcon: '🍃', bossName: '残羽魔女 · 青羽试炼影', epithet: '无尽风语守望魔女 · 祭坛降临', bossColor: '#52b788' }
 ];
 
 function getBossDefs() {
@@ -94,14 +96,20 @@ function _chamferAndRotatePoly(localPts, chamfer, cx, cy, ca, sa) {
 
 // 生成五大嵌地石砌真地形块局部正交多边形与碰撞矩形盒组（细长矩石槽 rect_strip / 折角L型石槽 l_block / T型拼接槽 t_block / 错位阶梯双拼块 stepped_block / 重型方砖池 square_slab）
 const TERRAIN_SIZE_MUL = 1.05;
+function getEffectiveTerrainSizeMul() {
+  const diffSz = typeof getDiffTerrainSizeMul === 'function' ? getDiffTerrainSizeMul() : 1.00;
+  return +(TERRAIN_SIZE_MUL * diffSz).toFixed(4);
+}
+if (typeof globalThis !== 'undefined') globalThis.getEffectiveTerrainSizeMul = getEffectiveTerrainSizeMul;
 
 function _buildBlockLocalSpec(tr) {
   const form = tr.form || 'rect_strip';
   const s = tr.seed !== undefined ? tr.seed : 2.3;
+  const effMul = getEffectiveTerrainSizeMul();
   if (form === 'l_block') {
-    const W = Math.max(124, tr.w || Math.round((196 + ((s * 23) % 48)) * TERRAIN_SIZE_MUL));
-    const H = Math.max(110, tr.h || Math.round((172 + ((s * 19) % 42)) * TERRAIN_SIZE_MUL));
-    const T = Math.max(50, Math.min(Math.min(W, H) * 0.48, tr.thick || Math.round((74 + ((s * 7) % 14)) * TERRAIN_SIZE_MUL)));
+    const W = Math.max(124, tr.w || Math.round((196 + ((s * 23) % 48)) * effMul));
+    const H = Math.max(110, tr.h || Math.round((172 + ((s * 19) % 42)) * effMul));
+    const T = Math.max(50, Math.min(Math.min(W, H) * 0.48, tr.thick || Math.round((74 + ((s * 7) % 14)) * effMul)));
     const flipU = (Math.floor(s * 11) % 2 === 0) ? 1 : -1;
     // 以视觉重心微调局部原点，使旋转与外接圆更均衡
     const ox = -W * 0.34, oy = -H * 0.34;
@@ -128,9 +136,9 @@ function _buildBlockLocalSpec(tr) {
     return { pts, boxes, minThick: T };
   }
   if (form === 't_block') {
-    const W = Math.max(130, tr.w || Math.round((206 + ((s * 29) % 48)) * TERRAIN_SIZE_MUL));
-    const H = Math.max(106, tr.h || Math.round((166 + ((s * 17) % 38)) * TERRAIN_SIZE_MUL));
-    const T = Math.max(50, Math.min(W * 0.44, tr.thick || Math.round((74 + ((s * 5) % 12)) * TERRAIN_SIZE_MUL)));
+    const W = Math.max(130, tr.w || Math.round((206 + ((s * 29) % 48)) * effMul));
+    const H = Math.max(106, tr.h || Math.round((166 + ((s * 17) % 38)) * effMul));
+    const T = Math.max(50, Math.min(W * 0.44, tr.thick || Math.round((74 + ((s * 5) % 12)) * effMul)));
     const hw = W * 0.5, st = T * 0.5;
     const topY = -H * 0.42, botY = topY + H;
     const pts = [
@@ -150,8 +158,8 @@ function _buildBlockLocalSpec(tr) {
     return { pts, boxes, minThick: T };
   }
   if (form === 'stepped_block') {
-    const W = Math.max(147, tr.w || Math.round((228 + ((s * 31) % 52)) * TERRAIN_SIZE_MUL));
-    const T = Math.max(50, tr.thick || Math.round((74 + ((s * 9) % 12)) * TERRAIN_SIZE_MUL));
+    const W = Math.max(147, tr.w || Math.round((228 + ((s * 31) % 52)) * effMul));
+    const T = Math.max(50, tr.thick || Math.round((74 + ((s * 9) % 12)) * effMul));
     const overlapY = Math.round(T * 0.74);
     const H = T * 2 - overlapY;
     const hw = W * 0.5, hh = H * 0.5;
@@ -182,8 +190,8 @@ function _buildBlockLocalSpec(tr) {
     return { pts, boxes, minThick: overlapY };
   }
   if (form === 'square_slab') {
-    const W = Math.max(97, tr.w || Math.round((150 + ((s * 21) % 36)) * TERRAIN_SIZE_MUL));
-    const H = Math.max(85, tr.h || Math.round((130 + ((s * 15) % 32)) * TERRAIN_SIZE_MUL));
+    const W = Math.max(97, tr.w || Math.round((150 + ((s * 21) % 36)) * effMul));
+    const H = Math.max(85, tr.h || Math.round((130 + ((s * 15) % 32)) * effMul));
     const hw = W * 0.5, hh = H * 0.5;
     return {
       pts: [
@@ -197,8 +205,8 @@ function _buildBlockLocalSpec(tr) {
     };
   }
   // 默认 rect_strip：细长嵌地矩石长槽块（长宽比 ~3.0:1 ~ 4.2:1，横纵斜切皆极利落）
-  const W = Math.max(137, tr.len || tr.w || Math.round((236 + ((s * 37) % 92)) * TERRAIN_SIZE_MUL));
-  const H = Math.max(50, tr.wid || (tr.r ? tr.r * 2.2 : 0) || Math.round((74 + ((s * 11) % 18)) * TERRAIN_SIZE_MUL));
+  const W = Math.max(137, tr.len || tr.w || Math.round((236 + ((s * 37) % 92)) * effMul));
+  const H = Math.max(50, tr.wid || (tr.r ? tr.r * 2.2 : 0) || Math.round((74 + ((s * 11) % 18)) * effMul));
   const hw = W * 0.5, hh = H * 0.5;
   return {
     pts: [
@@ -582,7 +590,8 @@ function _terrainSampleDiscs(tr) {
 function _canPlaceTerrainBlock(cand, cx, cy, minGap = 82) {
   ensureTerrainGeometry(cand);
   let poly = cand.outerCliff || cand.outerRim || cand.verts || [];
-  const wallPad = 72;
+  const relaxed = minGap < 50;
+  const wallPad = relaxed ? 54 : 72;
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (let i = 0; i < poly.length; i++) {
     const p = poly[i];
@@ -611,20 +620,22 @@ function _canPlaceTerrainBlock(cand, cx, cy, minGap = 82) {
     if (p.x < wallPad - 2 || p.x > WORLD.w - wallPad + 2 || p.y < wallPad - 2 || p.y > WORLD.h - wallPad + 2) return false;
   }
   const discs = _terrainSampleDiscs(cand);
-  const centerClear = cand.kind === 'chasm' ? 225 : 162;
+  const centerClear = relaxed
+    ? (cand.kind === 'chasm' ? 185 : 140)
+    : (cand.kind === 'chasm' ? 225 : 162);
   for (let i = 0; i < discs.length; i++) {
     const d = discs[i];
     if (Math.hypot(d.x - cx, d.y - cy) < d.r + centerClear) return false;
-    if (cand.kind === 'chasm' && Math.hypot(d.x - (cx + 135), d.y - cy) < d.r + 82) return false;
+    if (cand.kind === 'chasm' && Math.hypot(d.x - (cx + 135), d.y - cy) < d.r + (relaxed ? 64 : 82)) return false;
     for (let pIdx = 0; pIdx < portals.length; pIdx++) {
       const pt = portals[pIdx];
-      if (Math.hypot(d.x - pt.x, d.y - pt.y) < d.r + (pt.r || 36) + 95) return false;
+      if (Math.hypot(d.x - pt.x, d.y - pt.y) < d.r + (pt.r || 36) + (relaxed ? 72 : 95)) return false;
     }
   }
   for (let tIdx = 0; tIdx < terrains.length; tIdx++) {
     const other = terrains[tIdx];
     const oDiscs = other._sampleDiscs || (other._sampleDiscs = _terrainSampleDiscs(other));
-    const reqGap = (cand.kind === 'chasm' && other.kind === 'chasm') ? 145 : minGap;
+    const reqGap = (cand.kind === 'chasm' && other.kind === 'chasm') ? (relaxed ? 96 : 145) : minGap;
     for (let i = 0; i < discs.length; i++) {
       const a = discs[i];
       for (let j = 0; j < oDiscs.length; j++) {
@@ -708,15 +719,16 @@ function spawnArenaTerrains() {
     };
   };
 
+  const effTerrainMul = getEffectiveTerrainSizeMul();
   const placeChasmBlock = (lenScale = 1.0) => {
-    for (let tries = 0; tries < 52; tries++) {
-      const pt = tries < 30
+    for (let tries = 0; tries < 64; tries++) {
+      const pt = tries < 32
         ? sampleArenaPoint(215, 200)
-        : { x: 210 + Math.random() * Math.max(140, WORLD.w - 420), y: 200 + Math.random() * Math.max(140, WORLD.h - 400) };
+        : { x: 185 + Math.random() * Math.max(140, WORLD.w - 370), y: 180 + Math.random() * Math.max(140, WORLD.h - 360) };
       const ang = _pickObliqueAngle();
-      const fallScale = tries > 36 ? 0.84 : 1.0;
-      const halfLen = (92 + Math.random() * 54) * TERRAIN_SIZE_MUL * lenScale * fallScale * (compactArena ? 0.84 : 1.0);
-      const r = Math.round((26 + Math.random() * 7) * TERRAIN_SIZE_MUL * fallScale);
+      const fallScale = tries > 48 ? 0.72 : (tries > 34 ? 0.84 : 1.0);
+      const halfLen = (92 + Math.random() * 54) * effTerrainMul * lenScale * fallScale * (compactArena ? 0.84 : 1.0);
+      const r = Math.round((26 + Math.random() * 7) * effTerrainMul * fallScale);
       const cand = {
         kind: 'chasm',
         x: pt.x, y: pt.y,
@@ -724,7 +736,7 @@ function spawnArenaTerrains() {
         chasmElbow: Math.random() < 0.38,
         seed: 1.1 + Math.random() * 80
       };
-      if (_canPlaceTerrainBlock(cand, cx, cy, tries > 36 ? 68 : 88)) {
+      if (_canPlaceTerrainBlock(cand, cx, cy, tries > 46 ? 42 : (tries > 32 ? 64 : 88))) {
         terrains.push(cand);
         return true;
       }
@@ -735,13 +747,13 @@ function spawnArenaTerrains() {
   const makeBlockSpec = (kind, form, pt, scale = 1.0) => {
     const rot = _pickObliqueAngle();
     const seed = 1.3 + Math.random() * 90;
-    const sc = scale * TERRAIN_SIZE_MUL * (compactArena ? 0.86 : 1.0);
+    const sc = scale * effTerrainMul * (compactArena ? 0.86 : 1.0);
     if (form === 'rect_strip') {
       return {
         kind, form, x: pt.x, y: pt.y, rot, seed,
         len: Math.round((225 + Math.random() * 105) * sc),
         wid: Math.max(71, Math.round((74 + Math.random() * 20) * sc)),
-        r: Math.round(42 * TERRAIN_SIZE_MUL),
+        r: Math.round(42 * effTerrainMul),
         pulse: Math.random() * 6.28
       };
     }
@@ -751,7 +763,7 @@ function spawnArenaTerrains() {
         w: Math.max(178, Math.round((192 + Math.random() * 54) * sc)),
         h: Math.max(160, Math.round((168 + Math.random() * 46) * sc)),
         thick: Math.max(71, Math.round((74 + Math.random() * 14) * sc)),
-        r: Math.round(46 * TERRAIN_SIZE_MUL),
+        r: Math.round(46 * effTerrainMul),
         pulse: Math.random() * 6.28
       };
     }
@@ -761,7 +773,7 @@ function spawnArenaTerrains() {
         w: Math.max(189, Math.round((202 + Math.random() * 52) * sc)),
         h: Math.max(154, Math.round((162 + Math.random() * 42) * sc)),
         thick: Math.max(71, Math.round((74 + Math.random() * 12) * sc)),
-        r: Math.round(46 * TERRAIN_SIZE_MUL),
+        r: Math.round(46 * effTerrainMul),
         pulse: Math.random() * 6.28
       };
     }
@@ -770,7 +782,7 @@ function spawnArenaTerrains() {
         kind, form, x: pt.x, y: pt.y, rot, seed,
         w: Math.max(214, Math.round((224 + Math.random() * 58) * sc)),
         thick: Math.max(73, Math.round((74 + Math.random() * 14) * sc)),
-        r: Math.round(46 * TERRAIN_SIZE_MUL),
+        r: Math.round(46 * effTerrainMul),
         pulse: Math.random() * 6.28
       };
     }
@@ -778,7 +790,7 @@ function spawnArenaTerrains() {
       kind, form: 'square_slab', x: pt.x, y: pt.y, rot, seed,
       w: Math.max(140, Math.round((148 + Math.random() * 38) * sc)),
       h: Math.max(125, Math.round((128 + Math.random() * 34) * sc)),
-      r: Math.round(52 * TERRAIN_SIZE_MUL),
+      r: Math.round(52 * effTerrainMul),
       pulse: Math.random() * 6.28
     };
   };
@@ -787,15 +799,15 @@ function spawnArenaTerrains() {
     const formPool = preferredForm
       ? [preferredForm, 'rect_strip', 'l_block', 'square_slab']
       : shuffleArr(['rect_strip', 'l_block', 'stepped_block', 't_block', 'square_slab']);
-    for (let tries = 0; tries < 56; tries++) {
+    for (let tries = 0; tries < 68; tries++) {
       const form = formPool[tries % formPool.length];
-      const scale = tries > 34 ? 0.80 : (tries > 22 ? 0.90 : 1.0);
-      const pt = tries < 30
+      const scale = tries > 48 ? 0.72 : (tries > 34 ? 0.82 : (tries > 22 ? 0.90 : 1.0));
+      const pt = tries < 32
         ? sampleArenaPoint(185, 175)
-        : { x: 175 + Math.random() * Math.max(140, WORLD.w - 350), y: 170 + Math.random() * Math.max(140, WORLD.h - 340) };
+        : { x: 165 + Math.random() * Math.max(140, WORLD.w - 330), y: 160 + Math.random() * Math.max(140, WORLD.h - 320) };
       const cand = makeBlockSpec(kind, form, pt, scale);
       if (seedHint) cand.seed += seedHint * 0.17;
-      if (_canPlaceTerrainBlock(cand, cx, cy, tries > 36 ? 52 : 74)) {
+      if (_canPlaceTerrainBlock(cand, cx, cy, tries > 46 ? 38 : (tries > 34 ? 52 : 74))) {
         terrains.push(cand);
         return true;
       }
@@ -837,7 +849,11 @@ function getSceneSignatureTerrainKind() {
 }
 
 function spawnTree() {
-  if (trees.length >= 4) return;
+  let normalTrees = 0;
+  for (let i = 0; i < trees.length; i++) {
+    if (trees[i] && !trees[i].isBossPylon && trees[i].hp > 0) normalTrees++;
+  }
+  if (normalTrees >= 4) return;
   let tx = WORLD.w * 0.5, ty = WORLD.h * 0.5;
   for (let tries = 0; tries < 14; tries++) {
     tx = 115 + Math.random() * Math.max(120, WORLD.w - 230);
@@ -849,6 +865,39 @@ function spawnTree() {
   rings.push({ x: tx, y: ty, r: 32, color: '#5ef29b', t: 0.24, maxT: 0.24 });
 }
 
+// 首领创新交互机关：可破坏的【共鸣阵眼棱柱 / 超导磁暴桩 / 万蛊共生苞】（击破即斩断首领棱障并触发反噬重创与破防！）
+function spawnBossPylon(owner, pylonKind, x, y) {
+  if (!owner || owner.hp <= 0 || typeof trees === 'undefined') return null;
+  let ownedCnt = 0;
+  for (let i = 0; i < trees.length; i++) {
+    const t = trees[i];
+    if (t && t.isBossPylon && t.owner === owner && t.hp > 0) ownedCnt++;
+  }
+  if (ownedCnt >= 2) return null;
+  let px = Math.max(96, Math.min(WORLD.w - 96, x));
+  let py = Math.max(96, Math.min(WORLD.h - 96, y));
+  for (let tries = 0; tries < 8; tries++) {
+    if (!isBlockedByTerrain(px, py, 28) && (!player || Math.hypot(px - player.x, py - player.y) > 68)) break;
+    const ra = Math.random() * Math.PI * 2;
+    px = Math.max(96, Math.min(WORLD.w - 96, owner.x + Math.cos(ra) * (155 + Math.random() * 45)));
+    py = Math.max(96, Math.min(WORLD.h - 96, owner.y + Math.sin(ra) * (155 + Math.random() * 45)));
+  }
+  const php = Math.max(28, Math.round(owner.maxHp * 0.052));
+  const col = pylonKind === 'cryo_obelisk' ? '#72efdd' : (pylonKind === 'magnet_core' ? '#ff9f1c' : '#5ef29b');
+  const label = pylonKind === 'cryo_obelisk' ? '极光冰棱柱' : (pylonKind === 'magnet_core' ? '磁暴引力桩' : '万蛊共生苞');
+  const node = {
+    x: px, y: py, r: 25, hp: php, maxHp: php,
+    hitFlash: 0, sway: Math.random() * 6.28,
+    isBossPylon: true, pylonKind, pylonLabel: label, pylonColor: col,
+    owner, pulseT: 1.55
+  };
+  trees.push(node);
+  if (rings.length < 40) rings.push({ x: px, y: py, r: 58, color: col, t: 0.30, maxT: 0.30, kind: 'hex' });
+  addText(px, py - 34, `⚡ ${label} · 击破破防!`, col, 13, 1.35, true);
+  return node;
+}
+if (typeof globalThis !== 'undefined') globalThis.spawnBossPylon = spawnBossPylon;
+
 function hurtTree(tr, rawDmg) {
   if (!tr || tr.hp <= 0) return;
   const dmg = Math.max(1, Math.round(rawDmg));
@@ -856,6 +905,40 @@ function hurtTree(tr, rawDmg) {
   if (!(tr._flashCd > 0)) {
     tr.hitFlash = 0.042;
     tr._flashCd = 0.095;
+  }
+  if (tr.isBossPylon) {
+    const pCol = tr.pylonColor || '#72efdd';
+    addText(tr.x, tr.y - 28, dmg, pCol, 14, 0.50, false);
+    addSparks(tr.x, tr.y - 8, Math.random() * 6.28, pCol, 3);
+    if (tr.hp <= 0) {
+      tr.hp = 0;
+      beep(680, 0.11, 'triangle', 0.06);
+      addBurst(tr.x, tr.y - 6, pCol, 14, 175);
+      if (rings.length < 40) rings.push({ x: tr.x, y: tr.y, r: 78, color: pCol, t: 0.30, maxT: 0.30, kind: 'hex' });
+      dropCrystals(tr.x, tr.y, 3 + Math.floor(wave * 0.4));
+      const pylonHealMul = (typeof getEffectiveHealDropMul === 'function' ? getEffectiveHealDropMul(wave, diff) : 1.0)
+        * (typeof getGroundHealCrowdFactor === 'function' ? getGroundHealCrowdFactor() : 1.0);
+      if (pylonHealMul > 0 && Math.random() < 0.45 * pylonHealMul) drops.push({ x: tr.x, y: tr.y, kind: 'heal', bob: 0 });
+      const boss = tr.owner;
+      if (boss && boss.hp > 0) {
+        if (lightnings.length < 36) {
+          lightnings.push({
+            pts: [
+              { x: tr.x, y: tr.y - 10 },
+              { x: (tr.x + boss.x) * 0.5 + (Math.random() - 0.5) * 28, y: (tr.y + boss.y) * 0.5 - 18 },
+              { x: boss.x, y: boss.y - 12 }
+            ],
+            color: pCol, t: 0.32, maxT: 0.32
+          });
+        }
+        boss.exposeT = Math.max(boss.exposeT || 0, 1.85);
+        addText(boss.x, boss.y - boss.r - 24, `💥 ${tr.pylonLabel || '阵眼'}崩碎 · 反噬破防!`, '#fde68a', 15, 1.4, true);
+        if (typeof hurtEnemy === 'function' && !(boss.d5LastStandT > 0)) {
+          hurtEnemy(boss, Math.max(8, Math.round(boss.maxHp * 0.042)), true, null, true, { noProc: true, undodgeable: true, srcId: 'relic_proc' });
+        }
+      }
+    }
+    return;
   }
   addText(tr.x, tr.y - 26, dmg, '#a3e635', 14);
   addSparks(tr.x, tr.y - 8, Math.random() * 6.28, '#5ef29b', 2);
@@ -873,8 +956,12 @@ function hurtTree(tr, rawDmg) {
       waveCratesDropped++;
       drops.push({ x: tr.x, y: tr.y, kind: 'crate', bob: 0 });
       addText(tr.x, tr.y - 34, '🎁 战利品箱!', '#ffd166', 16, 1.65, true);
-    } else if (Math.random() < Math.min(0.80, 0.52 + luck * 0.004)) {
-      drops.push({ x: tr.x, y: tr.y, kind: 'heal', bob: 0 });
+    } else {
+      const treeHealMul = (typeof getEffectiveHealDropMul === 'function' ? getEffectiveHealDropMul(wave, diff) : 1.0)
+        * (typeof getGroundHealCrowdFactor === 'function' ? getGroundHealCrowdFactor() : 1.0);
+      if (treeHealMul > 0 && Math.random() < Math.min(0.80, 0.52 + luck * 0.004) * treeHealMul) {
+        drops.push({ x: tr.x, y: tr.y, kind: 'heal', bob: 0 });
+      }
     }
   }
 }
@@ -937,17 +1024,19 @@ function spawnSpecialRelic(forceId = null) {
   }
   const rel = { x: rx, y: ry, r: 88, def, charge: 0, need: 1.15, pulse: 0 };
   relics.push(rel);
-  if (rings.length < 40) rings.push({ x: rx, y: ry, r: 142, color: def.color, t: 0.48, maxT: 0.48, kind: 'hex' });
-  beep(740, 0.12, 'triangle', 0.06);
-  if (player) addText(player.x, player.y - 54, `奇遇现世：${def.name}！`, '#ffd166', 18, 2.6);
-  announce(`✨ 地图刷新大型召唤法阵【${def.icon}${def.name}】！跟随边缘箭头踏入圈内即可召唤首领`, '#ffd166', 4.2);
+  if (rings.length < 40) rings.push({ x: rx, y: ry, r: 156, color: def.color, t: 0.54, maxT: 0.54, kind: 'hex' });
+  if (rings.length < 40 && player) rings.push({ x: player.x, y: player.y, r: 96, color: '#ffd166', t: 0.42, maxT: 0.42, fill: false });
+  beep(880, 0.16, 'triangle', 0.075);
+  const bossLabel = def.bossName || def.name;
+  if (player) addText(player.x, player.y - 58, `⛩️ 隐藏Boss祭坛现世：${bossLabel}！`, '#ffd166', 19, 3.2);
+  announce(`⛩️ 隐藏首领召唤祭坛现世：【${def.icon}${bossLabel}】！跟随角色脚下金箭头指引踏入召唤（必掉首领秘宝）`, '#ffd166', 5.4);
   logInfo('RELIC', `刷新地图奇遇圣物 ${def.name}(${def.id}) r=${rel.r} at (${Math.round(rx)},${Math.round(ry)})`);
   return rel;
 }
 
-// 全屏首领登场（一阶段 33% 概率）与神话二阶段觉醒（二阶段 33% 概率觉醒且 100% 必出立绘）破框横幅触发器
+// 全屏首领登场（一阶段 33% 概率）与神话二阶段觉醒（二阶段 D1=30% -> D5=50% 阶梯概率觉醒且 100% 必出立绘）破框横幅触发器
 const RARE_PORTRAIT_RATE = 0.33;
-const PHASE2_AWAKEN_RATE = 0.33;
+const PHASE2_AWAKEN_RATE = 0.30;
 const BOSS_CUTSCENE_SHOW_SEC = 4.0;
 const BOSS_CUTSCENE_FADE_SEC = 0.85;
 const BOSS_CUTSCENE_TOTAL_SEC = BOSS_CUTSCENE_SHOW_SEC + BOSS_CUTSCENE_FADE_SEC;
@@ -978,7 +1067,7 @@ function shouldRollRareBossPortrait(variantKey = '', forceCutscene = false) {
 }
 
 function startBossCutscene(mode, variant, title, subtitle, extraTag = '', color = '#ff4d6d', accent = '#ffd166', dur = BOSS_CUTSCENE_TOTAL_SEC, extra = null) {
-  if (!endlessMode) return;
+  if (!endlessMode && mode !== 'last_stand') return;
   const fadeDur = (extra && extra.fadeDur) || BOSS_CUTSCENE_FADE_SEC;
   const totalDur = Math.max(fadeDur + 0.5, dur || BOSS_CUTSCENE_TOTAL_SEC);
   bossCutscene = Object.assign({
@@ -995,11 +1084,11 @@ function startBossCutscene(mode, variant, title, subtitle, extraTag = '', color 
   }, extra || {});
   pendingBossCutscene = null;
   if (player) player.invuln = 0;
-  if (typeof SpireAudio !== 'undefined') SpireAudio.playCutsceneCue(variant, mode === 'mythic_phase2');
+  if (typeof SpireAudio !== 'undefined') SpireAudio.playCutsceneCue(variant, mode === 'mythic_phase2' || mode === 'last_stand');
 }
 
 function queueBossCutscene(mode, variant, title, subtitle, extraTag = '', color = '#ff4d6d', accent = '#ffd166', dur = BOSS_CUTSCENE_TOTAL_SEC, extra = null) {
-  if (!endlessMode) return;
+  if (!endlessMode && mode !== 'last_stand') return;
   const fadeDur = (extra && extra.fadeDur) || BOSS_CUTSCENE_FADE_SEC;
   const totalDur = Math.max(fadeDur + 0.5, dur || BOSS_CUTSCENE_TOTAL_SEC);
   pendingBossCutscene = Object.assign({
@@ -1019,6 +1108,7 @@ function queueBossCutscene(mode, variant, title, subtitle, extraTag = '', color 
 function spawnBossTerrain(kind, x, y, baseR = 74) {
   if (typeof terrains === 'undefined') return;
   const sceneKind = getSceneSignatureTerrainKind();
+  const effMul = getEffectiveTerrainSizeMul();
   while (terrains.length >= 10) {
     terrains.shift();
   }
@@ -1032,10 +1122,10 @@ function spawnBossTerrain(kind, x, y, baseR = 74) {
       tx = Math.max(210, Math.min(WORLD.w - 210, player.x + Math.cos(pushA) * 155));
       ty = Math.max(210, Math.min(WORLD.h - 210, player.y + Math.sin(pushA) * 155));
     }
-    const halfLen = (88 + Math.random() * 34) * TERRAIN_SIZE_MUL;
+    const halfLen = (88 + Math.random() * 34) * effMul;
     terrains.push(ensureTerrainGeometry({
       kind: 'chasm', x: tx, y: ty,
-      ang, rot: ang, halfLen, r: Math.round(28 * TERRAIN_SIZE_MUL), chasmElbow: Math.random() < 0.35, seed: Math.random() * 100
+      ang, rot: ang, halfLen, r: Math.round(28 * effMul), chasmElbow: Math.random() < 0.35, seed: Math.random() * 100
     }));
     if (rings.length < 40) rings.push({ x: tx, y: ty, r: 95, color: '#c77dff', t: 0.35, maxT: 0.35, kind: 'hex' });
     announce('🕳️ 首领震塌石板！战场新增【石砌断层深渊】', '#c77dff', 2.6);
@@ -1044,14 +1134,14 @@ function spawnBossTerrain(kind, x, y, baseR = 74) {
     const bossForms = ['rect_strip', 'l_block', 'stepped_block', 'square_slab'];
     const form = bossForms[Math.floor(Math.random() * bossForms.length)];
     const spec = form === 'rect_strip'
-      ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, len: Math.round((220 + Math.random() * 75) * TERRAIN_SIZE_MUL), wid: Math.round(76 * TERRAIN_SIZE_MUL), r: Math.round(42 * TERRAIN_SIZE_MUL), pulse: 0, seed: Math.random() * 100 }
+      ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, len: Math.round((220 + Math.random() * 75) * effMul), wid: Math.round(76 * effMul), r: Math.round(42 * effMul), pulse: 0, seed: Math.random() * 100 }
       : (form === 'l_block'
-        ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, w: Math.round(196 * TERRAIN_SIZE_MUL), h: Math.round(174 * TERRAIN_SIZE_MUL), thick: Math.round(74 * TERRAIN_SIZE_MUL), r: Math.round(46 * TERRAIN_SIZE_MUL), pulse: 0, seed: Math.random() * 100 }
+        ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, w: Math.round(196 * effMul), h: Math.round(174 * effMul), thick: Math.round(74 * effMul), r: Math.round(46 * effMul), pulse: 0, seed: Math.random() * 100 }
         : (form === 'stepped_block'
-          ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, w: Math.round(228 * TERRAIN_SIZE_MUL), thick: Math.round(74 * TERRAIN_SIZE_MUL), r: Math.round(46 * TERRAIN_SIZE_MUL), pulse: 0, seed: Math.random() * 100 }
-          : { kind: sceneKind, form: 'square_slab', x: cx, y: cy, rot: ang, w: Math.round(156 * TERRAIN_SIZE_MUL), h: Math.round(138 * TERRAIN_SIZE_MUL), r: Math.round(52 * TERRAIN_SIZE_MUL), pulse: 0, seed: Math.random() * 100 }));
+          ? { kind: sceneKind, form, x: cx, y: cy, rot: ang, w: Math.round(228 * effMul), thick: Math.round(74 * effMul), r: Math.round(46 * effMul), pulse: 0, seed: Math.random() * 100 }
+          : { kind: sceneKind, form: 'square_slab', x: cx, y: cy, rot: ang, w: Math.round(156 * effMul), h: Math.round(138 * effMul), r: Math.round(52 * effMul), pulse: 0, seed: Math.random() * 100 }));
     terrains.push(ensureTerrainGeometry(spec));
-    if (rings.length < 40) rings.push({ x: cx, y: cy, r: Math.round((baseR + 24) * TERRAIN_SIZE_MUL), color: col, t: 0.35, maxT: 0.35, kind: 'star' });
+    if (rings.length < 40) rings.push({ x: cx, y: cy, r: Math.round((baseR + 24) * effMul), color: col, t: 0.35, maxT: 0.35, kind: 'star' });
     const nameMap = { lava: '🌋 首领震裂石砖！新增【嵌石熔火槽】封锁走位！', swamp: '🧪 首领灌注秘毒！新增【翡翠秘毒方渠】污染地面！', ice_sheet: '🧊 首领凝结地砖！新增【寒晶方砖台】改造战场！' };
     if (nameMap[sceneKind]) announce(nameMap[sceneKind], col, 2.6);
   }
@@ -1163,8 +1253,9 @@ function beginWave(retryMeta = null) {
   }
   if (typeof SpireAudio !== 'undefined') SpireAudio.syncScene(curScene.id);
   syncArenaAndZoom(true);
-  // 回合时长：蚀界生存试炼恒定 40 秒；常规层从第 1 层 30 秒起步，每层递增 +5 秒，最高封顶 60 秒
-  waveTime = survivalTrialWave ? 40 : getWaveDuration(wave);
+  // 回合时长：蚀界生存试炼按厄度阶梯递进（D1=30s -> D2=34s -> D3=38s -> D4=41s -> D5=45s）；常规层从第 1 层 30 秒起步，每层递增 +5 秒，最高封顶 60 秒
+  const trialDur = typeof getSurvivalTrialDuration === 'function' ? getSurvivalTrialDuration(diff) : 30;
+  waveTime = survivalTrialWave ? trialDur : getWaveDuration(wave);
   waveMaxTime = waveTime;
   lastUrgentSec = -1;
   spawnAcc = survivalTrialWave ? 0.85 : 0.25;
@@ -1175,6 +1266,7 @@ function beginWave(retryMeta = null) {
   player._fissureHitCd = 0; player._fissureLeapHintCd = 0;
   player.frostGauge = 0; player.frostLeaveGrace = 0; player.iceFreezeT = 0; player.frostThawImmT = 0;
   player.waveMythicAwakened = false;
+  player.waveBossCrateDropped = false;
   cam.x = player.x; cam.y = player.y;
   clampCam();
   player.hp = player.maxHp;
@@ -1188,7 +1280,7 @@ function beginWave(retryMeta = null) {
     SpireAssets.warmUltSprites();
   }
   enemies = []; bullets = []; eBullets = []; hazards = []; drops = []; spawns = []; turrets = []; mines = []; rings = []; trees = [];
-  relics = []; sporeZones = []; banners = []; bossCutscene = null; pendingBossCutscene = null; sandGustT = 0;
+  relics = []; sporeZones = []; spellZones = []; banners = []; bossCutscene = null; pendingBossCutscene = null; sandGustT = 0;
   texts = []; particles = []; sparks = []; lightnings = []; slashes = []; beams = []; stains = []; shells = [];
 
   // 保存本回合开战前快照（供阵亡后「重新开始本回合」无损回溯使用）
@@ -1243,14 +1335,14 @@ function beginWave(retryMeta = null) {
     }
   }
 
-  // 1~16 层主线剧情攀登与蚀界生存试炼期间禁用随机奇遇首领祭坛
-  const relicChance = (!survivalTrialWave && endlessMode && wave >= 2 && !isBossWave) ? Math.min(0.45, 0.25 + (player.luck || 0) * 0.0025) : 0;
-  relicSpawnT = Math.random() < relicChance ? (3.2 + Math.random() * 3.0) : -1;
+  // 主线剧情与无尽模式的非首领常规层均恢复随机奇遇召唤祭坛（包含无尽双主宰入池；仅蚀界生存试炼与固定首领层禁用）
+  const relicChance = (!survivalTrialWave && wave >= 2 && !isBossWave) ? Math.min(0.55, 0.36 + (player.luck || 0) * 0.003) : 0;
+  relicSpawnT = Math.random() < relicChance ? (3.0 + Math.random() * 2.8) : -1;
 
   if (survivalTrialWave) {
     const sTheme = getSurvivalTrialTheme();
-    logInfo('WAVE', `进入第 ${wave} 层【蚀界生存试炼】(40s · 怪物30% · 七类机关) · 场景=${curScene.name}(${curScene.id}) · 地图=${WORLD.w}x${WORLD.h}`);
-    announce(`🕯️ 蚀界生存试炼（40秒）· 浓雾提灯下躲避${sTheme.lanceName}、${sTheme.fissureName}与旋星裂光！`, '#72efdd', 4.2);
+    logInfo('WAVE', `进入第 ${wave} 层【蚀界生存试炼】(${trialDur}s · 怪物30% · 七类机关) · 场景=${curScene.name}(${curScene.id}) · 地图=${WORLD.w}x${WORLD.h}`);
+    announce(`🕯️ 蚀界生存试炼（${trialDur}秒）· 浓雾提灯下躲避${sTheme.lanceName}、${sTheme.fissureName}与旋星裂光！`, '#72efdd', 4.2);
   } else {
     const portalNote = portals.length >= 2 ? ' · 🌀双生晶裂门已开启' : '';
     const waveIntro = `${curScene.icon} 第 ${wave} 层：${curScene.name}${activeSceneEvent ? ' · ' + curScene.eventIcon + curScene.eventName : ''}${portalNote}`;
@@ -1384,6 +1476,9 @@ function beginWave(retryMeta = null) {
   if (cxm) cxm.classList.add('hidden');
   document.getElementById('pauseMenu').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmWave === 'function') {
+    SpireAssets.warmWave(wave, curScene && curScene.id);
+  }
   const bwWrap = document.getElementById('bossBarWrap');
   if (bwWrap) {
     bwWrap.classList.remove('mythic');
@@ -1403,9 +1498,13 @@ function spawnWarning(x, y, type, variant = '') {
     pushOutOfChasms(dummy);
     sx = Math.max(60, Math.min(WORLD.w - 60, dummy.x));
     sy = Math.max(60, Math.min(WORLD.h - 60, dummy.y));
+    if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.getMonsterSprite === 'function') {
+      SpireAssets.getMonsterSprite({ type: type || 'chaser', variant }, false);
+    }
   } else if (variant && typeof SpireAssets !== 'undefined' && SpireAssets) {
-    // 提前 0.9s 预热首领四帧精灵表与双形态立绘抠像，杜绝血月魔君等降临时首帧贴图未就绪
+    // 提前 0.9s 预热首领四帧精灵表、单帧精灵与双形态立绘抠像，杜绝降临时首帧贴图未就绪
     if (typeof SpireAssets.getBossSheet === 'function') SpireAssets.getBossSheet(variant, false);
+    if (typeof SpireAssets.getMonsterSprite === 'function') SpireAssets.getMonsterSprite({ type, variant }, false);
     if (typeof getBossAnimePortrait === 'function') {
       getBossAnimePortrait(variant, false);
       getBossAnimePortrait(variant, true);
@@ -1417,8 +1516,17 @@ function spawnWarning(x, y, type, variant = '') {
 const RANGED_ENEMY_TYPES = new Set(['shooter', 'sniper_bug', 'mortar', 'spinner', 'rad_scorpion', 'frost_wisp', 'spore_mother', 'summoner']);
 const NEEDLE_RANGED_TYPES = new Set(['frost_wisp', 'shooter', 'rad_scorpion', 'sniper_bug']);
 const NEEDLE_RANGED_MUL = 0.70;
+// 潜渊骨蛇 sand_worm 与旋刃陀螺偶 spinner 刷新概率回调至 0.80；双形态狂化精英怪 e.elite 刷出系数回调至 0.70
 const YELLOW_ARROW_MOB_MUL = 0.80;
-const ELITE_MOB_COUNT_MUL = 0.80;
+const YELLOW_RANGED_SPINNER_MUL = 0.80;
+const ELITE_MOB_COUNT_MUL = 0.70;
+const FLOOR16_BOSS_DODGE = 0.25;
+if (typeof globalThis !== 'undefined') {
+  globalThis.YELLOW_ARROW_MOB_MUL = YELLOW_ARROW_MOB_MUL;
+  globalThis.YELLOW_RANGED_SPINNER_MUL = YELLOW_RANGED_SPINNER_MUL;
+  globalThis.ELITE_MOB_COUNT_MUL = ELITE_MOB_COUNT_MUL;
+  globalThis.FLOOR16_BOSS_DODGE = FLOOR16_BOSS_DODGE;
+}
 const TANK_MELEE_TYPES = new Set(['shielder', 'brute', 'juggernaut', 'iron_guard', 'charger', 'splitter']);
 const BASIC_FODDER_MELEE_TYPES = new Set(['chaser', 'stalker', 'swarmer', 'magma_imp']);
 const EARLY_TANK_MELEE_MUL = 0.85;
@@ -1457,9 +1565,11 @@ function pickWaveEnemyType(wv) {
   const isExclRanged = !!(curScene.exclMob && RANGED_ENEMY_TYPES.has(curScene.exclMob));
   const isExclNeedle = !!(curScene.exclMob && NEEDLE_RANGED_TYPES.has(curScene.exclMob));
   const isExclWorm = curScene.exclMob === 'sand_worm';
+  const isExclSpinner = curScene.exclMob === 'spinner';
   const exclProb = (isExclRanged ? (0.14 * rangedCountMul) : 0.20)
     * (isExclNeedle ? NEEDLE_RANGED_MUL : 1.0)
-    * (isExclWorm ? YELLOW_ARROW_MOB_MUL : 1.0);
+    * (isExclWorm ? YELLOW_ARROW_MOB_MUL : 1.0)
+    * (isExclSpinner ? YELLOW_RANGED_SPINNER_MUL : 1.0);
   if (sceneMobEnabled && curScene.exclMob && Math.random() < exclProb) {
     if (!isExclRanged || allowRanged) {
       return curScene.exclMob;
@@ -1516,11 +1626,15 @@ function pickWaveEnemyType(wv) {
     rangedTable.push(['spore_mother', 4.3]);
   }
 
-  // 白芯针梭类远程怪数量减少 30% + 黄色小箭头怪（潜渊骨蛇 sand_worm）数量减少 20%，空出权重 1:1 等额补充至常规近战怪（怪物总量 100% 不变）
+  // 白芯针梭类远程怪数量减少 30% + 黄色小箭头怪（潜渊骨蛇 sand_worm）再减少 20% + 黄色回旋弹幕远程怪（spinner）减少 20%，空出权重 1:1 等额补充至常规近战怪（怪物总量 100% 不变）
   let freedToAgileW = 0;
   for (let i = 0; i < rangedTable.length; i++) {
     if (NEEDLE_RANGED_TYPES.has(rangedTable[i][0])) {
       const cut = rangedTable[i][1] * (1 - NEEDLE_RANGED_MUL);
+      rangedTable[i][1] -= cut;
+      freedToAgileW += cut;
+    } else if (rangedTable[i][0] === 'spinner') {
+      const cut = rangedTable[i][1] * (1 - YELLOW_RANGED_SPINNER_MUL);
       rangedTable[i][1] -= cut;
       freedToAgileW += cut;
     }
@@ -1600,6 +1714,7 @@ function spawnHazard(x, y, r, dmg, delay = 1.22, extra = {}) {
   const cx = Math.max(pad, Math.min(WORLD.w - pad, x));
   const cy = Math.max(pad, Math.min(WORLD.h - pad, y));
   const autoSrcKey = extra.srcKey || ((typeof _activeEnemyActor !== 'undefined' && _activeEnemyActor) ? (_activeEnemyActor.variant || _activeEnemyActor.type) : 'hazard');
+  const autoBossOwner = extra.bossOwner || ((typeof _activeEnemyActor !== 'undefined' && _activeEnemyActor && typeof _activeEnemyActor === 'object' && _activeEnemyActor.type === 'boss') ? _activeEnemyActor : null);
   hazards.push({
     x: cx, y: cy, r,
     style: extra.style || 'circle',
@@ -1610,6 +1725,11 @@ function spawnHazard(x, y, r, dmg, delay = 1.22, extra = {}) {
     srcX: extra.srcX,
     srcY: extra.srcY,
     srcKey: autoSrcKey,
+    bossOwner: autoBossOwner,
+    chainStep: extra.chainStep || 0,
+    chainTotal: extra.chainTotal || 0,
+    prevX: extra.prevX,
+    prevY: extra.prevY,
     shrapnel: extra.shrapnel || 0,
     innerSafeR: extra.innerSafeR || 0,
     dmg: Math.max(3, Math.round(dmg)),
@@ -1621,22 +1741,57 @@ function spawnHazard(x, y, r, dmg, delay = 1.22, extra = {}) {
 }
 
 // ============================================================================
-// 🕯️ 蚀界生存试炼（40秒高密度渡劫：七类天外弹道与地形裂隙 · 密度+50% · 陷阱伤害+20%）
+// 🕯️ 蚀界生存试炼（40秒高密度渡劫：多形态差异化预警体系 · 密度+50% · 陷阱伤害+20%）
 // ============================================================================
 const SURVIVAL_TRAP_DMG_MUL = 1.20;
 
+// 六大类生存陷阱采用高对比度色相与几何符号分离，杜绝预警混同：
+// 1. 天外贯星剑梭 (lance): 绯红虚线流光飞矢 (#ff4d6d)
+// 2. 平行天罚光栅 (corridor_beam): 曜金双轨斜纹激光走廊 (#fbbf24)
+// 3. 地脉撕裂裂谷 (fissure): 赤橙锯齿分叉断层 (#ff7b29)
+// 4. 旋星十字裂光 (cross_beam): 紫电顺/逆时针导引十字 (#c084fc)
+// 5. 天外连环坠星 (trap_meteor): 冰青步进星链 (#38bdf8) -> 末发金星破片 (#f59e0b)
+// 6. 游弋冥渊雷涡 (vortex_orb): 青碧/紫晶双色漩涡球 (#2dd4bf / #a855f7)
 function getSurvivalTrialTheme() {
   const scId = (curScene && curScene.id) || 'foundry';
   if (scId === 'foundry') {
-    return { lanceName: '赤铁贯星剑梭', fissureName: '熔火地脉裂隙', lanceCol: '#fb7185', lanceCore: '#fff1f2', fissureCol: '#ff6b35', fissureDeep: '#2b090e', sigilStyle: 'flame_pillar' };
+    return {
+      lanceName: '赤铁贯星剑梭', fissureName: '熔火地脉裂隙',
+      lanceCol: '#ff4d6d', lanceCore: '#ffe4e6',
+      corridorCol: '#fbbf24', corridorCore: '#fef9c3',
+      fissureCol: '#ff7b29', fissureDeep: '#2b090e',
+      crossCol: '#c084fc', meteorCol: '#38bdf8', vortexCol: '#2dd4bf',
+      sigilStyle: 'flame_pillar'
+    };
   }
   if (scId === 'glacier') {
-    return { lanceName: '极光破界冰矛', fissureName: '永冻冰渊裂谷', lanceCol: '#38bdf8', lanceCore: '#f0f9ff', fissureCol: '#72efdd', fissureDeep: '#071b2c', sigilStyle: 'frost_hex' };
+    return {
+      lanceName: '极光破界冰矛', fissureName: '永冻冰渊裂谷',
+      lanceCol: '#ff4d6d', lanceCore: '#ffe4e6',
+      corridorCol: '#fbbf24', corridorCore: '#fef9c3',
+      fissureCol: '#ff7b29', fissureDeep: '#071b2c',
+      crossCol: '#c084fc', meteorCol: '#38bdf8', vortexCol: '#2dd4bf',
+      sigilStyle: 'frost_hex'
+    };
   }
   if (scId === 'wasteland') {
-    return { lanceName: '逆钟紫电星梭', fissureName: '时空断层裂隙', lanceCol: '#c084fc', lanceCore: '#faf5ff', fissureCol: '#fde68a', fissureDeep: '#1a0b2e', sigilStyle: 'thunder_sigil' };
+    return {
+      lanceName: '逆钟紫电星梭', fissureName: '时空断层裂隙',
+      lanceCol: '#ff4d6d', lanceCore: '#ffe4e6',
+      corridorCol: '#fbbf24', corridorCore: '#fef9c3',
+      fissureCol: '#ff7b29', fissureDeep: '#1a0b2e',
+      crossCol: '#c084fc', meteorCol: '#38bdf8', vortexCol: '#2dd4bf',
+      sigilStyle: 'thunder_sigil'
+    };
   }
-  return { lanceName: '日蚀裁决圣枪', fissureName: '归墟圣所裂痕', lanceCol: '#f6d379', lanceCore: '#fffbeb', fissureCol: '#f43f5e', fissureDeep: '#1c0816', sigilStyle: 'thunder_sigil' };
+  return {
+    lanceName: '日蚀裁决圣枪', fissureName: '归墟圣所裂痕',
+    lanceCol: '#ff4d6d', lanceCore: '#ffe4e6',
+    corridorCol: '#fbbf24', corridorCore: '#fef9c3',
+    fissureCol: '#ff7b29', fissureDeep: '#1c0816',
+    crossCol: '#c084fc', meteorCol: '#38bdf8', vortexCol: '#2dd4bf',
+    sigilStyle: 'thunder_sigil'
+  };
 }
 
 function getSurvivalHazardBaseDmg() {
@@ -1776,8 +1931,8 @@ function spawnSurvivalCorridor(phase) {
       ang, halfW,
       windupT: windup, maxWindup: windup,
       dmg: baseDmg,
-      color: theme.lanceCol,
-      coreColor: theme.lanceCore
+      color: theme.corridorCol || '#fbbf24',
+      coreColor: theme.corridorCore || '#fef9c3'
     });
   }
   beep(480, 0.07, 'sawtooth', 0.035);
@@ -1800,7 +1955,7 @@ function spawnSurvivalCrossJudgment(phase) {
     rotSpd: rotDir * (phase >= 3 ? 0.52 : 0.40),
     halfLen: phase >= 3 ? 215 : 190,
     halfW: 16,
-    color: theme.fissureCol,
+    color: theme.crossCol || '#c084fc',
     srcKey: 'trap_cross_star'
   });
 }
@@ -1814,6 +1969,7 @@ function spawnSurvivalMeteorChain(phase) {
   const dirA = mvLen > 24 ? Math.atan2(player.vy, player.vx) : (Math.random() * Math.PI * 2);
   const steps = phase >= 3 ? 4 : 3;
   const stepDist = 74;
+  let lastMX = NaN, lastMY = NaN;
   for (let s = 0; s < steps; s++) {
     const jitterA = dirA + (s - 1) * 0.16;
     const dist = 38 + s * stepDist;
@@ -1823,9 +1979,15 @@ function spawnSurvivalMeteorChain(phase) {
     spawnHazard(mx, my, isLast ? 74 : 64, baseDmg, 0.84 + s * 0.22, {
       style: isLast ? 'mortar_shell' : (theme.sigilStyle || 'thunder_sigil'),
       shrapnel: isLast ? 4 : 0,
-      color: isLast ? '#ffd166' : theme.lanceCol,
+      chainStep: s + 1,
+      chainTotal: steps,
+      prevX: s > 0 ? lastMX : undefined,
+      prevY: s > 0 ? lastMY : undefined,
+      color: isLast ? '#f59e0b' : (theme.meteorCol || '#38bdf8'),
       srcKey: 'trap_meteor'
     });
+    lastMX = mx;
+    lastMY = my;
   }
 }
 
@@ -1850,7 +2012,7 @@ function spawnSurvivalAbyssVortex(phase) {
       life: 4.8,
       dmg: baseDmg,
       r: 10.6, hitR: 8.8,
-      color: k % 2 === 0 ? '#c084fc' : theme.fissureCol,
+      color: k % 2 === 0 ? (theme.vortexCol || '#2dd4bf') : '#a855f7',
       shape: 'orb',
       rot: Math.random() * 6.28,
       isCelestial: true,
@@ -1886,6 +2048,9 @@ function createEnemy(x, y, type, variant = '') {
   const clampedStoryIdx = Math.min(15, wIdx);
   const s = hpBaseMul * (1 + wIdx * hpLinearSlope) * midLateHpMul * earlyMobHpMul * endlessMul * diff.hpMul;
   const dm = (1 + clampedStoryIdx * 0.105 + Math.max(0, Math.min(16, wave) - 7) * 0.048) * midLateDmgMul * (wave > MAX_WAVE ? Math.pow(1.10, wave - MAX_WAVE) : 1) * diff.dmgMul * monsterDmgMul;
+  // 普通与特异小怪（非 Boss / 非统领 / 非奇遇首领）攻击力整体下调 10%（MOB_DMG_MUL = 0.90）
+  const mobDmgMul = typeof MOB_DMG_MUL === 'number' ? MOB_DMG_MUL : 0.90;
+  const mobDm = dm * mobDmgMul;
   const monsterSpdMul = typeof MONSTER_SPD_MUL === 'number' ? MONSTER_SPD_MUL : 0.80;
   const sm = (1 + Math.min(0.18, wIdx * 0.012)) * diff.spdMul * monsterSpdMul;
   const base = {
@@ -1902,17 +2067,18 @@ function createEnemy(x, y, type, variant = '') {
     for (let k = 0; k < swCnt; k++) {
       const ox = x + (Math.random() - 0.5) * 54, oy = y + (Math.random() - 0.5) * 54;
       const swMat = +((k === 0 ? 0.90 : 0.45) * lateCoinMul * trialCoinMul).toFixed(2);
-      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * dm)), color: '#ffbe0b', type, mat: swMat });
+      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * mobDm)), color: '#ffbe0b', type, mat: swMat });
     }
     addBurst(x, y, '#ff4d6d', 5, 85);
     return;
   }
 
   let ent;
-  const mythicRate = PHASE2_AWAKEN_RATE;
+  const mythicRate = typeof getPhase2AwakenRate === 'function' ? getPhase2AwakenRate(diff) : PHASE2_AWAKEN_RATE;
   const bossDefs = getBossDefs();
   const miniBossDefs = getMiniBossDefs();
   const specialRelics = getSpecialRelics();
+  const bossSizeMul = typeof BOSS_SIZE_MUL === 'number' ? BOSS_SIZE_MUL : 1.20;
   if (type === 'boss') {
     const bKey = (variant && bossDefs[variant]) ? variant : getFixedActBossForWave(wave);
     const bDef = bossDefs[bKey] || FALLBACK_BOSS_DEFS.butcher;
@@ -1927,16 +2093,23 @@ function createEnemy(x, y, type, variant = '') {
     else baseBossHp = 14800 + Math.max(0, wave - MAX_WAVE) * 3600;
     const bhp = Math.round(baseBossHp * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinScale);
     const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.6 : (wave <= 12 ? 11.2 : 12.6));
-    // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；无尽保留随机神话觉醒。
-    const phase2Chance = isStoryBoss ? 1 : mythicRate;
+    // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；D5 第 16 层（主线与无尽）首领 100% 必定进入二阶段！
+    const isD5Floor16Boss = (wave === 16 && typeof diff !== 'undefined' && diff && diff.id === 5);
+    const forcePhase2 = isStoryBoss || isD5Floor16Boss;
+    const phase2Chance = forcePhase2 ? 1 : mythicRate;
+    const bossDodge = (wave === 16 || bKey === 'solar_seraph')
+      ? (typeof getFloor16BossDodge === 'function' ? getFloor16BossDodge(diff) : 0)
+      : 0;
     ent = {
-      ...base, r: 56, hp: bhp, maxHp: bhp, spd: bDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
+      ...base, r: Math.round(56 * bossSizeMul), hp: bhp, maxHp: bhp, spd: bDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
+      dodge: bossDodge,
       color: bDef.color, type: 'boss', variant: bKey,
       bossTitle: `${bDef.icon} ${bDef.name}${isStoryBoss ? ' · 第一阶段' : ''}`,
       storyPhaseBoss: isStoryBoss, storyStage: isStoryBoss ? 1 : 0,
       dashT: 2.5, sumT: 5.8, meteorT: 4.1, skillT: 2.0, sigSkillT: 4.2, terrainCd: 6.2, ringCd: 4.9,
-      venomCd: 4.4, p2SkillT: 2.8,
-      burstLeft: 0, burstCd: 0, canPhase2: Math.random() < phase2Chance, mythicPhase2: false,
+      venomCd: 4.4, p2SkillT: 2.8, arenaMechCd: (bKey === 'solar_seraph' ? 2.5 : 4.2),
+      burstLeft: 0, burstCd: 0, canPhase2: forcePhase2 ? true : (Math.random() < phase2Chance), mythicPhase2: false,
+      _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
       mat: wave <= 4 ? 26 : (wave <= 8 ? 34 : (wave <= 12 ? 42 : 52))
     };
   } else if (type === 'mini_boss') {
@@ -1945,7 +2118,7 @@ function createEnemy(x, y, type, variant = '') {
     const twinMiniScale = (diff.dualElite && wave >= 10) ? 0.70 : 1;
     const mhp = Math.round((460 + wave * 95 + Math.pow(Math.max(0, Math.min(16, wave) - 3), 2.05) * 32) * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinMiniScale);
     ent = {
-      ...base, r: 45, hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(8.4 * dm),
+      ...base, r: Math.round(45 * bossSizeMul), hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(8.4 * dm),
       color: mDef.color, type: 'mini_boss', variant: mKey, bossTitle: `${mDef.icon} ${mDef.name}`,
       dashT: 2.3, meteorT: 4.4, skillT: 1.9, ringCd: 5.0, venomCd: 4.0, p2SkillT: 2.6,
       canPhase2: Math.random() < mythicRate, mythicPhase2: false, mat: 24
@@ -1953,69 +2126,77 @@ function createEnemy(x, y, type, variant = '') {
   } else if (type === 'special_boss') {
     const relDef = specialRelics.find(r => r.bossId === variant) || specialRelics[0];
     const shp = Math.round((960 + wave * 240 + Math.pow(wave, 1.92) * 14) * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul);
-    const sSpd = relDef.bossId === 'crimson_lord' ? 98 : (relDef.bossId === 'golden_golem' ? 74 : 86);
+    const sSpd = relDef.bossId === 'crimson_lord' ? 98
+      : (relDef.bossId === 'golden_golem' ? 74
+        : (relDef.bossId === 'mech_colossus' ? 78
+          : (relDef.bossId === 'plague_empress' ? 85 : 86)));
+    const sMat = relDef.bossId === 'golden_golem' ? 48
+      : (relDef.bossId === 'mech_colossus' ? 34
+        : (relDef.bossId === 'plague_empress' ? 32
+          : (relDef.bossId === 'crimson_lord' ? 30 : 26)));
     ent = {
-      ...base, r: 52, hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(9.0 * dm),
+      ...base, r: Math.round(52 * bossSizeMul), hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(9.0 * dm),
       color: relDef.bossColor, type: 'special_boss', variant: relDef.bossId, bossTitle: `${relDef.bossIcon} ${relDef.bossName}`,
-      dashT: 2.1, skillT: 1.9, meteorT: 3.9, sumT: 5.8, terrainCd: 6.2, ringCd: 4.8,
-      venomCd: 4.2, p2SkillT: 2.6,
+      dashT: 2.1, skillT: 1.9, sigSkillT: 3.8, meteorT: 3.9, sumT: 5.8, terrainCd: 6.2, ringCd: 4.8,
+      venomCd: 4.2, p2SkillT: 2.6, arenaMechCd: (relDef.bossId === 'abyss_devourer' ? 2.4 : 4.0),
+      burstLeft: 0, burstCd: 0, _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
       goldStage: 4, canPhase2: Math.random() < mythicRate, mythicPhase2: false,
-      mat: relDef.bossId === 'golden_golem' ? 48 : (relDef.bossId === 'crimson_lord' ? 30 : 26)
+      mat: sMat
     };
   } else if (type === 'stalker') {
-    ent = { ...base, r: 21, hp: 20.0 * s, maxHp: 20.0 * s, spd: 138 * sm, dmg: Math.round(5.0 * dm), color: '#06d6a0', type, slashCd: 0.7, stepCd: 2.0 + Math.random(), zigT: 0.35 + Math.random() * 0.25, zigDir: Math.random() < 0.5 ? 1 : -1, mat: 2 };
+    ent = { ...base, r: 21, hp: 20.0 * s, maxHp: 20.0 * s, spd: 138 * sm, dmg: Math.round(5.0 * mobDm), color: '#06d6a0', type, slashCd: 0.7, stepCd: 2.0 + Math.random(), zigT: 0.35 + Math.random() * 0.25, zigDir: Math.random() < 0.5 ? 1 : -1, mat: 2 };
   } else if (type === 'iron_guard') {
-    ent = { ...base, r: 29, hp: 60 * s, maxHp: 60 * s, spd: 66 * sm, dmg: Math.round(6.6 * dm), color: '#e11d48', type, cleaveCd: 2.0 + Math.random() * 0.6, cleaveWindup: 0, mat: 3 };
+    ent = { ...base, r: 29, hp: 60 * s, maxHp: 60 * s, spd: 66 * sm, dmg: Math.round(6.6 * mobDm), color: '#e11d48', type, cleaveCd: 2.0 + Math.random() * 0.6, cleaveWindup: 0, mat: 3 };
   } else if (type === 'frost_knight') {
-    ent = { ...base, r: 26, hp: 46 * s, maxHp: 46 * s, spd: 106 * sm, dmg: Math.round(6.2 * dm), color: '#38bdf8', type, thrustCd: 1.85 + Math.random() * 0.6, thrustWindup: 0, mat: 3 };
+    ent = { ...base, r: 26, hp: 46 * s, maxHp: 46 * s, spd: 106 * sm, dmg: Math.round(6.2 * mobDm), color: '#38bdf8', type, thrustCd: 1.85 + Math.random() * 0.6, thrustWindup: 0, mat: 3 };
   } else if (type === 'blade_duelist') {
-    ent = { ...base, r: 20, hp: 24 * s, maxHp: 24 * s, spd: 132 * sm, dmg: Math.round(5.4 * dm), color: '#f59e0b', type, whirlCd: 2.1 + Math.random() * 0.6, whirlT: 0, whirlSpin: 0, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
+    ent = { ...base, r: 20, hp: 24 * s, maxHp: 24 * s, spd: 132 * sm, dmg: Math.round(5.4 * mobDm), color: '#f59e0b', type, whirlCd: 2.1 + Math.random() * 0.6, whirlT: 0, whirlSpin: 0, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'shadow_reaper') {
-    ent = { ...base, r: 25, hp: 38 * s, maxHp: 38 * s, spd: 94 * sm, dmg: Math.round(6.8 * dm), color: '#a855f7', type, blinkCd: 2.6 + Math.random() * 0.8, reapWindup: 0, mat: 4 };
+    ent = { ...base, r: 25, hp: 38 * s, maxHp: 38 * s, spd: 94 * sm, dmg: Math.round(6.8 * mobDm), color: '#a855f7', type, blinkCd: 2.6 + Math.random() * 0.8, reapWindup: 0, mat: 4 };
   } else if (type === 'sniper_bug') {
-    ent = { ...base, r: 22, hp: 13.0 * s, maxHp: 13.0 * s, spd: 54 * sm, dmg: Math.round(6.8 * dm), color: '#ef233c', type, shotT: 2.1 + Math.random() * 0.8, aimA: undefined, aimMaxT: 0.72, recoilT: 0, mat: 3 };
+    ent = { ...base, r: 22, hp: 13.0 * s, maxHp: 13.0 * s, spd: 54 * sm, dmg: Math.round(6.8 * mobDm), color: '#ef233c', type, shotT: 2.1 + Math.random() * 0.8, aimA: undefined, aimMaxT: 0.72, recoilT: 0, mat: 3 };
   } else if (type === 'spinner') {
-    ent = { ...base, r: 26, hp: 28 * s, maxHp: 28 * s, spd: 74 * sm, dmg: Math.round(5.0 * dm), color: '#f59e0b', type, shotT: 2.1 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
+    ent = { ...base, r: 26, hp: 28 * s, maxHp: 28 * s, spd: 74 * sm, dmg: Math.round(5.0 * mobDm), color: '#f59e0b', type, shotT: 2.1 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'juggernaut') {
     // 泰坦超巨型血牛（r=54 山岳体型，极沉缓霸体推进 spd=34，十字四向地裂震波）
-    ent = { ...base, r: 54, hp: 340 * s, maxHp: 340 * s, spd: 34 * sm, dmg: Math.round(11.6 * dm), color: '#475569', type, slamCd: 3.1, slamWindup: 0, mat: 7 };
+    ent = { ...base, r: 54, hp: 340 * s, maxHp: 340 * s, spd: 34 * sm, dmg: Math.round(11.6 * mobDm), color: '#475569', type, slamCd: 3.1, slamWindup: 0, mat: 7 };
   } else if (type === 'rad_scorpion') {
-    ent = { ...base, r: 28, hp: 36 * s, maxHp: 36 * s, spd: 70 * sm, dmg: Math.round(5.5 * dm), color: '#a3e635', type, shotT: 2.0 + Math.random() * 0.8, mat: 3 };
+    ent = { ...base, r: 28, hp: 36 * s, maxHp: 36 * s, spd: 70 * sm, dmg: Math.round(5.5 * mobDm), color: '#a3e635', type, shotT: 2.0 + Math.random() * 0.8, mat: 3 };
   } else if (type === 'sand_worm') {
     // 潜渊遁地奇袭怪（钻入地底化作高速黑水潜影突进，破土震爆并迸射斜十字骨刺）
-    ent = { ...base, r: 26, hp: 48 * s, maxHp: 48 * s, spd: 104 * sm, dmg: Math.round(6.0 * dm), color: '#f4a261', type, burrowCd: 2.0 + Math.random() * 0.7, burrowWindup: 0, burrowT: 0, mat: 3 };
+    ent = { ...base, r: 26, hp: 48 * s, maxHp: 48 * s, spd: 104 * sm, dmg: Math.round(6.0 * mobDm), color: '#f4a261', type, burrowCd: 2.0 + Math.random() * 0.7, burrowWindup: 0, burrowT: 0, mat: 3 };
   } else if (type === 'frost_wisp') {
-    ent = { ...base, r: 22, hp: 17 * s, maxHp: 17 * s, spd: 82 * sm, dmg: Math.round(4.6 * dm), color: '#48cae4', type, shotT: 1.8 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
+    ent = { ...base, r: 22, hp: 17 * s, maxHp: 17 * s, spd: 82 * sm, dmg: Math.round(4.6 * mobDm), color: '#48cae4', type, shotT: 1.8 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'magma_imp') {
-    ent = { ...base, r: 21, hp: 20 * s, maxHp: 20 * s, spd: 118 * sm, dmg: Math.round(5.8 * dm), color: '#fb5607', type, mat: 3 };
+    ent = { ...base, r: 21, hp: 20 * s, maxHp: 20 * s, spd: 118 * sm, dmg: Math.round(5.8 * mobDm), color: '#fb5607', type, mat: 3 };
   } else if (type === 'spore_mother') {
-    ent = { ...base, r: 35, hp: 56 * s, maxHp: 56 * s, spd: 48 * sm, dmg: Math.round(5.8 * dm), color: '#c77dff', type, shotT: 2.4 + Math.random() * 0.9, mat: 4 };
+    ent = { ...base, r: 35, hp: 56 * s, maxHp: 56 * s, spd: 48 * sm, dmg: Math.round(5.8 * mobDm), color: '#c77dff', type, shotT: 2.4 + Math.random() * 0.9, mat: 4 };
   } else if (type === 'charger') {
     // 健硕重骑（r=31，快步 spd=92，尖角楔阵冲锋 + 收招前挑弧斩）
-    ent = { ...base, r: 31, hp: 68 * s, maxHp: 68 * s, spd: 92 * sm, dmg: Math.round(6.8 * dm), color: '#f77f00', type, dashT: 1.85 + Math.random() * 0.75, mat: 3 };
+    ent = { ...base, r: 31, hp: 68 * s, maxHp: 68 * s, spd: 92 * sm, dmg: Math.round(6.8 * mobDm), color: '#f77f00', type, dashT: 1.85 + Math.random() * 0.75, mat: 3 };
   } else if (type === 'shooter') {
-    ent = { ...base, r: 23, hp: 13.5 * s, maxHp: 13.5 * s, spd: 62 * sm, dmg: Math.round(4.2 * dm), color: '#00b4d8', type, shotT: 1.6 + Math.random() * 0.9, mat: 2 };
+    ent = { ...base, r: 23, hp: 13.5 * s, maxHp: 13.5 * s, spd: 62 * sm, dmg: Math.round(4.2 * mobDm), color: '#00b4d8', type, shotT: 1.6 + Math.random() * 0.9, mat: 2 };
   } else if (type === 'mortar') {
-    ent = { ...base, r: 27, hp: 24 * s, maxHp: 24 * s, spd: 52 * sm, dmg: Math.round(7.8 * dm), color: '#ff9f1c', type, shotT: 2.0 + Math.random() * 1.0, mat: 3 };
+    ent = { ...base, r: 27, hp: 24 * s, maxHp: 24 * s, spd: 52 * sm, dmg: Math.round(7.8 * mobDm), color: '#ff9f1c', type, shotT: 2.0 + Math.random() * 1.0, mat: 3 };
   } else if (type === 'bomber') {
-    ent = { ...base, r: 22, hp: 18 * s, maxHp: 18 * s, spd: 114 * sm, dmg: Math.round(8.8 * dm), color: '#ff4d6d', type, primed: false, fuseT: 1.25, maxFuseT: 1.25, blastR: 86, mat: 2 };
+    ent = { ...base, r: 22, hp: 18 * s, maxHp: 18 * s, spd: 114 * sm, dmg: Math.round(8.8 * mobDm), color: '#ff4d6d', type, primed: false, fuseT: 1.25, maxFuseT: 1.25, blastR: 86, mat: 2 };
   } else if (type === 'splitter') {
     // 宽大弹性软泥（r=34，蓄蹲停顿—猛然蛙跃逼近，纯近战不射子弹）
-    ent = { ...base, r: 34, hp: 58 * s, maxHp: 58 * s, spd: 68 * sm, dmg: Math.round(5.0 * dm), color: '#52b788', type, hopT: 0.9 + Math.random() * 0.5, mat: 3 };
+    ent = { ...base, r: 34, hp: 58 * s, maxHp: 58 * s, spd: 68 * sm, dmg: Math.round(5.0 * mobDm), color: '#52b788', type, hopT: 0.9 + Math.random() * 0.5, mat: 3 };
   } else if (type === 'mini_slime') {
-    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 140 * sm, dmg: Math.max(2, Math.round(2.6 * dm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
+    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 140 * sm, dmg: Math.max(2, Math.round(2.6 * mobDm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
   } else if (type === 'shielder') {
     // 紧凑高甲塔盾卫（r=28，稳健 spd=54，近身发动重盾猛击震波）
-    ent = { ...base, r: 28, hp: 94 * s, maxHp: 94 * s, spd: 54 * sm, dmg: Math.round(6.2 * dm), color: '#5c677d', type, bashCd: 2.1 + Math.random() * 0.5, bashWindup: 0, mat: 4 };
+    ent = { ...base, r: 28, hp: 94 * s, maxHp: 94 * s, spd: 54 * sm, dmg: Math.round(6.2 * mobDm), color: '#5c677d', type, bashCd: 2.1 + Math.random() * 0.5, bashWindup: 0, mat: 4 };
   } else if (type === 'summoner') {
-    ent = { ...base, r: 25, hp: 22 * s, maxHp: 22 * s, spd: 54 * sm, dmg: Math.round(3.5 * dm), color: '#7209b7', type, sumT: 3.1 + Math.random(), boltT: 2.4, mat: 4 };
+    ent = { ...base, r: 25, hp: 22 * s, maxHp: 22 * s, spd: 54 * sm, dmg: Math.round(3.5 * mobDm), color: '#7209b7', type, sumT: 3.1 + Math.random(), boltT: 2.4, mat: 4 };
   } else if (type === 'healer') {
-    ent = { ...base, r: 24, hp: 28 * s, maxHp: 28 * s, spd: 62 * sm, dmg: Math.round(3.0 * dm), color: '#2ec4b6', type, healT: 2.5, mat: 4 };
+    ent = { ...base, r: 24, hp: 28 * s, maxHp: 28 * s, spd: 62 * sm, dmg: Math.round(3.0 * mobDm), color: '#2ec4b6', type, healT: 2.5, mat: 4 };
   } else if (type === 'brute') {
     // 高大狂暴重锤卫（r=39，残血 <65% 狂暴提速 + 前向 90° 扇形锥区裂地重锤）
-    ent = { ...base, r: 39, hp: 190 * s, maxHp: 190 * s, spd: 64 * sm, dmg: Math.round(9.4 * dm), color: '#9d4edd', type, slamCd: 2.5, slamWindup: 0, bargeCd: 2.1 + Math.random() * 0.7, bargeT: 0, mat: 5 };
+    ent = { ...base, r: 39, hp: 190 * s, maxHp: 190 * s, spd: 64 * sm, dmg: Math.round(9.4 * mobDm), color: '#9d4edd', type, slamCd: 2.5, slamWindup: 0, bargeCd: 2.1 + Math.random() * 0.7, bargeT: 0, mat: 5 };
   } else {
-    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(3.8 * dm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
+    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(3.8 * mobDm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
   }
 
   // 中后期普通与特异小怪晶石产出下调约 20%（配合 dropCrystals 概率单枚掉落，不再爆大号金币堆；蚀界试炼小怪额外补偿晶石）
@@ -2023,25 +2204,51 @@ function createEnemy(x, y, type, variant = '') {
   if (!isBossLike) {
     ent.mat = +((ent.mat || 0) * lateCoinMul * trialCoinMul).toFixed(2);
   }
-  // 第 3 波起按难度刷出【狂化精英词缀怪】（蚀界生存试炼期间禁用狂化精英词缀，保持纯粹走位闪避节奏）
+  // 第 3 波起按难度刷出双形态【狂化精英词缀怪】（蚀界生存试炼期间禁用狂化精英词缀）：
+  // 1) frenzy（血怒狂化 · 隐隐发红）：相对基础精英形态额外获得 血量+20%、移速+20%、攻速+20%（无亡语弹）；
+  // 2) deathrattle（金梭亡语 · 隐隐泛黄）：标准移速与攻速，阵亡时向四周迸射 4 枚黄色亡语金梭小箭头。
   const canElite = !survivalTrialWave && wave >= 3 && !isBossLike && type !== 'mini_slime' && type !== 'bomber' && (type !== 'juggernaut' || wave >= 8);
   const rawEChance = (diff.eliteRate || 0.05) + Math.min(0.12, (wave - 3) * 0.011);
   const lateEliteAdd = wave >= 10 ? (0.045 + Math.min(0.085, (wave - 10) * 0.013)) : 0;
   const baseEChance = wave === 3 ? rawEChance * 0.40 : (wave === 4 ? rawEChance * 0.55 : (wave === 5 ? rawEChance * 0.72 : (rawEChance + lateEliteAdd)));
   const eChance = baseEChance * ELITE_MOB_COUNT_MUL;
   if (canElite && Math.random() < eChance) {
-    ent.elite = true;
-    ent.r = Math.round(ent.r * 1.20);
-    ent.hp = Math.round(ent.hp * (wave >= 10 ? 2.45 : (wave <= 5 ? 1.90 : 2.15)));
-    ent.maxHp = ent.hp;
-    ent.spd *= (wave >= 10 ? 1.09 : 1.05);
-    ent.dmg = Math.round(ent.dmg * (wave >= 10 ? 1.32 : (wave <= 5 ? 1.15 : 1.22)));
-    ent.mat = +((ent.mat || 0) * 1.45).toFixed(2);
+    applyEliteAffix(ent);
   }
 
   enemies.push(ent);
-  addBurst(x, y, ent.elite ? '#ffd166' : ent.color, isBossLike ? 16 : (ent.elite ? 8 : 5), isBossLike ? 150 : 85);
+  const spawnBurstCol = ent.elite ? (ent.eliteKind === 'frenzy' ? '#ff4d6d' : '#fbbf24') : ent.color;
+  addBurst(x, y, spawnBurstCol, isBossLike ? 16 : (ent.elite ? 8 : 5), isBossLike ? 150 : 85);
   return ent;
+}
+
+const ELITE_FRENZY_BONUS_MUL = 1.20;
+function applyEliteAffix(ent, forcedKind = '') {
+  if (!ent) return ent;
+  const kind = (forcedKind === 'frenzy' || forcedKind === 'deathrattle')
+    ? forcedKind
+    : (Math.random() < 0.50 ? 'frenzy' : 'deathrattle');
+  ent.elite = true;
+  ent.eliteKind = kind;
+  ent.r = Math.round(ent.r * 1.18);
+  const baseEliteHp = Math.max(4, Math.round(ent.hp * (wave >= 10 ? 2.05 : (wave <= 5 ? 1.65 : 1.85))));
+  ent.dmg = Math.max(2, Math.round(ent.dmg * (wave >= 10 ? 1.25 : (wave <= 5 ? 1.14 : 1.20))));
+  ent.mat = +((ent.mat || 0) * 1.45).toFixed(2);
+  if (kind === 'frenzy') {
+    ent.hp = Math.max(5, Math.round(baseEliteHp * ELITE_FRENZY_BONUS_MUL));
+    ent.maxHp = ent.hp;
+    ent.spd = ent.spd * ELITE_FRENZY_BONUS_MUL;
+    ent.eliteAspdMul = ELITE_FRENZY_BONUS_MUL;
+  } else {
+    ent.hp = baseEliteHp;
+    ent.maxHp = ent.hp;
+    ent.eliteAspdMul = 1.00;
+  }
+  return ent;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.ELITE_FRENZY_BONUS_MUL = ELITE_FRENZY_BONUS_MUL;
+  globalThis.applyEliteAffix = applyEliteAffix;
 }
 if (typeof SpireBootGate !== 'undefined' && SpireBootGate) {
   SpireBootGate.setStep(52, '波次与地形引擎就绪 · 正在装载渲染管线…');

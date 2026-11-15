@@ -179,6 +179,19 @@ function finishLinearDash(e, nextCd) {
   e.dashT = nextCd;
 }
 
+// 首领与统领出招身体动态姿态脉冲（驱动 sprites.js 渲染前扑挥斩、浮空咏唱、重踏震地、炮口后坐与旋舞残影，告别呆板站桩施法）
+function triggerBossActionPose(e, kind, angle, dur = 0.48, col = '') {
+  if (!e) return;
+  e._actKind = kind || 'cast_up';
+  e._actAng = Number.isFinite(angle) ? angle : (e.faceA || 0);
+  e._actPoseMax = Math.max(0.12, dur || 0.48);
+  e._actPoseT = e._actPoseMax;
+  if (col) e._actCol = col;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.triggerBossActionPose = triggerBossActionPose;
+}
+
 function _turnAngleBounded(cur, target, maxStep) {
   let diffA = (target - cur + Math.PI) % (Math.PI * 2);
   if (diffA < 0) diffA += Math.PI * 2;
@@ -197,8 +210,9 @@ function tickBossVenomBreath(e, dt, aimToPlayer, paceMult) {
   );
   if (!canVenom && !(e.venomWindupT > 0) && !(e.venomBreathT > 0)) return false;
 
+  const lsRate = (e.d5LastStandT || 0) > 0 ? 1.20 : 1.0;
   if ((e.venomWindupT || 0) > 0) {
-    e.venomWindupT -= dt;
+    e.venomWindupT -= dt * lsRate;
     // 蓄力最后 0.24s 锁定喷射方向不再跟转，保证近战提前侧移绕后 100% 有效
     if (e.venomWindupT > 0.24) {
       e.venomAimA = _turnAngleBounded(e.venomAimA !== undefined ? e.venomAimA : aimToPlayer, aimToPlayer, 1.15 * dt);
@@ -209,6 +223,7 @@ function tickBossVenomBreath(e, dt, aimToPlayer, paceMult) {
       e.venomBreathT = e.venomBreathMax;
       e._venomPulseCd = 0;
       e._venomHitCd = 0;
+      triggerBossActionPose(e, e.venomTwin ? 'spin' : 'thrust', e.venomAimA || aimToPlayer, 0.56, '#a3e635');
       beep(195, 0.16, 'sawtooth', 0.06);
       addText(e.x, e.y - e.r - 20, e.venomTwin ? '☠️ 双龙万蛊毒息横扫!' : '☠️ 剧毒龙息喷流!', '#a3e635', 14, 1.35, true);
     }
@@ -313,8 +328,9 @@ function tickBossVenomBreath(e, dt, aimToPlayer, paceMult) {
 // 隐藏神话二阶段 / 终幕二阶段【专属额外终极技能】状态机（突出二阶段首领压迫感与独立能力）
 function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
   if (!e.mythicPhase2) return false;
+  const lsRate = (e.d5LastStandT || 0) > 0 ? 1.20 : 1.0;
   if ((e.p2WindupT || 0) > 0) {
-    e.p2WindupT -= dt;
+    e.p2WindupT -= dt * lsRate;
     if (e.p2WindupT <= 0) {
       e.p2WindupT = 0;
       e.castEndT = 1.15;
@@ -322,6 +338,7 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
       const baseA = Number.isFinite(e.p2BaseA) ? e.p2BaseA : aimToPlayer;
       beep(215, 0.18, 'sawtooth', 0.07);
       if (e.p2Kind === 'p2_absolute_zero') {
+        triggerBossActionPose(e, 'cast_up', baseA, 0.62, '#72efdd');
         e.beamSweepQuad = true;
         e.beamSweepMaxT = 1.80;
         e.beamSweepT = 1.80;
@@ -332,6 +349,7 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
           eBullets.push({ x: e.x, y: e.y, vx: Math.cos(ba) * 148, vy: Math.sin(ba) * 148, dmg: Math.max(4, Math.round(e.dmg * 0.80)), r: 6.0, color: '#7dd3fc', shape: 'trident', chillPlayer: true });
         }
       } else if (e.p2Kind === 'p2_chrono_octa') {
+        triggerBossActionPose(e, 'cast_up', baseA, 0.62, '#fde68a');
         const gx = Number.isFinite(e.p2TargetX) ? e.p2TargetX : player.x;
         const gy = Number.isFinite(e.p2TargetY) ? e.p2TargetY : player.y;
         const span = 540;
@@ -350,6 +368,7 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
           }
         }
       } else if (e.p2Kind === 'p2_omega_storm') {
+        triggerBossActionPose(e, 'slam', baseA, 0.58, '#fb923c');
         if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 165, color: '#fb923c', t: 0.32, maxT: 0.32, kind: 'star' });
         for (let k = 0; k < 6 && eBullets.length < 170; k++) {
           const ba = baseA + (k / 6) * Math.PI * 2;
@@ -365,6 +384,7 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
           spawnHazard(e.x + Math.cos(ha) * 175, e.y + Math.sin(ha) * 175, 58, e.dmg * 1.10, 1.15, { color: '#fb5607', style: 'flame_pillar' });
         }
       } else if (e.p2Kind === 'p2_twin_venom') {
+        triggerBossActionPose(e, 'spin', baseA, 0.62, '#a3e635');
         e.venomTwin = true;
         e.venomAimA = baseA;
         e.venomSpan = 0.36;
@@ -375,6 +395,7 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
         e._venomHitCd = 0;
         if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 158, color: '#a3e635', t: 0.32, maxT: 0.32, kind: 'hex' });
       } else if (e.p2Kind === 'p2_eclipse_apocalypse') {
+        triggerBossActionPose(e, 'cast_up', baseA, 0.64, '#ffd166');
         const tx = Number.isFinite(e.p2TargetX) ? e.p2TargetX : player.x;
         const ty = Number.isFinite(e.p2TargetY) ? e.p2TargetY : player.y;
         if (rings.length < 40) rings.push({ x: tx, y: ty, r: 195, color: '#fde68a', t: 0.36, maxT: 0.36, kind: 'hex' });
@@ -388,6 +409,7 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
         }
       } else {
         // p2_crimson_prison：绯夜八荒剑狱（双十字裂空剑隙 + 八方绯月回旋斩，必保贴图完整渲染）
+        triggerBossActionPose(e, 'slash', baseA, 0.60, '#ff2a55');
         const tx = Number.isFinite(e.p2TargetX) ? e.p2TargetX : player.x;
         const ty = Number.isFinite(e.p2TargetY) ? e.p2TargetY : player.y;
         for (let k = 0; k < 2; k++) {
@@ -448,6 +470,377 @@ function tickBossPhase2Skill(e, dt, aimToPlayer, paceMult) {
   return false;
 }
 
+// ============================================================================
+// 👑 六大守誓主宰【创新交互机制状态机】（告别单纯躲圈：决斗剑域见切破招 / 可破坏双生极光共鸣柱 / 逆时回溯锚点与断时阵 / 黑日引力奇点与晨曦庇护区 / 磁暴引力桩 / 万蛊共生母苞）
+// ============================================================================
+function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
+  if (!e || (e.type !== 'boss' && e.type !== 'special_boss') || !player || state !== 'wave') return false;
+  if (!Number.isFinite(aimToPlayer)) aimToPlayer = Math.atan2(player.y - e.y, player.x - e.x);
+  if (!Number.isFinite(distP)) distP = Math.hypot(player.x - e.x, player.y - e.y);
+  const vId = e.variant || 'butcher';
+
+  // 统计当前首领场上存活的共鸣阵眼棱柱（供减伤棱障与双柱冰弦连接使用）
+  let pylonA = null, pylonB = null, pylonCnt = 0;
+  if (typeof trees !== 'undefined') {
+    for (let ti = 0; ti < trees.length; ti++) {
+      const tr = trees[ti];
+      if (tr && tr.isBossPylon && tr.owner === e && tr.hp > 0) {
+        pylonCnt++;
+        if (!pylonA) pylonA = tr;
+        else if (!pylonB) pylonB = tr;
+      }
+    }
+  }
+  e._pylonShieldCnt = (vId === 'frost_queen' || vId === 'plague_empress') ? pylonCnt : 0;
+
+  // 双生极光冰棱柱同时存在时，两柱之间拉起寒霜极光冰弦（碰触减速并受寒霜切割，击破任一柱即刻瓦解！）
+  if (vId === 'frost_queen' && pylonA && pylonB) {
+    e._tetherHitCd = Math.max(0, (e._tetherHitCd || 0) - dt);
+    if (e._tetherHitCd <= 0) {
+      const seg = pointSegClosest(player.x, player.y, pylonA.x, pylonA.y, pylonB.x, pylonB.y);
+      if (seg.dSq <= (player.r + 7) * (player.r + 7)) {
+        e._tetherHitCd = 0.52;
+        if (!player.noSlow) player.chillSlowT = Math.max(player.chillSlowT || 0, 1.0);
+        addText(player.x, player.y - 34, '❄️ 极光冰弦切割!', '#7dd3fc', 14, 0.85);
+        hurtPlayer(Math.max(4, Math.round(e.dmg * 0.78)), true, e);
+        if (state !== 'wave') return true;
+      }
+    }
+  }
+
+  // 1) 烬羽（butcher）：【血誓·宿命决斗剑域】进行态
+  if (e.duelRing) {
+    const dr = e.duelRing;
+    dr.t -= dt;
+    dr.bladeA = (dr.bladeA || 0) + dt * (enraged ? 2.65 : 2.25);
+    dr._rimHitCd = Math.max(0, (dr._rimHitCd || 0) - dt);
+    const dRing = Math.hypot(player.x - dr.x, player.y - dr.y);
+
+    // 剑域外缘 2 柄游龙血刃高速环绕：擦碰环绕刃尖受创
+    if (dr._rimHitCd <= 0) {
+      for (let bk = 0; bk < 2; bk++) {
+        const ba = dr.bladeA + bk * Math.PI;
+        const bx = dr.x + Math.cos(ba) * dr.r;
+        const by = dr.y + Math.sin(ba) * dr.r;
+        if (Math.hypot(player.x - bx, player.y - by) <= player.r + 16) {
+          dr._rimHitCd = 0.45;
+          hurtPlayer(Math.max(4, Math.round(e.dmg * 0.85)), true, e);
+          if (state !== 'wave') return true;
+          break;
+        }
+      }
+    }
+
+    // 剑域中段触发一次【心眼·十字裂空斩】试炼（四角安全，引导走位见切）
+    if (!dr.slashSpawned && dr.t <= dr.maxT * 0.62) {
+      dr.slashSpawned = true;
+      const sa = Math.atan2(player.y - dr.y, player.x - dr.x) + Math.PI * 0.25;
+      triggerBossActionPose(e, 'slash', sa, 0.48, '#fb7185');
+      for (let k = 0; k < 2; k++) {
+        spawnHazard(dr.x, dr.y, 26, e.dmg * 0.96, 0.82, {
+          color: '#fb7185', style: 'void_slash',
+          angle: sa + k * (Math.PI * 0.5), halfLen: dr.r - 18, halfW: 13,
+          srcKey: e.variant, bossOwner: e
+        });
+      }
+    }
+
+    // 若玩家逃出决斗剑域（超出 r + 24）：剑域碎裂，烬羽立刻锁定高速【违誓追魂一闪】！
+    if (dRing > dr.r + 24) {
+      e.duelRing = null;
+      beep(240, 0.12, 'sawtooth', 0.06);
+      if (rings.length < 40) rings.push({ x: dr.x, y: dr.y, r: dr.r, color: '#ff2a55', t: 0.28, maxT: 0.28 });
+      addText(player.x, player.y - 40, '⚠️ 脱离决斗圈 · 违誓追魂斩!', '#ff4d6d', 15, 1.35, true);
+      if (!e.dashing) {
+        lockLinearDash(e, aimToPlayer, Math.min(430, Math.max(290, distP + 65)), 0.36, '#ff2a55', 'iai_slash');
+        e.dashT = 0.36;
+      }
+    } else if (dr.t <= 0) {
+      // 坚守决斗剑域至期满：见切破招成功！刷新玩家瞬步、赋予攻速移速增益并令烬羽陷入长破绽！
+      e.duelRing = null;
+      e.exposeT = Math.max(e.exposeT || 0, 2.25);
+      player.dashCd = 0;
+      player.dashHasteT = Math.max(player.dashHasteT || 0, 2.2);
+      beep(760, 0.12, 'triangle', 0.065);
+      if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 145, color: '#72efdd', t: 0.32, maxT: 0.32, kind: 'hex' });
+      addText(player.x, player.y - 42, '⚔️ 决斗见切成功！瞬步刷新 + 首领破防!', '#72efdd', 15, 1.65, true);
+    }
+  }
+
+  // 2) 伽蓝（void_weaver）：【逆钟·时空回溯锚点 + 断时解锚阵】进行态
+  if (e.chronoAnchor) {
+    const ca = e.chronoAnchor;
+    ca.t -= dt;
+    ca.spin = (ca.spin || 0) + dt * 3.4;
+    // 玩家踏入青金【断时解锚阵】：斩断时间锁链，反噬伽蓝暴露破绽！
+    if (Math.hypot(player.x - ca.dx, player.y - ca.dy) <= ca.dr + player.r * 0.55) {
+      e.chronoAnchor = null;
+      e.exposeT = Math.max(e.exposeT || 0, 2.0);
+      player.dashHasteT = Math.max(player.dashHasteT || 0, 1.8);
+      beep(780, 0.11, 'triangle', 0.06);
+      if (rings.length < 40) rings.push({ x: ca.dx, y: ca.dy, r: 88, color: '#72efdd', t: 0.30, maxT: 0.30, kind: 'hex' });
+      if (lightnings.length < 36) {
+        lightnings.push({ pts: [{ x: ca.dx, y: ca.dy }, { x: e.x, y: e.y }], color: '#72efdd', t: 0.28, maxT: 0.28 });
+      }
+      addText(player.x, player.y - 42, '✨ 断时解锚成功！逆钟反噬破防!', '#72efdd', 15, 1.55, true);
+    } else if (ca.t <= 0) {
+      // 未及时解锚：强制时空倒流拽回锚点 72% 位移，并在锚点降下十字次元裂空斩！
+      e.chronoAnchor = null;
+      const oldPx = player.x, oldPy = player.y;
+      const nx = Math.max(player.r + 16, Math.min(WORLD.w - player.r - 16, oldPx + (ca.ax - oldPx) * 0.72));
+      const ny = Math.max(player.r + 16, Math.min(WORLD.h - player.r - 16, oldPy + (ca.ay - oldPy) * 0.72));
+      if (!isBlockedByTerrain(nx, ny, player.r)) {
+        player.x = nx; player.y = ny;
+      }
+      beep(310, 0.14, 'sawtooth', 0.065);
+      if (beams.length < 38) beams.push({ x1: oldPx, y1: oldPy, x2: player.x, y2: player.y, color: '#fde68a', t: 0.30, maxT: 0.30 });
+      if (rings.length < 40) rings.push({ x: player.x, y: player.y, r: 82, color: '#c084fc', t: 0.30, maxT: 0.30, kind: 'hex' });
+      addText(player.x, player.y - 42, '⏳ 时空强制回溯！速闪避裂空斩!', '#fde68a', 15, 1.35, true);
+      for (let k = 0; k < 2; k++) {
+        spawnHazard(ca.ax, ca.ay, 28, e.dmg * 1.04, 0.62, {
+          color: '#c084fc', style: 'void_slash',
+          angle: Math.PI * 0.25 + k * (Math.PI * 0.5), halfLen: 125, halfW: 13,
+          srcKey: e.variant, bossOwner: e
+        });
+      }
+    }
+  }
+
+  // 3) 日蚀圣女（solar_seraph）/ 饥饿黑影（abyss_devourer）/ 伽蓝二阶（void_weaver）：【超巨型黑洞引力奇点 & 晨曦庇护圣印】（含 1.0s 高能蓄力预警 + 进行态）
+  const BLACK_HOLE_WINDUP_SEC = 1.0;
+  if (e.eclipseSingularity) {
+    const es = e.eclipseSingularity;
+    if ((es.windupT || 0) > 0) {
+      // 1.0 秒前置高能预警阶段：尚不施加任何吸力，提前标出黑洞范围与双生晨曦庇护印供玩家从容走位！
+      es.windupT -= dt;
+      es.spin = (es.spin || 0) + dt * 2.2;
+      if (es.windupT <= 0) {
+        es.windupT = 0;
+        beep(250, 0.16, 'sawtooth', 0.068);
+        shake = Math.max(shake, 3.6);
+        if (rings.length < 44) {
+          rings.push({ x: e.x, y: e.y, r: Math.round((es.r || 440) * 0.45), color: '#c084fc', t: 0.30, maxT: 0.30, kind: 'star' });
+        }
+      }
+    } else {
+      es.t -= dt;
+      es.spin = (es.spin || 0) + dt * 4.1;
+      const pullRange = es.pullRange || Math.max(760, (es.r || 440) + 320);
+      const inSealNow = Math.hypot(player.x - es.s1x, player.y - es.s1y) <= es.safeR + player.r * 0.45
+        || Math.hypot(player.x - es.s2x, player.y - es.s2y) <= es.safeR + player.r * 0.45;
+      // 全场黑洞吸积引力（吸引力削弱 60%，即 ×0.40：保留清晰引力拖拽感同时确保玩家可凭走位与瞬步脱离或踏入晨曦庇护印）
+      const BLACK_HOLE_PULL_MUL = 0.40;
+      if (distP > 34 && distP < pullRange && !(player.dashT > 0)) {
+        const prox = 1 - Math.min(1, distP / pullRange);
+        const rawPullSpd = ((enraged ? 178 : 162) + prox * 68) * BLACK_HOLE_PULL_MUL;
+        const pull = (inSealNow ? rawPullSpd * 0.15 : rawPullSpd) * dt;
+        const swirl = (inSealNow ? 0 : 28 * BLACK_HOLE_PULL_MUL) * dt;
+        const caP = Math.cos(aimToPlayer), saP = Math.sin(aimToPlayer);
+        const px2 = Math.max(player.r + 10, Math.min(WORLD.w - player.r - 10, player.x - caP * pull + saP * swirl));
+        const py2 = Math.max(player.r + 10, Math.min(WORLD.h - player.r - 10, player.y - saP * pull - caP * swirl));
+        if (!isBlockedByTerrain(px2, py2, player.r)) {
+          player.x = px2; player.y = py2;
+        }
+        player._bhPullT = inSealNow ? 0 : 0.14;
+        player._bhSrcX = e.x;
+        player._bhSrcY = e.y;
+        if (!inSealNow) shake = Math.max(shake, 0.5 + prox * 0.6);
+      }
+      if (es.t <= 0) {
+        e.eclipseSingularity = null;
+        const inSeal1 = Math.hypot(player.x - es.s1x, player.y - es.s1y) <= es.safeR + player.r * 0.45;
+        const inSeal2 = Math.hypot(player.x - es.s2x, player.y - es.s2y) <= es.safeR + player.r * 0.45;
+        beep(175, 0.22, 'sawtooth', 0.085);
+        shake = Math.max(shake, 8.2);
+        if (rings.length < 44) {
+          rings.push({ x: e.x, y: e.y, r: es.r, color: '#c084fc', t: 0.42, maxT: 0.42, kind: 'star' });
+          rings.push({ x: e.x, y: e.y, r: Math.round(es.r * 0.62), color: '#fde68a', t: 0.34, maxT: 0.34, kind: 'hex' });
+          rings.push({ x: es.s1x, y: es.s1y, r: es.safeR, color: '#fde68a', t: 0.32, maxT: 0.32, kind: 'hex' });
+          rings.push({ x: es.s2x, y: es.s2y, r: es.safeR, color: '#fde68a', t: 0.32, maxT: 0.32, kind: 'hex' });
+        }
+        if (inSeal1 || inSeal2) {
+          e.exposeT = Math.max(e.exposeT || 0, 2.35);
+          player.chillSlowT = 0;
+          player.dashHasteT = Math.max(player.dashHasteT || 0, 2.4);
+          beep(820, 0.12, 'triangle', 0.06);
+          addText(player.x, player.y - 44, '☀️ 晨曦庇护抵御黑洞坍缩！疾风赐福 + 首领破防!', '#fde68a', 15, 1.75, true);
+        } else if (Math.hypot(player.x - e.x, player.y - e.y) <= es.r + player.r) {
+          addText(player.x, player.y - 40, '🌑 未入庇护印 · 超巨黑洞奇点坍缩重创!', '#e0aaff', 16, 1.45, true);
+          hurtPlayer(Math.round(e.dmg * 1.18), true, e);
+          if (state !== 'wave') return true;
+        }
+      }
+    }
+  }
+
+  // 触发冷却推进（蓄力大招/冲刺时不抢占节奏）
+  if (e.dashing || (e.sigWindupT || 0) > 0 || (e.p2WindupT || 0) > 0 || e.duelRing || e.chronoAnchor || e.eclipseSingularity) {
+    return false;
+  }
+  e.arenaMechCd = (e.arenaMechCd !== undefined ? e.arenaMechCd : 5.2) - dt * bossMult;
+  if (e.arenaMechCd > 0) return false;
+
+  if (vId === 'butcher') {
+    e.arenaMechCd = enraged ? 8.2 : 9.6;
+    const midX = Math.max(235, Math.min(WORLD.w - 235, (e.x + player.x) * 0.5));
+    const midY = Math.max(235, Math.min(WORLD.h - 235, (e.y + player.y) * 0.5));
+    // 确保开启瞬间玩家在决斗圈内部，公平给予完整见切博弈空间
+    const dToMid = Math.hypot(player.x - midX, player.y - midY);
+    const cx = dToMid > 165 ? Math.max(235, Math.min(WORLD.w - 235, player.x + (e.x - player.x) * 0.30)) : midX;
+    const cy = dToMid > 165 ? Math.max(235, Math.min(WORLD.h - 235, player.y + (e.y - player.y) * 0.30)) : midY;
+    e.duelRing = { x: cx, y: cy, r: 215, t: 3.3, maxT: 3.3, bladeA: aimToPlayer + Math.PI * 0.5, slashSpawned: false, _rimHitCd: 0.35 };
+    triggerBossActionPose(e, 'slash', aimToPlayer, 0.55, '#fb7185');
+    beep(440, 0.11, 'triangle', 0.055);
+    if (rings.length < 40) rings.push({ x: cx, y: cy, r: 215, color: '#fb7185', t: 0.34, maxT: 0.34, kind: 'hex' });
+    addText(cx, cy - 36, '⚔️ 血誓决斗剑域！圈内应战破防 · 逃圈遭追斩!', '#fb7185', 14, 1.75, true);
+  } else if (vId === 'frost_queen') {
+    e.arenaMechCd = enraged ? 9.8 : 11.4;
+    if (pylonCnt === 0 && typeof spawnBossPylon === 'function') {
+      const perp = aimToPlayer + Math.PI * 0.5;
+      spawnBossPylon(e, 'cryo_obelisk', e.x + Math.cos(perp) * 176, e.y + Math.sin(perp) * 176);
+      spawnBossPylon(e, 'cryo_obelisk', e.x - Math.cos(perp) * 176, e.y - Math.sin(perp) * 176);
+      triggerBossActionPose(e, 'cast_up', aimToPlayer, 0.60, '#72efdd');
+      beep(560, 0.12, 'sine', 0.055);
+      announce('❄️ 艾丝特莉亚升起【双生极光共鸣棱柱】！击破冰棱柱可斩断护盾并反噬破防！', '#72efdd', 3.2);
+    } else {
+      e.arenaMechCd = 4.5;
+    }
+  } else if (vId === 'void_weaver') {
+    e._arenaCastSeq = (e._arenaCastSeq || 0) + 1;
+    if (e.mythicPhase2 && (e._arenaCastSeq % 2 === 0)) {
+      e.arenaMechCd = enraged ? 8.6 : 10.0;
+      const perp = aimToPlayer + (Math.random() < 0.5 ? 1.05 : -1.05);
+      const s1x = Math.max(125, Math.min(WORLD.w - 125, e.x + Math.cos(perp) * 218));
+      const s1y = Math.max(125, Math.min(WORLD.h - 125, e.y + Math.sin(perp) * 218));
+      const s2x = Math.max(125, Math.min(WORLD.w - 125, e.x - Math.cos(perp) * 218));
+      const s2y = Math.max(125, Math.min(WORLD.h - 125, e.y - Math.sin(perp) * 218));
+      e.eclipseSingularity = { windupT: BLACK_HOLE_WINDUP_SEC, maxWindupT: BLACK_HOLE_WINDUP_SEC, t: 3.20, maxT: 3.20, r: 430, pullRange: 760, safeR: 72, s1x, s1y, s2x, s2y, spin: 0 };
+      triggerBossActionPose(e, 'cast_up', aimToPlayer, 1.0, '#c084fc');
+      beep(520, 0.14, 'triangle', 0.06);
+      shake = Math.max(shake, 2.2);
+      announce('⚠️ 【黑洞引力奇点】1秒高能预警！速撤离视界或踏入金色【晨曦庇护印】！', '#fde68a', 3.4);
+      addText(e.x, e.y - e.r - 28, '⚠️ 1.0s 预警 · 黑洞引力奇点即将开启!', '#fde68a', 15, 1.95, true);
+    } else {
+      e.arenaMechCd = enraged ? 8.4 : 9.8;
+      const padAng = aimToPlayer + (Math.random() < 0.5 ? 1.15 : -1.15);
+      const dx = Math.max(115, Math.min(WORLD.w - 115, player.x + Math.cos(padAng) * 152));
+      const dy = Math.max(115, Math.min(WORLD.h - 115, player.y + Math.sin(padAng) * 152));
+      e.chronoAnchor = { ax: player.x, ay: player.y, dx, dy, dr: 52, t: 2.65, maxT: 2.65, spin: 0 };
+      triggerBossActionPose(e, 'cast_up', aimToPlayer, 0.56, '#fde68a');
+      beep(610, 0.10, 'triangle', 0.055);
+      if (rings.length < 40) rings.push({ x: player.x, y: player.y, r: 64, color: '#fde68a', t: 0.28, maxT: 0.28, kind: 'hex' });
+      addText(player.x, player.y - 44, '⏳ 逆时锚点锁定！速踏青色【断时阵】解锚破防!', '#fde68a', 14, 1.75, true);
+    }
+  } else if (vId === 'solar_seraph' || vId === 'abyss_devourer') {
+    e.arenaMechCd = enraged ? 7.8 : 9.2;
+    const perp = aimToPlayer + (Math.random() < 0.5 ? 1.05 : -1.05);
+    const s1x = Math.max(125, Math.min(WORLD.w - 125, e.x + Math.cos(perp) * 218));
+    const s1y = Math.max(125, Math.min(WORLD.h - 125, e.y + Math.sin(perp) * 218));
+    const s2x = Math.max(125, Math.min(WORLD.w - 125, e.x - Math.cos(perp) * 218));
+    const s2y = Math.max(125, Math.min(WORLD.h - 125, e.y - Math.sin(perp) * 218));
+    e.eclipseSingularity = { windupT: BLACK_HOLE_WINDUP_SEC, maxWindupT: BLACK_HOLE_WINDUP_SEC, t: 3.25, maxT: 3.25, r: 440, pullRange: 780, safeR: 72, s1x, s1y, s2x, s2y, spin: 0 };
+    triggerBossActionPose(e, 'cast_up', aimToPlayer, 1.0, '#fde68a');
+    beep(520, 0.14, 'triangle', 0.065);
+    shake = Math.max(shake, 2.4);
+    announce('⚠️ 【黑洞引力奇点】1秒高能预警！速撤离视界或踏入金色【晨曦庇护印】！', '#fde68a', 3.4);
+    addText(e.x, e.y - e.r - 28, '⚠️ 1.0s 预警 · 超巨黑洞奇点即将开启!', '#fde68a', 15, 1.95, true);
+  } else if (vId === 'mech_colossus') {
+    e.arenaMechCd = enraged ? 9.4 : 11.0;
+    if (pylonCnt < 2 && typeof spawnBossPylon === 'function') {
+      const ma = aimToPlayer + (Math.random() < 0.5 ? 0.85 : -0.85);
+      spawnBossPylon(e, 'magnet_core', player.x + Math.cos(ma) * 145, player.y + Math.sin(ma) * 145);
+      triggerBossActionPose(e, 'slam', aimToPlayer, 0.52, '#38bdf8');
+      beep(310, 0.11, 'sawtooth', 0.05);
+    } else {
+      e.arenaMechCd = 4.5;
+    }
+  } else if (vId === 'plague_empress') {
+    e.arenaMechCd = enraged ? 9.6 : 11.2;
+    if (pylonCnt === 0 && typeof spawnBossPylon === 'function') {
+      const perp = aimToPlayer + Math.PI * 0.5;
+      spawnBossPylon(e, 'venom_cocoon', e.x + Math.cos(perp) * 168, e.y + Math.sin(perp) * 168);
+      spawnBossPylon(e, 'venom_cocoon', e.x - Math.cos(perp) * 168, e.y - Math.sin(perp) * 168);
+      triggerBossActionPose(e, 'spin', aimToPlayer, 0.54, '#a3e635');
+      beep(420, 0.10, 'triangle', 0.05);
+    } else {
+      e.arenaMechCd = 4.5;
+    }
+  }
+  return false;
+}
+
+let _bossHudSeq = 0;
+
+function spawnPlayerSpellZone(spec) {
+  if (!spec || typeof spellZones === 'undefined') return null;
+  // 若同类型法阵在极近位置已存在，则刷新并强化，防止多把同法杖同点无意义叠百层粒子
+  for (let i = 0; i < spellZones.length; i++) {
+    const z = spellZones[i];
+    if (z && z.kind === spec.kind && Math.hypot(z.x - spec.x, z.y - spec.y) < 34) {
+      z.life = Math.max(z.life, spec.life || 3.2);
+      z.maxLife = Math.max(z.maxLife, spec.life || 3.2);
+      z.r = Math.max(z.r, spec.r || 84);
+      z.dmg = Math.max(z.dmg, spec.dmg || 10);
+      return z;
+    }
+  }
+  if (spellZones.length >= 16) spellZones.shift();
+  const dur = spec.life || 3.2;
+  const zone = {
+    kind: spec.kind || 'fire_patch',
+    x: Math.max(54, Math.min(WORLD.w - 54, spec.x)),
+    y: Math.max(54, Math.min(WORLD.h - 54, spec.y)),
+    r: spec.r || 84,
+    life: dur,
+    maxLife: dur,
+    tick: spec.tickInterval || 0.40,
+    tickInterval: spec.tickInterval || 0.40,
+    dmg: spec.dmg || 10,
+    critChance: spec.critChance || 0.08,
+    critMult: spec.critMult || 1.95,
+    srcId: spec.srcId || '',
+    color: spec.color || '#ff6b35',
+    freezeChance: spec.freezeChance || 0,
+    forceBurn: !!spec.forceBurn,
+    forcePoison: !!spec.forcePoison,
+    spin: Math.random() * 6.28,
+    seed: Math.random() * 100
+  };
+  spellZones.push(zone);
+  return zone;
+}
+if (typeof globalThis !== 'undefined') globalThis.spawnPlayerSpellZone = spawnPlayerSpellZone;
+
+function detonateStaffFireball(b) {
+  if (!b || b._fireballDetonated) return;
+  b._fireballDetonated = true;
+  const blastR = b.fireballBlastR || 76;
+  const prevAct = _activeWeaponId;
+  _activeWeaponId = b.srcId || 'ember_staff';
+  try {
+    triggerExplosion(b.x, b.y, blastR, b.dmg * 0.78, false, 0, b.color || '#ff6b35', true, 0, b.srcId || 'ember_staff');
+    if (rings.length < 38) {
+      rings.push({ x: b.x, y: b.y, r: blastR * 1.12, color: '#ffd166', t: 0.28, maxT: 0.28, kind: 'star' });
+    }
+    spawnPlayerSpellZone({
+      kind: 'fire_patch',
+      x: b.x, y: b.y,
+      r: Math.max(66, blastR * 0.94),
+      life: 3.1,
+      tickInterval: 0.42,
+      dmg: b.dmg * 0.36,
+      critChance: b.critChance || 0.08,
+      critMult: b.critMult || 1.95,
+      srcId: b.srcId || 'ember_staff',
+      color: b.color || '#ff6b35',
+      forceBurn: true,
+      forcePoison: !!b.firePatchPoison
+    });
+  } finally {
+    _activeWeaponId = prevAct;
+  }
+}
+
 function update(dt) {
   if (!Number.isFinite(dt) || dt <= 0) return;
   if (typeof SpireAudio !== 'undefined') SpireAudio.tick(dt);
@@ -467,6 +860,7 @@ function update(dt) {
   if (typeof resetCombatFrameBudgets === 'function') resetCombatFrameBudgets();
   if (shake > 0) shake = Math.max(0, shake - dt * 36);
   if (player._atkPoseT > 0) player._atkPoseT = Math.max(0, player._atkPoseT - dt);
+  if ((player._bhPullT || 0) > 0) player._bhPullT = Math.max(0, player._bhPullT - dt);
   if (typeof pendingBossCutscene !== 'undefined' && pendingBossCutscene && !bossCutscene && typeof startBossCutscene === 'function') {
     const pc = pendingBossCutscene;
     pendingBossCutscene = null;
@@ -543,7 +937,7 @@ function update(dt) {
     portals[i].pulse += dt * 3.0;
   }
 
-  // 战场单一主题地形块判定（岩浆灼烫减速、毒泥沼阻滞腐蚀、寒冰台 5秒渐进减速累计至冰封 1秒 · 离冰 1秒后开始消退）
+  // 战场单一主题地形块判定（岩浆灼烫减速、毒泥沼阻滞腐蚀、寒冰台 D1=4s -> D5=2s 渐进减速累计至冰封 · 离冰 1秒后开始消退）
   let onLava = false, onSwamp = false, onIce = false;
   for (let i = 0; i < terrains.length; i++) {
     const tr = terrains[i];
@@ -555,7 +949,8 @@ function update(dt) {
     }
   }
 
-  // 碎冕寒晶方砖台状态机：站立 5.0s 渐进冰缓 -> 满 5.0s 冰封 1.0s 后解冻清零；离开冰面 1.0s 后开始消退恢复
+  // 碎冕寒晶方砖台 / 翡翠毒沼 / 锻炉熔火槽状态机（D1 保持不变；D2->D5 阶梯递增地形对玩家影响最高 +30%）
+  const terrainImpactMul = typeof getDiffTerrainImpactMul === 'function' ? getDiffTerrainImpactMul(diff) : 1.00;
   if ((player.frostThawImmT || 0) > 0) player.frostThawImmT = Math.max(0, player.frostThawImmT - dt);
   if ((player.iceFreezeT || 0) > 0) {
     player.iceFreezeT -= dt;
@@ -573,7 +968,9 @@ function update(dt) {
   } else if (onIce && !(player.frostThawImmT > 0)) {
     player.frostLeaveGrace = 1.0;
     const prevGauge = player.frostGauge || 0;
-    player.frostGauge = Math.min(5.0, prevGauge + dt);
+    const iceTriggerSec = typeof getIceFreezeTriggerSec === 'function' ? getIceFreezeTriggerSec(diff) : 4.0;
+    const iceFillRate = 5.0 / Math.max(0.5, iceTriggerSec);
+    player.frostGauge = Math.min(5.0, prevGauge + dt * iceFillRate);
     if (prevGauge <= 0.05 && player.terrainHintT <= 0) {
       player.terrainHintT = 2.4;
       addText(player.x, player.y - 36, '寒霜侵蚀 · 渐进冰缓!', '#7dd3fc', 15, 1.6);
@@ -581,11 +978,11 @@ function update(dt) {
     if (player.frostGauge >= 5.0) {
       player.frostGauge = 0;
       player.frostLeaveGrace = 0;
-      player.iceFreezeT = 1.0;
+      player.iceFreezeT = +(1.0 * terrainImpactMul).toFixed(2);
       player.dashT = 0;
       beep(620, 0.14, 'triangle', 0.055);
       if (rings.length < 34) rings.push({ x: player.x, y: player.y, r: 54, color: '#7dd3fc', t: 0.30, maxT: 0.30, kind: 'hex' });
-      addText(player.x, player.y - 42, '❄️ 寒霜满溢 · 冰封1秒!', '#7dd3fc', 17, 1.5, true);
+      addText(player.x, player.y - 42, `❄️ 寒霜满溢 · 冰封${player.iceFreezeT.toFixed(1).replace(/\.0$/, '')}秒!`, '#7dd3fc', 17, 1.5, true);
     }
   } else if ((player.frostGauge || 0) > 0) {
     if ((player.frostLeaveGrace || 0) > 0) {
@@ -596,29 +993,31 @@ function update(dt) {
   }
 
   const frostRatio = (!player.noSlow && (player.frostGauge || 0) > 0) ? Math.min(1, player.frostGauge / 5.0) : 0;
-  const frostSpdMul = frostRatio > 0 ? Math.max(0.80, 1 - frostRatio * 0.20) : 1;
+  const frostSpdMul = frostRatio > 0 ? Math.max(0.68, 1 - frostRatio * 0.20 * terrainImpactMul) : 1;
+  const swampSpdMul = Math.max(0.55, +(1 - 0.30 * terrainImpactMul).toFixed(3));
+  const lavaSpdMul = Math.max(0.74, +(1 - 0.15 * terrainImpactMul).toFixed(3));
   player.terrainSpdMul = (player.iceFreezeT || 0) > 0
     ? 0
     : (frostRatio > 0
       ? frostSpdMul
-      : ((onSwamp && !player.noSlow) ? 0.70 : ((onLava && !player.noSlow) ? 0.85 : 1)));
+      : ((onSwamp && !player.noSlow) ? swampSpdMul : ((onLava && !player.noSlow) ? lavaSpdMul : 1)));
   if (player.terrainHintT <= 0) {
     if (onSwamp && !player.noSlow) {
       player.terrainHintT = 2.8;
-      addText(player.x, player.y - 36, '毒沼深陷 -30%移速', '#a3e635', 15, 1.8);
+      addText(player.x, player.y - 36, `毒沼深陷 -${Math.round((1 - swampSpdMul) * 100)}%移速`, '#a3e635', 15, 1.8);
     } else if (onLava && !player.noSlow) {
       player.terrainHintT = 2.8;
-      addText(player.x, player.y - 36, '熔岩灼足 -15%移速', '#ff6b35', 15, 1.8);
+      addText(player.x, player.y - 36, `熔岩灼足 -${Math.round((1 - lavaSpdMul) * 100)}%移速`, '#ff6b35', 15, 1.8);
     }
   }
   if (onLava && !player.noSlow) {
-    player.lavaExposure = (player.lavaExposure || 0) + dt;
+    player.lavaExposure = (player.lavaExposure || 0) + dt * terrainImpactMul;
     if (player.lavaExposure >= 0.26) {
       player.lavaTick = (player.lavaTick || 0) - dt;
       if (player.lavaTick <= 0) {
         player.lavaTick = 0.62;
         addText(player.x, player.y - 38, '岩浆灼烫!', '#ff6b35', 16, 1.6);
-        hurtPlayer(Math.max(3, Math.round((3.0 + wave * 0.50) * envDmgMul)), false, 'terrain_lava');
+        hurtPlayer(Math.max(3, Math.round((3.0 + wave * 0.50) * envDmgMul * terrainImpactMul)), false, 'terrain_lava');
         if (state !== 'wave') return;
       }
     }
@@ -627,13 +1026,13 @@ function update(dt) {
     player.lavaTick = 0;
   }
   if (onSwamp && !player.noSlow) {
-    player.swampExposure = (player.swampExposure || 0) + dt;
+    player.swampExposure = (player.swampExposure || 0) + dt * terrainImpactMul;
     if (player.swampExposure >= 0.55) {
       player.swampTick = (player.swampTick || 0) - dt;
       if (player.swampTick <= 0) {
         player.swampTick = 0.85;
         addText(player.x, player.y - 38, '毒沼腐蚀!', '#a3e635', 15, 1.5);
-        hurtPlayer(Math.max(2, Math.round((2.0 + wave * 0.35) * envDmgMul)), false, 'terrain_swamp');
+        hurtPlayer(Math.max(2, Math.round((2.0 + wave * 0.35) * envDmgMul * terrainImpactMul)), false, 'terrain_swamp');
         if (state !== 'wave') return;
       }
     }
@@ -642,7 +1041,7 @@ function update(dt) {
     player.swampTick = 0;
   }
 
-  // 🕯️ 蚀界生存试炼（40秒七类机关高密渡劫：陷阱密度提升 +50%、伤害提升 +20%）
+  // 🕯️ 蚀界生存试炼（D1=30s -> D5=45s 阶梯渡劫：七类机关陷阱密度提升 +50%、伤害提升 +20%）
   if (typeof survivalTrialWave !== 'undefined' && survivalTrialWave && !overtime) {
     const st = survivalTrialState || (survivalTrialState = {
       fogIntroP: 0, lanternBoostT: 0,
@@ -654,13 +1053,18 @@ function update(dt) {
     if ((player._fissureHitCd || 0) > 0) player._fissureHitCd = Math.max(0, player._fissureHitCd - dt);
     if ((player._fissureLeapHintCd || 0) > 0) player._fissureLeapHintCd = Math.max(0, player._fissureLeapHintCd - dt);
 
-    const phase = waveTime > 27 ? 1 : (waveTime > 13 ? 2 : 3);
+    const trialTotal = (typeof waveMaxTime === 'number' && waveMaxTime > 0)
+      ? waveMaxTime
+      : (typeof getSurvivalTrialDuration === 'function' ? getSurvivalTrialDuration(diff) : 30);
+    const p1Cut = trialTotal * (2 / 3);
+    const p2Cut = trialTotal * (1 / 3);
+    const phase = waveTime > p1Cut ? 1 : (waveTime > p2Cut ? 2 : 3);
     if (phase >= 2 && !st.phase2Announced) {
       st.phase2Announced = true;
       announce('⚡ 蚀界裂变加剧 · 旋星十字裂光、连环坠星与交错裂隙降临！', '#c084fc', 2.8);
     } else if (phase >= 3 && !st.phase3Announced) {
       st.phase3Announced = true;
-      announce('🔥 最后 13 秒终末渡劫 · 剑阵走廊与冥渊雷涡全面狂暴！', '#ffd166', 3.0);
+      announce(`🔥 最后 ${Math.max(8, Math.round(p2Cut))} 秒终末渡劫 · 剑阵走廊与冥渊雷涡全面狂暴！`, '#ffd166', 3.0);
     }
 
     if (waveTime > 0.85) {
@@ -689,7 +1093,7 @@ function update(dt) {
         st.vortexCd = phase === 1 ? 5.6 : (phase === 2 ? 4.4 : 3.6);
         if (typeof spawnSurvivalAbyssVortex === 'function') spawnSurvivalAbyssVortex(phase);
       }
-      if (waveTime <= 33) {
+      if (waveTime <= trialTotal - 5.5) {
         st.corridorCd = (st.corridorCd !== undefined ? st.corridorCd : 4.2) - dt;
         if (st.corridorCd <= 0) {
           st.corridorCd = phase === 1 ? 6.4 : (phase === 2 ? 5.2 : 4.2);
@@ -784,6 +1188,13 @@ function update(dt) {
         if (f.activeT <= 0) survivalFissures.splice(i, 1);
       }
     }
+  } else if (typeof isD5Floor16Phase2FogActive === 'function' && isD5Floor16Phase2FogActive()) {
+    const st = survivalTrialState || (survivalTrialState = { fogIntroP: 0, lanternBoostT: 0 });
+    st.fogIntroP = Math.min(1, (st.fogIntroP || 0) + dt / 0.85);
+    if ((st.lanternBoostT || 0) > 0) st.lanternBoostT = Math.max(0, st.lanternBoostT - dt);
+  } else if (typeof survivalTrialState === 'object' && survivalTrialState && (survivalTrialState.fogIntroP || 0) > 0 && !(typeof survivalTrialWave !== 'undefined' && survivalTrialWave)) {
+    survivalTrialState.fogIntroP = Math.max(0, survivalTrialState.fogIntroP - dt / 0.65);
+    if ((survivalTrialState.lanternBoostT || 0) > 0) survivalTrialState.lanternBoostT = Math.max(0, survivalTrialState.lanternBoostT - dt);
   }
 
   // 双生虚空传送门 A ↔ B 折跃判定
@@ -820,8 +1231,12 @@ function update(dt) {
     }
   }
 
-  // 异星晶树随战斗定时生长（拉长生长间隔，配合单波宝箱上限防泛滥）
-  if (!overtime && waveTime > 3 && trees.length < 4) {
+  // 异星晶树随战斗定时生长 + 首领可破坏共鸣阵眼棱柱更新（脉冲星刺 / 磁暴引力牵引 / 万蛊酸液孢子）
+  let normalTreeCnt = 0;
+  for (let i = 0; i < trees.length; i++) {
+    if (trees[i] && !trees[i].isBossPylon && trees[i].hp > 0) normalTreeCnt++;
+  }
+  if (!overtime && waveTime > 3 && normalTreeCnt < 4) {
     treeSpawnT -= dt;
     if (treeSpawnT <= 0) {
       treeSpawnT = Math.max(8.0, 14.5 - (player.bonusTrees || 0) * 2.2);
@@ -830,10 +1245,49 @@ function update(dt) {
   }
   for (let i = trees.length - 1; i >= 0; i--) {
     const tr = trees[i];
-    if (tr.hp <= 0) { trees.splice(i, 1); continue; }
+    if (tr.hp <= 0 || (tr.isBossPylon && (!tr.owner || tr.owner.hp <= 0))) { trees.splice(i, 1); continue; }
     if (tr.hitFlash > 0) tr.hitFlash -= dt;
     if (tr._flashCd > 0) tr._flashCd -= dt;
     tr.sway += dt * 2.4;
+    if (tr.isBossPylon && player && state === 'wave') {
+      const ownerBoss = tr.owner;
+      const pRate = (ownerBoss && (ownerBoss.d5LastStandT || 0) > 0) ? 1.20 : 1.0;
+      if (tr.pylonKind === 'magnet_core' && !(player.dashT > 0)) {
+        const dxM = tr.x - player.x, dyM = tr.y - player.y;
+        const dM = Math.hypot(dxM, dyM);
+        if (dM > 32 && dM < 238) {
+          const pullM = 44 * pRate * dt;
+          const mx2 = Math.max(player.r + 10, Math.min(WORLD.w - player.r - 10, player.x + (dxM / dM) * pullM));
+          const my2 = Math.max(player.r + 10, Math.min(WORLD.h - player.r - 10, player.y + (dyM / dM) * pullM));
+          if (!isBlockedByTerrain(mx2, my2, player.r)) { player.x = mx2; player.y = my2; }
+        }
+      }
+      tr.pulseT = (tr.pulseT || 1.7) - dt * pRate;
+      if (tr.pulseT <= 0) {
+        tr.pulseT = tr.pylonKind === 'magnet_core' ? 2.15 : 1.95;
+        const bDmg = Math.max(4, Math.round((ownerBoss ? ownerBoss.dmg : 8) * 0.68));
+        const bSrc = ownerBoss ? (ownerBoss.variant || 'boss') : 'boss';
+        if (tr.pylonKind === 'cryo_obelisk') {
+          if (rings.length < 40) rings.push({ x: tr.x, y: tr.y, r: 54, color: '#72efdd', t: 0.24, maxT: 0.24, kind: 'hex' });
+          for (let k = 0; k < 4 && eBullets.length < 172; k++) {
+            const ba = tr.sway * 0.6 + k * (Math.PI * 0.5);
+            eBullets.push({ x: tr.x, y: tr.y, px: tr.x, py: tr.y, vx: Math.cos(ba) * 132, vy: Math.sin(ba) * 132, dmg: bDmg, r: 5.4, color: '#7dd3fc', shape: 'shard', chillPlayer: true, srcKey: bSrc, bossOwner: ownerBoss });
+          }
+        } else if (tr.pylonKind === 'magnet_core') {
+          if (rings.length < 40) rings.push({ x: tr.x, y: tr.y, r: 108, color: '#ff9f1c', t: 0.28, maxT: 0.28, kind: 'star' });
+          if (Math.hypot(player.x - tr.x, player.y - tr.y) <= 98 + player.r) {
+            hurtPlayer(bDmg, true, ownerBoss || bSrc);
+            if (state !== 'wave') return;
+          }
+        } else if (tr.pylonKind === 'venom_cocoon') {
+          const aimP = Math.atan2(player.y - tr.y, player.x - tr.x);
+          for (let k = -1; k <= 1 && eBullets.length < 172; k += 2) {
+            const ba = aimP + k * 0.22;
+            eBullets.push({ x: tr.x, y: tr.y, px: tr.x, py: tr.y, vx: Math.cos(ba) * 128, vy: Math.sin(ba) * 128, dmg: bDmg, r: 5.5, color: '#5ef29b', shape: 'acid', chillPlayer: true, srcKey: bSrc, bossOwner: ownerBoss });
+          }
+        }
+      }
+    }
   }
 
   // 稀有地图奇遇圣物刷出与读条共鸣召唤特殊 Boss
@@ -1044,7 +1498,7 @@ function update(dt) {
     if (h.t <= 0) {
       const hCol = h.color || '#ff3b6b';
       const st = h.style || 'circle';
-      const hSrc = h.srcKey || 'hazard';
+      const hSrc = h.bossOwner || h.srcKey || 'hazard';
       const prevEnemyAct = typeof _activeEnemyActor !== 'undefined' ? _activeEnemyActor : null;
       _activeEnemyActor = hSrc;
       try {
@@ -1120,7 +1574,9 @@ function update(dt) {
               x: h.x, y: h.y, px: h.x, py: h.y,
               vx: Math.cos(sa) * 132, vy: Math.sin(sa) * 132,
               life: 0.56,
-              dmg: Math.max(3, Math.round(h.dmg * 0.68)), r: 5.2, hitR: 4.5, color: '#fb923c', shape: 'fire', srcKey: hSrc
+              dmg: Math.max(3, Math.round(h.dmg * 0.68)), r: 5.2, hitR: 4.5, color: '#fb923c', shape: 'fire',
+              isCelestial: (h.srcKey === 'trap_meteor'),
+              srcKey: hSrc
             });
           }
         }
@@ -1150,6 +1606,9 @@ function update(dt) {
   let dx = kdx, dy = kdy, moveScale = 1;
   if (!dx && !dy && joy.active && joy.mag > 0) {
     dx = joy.dx; dy = joy.dy; moveScale = joy.mag;
+  }
+  if (dx || dy) {
+    player.moveA = Math.atan2(dy, dx);
   }
   const prevPx = player.x, prevPy = player.y;
   const zSlashActive = typeof ultEffects !== 'undefined' && ultEffects.zSlash && ultEffects.zSlash.active;
@@ -1199,8 +1658,12 @@ function update(dt) {
       const len = Math.hypot(dx, dy) || 1;
       const chillMul = (player.chillSlowT > 0 && !player.noSlow) ? 0.85 : 1;
       const envSpdMul = (sandGustT > 0 ? 1.14 : 1) * chillMul * (player.terrainSpdMul !== undefined ? player.terrainSpdMul : 1);
+      const fearSpdActive = typeof isBossLastStandFearActive === 'function' && isBossLastStandFearActive();
+      const fearSpdMul = fearSpdActive ? (typeof D5_LAST_STAND_FEAR_SPD_MUL === 'number' ? D5_LAST_STAND_FEAR_SPD_MUL : 0.85) : 1;
+      const rawSpdMul = getEffectiveSpdMul();
+      const unfearedSpdMul = fearSpdActive ? (rawSpdMul / fearSpdMul) : rawSpdMul;
       const minSpdFloor = player.noSlow ? 1.0 : 0.68;
-      const effSpd = Math.max(minSpdFloor, getEffectiveSpdMul() * envSpdMul);
+      const effSpd = Math.max(minSpdFloor, unfearedSpdMul * envSpdMul) * fearSpdMul;
       const v = player.spd * effSpd * moveScale;
       tvx = (dx / len) * v;
       tvy = (dy / len) * v;
@@ -1433,7 +1896,23 @@ function update(dt) {
         if (d < bestD) { bestD = d; best = e; bestIsTree = false; }
       }
     }
-    // 射程内无怪物时，武器也会智能索敌砍伐附近的异星晶树！
+    // 若射程内存在首领共鸣阵眼棱柱（或射程内无怪物时的普通封魂晶碑），武器会智能优先转火击破阵眼！
+    if (trees.length > 0) {
+      let bestPylon = null, bestPD = maxR;
+      for (let ti = 0; ti < trees.length; ti++) {
+        const tr = trees[ti];
+        if (!tr || !tr.isBossPylon || tr.hp <= 0) continue;
+        const dxT = tr.x - baseWx, dyT = tr.y - baseWy, limT = bestPD + tr.r;
+        const dSqT = dxT * dxT + dyT * dyT;
+        if (dSqT >= limT * limT) continue;
+        const d = Math.sqrt(dSqT) - tr.r;
+        if (d < bestPD) { bestPD = d; bestPylon = tr; }
+      }
+      if (bestPylon && (!best || best.type === 'boss' || bestPD < Math.hypot(best.x - baseWx, best.y - baseWy) - 18)) {
+        best = bestPylon;
+        bestIsTree = true;
+      }
+    }
     if (!best && trees.length > 0) {
       let bestTD = maxR;
       for (let ti = 0; ti < trees.length; ti++) {
@@ -1546,6 +2025,7 @@ function update(dt) {
             const ex0 = baseWx + Math.cos(w.angle) * effReach, ey0 = baseWy + Math.sin(w.angle) * effReach;
             for (let bi = eBullets.length - 1; bi >= 0 && slicedSpear < spearCap; bi--) {
               const eb = eBullets[bi];
+              if (!eb || eb.isCelestial) continue;
               const proj = Math.max(0, Math.min(1, ((eb.x - baseWx) * (ex0 - baseWx) + (eb.y - baseWy) * (ey0 - baseWy)) / (effReach * effReach)));
               const px = baseWx + proj * (ex0 - baseWx), py = baseWy + proj * (ey0 - baseWy);
               if (Math.hypot(eb.x - px, eb.y - py) <= (eb.r || 5) + (prongs.length > 1 ? 30 : 18) && Math.random() < cutChance) {
@@ -1571,6 +2051,7 @@ function update(dt) {
             const sliceCap = w.tier >= 5 ? 2 : 1;
             for (let bi = eBullets.length - 1; bi >= 0 && slicedCnt < sliceCap; bi--) {
               const eb = eBullets[bi];
+              if (!eb || eb.isCelestial) continue;
               const proj = Math.max(0, Math.min(1, ((eb.x - baseWx) * (ex - baseWx) + (eb.y - baseWy) * (ey - baseWy)) / l2));
               const px = baseWx + proj * (ex - baseWx), py = baseWy + proj * (ey - baseWy);
               if (Math.hypot(eb.x - px, eb.y - py) <= (eb.r || 5) + 22 && Math.random() < cutChance) {
@@ -1635,6 +2116,7 @@ function update(dt) {
             const sliceLimSq = sliceLim * sliceLim;
             for (let bi = eBullets.length - 1; bi >= 0 && slicedCnt < sliceCap; bi--) {
               const eb = eBullets[bi];
+              if (!eb || eb.isCelestial) continue;
               const dxB = eb.x - baseWx, dyB = eb.y - baseWy;
               if (dxB * dxB + dyB * dyB > sliceLimSq) continue;
               let daB = Math.abs(Math.atan2(dyB, dxB) - w.angle) % (Math.PI * 2);
@@ -1931,27 +2413,182 @@ function update(dt) {
         }
         const mx = baseWx + Math.cos(w.angle) * 18, my = baseWy + Math.sin(w.angle) * 18;
         if (tpl.isStaff) {
-          const staffGlowCol = (evo && evo.color) ? evo.color : (tpl.isEmberStaff ? '#ff6b35' : (tpl.isFrostStaff ? '#38bdf8' : (tpl.isStormStaff ? '#c084fc' : '#fbbf24')));
-          pushParticle({ x: mx, y: my, vx: 0, vy: 0, r: 9.5, color: staffGlowCol, t: 0.11, maxT: 0.11, muzzle: true, angle: w.angle });
+          // 🪄 四大秘术法杖真法术技能系统：【陨炎火球术】【极寒暴风雪】【奥术连锁闪电】【万蛊蚀骨毒雾】
+          const staffGlowCol = (evo && evo.color) ? evo.color : (tpl.isEmberStaff ? '#ff6b35' : (tpl.isFrostStaff ? '#38bdf8' : (tpl.isStormStaff ? '#c084fc' : '#52b788')));
+          pushParticle({ x: mx, y: my, vx: 0, vy: 0, r: 11.5, color: staffGlowCol, t: 0.14, maxT: 0.14, muzzle: true, angle: w.angle });
           if (evo && evo.commandSalvo && (w.shots % 2 === 0) && typeof triggerTurretSalvo === 'function') {
             triggerTurretSalvo(true);
           }
           if ((player.staffVolley || 0) > 0 && (w.shots % 3 === 0)) {
-            const volleyCnt = 2 * Math.min(2, player.staffVolley);
-            for (let vk = 0; vk < volleyCnt && bullets.length < (isTouch ? 185 : 275); vk++) {
-              const va = w.angle + (vk - (volleyCnt - 1) * 0.5) * 0.22;
+            const extraT = pickRandomAliveEnemy(null) || best;
+            if (extraT && extraT.hp > 0 && enemies.includes(extraT)) {
+              castChainLightning(mx, my, extraT, 2 + Math.min(2, player.staffVolley), base * finalMul * 0.56, critChance * 0.7, w.id, {
+                arcane: true, mainColor: '#e9d5ff', arcColor: staffGlowCol, dur: 0.22
+              });
+              if (state !== 'wave') return;
+            }
+          }
+
+          if (tpl.isEmberStaff) {
+            // 1) 赤烬魂灯杖 -> 【陨炎火球术】：吟唱重型日冕大火球，命中或至射程终点爆裂震波并铺开【熔火燎原炎海】！
+            const fbBlastR = ((tpl.blastR || 72) + ((evo && evo.blastAdd) || 0) + (player.staffPierce || 0) * 8) * getBlastScale();
+            for (let p = 0; p < pellets; p++) {
+              if (bullets.length >= (isTouch ? 185 : 275)) break;
+              const sp = pellets > 1 ? (p - (pellets - 1) * 0.5) * 0.18 : 0;
+              const a = w.angle + sp;
+              const isCrit = Math.random() < critChance;
+              const bSpd = tpl.spd;
+              const distToTarget = Math.min(maxR, Math.max(85, Math.hypot(best.x - mx, best.y - my) + 22));
+              const maxLife = distToTarget / bSpd;
               bullets.push({
                 x: mx, y: my, px: mx, py: my, ox: mx, oy: my, srcId: w.id,
-                vx: Math.cos(va) * 660, vy: Math.sin(va) * 660,
-                dmg: base * finalMul * 0.54, isCrit: false, angle: va,
-                pierce: 1 + (player.staffPierce || 0), bounces: 0,
-                isStaffOrb: 'arcane',
+                vx: Math.cos(a) * bSpd, vy: Math.sin(a) * bSpd,
+                dmg: base * finalMul * (isCrit ? critMult : 1), isCrit, angle: a,
+                critChance, critMult,
+                pierce: (evo && evo.pierceAdd) ? evo.pierceAdd : 0,
+                bounces: 0,
+                isFireball: true,
+                isStaffOrb: 'ember',
+                fireballBlastR: fbBlastR,
+                firePatchPoison: !!(evo && evo.forcePoison),
+                forceEvoBurn: true,
                 spin: Math.random() * 6.28, smokeT: 0,
-                life: 0.56, maxLife: 0.56, color: '#e9d5ff', r: 5.6, hit: null, lastHit: null
+                life: maxLife, maxLife,
+                color: (evo && evo.color) ? evo.color : '#ff6b35',
+                r: 12.2 * (evo ? 1.18 : 1),
+                hit: null, lastHit: null
+              });
+            }
+          } else if (tpl.isFrostStaff) {
+            // 2) 永冻星辉杖 -> 【极寒暴风雪】：直接在目标区域召唤旋转六芒冰暴法阵，密集降下冰雹减速并周期冻结！
+            const zR = (96 + ((evo && evo.blastAdd) || 0) + (player.staffPierce || 0) * 10) * getBlastScale();
+            const zDur = (evo && evo.id === 'staff_glacier') ? 3.8 : 3.2;
+            const freezeCh = Math.min(0.65, 0.18 + ((evo && evo.forceFreeze) || 0) + (player.freezeChance || 0) * 0.5);
+            for (let p = 0; p < pellets; p++) {
+              const perpA = w.angle + Math.PI * 0.5;
+              const off = pellets > 1 ? (p - (pellets - 1) * 0.5) * 86 : 0;
+              const zx = Math.max(64, Math.min(WORLD.w - 64, best.x + Math.cos(perpA) * off));
+              const zy = Math.max(64, Math.min(WORLD.h - 64, best.y + Math.sin(perpA) * off));
+              if (beams.length < 38) {
+                beams.push({ x1: mx, y1: my, x2: zx, y2: zy, color: '#7dd3fc', thin: true, t: 0.18, maxT: 0.18 });
+              }
+              if (rings.length < 38) {
+                rings.push({ x: zx, y: zy, r: zR, color: '#38bdf8', t: 0.28, maxT: 0.28, kind: 'hex' });
+              }
+              addBurst(zx, zy, '#bae6fd', 7, 135);
+              // 暴风雪降临首击寒霜冲击
+              for (let ei = enemies.length - 1; ei >= 0; ei--) {
+                const e = enemies[ei];
+                if (!e || e.hp <= 0 || e.primed) continue;
+                const dxE = e.x - zx, dyE = e.y - zy, limE = zR + e.r;
+                if (dxE * dxE + dyE * dyE <= limE * limE) {
+                  const isCrit = Math.random() < critChance;
+                  hurtEnemy(e, base * finalMul * 0.68 * (isCrit ? critMult : 1), isCrit, Math.atan2(dyE, dxE), true, {
+                    srcId: w.id, forceChill: true, forceFreeze: Math.random() < freezeCh * 0.85, silentHit: enemies.length > 22
+                  });
+                  if (state !== 'wave') return;
+                }
+              }
+              for (let ti = trees.length - 1; ti >= 0; ti--) {
+                const tr = trees[ti];
+                if (tr && tr.hp > 0 && Math.hypot(tr.x - zx, tr.y - zy) <= zR + tr.r) hurtTree(tr, base * finalMul * 0.7);
+              }
+              spawnPlayerSpellZone({
+                kind: 'blizzard', x: zx, y: zy, r: zR, life: zDur, tickInterval: 0.38,
+                dmg: base * finalMul * 0.44, critChance, critMult, srcId: w.id,
+                color: (evo && evo.color) ? evo.color : '#38bdf8',
+                freezeChance: freezeCh
+              });
+            }
+          } else if (tpl.isStormStaff) {
+            // 3) 紫电星轨杖 -> 【奥术连锁闪电】：无需飞行弹道，直接引落天罚主雷并在敌群间瞬发高压分叉连锁闪电！
+            const jumps = (tpl.chainOnHit || 5) + ((evo && evo.chainsAdd) || 0) + (player.staffPierce || 0) + Math.floor((w.tier - 1) * 0.5);
+            const boltCol = (evo && evo.color) ? evo.color : '#c084fc';
+            for (let p = 0; p < pellets; p++) {
+              const strikeTarget = (p === 0) ? best : (pickRandomAliveEnemy(best) || best);
+              if (!strikeTarget || strikeTarget.hp <= 0) continue;
+              if (lightnings.length < 48) {
+                const dxF = strikeTarget.x - mx, dyF = strikeTarget.y - my;
+                lightnings.push({
+                  pts: [
+                    { x: mx, y: my },
+                    { x: mx + dxF * 0.36 + (Math.random() - 0.5) * 16, y: my + dyF * 0.36 + (Math.random() - 0.5) * 16 },
+                    { x: mx + dxF * 0.72 + (Math.random() - 0.5) * 16, y: my + dyF * 0.72 + (Math.random() - 0.5) * 16 },
+                    { x: strikeTarget.x, y: strikeTarget.y }
+                  ],
+                  color: boltCol, coreColor: '#ffffff', width: 3.2, t: 0.22, maxT: 0.22
+                });
+              }
+              if (enemies.includes(strikeTarget)) {
+                castChainLightning(mx, my, strikeTarget, jumps, base * finalMul, critChance, w.id, {
+                  arcane: true,
+                  skyStrike: true,
+                  jumpRange: 275 + (player.staffRange || 0) * 0.5,
+                  mainColor: boltCol,
+                  arcColor: '#38bdf8',
+                  dur: 0.26,
+                  freezeChance: (evo && evo.forceFreeze) || 0.08,
+                  forceBurn: !!(evo && evo.forceBurn)
+                });
+                if (state !== 'wave') return;
+                if (evo && evo.blastAdd) {
+                  triggerExplosion(strikeTarget.x, strikeTarget.y, evo.blastAdd * getBlastScale(), base * finalMul * 0.58, false, 0, boltCol, false, 0, w.id);
+                  if (state !== 'wave') return;
+                }
+              } else {
+                hurtTree(strikeTarget, base * finalMul);
+              }
+            }
+          } else {
+            // 4) 发条共鸣法杖 -> 【万蛊蚀骨毒雾】：在目标群脚下弥漫翻涌蚀骨毒瘴，瞬时叠毒并持续腐蚀增伤！
+            const zR = (94 + ((evo && evo.blastAdd) || 0) + (player.staffPierce || 0) * 10) * getBlastScale();
+            const mistCol = (evo && evo.color) ? evo.color : '#52b788';
+            for (let p = 0; p < pellets; p++) {
+              const perpA = w.angle + Math.PI * 0.5;
+              const off = pellets > 1 ? (p - (pellets - 1) * 0.5) * 84 : 0;
+              const zx = Math.max(64, Math.min(WORLD.w - 64, best.x + Math.cos(perpA) * off));
+              const zy = Math.max(64, Math.min(WORLD.h - 64, best.y + Math.sin(perpA) * off));
+              if (beams.length < 38) {
+                beams.push({ x1: mx, y1: my, x2: zx, y2: zy, color: '#6ee7b7', thin: true, t: 0.18, maxT: 0.18 });
+              }
+              if (rings.length < 38) {
+                rings.push({ x: zx, y: zy, r: zR, color: '#52b788', t: 0.28, maxT: 0.28 });
+              }
+              addBurst(zx, zy, '#80ed99', 6, 120);
+              let chainSeedE = null;
+              for (let ei = enemies.length - 1; ei >= 0; ei--) {
+                const e = enemies[ei];
+                if (!e || e.hp <= 0 || e.primed) continue;
+                const dxE = e.x - zx, dyE = e.y - zy, limE = zR + e.r;
+                if (dxE * dxE + dyE * dyE <= limE * limE) {
+                  if (!chainSeedE) chainSeedE = e;
+                  applyPoison(e, 2);
+                  const isCrit = Math.random() < critChance;
+                  hurtEnemy(e, base * finalMul * 0.62 * (isCrit ? critMult : 1), isCrit, Math.atan2(dyE, dxE), true, {
+                    srcId: w.id, forcePoison: true, silentHit: enemies.length > 22
+                  });
+                  if (state !== 'wave') return;
+                }
+              }
+              if (evo && evo.chainOnHit && chainSeedE && chainSeedE.hp > 0) {
+                castChainLightning(zx, zy, chainSeedE, evo.chainOnHit, base * finalMul * 0.56, critChance, w.id, {
+                  arcane: true, mainColor: '#38bdf8', arcColor: '#6ee7b7', dur: 0.24
+                });
+                if (state !== 'wave') return;
+              }
+              for (let ti = trees.length - 1; ti >= 0; ti--) {
+                const tr = trees[ti];
+                if (tr && tr.hp > 0 && Math.hypot(tr.x - zx, tr.y - zy) <= zR + tr.r) hurtTree(tr, base * finalMul * 0.68);
+              }
+              spawnPlayerSpellZone({
+                kind: 'poison_mist', x: zx, y: zy, r: zR, life: 3.6, tickInterval: 0.40,
+                dmg: base * finalMul * 0.40, critChance, critMult, srcId: w.id,
+                color: mistCol, forcePoison: true
               });
             }
           }
-        } else if (!tpl.isStar && !tpl.isFlame && !tpl.isPebble && !tpl.isIce && !tpl.isDart) {
+        } else {
+        if (!tpl.isStar && !tpl.isFlame && !tpl.isPebble && !tpl.isIce && !tpl.isDart) {
           pushParticle({ x: mx, y: my, vx: 0, vy: 0, r: w.id === 'shotgun' || tpl.isRocket || tpl.isGrenade || tpl.isPlasma ? 12 : 8.5, color: (evo && evo.color) ? evo.color : (tpl.isPlasma ? '#c77dff' : (tpl.techScale ? '#72efdd' : '#ffd166')), t: 0.085, maxT: 0.085, muzzle: true, angle: w.angle });
         }
         if ((tpl.set === 'gun' || w.id === 'minigun' || w.id === 'revolver') && shells.length < 60 && (w.id !== 'minigun' || Math.random() < 0.45)) {
@@ -1973,41 +2610,31 @@ function update(dt) {
           const extraCritPierce = ((w.id === 'crossbow' && isCrit) ? 2 : 0) + (sixthShot ? 2 : 0);
           const evoPierce = (evo && evo.pierceAdd) ? evo.pierceAdd : 0;
           const evoBounce = (evo && evo.bounceAdd) ? evo.bounceAdd : 0;
-          const staffBonusPierce = tpl.isStaff ? (player.staffPierce || 0) : 0;
           const baseBlast = (tpl.blastR || 0) + ((evo && (tpl.blastR || tpl.isRocket || tpl.isGrenade || tpl.isPlasma)) ? (evo.blastAdd || 0) : 0);
-          const evoImpactBlast = (evo && evo.blastAdd && !tpl.isRocket && !tpl.isGrenade && !tpl.isPlasma && !tpl.shredBlast && !tpl.isEmberStaff) ? evo.blastAdd * getBlastScale() : 0;
-          const staffOrbKind = tpl.isStaff
-            ? (tpl.isEmberStaff ? 'ember' : (tpl.isFrostStaff ? 'frost' : (tpl.isStormStaff ? 'storm' : 'chrono')))
-            : '';
-          const staffChains = tpl.isStormStaff ? ((tpl.chainOnHit || 3) + ((evo && evo.chainsAdd) || 0)) : 0;
-          const frostShardCnt = tpl.isFrostStaff ? ((tpl.frostShards || 3) + ((evo && evo.frostShardsAdd) || 0)) : 0;
-          const staffOrbColor = tpl.isEmberStaff ? '#ff6b35' : (tpl.isFrostStaff ? '#38bdf8' : (tpl.isStormStaff ? '#c084fc' : (tpl.isChronoStaff ? '#fbbf24' : '')));
+          const evoImpactBlast = (evo && evo.blastAdd && !tpl.isRocket && !tpl.isGrenade && !tpl.isPlasma && !tpl.shredBlast) ? evo.blastAdd * getBlastScale() : 0;
           bullets.push({
             x: mx, y: my, px: mx, py: my, ox: mx, oy: my, srcId: w.id,
             vx: Math.cos(a) * bSpd, vy: Math.sin(a) * bSpd,
             dmg: base * finalMul * (isCrit ? critMult : 1), isCrit, angle: a,
-            pierce: (tpl.pierce || 0) + evoPierce + staffBonusPierce + extraCritPierce + (tpl.isRocket || tpl.isGrenade ? 0 : player.pierceBonus),
+            pierce: (tpl.pierce || 0) + evoPierce + extraCritPierce + (tpl.isRocket || tpl.isGrenade ? 0 : player.pierceBonus),
             bounces: (tpl.bounce || 0) + evoBounce + (tpl.isRocket || tpl.isFlame ? 0 : player.bounceBonus) + (tpl.isStar && isCrit ? 1 : 0),
             isStar: !!tpl.isStar, isFlame: !!tpl.isFlame, isRocket: !!tpl.isRocket, isGrenade: !!tpl.isGrenade,
-            isPebble: !!tpl.isPebble, isIce: !!(tpl.isIce || tpl.isFrostStaff), isPlasma: !!tpl.isPlasma, isBolt: w.id === 'crossbow',
+            isPebble: !!tpl.isPebble, isIce: !!tpl.isIce, isPlasma: !!tpl.isPlasma, isBolt: w.id === 'crossbow',
             isDart: !!tpl.isDart, isNail: !!tpl.isNail,
-            isStaffOrb: staffOrbKind,
-            staffEmberBlast: tpl.isEmberStaff ? (baseBlast * getBlastScale()) : 0,
-            staffChains,
-            frostShards: frostShardCnt,
             shredBlast: tpl.shredBlast ? (evo ? 1.0 : tpl.shredBlast) : 0,
             evoBlastR: evoImpactBlast,
-            evoChain: (!tpl.isStormStaff && ((evo && evo.chainOnHit) || tpl.chainOnHit)) ? ((evo && evo.chainOnHit) || tpl.chainOnHit) : 0,
-            forceEvoBurn: !!(tpl.isEmberStaff || (evo && evo.forceBurn)),
+            evoChain: ((evo && evo.chainOnHit) || tpl.chainOnHit) ? ((evo && evo.chainOnHit) || tpl.chainOnHit) : 0,
+            forceEvoBurn: !!(evo && evo.forceBurn),
             freezeHit: Math.max(tpl.freezeHit || 0, (evo && evo.forceFreeze) ? evo.forceFreeze : 0),
             poisonHit: (evo && evo.forcePoison) ? 1.0 : (tpl.poisonHit || 0),
-            blastR: (!tpl.isEmberStaff && baseBlast) ? baseBlast * getBlastScale() : 0,
+            blastR: baseBlast ? baseBlast * getBlastScale() : 0,
             spin: Math.random() * 6.28, smokeT: 0,
             life: maxLife, maxLife,
-            color: (evo && evo.color) ? evo.color : (staffOrbColor || (tpl.isFlame ? '#ff9f1c' : (tpl.isPlasma ? '#c77dff' : (tpl.isIce ? '#72efdd' : (tpl.isDart ? '#a3e635' : (tpl.isNail ? '#4cc9f0' : (tpl.isGrenade ? '#f97316' : (tpl.isPebble ? '#cbd5e1' : (tpl.isStar ? '#e0fbfc' : (isCrit ? '#ffd166' : '#fff3b0')))))))))),
-            r: (tpl.isStaff ? 7.4 : (tpl.isPlasma ? 8.5 : (tpl.isGrenade ? 6.8 : (tpl.isFlame ? 7 : (tpl.isRocket ? 6 : (tpl.isStar ? 6.5 : (tpl.isPebble ? 5.2 : (w.id === 'shotgun' ? 4.2 : 4.6)))))))) * (evo ? 1.15 : 1),
+            color: (evo && evo.color) ? evo.color : (tpl.isFlame ? '#ff9f1c' : (tpl.isPlasma ? '#c77dff' : (tpl.isIce ? '#72efdd' : (tpl.isDart ? '#a3e635' : (tpl.isNail ? '#4cc9f0' : (tpl.isGrenade ? '#f97316' : (tpl.isPebble ? '#cbd5e1' : (tpl.isStar ? '#e0fbfc' : (isCrit ? '#ffd166' : '#fff3b0'))))))))),
+            r: (tpl.isPlasma ? 8.5 : (tpl.isGrenade ? 6.8 : (tpl.isFlame ? 7 : (tpl.isRocket ? 6 : (tpl.isStar ? 6.5 : (tpl.isPebble ? 5.2 : (w.id === 'shotgun' ? 4.2 : 4.6))))))) * (evo ? 1.15 : 1),
             hit: null, lastHit: null
           });
+        }
         }
       }
     }
@@ -2020,12 +2647,13 @@ function update(dt) {
   }
   player._displayRange = maxEquipRange > 0 ? maxEquipRange : Math.max(68, 104 + totalRange);
 
-  // 自动机炮塔、浮游激光塔、紫电震波塔与秘法共鸣图腾塔索敌开火（享受工程增幅、润滑脂攻速、图腾共鸣与星导飞弹协同！）
+  // 自动机炮塔、浮游激光塔、紫电震波塔与秘法共鸣图腾塔索敌开火
+  // （参照《土豆兄弟》建筑机制：角色自身 atkSpd 与工程学 techMul 绝不加速塔开火，仅受独立【建筑攻速】、图腾共鸣与瞬步超频影响，基础塔攻速还原并额外 +20%！）
   const turretMaxR = Math.max(148, 316 + Math.round(totalRange * 0.5));
   for (let ti = 0; ti < turrets.length; ti++) {
     const t = turrets[ti];
     t.pulsePhase = (t.pulsePhase || 0) + dt * 3.6;
-    // 检测周围 220px 内是否有【秘法共鸣图腾塔】提供 +18% 攻速光环
+    // 检测周围 220px 内是否有【秘法共鸣图腾塔】提供 +18% 独立建筑攻速光环
     let totemHaste = 1;
     for (let oi = 0; oi < turrets.length; oi++) {
       const ot = turrets[oi];
@@ -2034,8 +2662,7 @@ function update(dt) {
         if (dxO * dxO + dyO * dyO <= 220 * 220) { totemHaste = 1.18; break; }
       }
     }
-    const turretAspdAll = (1 + (player.turretAspdBonus || 0)) * totemHaste;
-    t.cd -= dt * turretAspdAll;
+    t.cd -= dt;
     if (t.recoil > 0) t.recoil = Math.max(0, t.recoil - dt * 8);
     const searchR = t.kind === 'shock' ? Math.round(165 * getBlastScale()) : turretMaxR;
     let best = null, bestDSq = searchR * searchR;
@@ -2051,10 +2678,12 @@ function update(dt) {
       if (t.cd <= 0) {
         const isCrit = !!(player.turretCrit && Math.random() < baseCrit * 0.85);
         const cMul = isCrit ? getEffectiveCritMult(1.85) : 1;
-        const overclockMul = (player.turretOverclockT || 0) > 0 ? 1.75 : 1;
+        const tAspd = typeof getEffectiveTurretAspdMul === 'function'
+          ? getEffectiveTurretAspdMul(totemHaste)
+          : (1.20 * (1 + (player.turretAspdBonus || 0)) * totemHaste * ((player.turretOverclockT || 0) > 0 ? 1.55 : 1));
         const tSrc = t.kind === 'laser' ? 'turret_laser' : (t.kind === 'shock' ? 'turret_shock' : (t.kind === 'totem' ? 'turret_totem' : 'turret_gun'));
         if (t.kind === 'shock') {
-          t.cd = Math.max(0.45, 1.55 / (Math.sqrt(effAspd) * Math.sqrt(techMul) * overclockMul));
+          t.cd = Math.max(0.52, 1.55 / tAspd);
           t.recoil = 1;
           const shockR = Math.round(162 * getBlastScale());
           const sdmg = (18.0 + wave * 2.6) * (1 + (t.tier - 1) * 0.42) * effDmg * techMul * cMul;
@@ -2073,7 +2702,8 @@ function update(dt) {
             }
           }
         } else if (t.kind === 'laser') {
-          t.cd = Math.max(0.18, 0.81 / (Math.sqrt(effAspd) * techMul * overclockMul)) / (1 + (t.tier - 1) * 0.14);
+          const tierAspd = 1 + (t.tier - 1) * 0.12;
+          t.cd = Math.max(0.26, 0.81 / (tAspd * tierAspd));
           t.recoil = 1;
           const ldmg = (14.5 + wave * 1.75) * (1 + (t.tier - 1) * 0.45) * effDmg * techMul * cMul;
           if ((player.bounceBonus || 0) > 0) {
@@ -2118,7 +2748,8 @@ function update(dt) {
           }
         } else if (bullets.length < (isTouch ? 180 : 260)) {
           const isTotem = t.kind === 'totem';
-          t.cd = Math.max(0.14, (isTotem ? 0.62 : 0.465) / (Math.sqrt(effAspd) * techMul * overclockMul)) / (1 + (t.tier - 1) * 0.15);
+          const tierAspd = 1 + (t.tier - 1) * 0.12;
+          t.cd = Math.max(isTotem ? 0.24 : 0.18, (isTotem ? 0.62 : 0.465) / (tAspd * tierAspd));
           t.recoil = 1;
           const tdmg = (isTotem ? (13.5 + wave * 1.65) : (9.5 + wave * 1.15)) * (1 + (t.tier - 1) * 0.5) * effDmg * techMul * (isTotem ? Math.sqrt(elemMul) : 1) * cMul;
           const tSpd = isTotem ? 640 : 690;
@@ -2170,9 +2801,23 @@ function update(dt) {
     if (!b) continue;
     b.px = b.x; b.py = b.y;
     b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
-    if (b.isStar || b.isGrenade) b.spin += dt * (b.isGrenade ? 14 : 22);
+    if (b.isStar || b.isGrenade || b.isFireball) b.spin += dt * (b.isFireball ? 11 : (b.isGrenade ? 14 : 22));
     if (b.isFlame) { b.vx *= (1 - dt * 1.6); b.vy *= (1 - dt * 1.6); b.r += dt * 20; }
-    if (b.isRocket || b.isGrenade) {
+    if (b.isFireball) {
+      b.smokeT -= dt;
+      if (b.smokeT <= 0) {
+        b.smokeT = 0.036;
+        pushParticle({
+          x: b.x - Math.cos(b.angle) * 10 + (Math.random() - 0.5) * 8,
+          y: b.y - Math.sin(b.angle) * 10 + (Math.random() - 0.5) * 8,
+          vx: -b.vx * 0.14 + (Math.random() - 0.5) * 28,
+          vy: -b.vy * 0.14 + (Math.random() - 0.5) * 28,
+          r: 4.2 + Math.random() * 2.6,
+          color: Math.random() < 0.45 ? '#fde047' : (b.color || '#ff6b35'),
+          t: 0.22, maxT: 0.22
+        });
+      }
+    } else if (b.isRocket || b.isGrenade) {
       b.smokeT -= dt;
       if (b.smokeT <= 0) {
         b.smokeT = b.isGrenade ? 0.065 : 0.045;
@@ -2185,7 +2830,8 @@ function update(dt) {
       const prevActB = _activeWeaponId;
       _activeWeaponId = b.srcId || '';
       try {
-        if (b.isRocket || b.isGrenade) triggerExplosion(b.x, b.y, b.blastR || 76, b.dmg * (b.isGrenade ? 0.85 : elemMul), false, 0, '#ff9f1c', true);
+        if (b.isFireball) detonateStaffFireball(b);
+        else if (b.isRocket || b.isGrenade) triggerExplosion(b.x, b.y, b.blastR || 76, b.dmg * (b.isGrenade ? 0.85 : elemMul), false, 0, '#ff9f1c', true);
         else if (b.isPlasma) triggerExplosion(b.x, b.y, b.blastR || 82, b.dmg * 0.85 * elemMul, false, 0, '#c77dff', false);
       } finally {
         _activeWeaponId = prevActB;
@@ -2202,6 +2848,11 @@ function update(dt) {
       if (tdx * tdx + tdy * tdy < thit * thit) {
         markBulletHit(b, tr);
         hurtTree(tr, b.dmg);
+        if (b.isFireball && b.pierce <= 0) {
+          detonateStaffFireball(b);
+          if (state !== 'wave') return;
+          b.life = -1; break;
+        }
         if (b.isRocket) {
           const prevActT = _activeWeaponId;
           _activeWeaponId = b.srcId || '';
@@ -2341,11 +2992,18 @@ function update(dt) {
             }
             // 第二优先级：弹射耗尽（或场上仅剩唯一目标无处可弹）后，再结算穿透（pierce）！
             if (b.pierce <= 0) {
-              if (b.isGrenade) {
+              if (b.isFireball) {
+                detonateStaffFireball(b);
+                if (state !== 'wave') return;
+              } else if (b.isGrenade) {
                 triggerExplosion(b.x, b.y, b.blastR || 76, hitDmg * 0.85, false, 0, '#ff9f1c', true);
                 if (state !== 'wave') return;
               }
               b.life = -1; break;
+            } else if (b.isFireball && !b._midFireBurst) {
+              b._midFireBurst = true;
+              triggerExplosion(b.x, b.y, (b.fireballBlastR || 72) * 0.72, hitDmg * 0.52, false, 0, b.color || '#ff6b35', false, 0, b.srcId || 'ember_staff');
+              if (state !== 'wave') return;
             }
             b.pierce--;
             if (player.bounceAmpDmg > 0) b.dmg *= (1 + player.bounceAmpDmg);
@@ -2356,7 +3014,10 @@ function update(dt) {
       }
     }
     if (b.life <= 0 && !b.isRocket && !b.isGrenade) {
-      if (b.isPlasma) {
+      if (b.isFireball) {
+        detonateStaffFireball(b);
+        if (state !== 'wave') return;
+      } else if (b.isPlasma) {
         const prevActE = _activeWeaponId;
         _activeWeaponId = b.srcId || '';
         try {
@@ -2369,6 +3030,56 @@ function update(dt) {
       bullets.splice(i, 1);
     } else if (b.life <= 0) {
       bullets.splice(i, 1);
+    }
+  }
+
+  // 🪄 玩家法杖持续法术区域结算（【熔火燎原炎海】fire_patch / 【极寒暴风雪】blizzard / 【万蛊蚀骨毒雾】poison_mist）
+  if (typeof spellZones !== 'undefined' && spellZones.length > 0) {
+    const zoneRateMul = 1 + (player.dotHaste || 0) * 0.5;
+    for (let zi = spellZones.length - 1; zi >= 0; zi--) {
+      if (state !== 'wave') return;
+      const z = spellZones[zi];
+      if (!z) { spellZones.splice(zi, 1); continue; }
+      z.life -= dt;
+      z.spin = (z.spin || 0) + dt * (z.kind === 'blizzard' ? 2.6 : 1.15);
+      if (z.life <= 0) { spellZones.splice(zi, 1); continue; }
+      z.tick -= dt * zoneRateMul;
+      if (z.tick <= 0) {
+        z.tick = z.tickInterval || 0.40;
+        const prevActZ = _activeWeaponId;
+        _activeWeaponId = z.srcId || '';
+        try {
+          for (let ei = enemies.length - 1; ei >= 0; ei--) {
+            const e = enemies[ei];
+            if (!e || e.hp <= 0 || e.primed) continue;
+            const dxZ = e.x - z.x, dyZ = e.y - z.y, limZ = z.r + e.r;
+            if (dxZ * dxZ + dyZ * dyZ <= limZ * limZ) {
+              const isCrit = Math.random() < (z.critChance || 0.08);
+              const zDmg = z.dmg * (isCrit ? (z.critMult || 1.95) : 1);
+              if (z.kind === 'blizzard') {
+                e.chillT = Math.max(e.chillT || 0, 1.45);
+                const doFreeze = (z.freezeChance || 0) > 0 && Math.random() < z.freezeChance;
+                hurtEnemy(e, zDmg, isCrit, null, true, {
+                  srcId: z.srcId || 'frost_scepter', forceChill: true, forceFreeze: doFreeze, silentHit: true, noProc: enemies.length > 26
+                });
+              } else if (z.kind === 'poison_mist') {
+                applyPoison(e, 1);
+                e.chillT = Math.max(e.chillT || 0, 0.75);
+                hurtEnemy(e, zDmg, isCrit, null, true, {
+                  srcId: z.srcId || 'chrono_staff', forcePoison: true, silentHit: true, noProc: enemies.length > 26
+                });
+              } else {
+                hurtEnemy(e, zDmg, isCrit, null, true, {
+                  srcId: z.srcId || 'ember_staff', forceBurn: true, forcePoison: !!z.forcePoison, silentHit: true, noProc: enemies.length > 26
+                });
+              }
+              if (state !== 'wave') return;
+            }
+          }
+        } finally {
+          _activeWeaponId = prevActZ;
+        }
+      }
     }
   }
   compactAliveEnemies();
@@ -2393,23 +3104,42 @@ function update(dt) {
   const canDotCrit = !!player.elemCrit;
   const dotCritMult = canDotCrit ? (1 + Math.max(0.35, (getEffectiveCritMult(1.95) - 1) * 0.5)) : 1;
   let prevActorKey = '';
+  let prevActorObj = null;
   let prevEbLen = eBullets.length;
   try {
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (prevActorKey && eBullets.length > prevEbLen) {
       for (let bi = prevEbLen; bi < eBullets.length; bi++) {
-        if (eBullets[bi] && !eBullets[bi].srcKey) eBullets[bi].srcKey = prevActorKey;
+        if (eBullets[bi]) {
+          if (!eBullets[bi].srcKey) eBullets[bi].srcKey = prevActorKey;
+          if (!eBullets[bi].bossOwner && prevActorObj && prevActorObj.type === 'boss') eBullets[bi].bossOwner = prevActorObj;
+        }
       }
     }
     prevEbLen = eBullets.length;
     const e = enemies[i];
-    if (!e || e.hp <= 0) { prevActorKey = ''; continue; }
+    if (!e || e.hp <= 0) { prevActorKey = ''; prevActorObj = null; continue; }
     _activeEnemyActor = e;
     prevActorKey = e.variant || e.type;
+    prevActorObj = e;
     if (e.hitFlash > 0) e.hitFlash -= dt;
     if (e._flashCd > 0) e._flashCd -= dt;
     if (e._blkTxtCd > 0) e._blkTxtCd -= dt;
+    if (e._lsTxtCd > 0) e._lsTxtCd -= dt;
+    if (e._dodgeTxtCd > 0) e._dodgeTxtCd -= dt;
+    if (e._pylonTxtCd > 0) e._pylonTxtCd -= dt;
     if (e._reactCd > 0) e._reactCd -= dt;
+    if ((e.d5LastStandT || 0) > 0) {
+      e.d5LastStandT -= dt;
+      if (e.d5LastStandT <= 0) {
+        e.d5LastStandT = 0;
+        e.exposeT = Math.max(e.exposeT || 0, 1.85);
+        beep(720, 0.14, 'triangle', 0.065);
+        if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 145, color: '#72efdd', t: 0.34, maxT: 0.34, kind: 'hex' });
+        addText(e.x, e.y - e.r - 24, '✨ 临死挣扎结束 · 不灭金身瓦解!', '#72efdd', 16, 1.65, true);
+        announce('✨ 首领 10 秒临死挣扎结束！恐惧威压消散，无敌状态已解除，速速斩杀！', '#72efdd', 3.2);
+      }
+    }
 
     // 灼烧持续伤害（享余烬魔典 dotHaste 频率加速与绝对零度 elemCrit 暴击）
     if (e.burnT > 0) {
@@ -2457,8 +3187,12 @@ function update(dt) {
     if (e.exposeT > 0) e.exposeT = Math.max(0, e.exposeT - dt);
     if (e.sunderT > 0) e.sunderT = Math.max(0, e.sunderT - dt);
     if (e._touchCd > 0) e._touchCd = Math.max(0, e._touchCd - dt);
+    if (e._actPoseT > 0) e._actPoseT = Math.max(0, e._actPoseT - dt);
 
     const isBossUnit = e.type === 'boss' || e.type === 'special_boss';
+    const eliteAspd = (!isBossUnit && e.type !== 'mini_boss' && e.elite && e.eliteKind === 'frenzy')
+      ? (e.eliteAspdMul || 1.20)
+      : 1.0;
     const isFrozenLocked = !isBossUnit && e.type !== 'mini_boss' && e.freezeT > 0;
     // 战场地形对怪物的伤害与减速减益严格减半（熔岩减速 -18%→-9% 且灼烧减半；泥沼减速 -38%→-19% 且毒蚀减半；冰面减速 -15%→-7.5%）
     let eTerrainSpd = 1;
@@ -2496,7 +3230,8 @@ function update(dt) {
       (e.venomBreathT || 0) > 0 ||
       (e.sigWindupT || 0) > 0 ||
       (e.p2WindupT || 0) > 0 ||
-      (e.tpWindupT || 0) > 0
+      (e.tpWindupT || 0) > 0 ||
+      !!e.eclipseSingularity
     );
     const curSpd = isFrozenLocked ? 0 : (isChannelingStationary ? e.spd * slowFactor * 0.10 : e.spd * slowFactor);
 
@@ -2524,10 +3259,12 @@ function update(dt) {
       } else {
         e.x += Math.cos(a) * curSpd * dt; e.y += Math.sin(a) * curSpd * dt;
       }
-    } else if (e.type === 'boss') {
+    } else if (e.type === 'boss' || (e.type === 'special_boss' && (e.variant === 'mech_colossus' || e.variant === 'plague_empress'))) {
       const enraged = (e.hp < e.maxHp * 0.55) || overtime || !!e.mythicPhase2;
-      const bossMult = (enraged ? 1.15 : 1) * (e.mythicPhase2 ? 1.12 : 1) * twinBossPace;
+      const lastStandAspd = (e.d5LastStandT || 0) > 0 ? 1.20 : 1.0;
+      const bossMult = (enraged ? 1.15 : 1) * (e.mythicPhase2 ? 1.12 : 1) * twinBossPace * lastStandAspd;
 
+      if (tickBossArenaMechanic(e, dt, a, distP, enraged, bossMult)) return;
       if (tickBossVenomBreath(e, dt, a, bossMult)) return;
       if (tickBossPhase2Skill(e, dt, a, bossMult)) return;
 
@@ -2547,7 +3284,7 @@ function update(dt) {
       // 六大主宰专属咏唱终极奥义（高辨识度地面几何预警 + 专属形态弹幕/光炮 + 1.45s 破绽窗口）
       if (e.sigSkillT === undefined) e.sigSkillT = 3.4;
       if ((e.sigWindupT || 0) > 0) {
-        e.sigWindupT -= dt;
+        e.sigWindupT -= dt * lastStandAspd;
         if (e.sigWindupT <= 0) {
           e.sigWindupT = 0;
           e.castEndT = 1.15;
@@ -2555,6 +3292,7 @@ function update(dt) {
           beep(245, 0.14, 'sawtooth', 0.065);
           const baseA = Number.isFinite(e.sigBaseA) ? e.sigBaseA : a;
           if (e.sigKind === 'frost_prism') {
+            triggerBossActionPose(e, 'cast_up', baseA, 0.60, '#7dd3fc');
             if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 162, color: '#7dd3fc', t: 0.34, maxT: 0.34 });
             for (let k = 0; k < 12 && eBullets.length < 170; k++) {
               const ba = baseA + (k / 12) * Math.PI * 2;
@@ -2566,17 +3304,29 @@ function update(dt) {
               spawnHazard(e.x + Math.cos(ha) * 176, e.y + Math.sin(ha) * 176, 62, e.dmg * 1.08, 0.95, { color: '#38bdf8', style: 'frost_hex' });
             }
           } else if (e.sigKind === 'chrono_dial') {
+            triggerBossActionPose(e, 'spin', baseA, 0.60, '#fde68a');
             if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 175, color: '#fde68a', t: 0.34, maxT: 0.34 });
             for (let k = 0; k < 12 && eBullets.length < 170; k++) {
               const ba = baseA + (k / 12) * Math.PI * 2;
               const spd = 128 + (k % 3) * 28;
-              eBullets.push({ x: e.x, y: e.y, px: e.x, py: e.y, vx: Math.cos(ba) * spd, vy: Math.sin(ba) * spd, dmg: Math.max(4, Math.round(e.dmg * 0.78)), r: 6.2, color: k % 2 === 0 ? '#fde68a' : '#c084fc', shape: k % 3 === 0 ? 'crescent' : 'lance' });
+              const isRewindBlade = (k % 3 === 0);
+              eBullets.push({
+                x: e.x, y: e.y, px: e.x, py: e.y,
+                vx: Math.cos(ba) * spd, vy: Math.sin(ba) * spd,
+                dmg: Math.max(4, Math.round(e.dmg * 0.78)), r: 6.2,
+                color: k % 2 === 0 ? '#fde68a' : '#c084fc',
+                shape: isRewindBlade ? 'crescent' : 'lance',
+                rewindAt: isRewindBlade ? 0.88 : 0,
+                rewindOwner: isRewindBlade ? e : null,
+                life: isRewindBlade ? 2.45 : undefined
+              });
             }
             for (let k = 0; k < 3 && lightnings.length < 35; k++) {
               const la = baseA + (k / 3) * Math.PI * 2;
               lightnings.push({ pts: [{ x: e.x, y: e.y }, { x: e.x + Math.cos(la) * 210, y: e.y + Math.sin(la) * 210 }], color: '#fde68a', t: 0.28, maxT: 0.28 });
             }
           } else if (e.sigKind === 'eclipse_lances') {
+            triggerBossActionPose(e, 'cast_up', baseA, 0.60, '#fde68a');
             const tx = Number.isFinite(e.sigTargetX) ? e.sigTargetX : player.x;
             const ty = Number.isFinite(e.sigTargetY) ? e.sigTargetY : player.y;
             if (rings.length < 40) rings.push({ x: tx, y: ty, r: 224, color: '#fde68a', t: 0.34, maxT: 0.34 });
@@ -2590,6 +3340,7 @@ function update(dt) {
               eBullets.push({ x: sx, y: sy, vx: Math.cos(fireA) * 188, vy: Math.sin(fireA) * 188, dmg: Math.max(5, Math.round(e.dmg * 0.82)), r: 6.4, color: '#fde68a', shape: 'trident' });
             }
           } else if (e.sigKind === 'omega_cross_beam') {
+            triggerBossActionPose(e, 'recoil', baseA, 0.58, '#fb923c');
             // 欧米茄：十字重型等离子歼灭主炮（4 向贯通激光炮轨，发射口外移避开体心重叠，给近战留出四象限安全空间）
             const innerOff = (e.r || 42) + 18;
             const beamLen = 460;
@@ -2610,6 +3361,7 @@ function update(dt) {
             }
             shake = Math.max(shake, 5.5);
           } else if (e.sigKind === 'venom_vortex') {
+            triggerBossActionPose(e, 'spin', baseA, 0.58, '#6ee7b7');
             // 苍岚毒皇：万蛊翠岚风刃三叉阵
             if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 168, color: '#6ee7b7', t: 0.32, maxT: 0.32 });
             for (let k = 0; k < 10 && eBullets.length < 170; k++) {
@@ -2620,6 +3372,7 @@ function update(dt) {
             }
           } else {
             // butcher · 断刃·八荒血月斩（严格对齐地面预警方向数，全方向必保血月斩光与预烘焙血月刃波完整释放！）
+            triggerBossActionPose(e, 'slash', baseA, 0.58, '#ff2a55');
             const ways = (e.hp / Math.max(1, e.maxHp) < 0.55 || enraged || e.mythicPhase2) ? 8 : 4;
             shake = Math.max(shake, 4.5);
             if (rings.length < 44) rings.push({ x: e.x, y: e.y, r: 164, color: '#ff2a55', t: 0.32, maxT: 0.32 });
@@ -2680,10 +3433,11 @@ function update(dt) {
       if (e.variant === 'frost_queen') {
         // 【碎冕霜女皇 · 艾丝特莉亚】机制特征：先导轨预警后缓旋的双翼/二阶四翼极光冰束（近战可从容顺时针伴行挥砍） + 寒渊三叉冰戟 + 六合冰牢
         if ((e.beamWindupT || 0) > 0) {
-          e.beamWindupT -= dt;
+          e.beamWindupT -= dt * lastStandAspd;
           if (e.beamWindupT <= 0) {
             e.beamWindupT = 0;
             e.beamSweepT = e.beamSweepMaxT || 1.65;
+            triggerBossActionPose(e, 'cast_up', e.beamSweepA || a, 0.56, '#7dd3fc');
             addText(e.x, e.y - e.r - 18, '❄️ 极光双翼冰束扫射!', '#7dd3fc', 14, 1.25);
             beep(520, 0.12, 'sine', 0.05);
           }
@@ -2741,6 +3495,7 @@ function update(dt) {
         e.shotT = (e.shotT || 1.7) - dt * bossMult;
         if (e.shotT <= 0) {
           e.shotT = enraged ? 1.75 : 2.15;
+          triggerBossActionPose(e, 'thrust', a, 0.44, '#72efdd');
           const fan = enraged ? 2 : 1;
           for (let k = -fan; k <= fan && eBullets.length < 170; k++) {
             const ba = a + k * 0.22;
@@ -2751,6 +3506,7 @@ function update(dt) {
         e.meteorT = (e.meteorT || 4.6) - dt * bossMult;
         if (e.meteorT <= 0) {
           e.meteorT = enraged ? 4.4 : 5.4;
+          triggerBossActionPose(e, 'cast_up', a, 0.52, '#38bdf8');
           const gapIdx = Math.floor(Math.random() * 6);
           addText(player.x, player.y - 44, '🧊 寒霜六合冰牢! 寻缺口突围', '#7dd3fc', 14, 1.3);
           for (let b = 0; b < 6; b++) {
@@ -2776,13 +3532,14 @@ function update(dt) {
           addText(e.x, e.y - e.r - 16, '🔥 熔核加特林横扫!', '#ff9f1c', 13, 1.1);
         }
         if (e.burstLeft > 0) {
-          e.burstCd -= dt;
+          e.burstCd -= dt * lastStandAspd;
           if (e.burstCd <= 0) {
             e.burstCd = 0.10;
             const idxShot = (enraged ? 9 : 7) - e.burstLeft;
             e.burstLeft--;
+            const sa = (e._sweepBaseA !== undefined ? e._sweepBaseA : a - 0.4) + idxShot * 0.13;
+            triggerBossActionPose(e, 'recoil', sa, 0.18, '#ff9f1c');
             if (eBullets.length < 170) {
-              const sa = (e._sweepBaseA !== undefined ? e._sweepBaseA : a - 0.4) + idxShot * 0.13;
               eBullets.push({ x: e.x, y: e.y, vx: Math.cos(sa) * 184, vy: Math.sin(sa) * 184, dmg: Math.max(4, Math.round(e.dmg * 0.76)), r: 6.2, color: '#ff9f1c', shape: 'fire' });
             }
           }
@@ -2792,6 +3549,7 @@ function update(dt) {
         if (e.dashT <= 0) {
           e.dashT = enraged ? 3.2 : 4.0;
           e.exposeT = Math.max(e.exposeT || 0, 1.1);
+          triggerBossActionPose(e, 'slam', a, 0.54, '#fb5607');
           if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 126, color: '#fb5607', t: 0.3, maxT: 0.3 });
           const discCnt = enraged ? 8 : 6;
           for (let k = 0; k < discCnt && eBullets.length < 170; k++) {
@@ -2803,6 +3561,7 @@ function update(dt) {
         e.meteorT = (e.meteorT || 4.2) - dt * bossMult;
         if (e.meteorT <= 0) {
           e.meteorT = enraged ? 4.0 : 4.9;
+          triggerBossActionPose(e, 'cast_up', a, 0.52, '#fb5607');
           const axisA = a;
           const perpA = axisA + Math.PI * 0.5;
           addText(e.x, e.y - e.r - 18, '🚀 钢铁矩阵排炮轰炸!', '#fb5607', 14, 1.3);
@@ -2823,10 +3582,11 @@ function update(dt) {
         // 【逆时星晷主宰 · 伽蓝】机制特征：十字/X形次元裁决激光网锁定 + 双生残影折跃交叉弯刃 + 刀锋刺客召唤
         if (distP > 155) { e.x += Math.cos(a) * curSpd * bossMult * dt; e.y += Math.sin(a) * curSpd * bossMult * dt; }
         if ((e.laserGridT || 0) > 0) {
-          e.laserGridT -= dt;
+          e.laserGridT -= dt * lastStandAspd;
           if (e.laserGridT <= 0) {
             e.laserGridT = 0;
             const gx = e.laserGridX, gy = e.laserGridY, ga = e.laserGridA || 0;
+            triggerBossActionPose(e, 'slash', ga, 0.50, '#c77dff');
             const span = 560;
             beep(310, 0.16, 'sawtooth', 0.065);
             if (rings.length < 40) rings.push({ x: gx, y: gy, r: 95, color: '#e0aaff', t: 0.28, maxT: 0.28, fill: true });
@@ -2853,12 +3613,13 @@ function update(dt) {
           e.laserGridX = player.x;
           e.laserGridY = player.y;
           e.laserGridA = ((e._gridFlip = !e._gridFlip) ? 0 : Math.PI * 0.25);
+          triggerBossActionPose(e, 'cast_up', a, 0.48, '#e0aaff');
           addText(player.x, player.y - 44, e._gridFlip ? '🌌 十字次元光轨锁定!' : '🌌 X字次元光轨锁定!', '#e0aaff', 14, 1.15);
           beep(620, 0.08, 'triangle', 0.045);
         }
         // 第 12 层首领【逆时星晷主宰·伽蓝】双生残影相位折跃（带 D1->D5 阶梯递减落点预警，D5 预警时长为 D1 的 50%！）
         if ((e.tpWindupT || 0) > 0) {
-          e.tpWindupT -= dt;
+          e.tpWindupT -= dt * lastStandAspd;
           if (e.tpWindupT <= 0) {
             e.tpWindupT = 0;
             e.exposeT = Math.max(e.exposeT || 0, 1.15);
@@ -2867,7 +3628,7 @@ function update(dt) {
             const oldAim = Math.atan2(player.y - oldY, player.x - oldX);
             for (let k = -1; k <= 1 && eBullets.length < 185; k++) {
               const ba = oldAim + k * 0.22;
-              eBullets.push({ x: oldX, y: oldY, px: oldX, py: oldY, vx: Math.cos(ba) * 165, vy: Math.sin(ba) * 165, dmg: Math.max(4, Math.round(e.dmg * 0.74)), r: 6.8, color: '#fde68a', shape: 'crescent', srcKey: e.variant || e.type });
+              eBullets.push({ x: oldX, y: oldY, px: oldX, py: oldY, vx: Math.cos(ba) * 165, vy: Math.sin(ba) * 165, dmg: Math.max(4, Math.round(e.dmg * 0.74)), r: 6.8, color: '#fde68a', shape: 'crescent', rewindAt: 0.84, rewindOwner: e, life: 2.35, srcKey: e.variant || e.type, bossOwner: e });
             }
             e.x = Number.isFinite(e.tpDestX) ? e.tpDestX : e.x;
             e.y = Number.isFinite(e.tpDestY) ? e.tpDestY : e.y;
@@ -2876,6 +3637,7 @@ function update(dt) {
             beep(540, 0.08, 'triangle', 0.045);
             if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 86, color: '#c77dff', t: 0.32, maxT: 0.32, fill: true });
             const newAim = Math.atan2(player.y - e.y, player.x - e.x);
+            triggerBossActionPose(e, 'slash', newAim, 0.50, '#c77dff');
             for (let k = -2; k <= 2 && eBullets.length < 185; k++) {
               const ba = newAim + k * 0.20;
               eBullets.push({ x: e.x, y: e.y, px: e.x, py: e.y, vx: Math.cos(ba) * 165, vy: Math.sin(ba) * 165, dmg: Math.max(4, Math.round(e.dmg * 0.74)), r: 6.8, color: '#c77dff', shape: 'crescent', srcKey: e.variant || e.type });
@@ -2918,6 +3680,7 @@ function update(dt) {
           }
           if (e.dashT <= 0) {
             startLinearDash(e, a, 310, 0.34);
+            triggerBossActionPose(e, 'thrust', a, 0.44, '#a3e635');
             spawnHazard(e.x, e.y, 66, e.dmg * 1.02, 1.05, { color: '#a3e635' });
             // 疾风起跳同步向玩家扇射 5 枚剧毒三叉戟！
             for (let k = -2; k <= 2 && eBullets.length < 170; k++) {
@@ -2934,6 +3697,7 @@ function update(dt) {
         e.shotT = (e.shotT || 1.75) - dt * bossMult;
         if (e.shotT <= 0) {
           e.shotT = enraged ? 1.65 : 2.05;
+          triggerBossActionPose(e, 'spin', a, 0.46, '#52b788');
           const arms = enraged ? 6 : 4;
           for (let k = 0; k < arms && eBullets.length < 170; k++) {
             const ba1 = (k / arms) * Math.PI * 2 + e.phase * 0.85;
@@ -2955,6 +3719,7 @@ function update(dt) {
         e.ringCd = (e.ringCd !== undefined ? e.ringCd : 4.5) - dt * bossMult;
         if (e.ringCd <= 0) {
           e.ringCd = e.mythicPhase2 ? 5.4 : 6.6;
+          triggerBossActionPose(e, 'cast_up', a, 0.56, '#ffd166');
           // 第一拍：内圈实心耀斑核爆（逼迫玩家远离）
           spawnHazard(e.x, e.y, 142, e.dmg * 1.18, 1.02, { color: '#ff9f1c' });
           e._eclipseFollowT = 1.06;
@@ -2964,6 +3729,7 @@ function update(dt) {
           e._eclipseFollowT -= dt;
           if (e._eclipseFollowT <= 0) {
             // 第二拍：外环黑日蚀灭风暴（内圈 118px 安全，奖励回身贴脸输出！）
+            triggerBossActionPose(e, 'slam', a, 0.54, '#fde68a');
             spawnHazard(e.x, e.y, 262, e.dmg * 1.22, 1.08, { innerSafeR: 118, color: '#fde68a' });
             e.exposeT = 1.75;
             addText(e.x, e.y - e.r - 18, '🌑 黑日环蚀! 贴近内圈风眼反击!', '#fde68a', 14, 1.3);
@@ -2975,6 +3741,7 @@ function update(dt) {
             if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 96, color: '#ffd166', t: 0.28, maxT: 0.28 });
             const fan = enraged ? 3 : 2;
             const aimNow = Math.atan2(player.y - e.y, player.x - e.x);
+            triggerBossActionPose(e, 'thrust', aimNow, 0.46, '#ffd166');
             for (let k = -fan; k <= fan && eBullets.length < 170; k++) {
               const ba = aimNow + k * 0.21;
               eBullets.push({ x: e.x, y: e.y, vx: Math.cos(ba) * 178, vy: Math.sin(ba) * 178, dmg: Math.max(4, Math.round(e.dmg * 0.78)), r: 6.2, color: '#ffd166', shape: 'trident' });
@@ -2999,6 +3766,7 @@ function update(dt) {
         e.meteorT = (e.meteorT || 4.2) - dt * bossMult;
         if (e.meteorT <= 0) {
           e.meteorT = enraged ? 3.8 : 4.8;
+          triggerBossActionPose(e, 'cast_up', a, 0.52, '#ffd166');
           const stepX = (dx || Math.cos(a)) * 78, stepY = (dy || Math.sin(a)) * 78;
           for (let b = 0; b < 3; b++) {
             spawnHazard(player.x + stepX * b, player.y + stepY * b, 66, e.dmg * 1.12, 0.92 + b * 0.24, { color: '#ffd166', style: 'thunder_sigil' });
@@ -3016,6 +3784,7 @@ function update(dt) {
           if (!advanceLinearDash(e, dt)) {
             if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 92, color: '#e63946', t: 0.26, maxT: 0.26 });
             const aimNow = Math.atan2(player.y - e.y, player.x - e.x);
+            triggerBossActionPose(e, 'slash', aimNow, 0.44, '#fb7185');
             for (let k = -1; k <= 1 && eBullets.length < 170; k++) {
               const ba = aimNow + k * 0.28;
               eBullets.push({ x: e.x, y: e.y, vx: Math.cos(ba) * 176, vy: Math.sin(ba) * 176, dmg: Math.max(4, Math.round(e.dmg * 0.78)), r: 8.2, color: '#fb7185', shape: 'crescent' });
@@ -3038,6 +3807,7 @@ function update(dt) {
           }
           if (e.dashT <= 0) {
             const ca = startLinearDash(e, a, butcherDist, 0.38);
+            triggerBossActionPose(e, 'slash', ca, 0.42, '#fb7185');
             if (slashes.length < 36) slashes.push({ x: e.x + Math.cos(ca) * 36, y: e.y + Math.sin(ca) * 36, angle: ca, r: 108, color: '#fb7185', mode: 'crescent', t: 0.22, maxT: 0.22 });
             advanceLinearDash(e, dt);
           } else if (e.dashT > 0.54) {
@@ -3048,6 +3818,7 @@ function update(dt) {
         e.ringCd = (e.ringCd !== undefined ? e.ringCd : 4.8) - dt * bossMult;
         if (e.ringCd <= 0) {
           e.ringCd = enraged ? 5.0 : 6.0;
+          triggerBossActionPose(e, 'spin', a, 0.56, '#fb7185');
           spawnHazard(e.x, e.y, 236, e.dmg * 1.15, 1.28, { innerSafeR: 112, color: '#fb7185' });
           e.exposeT = Math.max(e.exposeT || 0, 1.55);
           addText(e.x, e.y - e.r - 18, '🩸 血眼回天斩! 贴近内圈破招', '#fb7185', 14, 1.4);
@@ -3070,6 +3841,7 @@ function update(dt) {
         if (e.shotT <= 0) {
           e.shotT = 0.92;
           e._wheelA = (e._wheelA || 0) + 0.28;
+          triggerBossActionPose(e, 'recoil', e._wheelA, 0.30, '#ff6b35');
           for (let k = 0; k < 4 && eBullets.length < 170; k++) {
             const sa = e._wheelA + k * (Math.PI * 0.5);
             eBullets.push({ x: e.x, y: e.y, vx: Math.cos(sa) * 134, vy: Math.sin(sa) * 134, dmg: Math.max(4, Math.round(e.dmg * 0.70)), r: 5.6, color: '#ff6b35', shape: 'fire' });
@@ -3078,6 +3850,7 @@ function update(dt) {
         e.meteorT = (e.meteorT || 4.6) - dt;
         if (e.meteorT <= 0) {
           e.meteorT = 4.8;
+          triggerBossActionPose(e, 'slam', a, 0.48, '#ff9f1c');
           addText(e.x, e.y - e.r - 14, '🔥 十字熔火裂地!', '#ff9f1c', 13, 1.1);
           for (let b = 0; b < 4; b++) {
             const ha = a + b * (Math.PI * 0.5);
@@ -3099,6 +3872,7 @@ function update(dt) {
             beep(590, 0.07, 'triangle', 0.042);
             if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 68, color: '#72efdd', t: 0.24, maxT: 0.24, fill: true });
             const aimP = Math.atan2(player.y - e.y, player.x - e.x);
+            triggerBossActionPose(e, 'slash', aimP, 0.46, '#72efdd');
             for (let k = -1; k <= 1; k += 2) {
               if (eBullets.length < 185) {
                 const sa = aimP + k * 0.16;
@@ -3150,6 +3924,7 @@ function update(dt) {
         e.shotT = (e.shotT || 1.9) - dt * slowFactor;
         if (e.shotT <= 0) {
           e.shotT = 2.15;
+          triggerBossActionPose(e, 'thrust', a, 0.42, '#80ed99');
           for (let k = -1; k <= 1 && eBullets.length < 170; k++) {
             const sa = a + k * 0.24;
             eBullets.push({ x: e.x, y: e.y, vx: Math.cos(sa) * 165, vy: Math.sin(sa) * 165, dmg: Math.max(4, Math.round(e.dmg * 0.76)), r: 6.0, color: '#80ed99', shape: 'trident' });
@@ -3158,6 +3933,7 @@ function update(dt) {
         e.meteorT = (e.meteorT || 4.4) - dt;
         if (e.meteorT <= 0) {
           e.meteorT = 4.7;
+          triggerBossActionPose(e, 'cast_up', a, 0.46, '#52b788');
           for (let b = 0; b < 2; b++) {
             spawnHazard(player.x + (Math.random() - 0.5) * 170, player.y + (Math.random() - 0.5) * 170, 68, e.dmg * 1.05, 1.22, { color: '#52b788', style: 'venom_mire' });
           }
@@ -3229,6 +4005,7 @@ function update(dt) {
         e.shotT = (e.shotT || 2.1) - dt * slowFactor;
         if (e.shotT <= 0) {
           e.shotT = 2.45;
+          triggerBossActionPose(e, 'spin', a, 0.44, '#ffd166');
           if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 78, color: '#ffd166', t: 0.24, maxT: 0.24 });
           for (let k = 0; k < 4 && eBullets.length < 170; k++) {
             const sa = a + k * (Math.PI * 0.5);
@@ -3238,6 +4015,7 @@ function update(dt) {
         e.meteorT = (e.meteorT || 4.4) - dt;
         if (e.meteorT <= 0) {
           e.meteorT = 4.8;
+          triggerBossActionPose(e, 'slam', a, 0.50, '#ffd166');
           addText(e.x, e.y - e.r - 14, '🛡️ 重锤裂地三连击!', '#ffd166', 13, 1.1);
           for (let step = 1; step <= 3; step++) {
             spawnHazard(e.x + Math.cos(a) * (step * 88), e.y + Math.sin(a) * (step * 88), 60, e.dmg * 1.12, 0.82 + step * 0.22, { color: '#eab308', style: 'thunder_sigil' });
@@ -3313,10 +4091,11 @@ function update(dt) {
         }
       }
     } else if (e.type === 'special_boss') {
-      // 地图奇遇三大隐藏首领：彻底差异化技能演出（猩红居合一闪斩 / 黄金锯盘晶柱阵 / 噬界奇点黑洞牵引+剧毒龙息）
+      // 地图奇遇隐藏首领：彻底差异化技能演出（猩红居合一闪斩 / 黄金锯盘晶柱阵 / 噬界超巨黑洞引力奇点+剧毒龙息）
       const enraged = (e.hp < e.maxHp * 0.5) || overtime || !!e.mythicPhase2;
       const sbMult = (enraged ? 1.15 : 1) * (e.mythicPhase2 ? 1.12 : 1);
 
+      if (tickBossArenaMechanic(e, dt, a, distP, enraged, sbMult)) return;
       if (tickBossVenomBreath(e, dt, a, sbMult)) return;
       if (tickBossPhase2Skill(e, dt, a, sbMult)) return;
 
@@ -3333,6 +4112,7 @@ function update(dt) {
         e.ringCd = (e.ringCd !== undefined ? e.ringCd : 4.8) - dt * sbMult;
         if (e.ringCd <= 0) {
           e.ringCd = 5.8;
+          triggerBossActionPose(e, 'spin', a, 0.52, '#ff4d6d');
           spawnHazard(e.x, e.y, 228, e.dmg * 1.14, 1.26, { innerSafeR: 108, color: '#ff4d6d' });
           e.exposeT = 1.65;
           addText(e.x, e.y - e.r - 16, '🩸 猩红血环! 贴近风眼', '#ff4d6d', 14, 1.3);
@@ -3350,6 +4130,7 @@ function update(dt) {
           }
           if (e.dashT <= 0) {
             startLinearDash(e, a, 335, 0.36);
+            triggerBossActionPose(e, 'slash', a, 0.44, '#ff4d6d');
             if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 72, color: '#ff4d6d', t: 0.25, maxT: 0.25 });
             advanceLinearDash(e, dt);
           } else if (e.dashT > 0.48) {
@@ -3359,6 +4140,7 @@ function update(dt) {
         e.shotT = (e.shotT || 1.9) - dt * sbMult;
         if (e.shotT <= 0) {
           e.shotT = enraged ? 1.80 : 2.25;
+          triggerBossActionPose(e, 'slash', a, 0.44, '#ff4d6d');
           const cnt = enraged ? 7 : 5;
           const half = (cnt - 1) / 2;
           for (let k = 0; k < cnt && eBullets.length < 170; k++) {
@@ -3377,6 +4159,7 @@ function update(dt) {
         e.shotT = (e.shotT || 2.1) - dt * sbMult;
         if (e.shotT <= 0) {
           e.shotT = enraged ? 1.95 : 2.45;
+          triggerBossActionPose(e, 'slam', a, 0.50, '#ffd166');
           if (rings.length < 40) rings.push({ x: e.x, y: e.y, r: 98, color: '#ffd166', t: 0.28, maxT: 0.28 });
           const cnt = enraged ? 10 : 8;
           for (let k = 0; k < cnt && eBullets.length < 170; k++) {
@@ -3388,6 +4171,7 @@ function update(dt) {
         e.meteorT = (e.meteorT || 4.2) - dt * sbMult;
         if (e.meteorT <= 0) {
           e.meteorT = enraged ? 3.8 : 4.6;
+          triggerBossActionPose(e, 'cast_up', a, 0.48, '#ffd166');
           for (let b = 0; b < 4; b++) {
             const ha = (e.phase * 0.2) + b * (Math.PI * 0.5);
             spawnHazard(player.x + Math.cos(ha) * 86, player.y + Math.sin(ha) * 86, 62, e.dmg * 1.10, 1.22, { color: '#ffd166' });
@@ -3399,16 +4183,20 @@ function update(dt) {
           spawnWarning(Math.max(80, Math.min(WORLD.w - 80, e.x + (Math.random() - 0.5) * 180)), Math.max(80, Math.min(WORLD.h - 80, e.y + (Math.random() - 0.5) * 180)), 'shielder');
         }
       } else {
-        // 深渊噬界者：黑洞引力牵引玩家 + 正反双旋虚空月刃弹幕 + 分裂泥召唤
-        if (distP > 150) { e.x += Math.cos(a) * curSpd * sbMult * dt; e.y += Math.sin(a) * curSpd * sbMult * dt; }
-        if (distP > 75 && distP < 360 && !(player.dashT > 0)) {
-          const pull = 38 * sbMult * dt;
-          player.x = Math.max(player.r + 8, Math.min(WORLD.w - player.r - 8, player.x - Math.cos(a) * pull));
-          player.y = Math.max(player.r + 8, Math.min(WORLD.h - player.r - 8, player.y - Math.sin(a) * pull));
+        // 深渊噬界者（零号容器 · 饥饿黑影）：黑洞引力牵引玩家（吸引力同步削弱 60% 即 ×0.40，且开启超巨黑洞奇点期间驻足锚定、不双重叠加） + 正反双旋虚空月刃弹幕 + 分裂泥召唤
+        if (!e.eclipseSingularity && distP > 150) { e.x += Math.cos(a) * curSpd * sbMult * dt; e.y += Math.sin(a) * curSpd * sbMult * dt; }
+        if (!e.eclipseSingularity && distP > 75 && distP < 360 && !(player.dashT > 0)) {
+          const pull = 38 * 0.40 * sbMult * dt;
+          const px2 = Math.max(player.r + 8, Math.min(WORLD.w - player.r - 8, player.x - Math.cos(a) * pull));
+          const py2 = Math.max(player.r + 8, Math.min(WORLD.h - player.r - 8, player.y - Math.sin(a) * pull));
+          if (!isBlockedByTerrain(px2, py2, player.r)) {
+            player.x = px2; player.y = py2;
+          }
         }
         e.shotT = (e.shotT || 1.8) - dt * sbMult;
         if (e.shotT <= 0) {
           e.shotT = enraged ? 1.60 : 2.0;
+          triggerBossActionPose(e, 'spin', a, 0.46, '#c77dff');
           const cnt = enraged ? 8 : 6;
           for (let k = 0; k < cnt && eBullets.length < 170; k++) {
             const ba = (k / cnt) * Math.PI * 2 + e.phase * 0.85;
@@ -3418,6 +4206,7 @@ function update(dt) {
         e.ringCd = (e.ringCd !== undefined ? e.ringCd : 4.6) - dt * sbMult;
         if (e.ringCd <= 0) {
           e.ringCd = 5.6;
+          triggerBossActionPose(e, 'slam', a, 0.52, '#9d4edd');
           spawnHazard(e.x, e.y, 138, e.dmg * 1.15, 1.18, { color: '#9d4edd' });
           addText(e.x, e.y - e.r - 16, '🌌 奇点坍缩! 速撤离黑洞核心!', '#e0aaff', 14, 1.3);
         }
@@ -3450,7 +4239,7 @@ function update(dt) {
           finishLinearDash(e, 2.25);
         }
       } else {
-        e.dashT -= dt * slowFactor;
+        e.dashT -= dt * slowFactor * eliteAspd;
         if (e.dashT <= windupSec && e.dashT > 0 && e.lockedAim === undefined) {
           lockLinearDash(e, a, chargeDist, windupSec, '#fb923c', 'horn_wedge');
         }
@@ -3465,7 +4254,7 @@ function update(dt) {
     } else if (e.type === 'sand_worm') {
       // 蚀影潜渊骨蛇：彻底重做为【遁地潜行破土奇袭】（不再复用直线冲刺走廊！潜地黑影游走 -> 脚下八角裂纹破土冲出 + 斜十字骨刺迸射）
       if ((e.burrowWindup || 0) > 0) {
-        e.burrowWindup -= dt * slowFactor;
+        e.burrowWindup -= dt * slowFactor * eliteAspd;
         if (e.burrowWindup <= 0) {
           e.burrowWindup = 0;
           e.burrowT = 0.62;
@@ -3504,7 +4293,7 @@ function update(dt) {
           }
         }
       } else {
-        e.burrowCd = (e.burrowCd === undefined ? 2.1 : e.burrowCd) - dt * slowFactor;
+        e.burrowCd = (e.burrowCd === undefined ? 2.1 : e.burrowCd) - dt * slowFactor * eliteAspd;
         if (e.burrowCd <= 0 && distP < 310 && distP > 64) {
           e.burrowWindup = 0.38;
           e._burrowA = a;
@@ -3526,19 +4315,19 @@ function update(dt) {
       e.faceA = zigAngle;
       e.x += Math.cos(zigAngle) * curSpd * zigSpd * dt;
       e.y += Math.sin(zigAngle) * curSpd * zigSpd * dt;
-      e.slashCd = (e.slashCd || 0) - dt * slowFactor;
+      e.slashCd = (e.slashCd || 0) - dt * slowFactor * eliteAspd;
       if (distP < 68 && e.slashCd <= 0) {
         e.slashCd = 0.92;
         if (slashes.length < 36) slashes.push({ x: e.x + Math.cos(a) * 14, y: e.y + Math.sin(a) * 14, angle: a, r: 46, color: '#06d6a0', mode: 'claw', t: 0.16, maxT: 0.16 });
       }
     } else if (e.type === 'sniper_bug') {
       // 【差异化远程 1 · 寒晶狙击蛛】：0.72s 高对比双层红外激光锁定 -> 射出渐进加速的醒目重型猩红贯日长矛（绝非看不清的小细针；近身被贴脸时后撤且开火后硬直，利好近战突袭）
-      if ((e.recoilT || 0) > 0) e.recoilT -= dt;
+      if ((e.recoilT || 0) > 0) e.recoilT -= dt * eliteAspd;
       if (e.aimA === undefined && !(e.recoilT > 0)) {
         if (distP > 365) { e.x += Math.cos(a) * curSpd * dt; e.y += Math.sin(a) * curSpd * dt; }
         else if (distP < 185) { e.x -= Math.cos(a) * curSpd * 0.82 * dt; e.y -= Math.sin(a) * curSpd * 0.82 * dt; }
       }
-      e.shotT -= dt * slowFactor;
+      e.shotT -= dt * slowFactor * eliteAspd;
       const aimWin = e.aimMaxT || 0.72;
       if (e.shotT <= aimWin && e.shotT > 0 && e.aimA === undefined) {
         if (distP < 95) {
@@ -3551,7 +4340,7 @@ function update(dt) {
         const sa = e.aimA !== undefined ? e.aimA : a;
         e.aimA = undefined;
         e.recoilT = 0.52;
-        e.shotT = e.elite ? 2.40 : 3.05;
+        e.shotT = 3.05;
         addSparks(e.x + Math.cos(sa) * e.r, e.y + Math.sin(sa) * e.r, sa, '#ffd166', 4);
         if (eBullets.length < 170) {
           eBullets.push({
@@ -3570,9 +4359,9 @@ function update(dt) {
         const oa = a + (e.orbitDir || 1) * 1.18;
         e.x += Math.cos(oa) * curSpd * 0.85 * dt; e.y += Math.sin(oa) * curSpd * 0.85 * dt;
       }
-      e.shotT -= dt * slowFactor;
+      e.shotT -= dt * slowFactor * eliteAspd;
       if (e.shotT <= 0) {
-        e.shotT = e.elite ? 2.25 : 2.80;
+        e.shotT = 2.80;
         for (const side of [-1, 1]) {
           if (eBullets.length >= 170) break;
           const la = a + side * 0.54;
@@ -3592,9 +4381,9 @@ function update(dt) {
       } else if (distP < 140) {
         e.x -= Math.cos(a) * curSpd * 0.45 * dt; e.y -= Math.sin(a) * curSpd * 0.45 * dt;
       }
-      e.shotT -= dt * slowFactor;
+      e.shotT -= dt * slowFactor * eliteAspd;
       if (e.shotT <= 0) {
-        e.shotT = e.elite ? 2.05 : 2.55;
+        e.shotT = 2.55;
         addSparks(e.x + Math.cos(a) * e.r, e.y + Math.sin(a) * e.r, a, '#4ade80', 3);
         for (let k = -1; k <= 1 && eBullets.length < 170; k++) {
           const sa = a + k * 0.30;
@@ -3614,9 +4403,9 @@ function update(dt) {
         const oa = a + (e.orbitDir || 1) * 1.15;
         e.x += Math.cos(oa) * curSpd * 0.72 * dt; e.y += Math.sin(oa) * curSpd * 0.72 * dt;
       }
-      e.shotT -= dt * slowFactor;
+      e.shotT -= dt * slowFactor * eliteAspd;
       if (e.shotT <= 0) {
-        e.shotT = e.elite ? 2.30 : 2.85;
+        e.shotT = 2.85;
         const cnt = e.elite ? 2 : 1;
         for (let k = 0; k < cnt && eBullets.length < 170; k++) {
           const wSign = k === 0 ? 1 : -1;
@@ -3632,9 +4421,9 @@ function update(dt) {
     } else if (e.type === 'spore_mother') {
       // 【差异化远程 5 · 蚀忆魂灯龛】：取消同质化地面圆圈！改为架设旋转【紫晶十字裂变棱镜光轨】（四角象限留白安全）+ 4 向悬停星芒宝珠
       if (distP > 240) { e.x += Math.cos(a) * curSpd * dt; e.y += Math.sin(a) * curSpd * dt; }
-      e.shotT -= dt * slowFactor;
+      e.shotT -= dt * slowFactor * eliteAspd;
       if (e.shotT <= 0) {
-        e.shotT = e.elite ? 2.65 : 3.25;
+        e.shotT = 3.25;
         if (distP > 92 && hazards.length < 28) {
           spawnHazard(player.x + (Math.random() - 0.5) * 56, player.y + (Math.random() - 0.5) * 56, 32, e.dmg, 1.30, {
             color: '#c084fc',
@@ -3664,9 +4453,9 @@ function update(dt) {
         const strafeA = a + Math.sin(e.phase * 0.45) * 1.25;
         e.x += Math.cos(strafeA) * curSpd * 0.52 * dt; e.y += Math.sin(strafeA) * curSpd * 0.52 * dt;
       }
-      e.shotT -= dt * slowFactor;
+      e.shotT -= dt * slowFactor * eliteAspd;
       if (e.shotT <= 0) {
-        e.shotT = e.elite ? 2.05 : 2.50;
+        e.shotT = 2.50;
         const leadX = player.x + (player.moving ? dx * 10 : 0);
         const leadY = player.y + (player.moving ? dy * 10 : 0);
         const sa = Math.atan2(leadY - e.y, leadX - e.x);
@@ -3697,7 +4486,7 @@ function update(dt) {
         e.x += e.vx * dt; e.y += e.vy * dt;
         e.vx *= Math.max(0, 1 - dt * 6); e.vy *= Math.max(0, 1 - dt * 6);
       }
-      e.hopT = (e.hopT === undefined ? 0.9 : e.hopT) - dt * slowFactor;
+      e.hopT = (e.hopT === undefined ? 0.9 : e.hopT) - dt * slowFactor * eliteAspd;
       if (e.hopT <= 0) {
         e.hopT = 1.05 + Math.random() * 0.22;
         e.hopBurstT = 0.32;
@@ -3715,9 +4504,9 @@ function update(dt) {
       // 【差异化远程 7 · 发条星陨臼炮】：可见高抛榴弹升空弧线 + 八角机械火控准星 + 落地迸裂四向余烬霰片（告别凭空刷两个重复红圈！）
       if (distP > 360) { e.x += Math.cos(a) * curSpd * dt; e.y += Math.sin(a) * curSpd * dt; }
       else if (distP < 190) { e.x -= Math.cos(a) * curSpd * 0.65 * dt; e.y -= Math.sin(a) * curSpd * 0.65 * dt; }
-      e.shotT -= dt * slowFactor;
+      e.shotT -= dt * slowFactor * eliteAspd;
       if (e.shotT <= 0 && distP > 112) {
-        e.shotT = e.elite ? 2.75 : 3.40;
+        e.shotT = 3.40;
         if (rings.length < 34) rings.push({ x: e.x, y: e.y, r: 34, color: '#ff9f1c', t: 0.22, maxT: 0.22, kind: 'star' });
         addSparks(e.x, e.y - 10, -Math.PI * 0.5, '#ffd166', 4);
         const leadX = player.moving ? dx * 44 : (Math.random() - 0.5) * 26;
@@ -3736,13 +4525,13 @@ function update(dt) {
       // 【差异化远程 8 · 蚀日六翼唤灵师】：六芒唤灵法阵 + 次元裂空斜斩痕（线性裂缝，非圆圈！） + X 形双弧暗月镰
       if (distP > 320) { e.x += Math.cos(a) * curSpd * dt; e.y += Math.sin(a) * curSpd * dt; }
       else if (distP < 180) { e.x -= Math.cos(a) * curSpd * 0.7 * dt; e.y -= Math.sin(a) * curSpd * 0.7 * dt; }
-      e.sumT -= dt * slowFactor;
+      e.sumT -= dt * slowFactor * eliteAspd;
       if (e.sumT <= 0 && enemies.length < 48) {
         e.sumT = 5.4;
         if (rings.length < 36) rings.push({ x: e.x, y: e.y, r: 62, color: '#c77dff', t: 0.36, maxT: 0.36, kind: 'hex' });
         spawnWarning(Math.max(70, Math.min(WORLD.w - 70, e.x + (Math.random() - 0.5) * 130)), Math.max(70, Math.min(WORLD.h - 70, e.y + (Math.random() - 0.5) * 130)), 'swarmer');
       }
-      e.boltT = (e.boltT || 2.5) - dt * slowFactor;
+      e.boltT = (e.boltT || 2.5) - dt * slowFactor * eliteAspd;
       if (e.boltT <= 0) {
         e.boltT = 3.05;
         e._castFlip = !e._castFlip;
@@ -3770,7 +4559,7 @@ function update(dt) {
     } else if (e.type === 'healer') {
       // 【翠羽祝祷师】：告别单调绿圆圈，改为翡翠十字圣辉脉冲 + 可见实体翠绿治愈光链直连受伤友军！
       if (distP > 210) { e.x += Math.cos(a) * curSpd * dt; e.y += Math.sin(a) * curSpd * dt; }
-      e.healT -= dt * slowFactor;
+      e.healT -= dt * slowFactor * eliteAspd;
       if (e.healT <= 0) {
         e.healT = 2.8;
         if (rings.length < 36) rings.push({ x: e.x, y: e.y, r: 175, color: '#34d399', t: 0.36, maxT: 0.36, kind: 'cross_pulse' });
@@ -3806,7 +4595,7 @@ function update(dt) {
           pushParticle({ x: e.x + (Math.random() - 0.5) * 10, y: e.y + 4, vx: (Math.random() - 0.5) * 20, vy: -20 - Math.random() * 20, r: 3, color: '#ff9f1c', t: 0.22, maxT: 0.22 });
         }
       } else if (e.type === 'chaser') {
-        e.lungeCd = (e.lungeCd || 1.7) - dt * slowFactor;
+        e.lungeCd = (e.lungeCd || 1.7) - dt * slowFactor * eliteAspd;
         if (e.lungeCd <= 0 && distP < 148 && distP > 34) {
           e.lungeCd = 2.10;
           e.lungeBoostT = 0.28;
@@ -3824,7 +4613,7 @@ function update(dt) {
       } else if (e.type === 'iron_guard') {
         // 重戟守桥铁卫：稳步压迫 -> 近身亮起 160° 宽幅半月斩区横扫长戟
         if ((e.cleaveWindup || 0) > 0) {
-          e.cleaveWindup -= dt * slowFactor;
+          e.cleaveWindup -= dt * slowFactor * eliteAspd;
           moveMul = 0.12;
           moveA = e._cleaveA !== undefined ? e._cleaveA : a;
           if (e.cleaveWindup <= 0) {
@@ -3843,7 +4632,7 @@ function update(dt) {
             }
           }
         } else {
-          e.cleaveCd = (e.cleaveCd || 2.1) - dt * slowFactor;
+          e.cleaveCd = (e.cleaveCd || 2.1) - dt * slowFactor * eliteAspd;
           if (distP < 102 && e.cleaveCd <= 0) {
             e.cleaveCd = 2.45;
             e.cleaveWindup = 0.46;
@@ -3854,7 +4643,7 @@ function update(dt) {
       } else if (e.type === 'frost_knight') {
         // 寒鸦冰枪死骑：中近距锁定细长寒冰刺线 -> 凌厉滑步直刺穿刺！
         if ((e.thrustWindup || 0) > 0) {
-          e.thrustWindup -= dt * slowFactor;
+          e.thrustWindup -= dt * slowFactor * eliteAspd;
           moveMul = 0.10;
           moveA = e._thrustA !== undefined ? e._thrustA : a;
           if (e.thrustWindup <= 0) {
@@ -3877,7 +4666,7 @@ function update(dt) {
           moveMul = 2.65;
           moveA = e._thrustA !== undefined ? e._thrustA : a;
         } else {
-          e.thrustCd = (e.thrustCd || 1.9) - dt * slowFactor;
+          e.thrustCd = (e.thrustCd || 1.9) - dt * slowFactor * eliteAspd;
           if (distP < 142 && distP > 36 && e.thrustCd <= 0) {
             e.thrustCd = 2.25;
             e.thrustWindup = 0.42;
@@ -3888,7 +4677,7 @@ function update(dt) {
       } else if (e.type === 'blade_duelist') {
         // 发条双刃剑客：高速绕侧逼近 -> 0.34s 十字架刃蓄力提示 -> 开启黄金双刃剑刃风暴旋斩追击（留给近战侧闪节奏）！
         if ((e.whirlWindup || 0) > 0) {
-          e.whirlWindup -= dt * slowFactor;
+          e.whirlWindup -= dt * slowFactor * eliteAspd;
           moveMul = 0.22;
           if (e.whirlWindup <= 0) {
             e.whirlWindup = 0;
@@ -3902,12 +4691,12 @@ function update(dt) {
           moveMul = 1.36;
           e._whirlHitCd = Math.max(0, (e._whirlHitCd || 0) - dt);
           if (e._whirlHitCd <= 0 && distP <= e.r + player.r + 18) {
-            e._whirlHitCd = 0.46;
+            e._whirlHitCd = 0.46 / eliteAspd;
             hurtPlayer(Math.round(e.dmg * 0.92));
             if (state !== 'wave') return;
           }
         } else {
-          e.whirlCd = (e.whirlCd || 2.1) - dt * slowFactor;
+          e.whirlCd = (e.whirlCd || 2.1) - dt * slowFactor * eliteAspd;
           if (distP < 175 && e.whirlCd <= 0) {
             e.whirlCd = 2.85;
             e.whirlWindup = 0.34;
@@ -3920,7 +4709,7 @@ function update(dt) {
       } else if (e.type === 'shadow_reaper') {
         // 蚀影勾魂镰卫：锁定玩家侧翼暗影瞬步折跃 -> 现身刹那挥出紫黑暗月环斩！
         if ((e.reapWindup || 0) > 0) {
-          e.reapWindup -= dt * slowFactor;
+          e.reapWindup -= dt * slowFactor * eliteAspd;
           moveMul = 0.08;
           if (e.reapWindup <= 0) {
             e.reapWindup = 0;
@@ -3938,7 +4727,7 @@ function update(dt) {
             }
           }
         } else {
-          e.blinkCd = (e.blinkCd || 2.6) - dt * slowFactor;
+          e.blinkCd = (e.blinkCd || 2.6) - dt * slowFactor * eliteAspd;
           if (distP < 255 && distP > 75 && e.blinkCd <= 0) {
             e.blinkCd = 3.25;
             e.reapWindup = 0.42;
@@ -3951,7 +4740,7 @@ function update(dt) {
       } else if (e.type === 'shielder') {
         // 重铠符盾守桥卫（紧凑高甲体型 r=28）：近身发动短距【重盾猛击】钝击震退！
         if ((e.bashWindup || 0) > 0) {
-          e.bashWindup -= dt * slowFactor;
+          e.bashWindup -= dt * slowFactor * eliteAspd;
           moveMul = 0.15;
           if (e.bashWindup <= 0) {
             e.bashWindup = 0;
@@ -3965,7 +4754,7 @@ function update(dt) {
             }
           }
         } else {
-          e.bashCd = (e.bashCd || 2.2) - dt * slowFactor;
+          e.bashCd = (e.bashCd || 2.2) - dt * slowFactor * eliteAspd;
           if (distP < 78 && e.bashCd <= 0) {
             e.bashCd = 2.65;
             e.bashWindup = 0.36;
@@ -3980,7 +4769,7 @@ function update(dt) {
           if (Math.random() < dt * 7) pushParticle({ x: e.x + (Math.random() - 0.5) * 16, y: e.y - 8, vx: 0, vy: -22, r: 3.2, color: '#f43f5e', t: 0.22, maxT: 0.22 });
         }
         if (e.slamWindup > 0) {
-          e.slamWindup -= dt * slowFactor;
+          e.slamWindup -= dt * slowFactor * eliteAspd;
           moveMul = 0.12;
           moveA = e._slamA !== undefined ? e._slamA : a;
           if (e.slamWindup <= 0) {
@@ -4001,7 +4790,7 @@ function update(dt) {
             }
           }
         } else {
-          e.bargeCd = (e.bargeCd === undefined ? 2.1 : e.bargeCd) - dt * slowFactor;
+          e.bargeCd = (e.bargeCd === undefined ? 2.1 : e.bargeCd) - dt * slowFactor * eliteAspd;
           if ((e.bargeT || 0) <= 0 && e.bargeCd <= 0 && distP < 210 && distP > 92) {
             e.bargeCd = berserk ? 2.5 : 3.2;
             e.bargeT = 0.34;
@@ -4013,7 +4802,7 @@ function update(dt) {
             moveMul = 2.20;
             if (e._bargeA !== undefined) moveA = e._bargeA;
           }
-          e.slamCd = (e.slamCd || 2.5) - dt * slowFactor;
+          e.slamCd = (e.slamCd || 2.5) - dt * slowFactor * eliteAspd;
           if (distP < 112 && e.slamCd <= 0) {
             e.slamCd = berserk ? 2.25 : 2.75;
             e.slamWindup = 0.48;
@@ -4024,7 +4813,7 @@ function update(dt) {
       } else if (e.type === 'juggernaut') {
         // 黑曜金锁镇狱像（r=54 山岳泰坦巨像，极沉缓 spd=34）：重踏轰出十字四向地裂冲击光轨 + 六方碎晶！
         if (e.slamWindup > 0) {
-          e.slamWindup -= dt * slowFactor;
+          e.slamWindup -= dt * slowFactor * eliteAspd;
           moveMul = 0.08;
           moveA = e._slamA !== undefined ? e._slamA : a;
           if (e.slamWindup <= 0) {
@@ -4051,7 +4840,7 @@ function update(dt) {
             }
           }
         } else {
-          e.slamCd = (e.slamCd || 3.1) - dt * slowFactor;
+          e.slamCd = (e.slamCd || 3.1) - dt * slowFactor * eliteAspd;
           if (distP < 146 && e.slamCd <= 0) {
             e.slamCd = 3.55;
             e.slamWindup = 0.68;
@@ -4097,7 +4886,7 @@ function update(dt) {
     if (!e.primed && !(e.burrowT > 0)) {
       const pdx = player.x - e.x, pdy = player.y - e.y, pHitR = player.r + e.r * 0.85 - 3;
       if (pdx * pdx + pdy * pdy < pHitR * pHitR && !(e._touchCd > 0)) {
-        e._touchCd = e.dashing ? 0.36 : 0.50;
+        e._touchCd = (e.dashing ? 0.36 : 0.50) / eliteAspd;
         if (player.cls === 'bull') triggerBullNova();
         hurtPlayer(e.dmg);
         if (state !== 'wave') return;
@@ -4107,14 +4896,17 @@ function update(dt) {
   } finally {
     if (prevActorKey && eBullets.length > prevEbLen) {
       for (let bi = prevEbLen; bi < eBullets.length; bi++) {
-        if (eBullets[bi] && !eBullets[bi].srcKey) eBullets[bi].srcKey = prevActorKey;
+        if (eBullets[bi]) {
+          if (!eBullets[bi].srcKey) eBullets[bi].srcKey = prevActorKey;
+          if (!eBullets[bi].bossOwner && prevActorObj && prevActorObj.type === 'boss') eBullets[bi].bossOwner = prevActorObj;
+        }
       }
     }
     _activeEnemyActor = null;
   }
   compactAliveEnemies();
 
-  // 敌方差异化轨迹弹幕引擎（支持弧线包抄 curve、加减速长矛/星雷球 accel、S形双螺旋交织波 waveAmp、飞盘自转与友好擦弹判定）
+  // 敌方差异化轨迹弹幕引擎（支持逆时回旋月刃 rewindAt、弧线包抄 curve、加减速长矛/星雷球 accel、S形双螺旋交织波 waveAmp、飞盘自转与友好擦弹判定）
   const ebSpdMul = sandGustT > 0 ? 0.78 : 1;
   for (let i = eBullets.length - 1; i >= 0; i--) {
     if (state !== 'wave') return;
@@ -4127,6 +4919,16 @@ function update(dt) {
     }
     b.px = b.x; b.py = b.y;
     b.age = (b.age || 0) + dt * ebSpdMul;
+    if (b.rewindAt > 0 && !b._rewound && b.age >= b.rewindAt) {
+      b._rewound = true;
+      const ro = (b.rewindOwner && b.rewindOwner.hp > 0) ? b.rewindOwner : null;
+      const spdR = Math.max(152, Math.hypot(b.vx, b.vy) * 1.06);
+      const revA = ro ? Math.atan2(ro.y - b.y, ro.x - b.x) : (Math.atan2(b.vy, b.vx) + Math.PI);
+      b.vx = Math.cos(revA) * spdR;
+      b.vy = Math.sin(revA) * spdR;
+      b.color = '#fde68a';
+      addSparks(b.x, b.y, revA, '#fde68a', 2);
+    }
     if (b.waveAmp && b.baseAng !== undefined) {
       const fSpd = b.baseSpd || 148;
       const latSpd = Math.cos(b.age * (b.waveFreq || 6.4)) * b.waveAmp * (b.waveSign || 1);
@@ -4168,7 +4970,7 @@ function update(dt) {
     const hitRHigh = Math.max(6, player.r * 0.88 + effHitR - 2.0);
     if (dxLow * dxLow + dyLow * dyLow < hitRLow * hitRLow || dxHigh * dxHigh + dyHigh * dyHigh < hitRHigh * hitRHigh) {
       if (b.chillPlayer && !player.noSlow) player.chillSlowT = 1.25;
-      hurtPlayer(b.dmg, true, b.srcKey || (b.isVortexTrap ? 'trap_void_orb' : (b.isCelestial ? 'trap_sky_lance' : 'enemy_proj')));
+      hurtPlayer(b.dmg, true, b.bossOwner || b.srcKey || (b.isVortexTrap ? 'trap_void_orb' : (b.isCelestial ? 'trap_sky_lance' : 'enemy_proj')));
       eBullets.splice(i, 1);
       if (state !== 'wave') return;
     }
@@ -4203,7 +5005,7 @@ function update(dt) {
         const xpScale = wave === 1 ? 0.68 : (wave >= 7 ? 0.58 : 0.54);
         const rawXp = v * (d.xpMul || 1) * xpScale * player.harvest;
         const xpGain = Math.floor(rawXp) + (Math.random() < (rawXp % 1) ? 1 : 0);
-        const matRate = typeof getWaveMatRate === 'function' ? getWaveMatRate(wave) : (0.92 / (1 + Math.min(5, Math.max(0, wave - 1)) * 0.14 + Math.max(0, wave - 6) * 0.075));
+        const matRate = typeof getWaveMatRate === 'function' ? getWaveMatRate(wave) : ((0.92 * 0.77) / (1 + Math.min(5, Math.max(0, wave - 1)) * 0.14 + Math.max(0, wave - 6) * 0.075));
         const rawMat = v * player.harvest * matRate;
         const matGain = Math.floor(rawMat) + (Math.random() < (rawMat % 1) ? 1 : 0);
         player.mats += matGain; player.xp += xpGain;
@@ -4245,7 +5047,7 @@ function update(dt) {
           }
           beep(880, 0.11, 'triangle', 0.06);
         } else {
-          const yieldMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+          const yieldMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
           const bonusMat = Math.max(8, Math.round((16 + wave * 3) * yieldMul));
           player.mats += bonusMat;
           player.hp = Math.min(player.maxHp, player.hp + 6);
@@ -4355,9 +5157,12 @@ function update(dt) {
     const dMax = Math.max(0.5, player.dashMaxCd || 3.2);
     const dashCooling = dCd > 0.02;
     const dashPct = dashCooling ? Math.max(0, Math.min(100, (1 - dCd / dMax) * 100)) : 100;
+    const hudFearActive = typeof isBossLastStandFearActive === 'function' && isBossLastStandFearActive();
     setHudWidth('hudDashFill', dashPct.toFixed(1) + '%');
-    setHudText('hudDashText', dashCooling ? `瞬步冷却 ${dCd.toFixed(1)}s` : '◆ 瞬步就绪 [Space]');
-    setHudText('dashTouchLabel', dashCooling ? `${dCd.toFixed(1)}s` : '瞬步');
+    setHudText('hudDashText', dashCooling
+      ? (hudFearActive ? `恐惧冷却 ${dCd.toFixed(1)}s (+50%)` : `瞬步冷却 ${dCd.toFixed(1)}s`)
+      : (hudFearActive ? '😱 瞬步就绪 [恐惧+50%CD]' : '◆ 瞬步就绪 [Space]'));
+    setHudText('dashTouchLabel', dashCooling ? `${dCd.toFixed(1)}s` : (hudFearActive ? '瞬步!' : '瞬步'));
     if (hudCache.dashCooling !== dashCooling) {
       hudCache.dashCooling = dashCooling;
       const dwEl = hudEls.hudDashWrap || (hudEls.hudDashWrap = document.getElementById('hudDashWrap'));
@@ -4386,36 +5191,55 @@ function update(dt) {
       if (utEl) utEl.classList.toggle('cooling', ultCooling);
     }
 
-    let bossCnt = 0, bossCur = 0, bossTot = 0, anyMythicBoss = false, activeCastLabel = '';
-    const bossTitles = [];
+    const aliveBosses = [];
+    let anyMythicBoss = false, activeCastLabel = '';
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
       if ((e.type === 'boss' || e.type === 'mini_boss' || e.type === 'special_boss') && e.hp > 0) {
-        bossCnt++;
-        bossCur += Math.max(0, e.hp);
-        bossTot += e.maxHp;
+        if (!e._bossHudOrder) e._bossHudOrder = ++_bossHudSeq;
+        aliveBosses.push(e);
         if (e.mythicPhase2) anyMythicBoss = true;
-        if (!activeCastLabel) {
+        if ((e.d5LastStandT || 0) > 0) {
+          anyMythicBoss = true;
+          activeCastLabel = `🩸 临死挣扎 · 无敌 ${e.d5LastStandT.toFixed(1)}s（恐惧：移速-15% · 瞬步冷却+50% · 伤敌汲血10%）`;
+        } else if (!activeCastLabel) {
           if ((e.p2WindupT || 0) > 0 && e.p2Label) {
             activeCastLabel = `⚠️ 二阶终式蓄力 · ${e.p2Label}`;
+          } else if (e.eclipseSingularity) {
+            activeCastLabel = (e.eclipseSingularity.windupT || 0) > 0
+              ? `⚠️ 黑洞引力奇点预警 (${e.eclipseSingularity.windupT.toFixed(1)}s后开启吸力 · 速进金色晨曦庇护印)`
+              : `🌑 黑洞引力奇点 (${e.eclipseSingularity.t.toFixed(1)}s · 冲入金色晨曦庇护印抗衡吸力)`;
+          } else if (e.chronoAnchor) {
+            activeCastLabel = `⏳ 逆时回溯锚点 (${e.chronoAnchor.t.toFixed(1)}s · 踏入断时阵解锚)`;
+          } else if (e.duelRing) {
+            activeCastLabel = `⚔️ 血誓决斗剑域 (${e.duelRing.t.toFixed(1)}s · 圈内应战破防)`;
+          } else if ((e._pylonShieldCnt || 0) > 0) {
+            activeCastLabel = `⚡ 共鸣阵眼护体×${e._pylonShieldCnt}（优先击破棱柱破防）`;
           } else if ((e.venomBreathT || 0) > 0) {
             activeCastLabel = e.venomTwin ? '☠️ 释放二阶终式 · 双龙万蛊毒息' : '☠️ 高压横扫 · 剧毒龙息喷流';
           } else if (e.castLabel && ((e.sigWindupT || 0) > 0 || (e.castEndT || 0) > 0)) {
             activeCastLabel = (e.sigWindupT || 0) > 0 ? `⚠️ 蓄力咏唱 · ${e.castLabel}` : `💥 释放杀招 · ${e.castLabel}`;
           }
         }
-        const bt = e.bossTitle || (e.type === 'mini_boss' ? '⚔️ 雨夜守桥重铠武者' : '👑 绯红断刃剑姬 · 烬羽');
-        if (bossTitles.length < 2 && !bossTitles.includes(bt)) bossTitles.push(bt);
       }
     }
+    if (aliveBosses.length > 1) {
+      aliveBosses.sort((a, b) => (a._bossHudOrder || 0) - (b._bossHudOrder || 0));
+    }
+    const bossCnt = aliveBosses.length;
     const pendingBossSpawn = spawns.some(s => s.type === 'boss' || s.type === 'mini_boss' || s.type === 'special_boss');
     const bwEl = hudEls.bossBarWrap || (hudEls.bossBarWrap = document.getElementById('bossBarWrap'));
+    const bprEl = hudEls.bossPrimaryRow || (hudEls.bossPrimaryRow = document.getElementById('bossPrimaryRow'));
+    const bexEl = hudEls.bossExtraBars || (hudEls.bossExtraBars = document.getElementById('bossExtraBars'));
     const bcsEl = hudEls.bossCastSub || (hudEls.bossCastSub = document.getElementById('bossCastSub'));
     if (bossCnt > 0) {
+      const b0 = aliveBosses[0];
+      const b0Mythic = !!(b0.mythicPhase2 || (b0.d5LastStandT || 0) > 0);
       if (bwEl) {
         if (bwEl.classList.contains('hidden')) bwEl.classList.remove('hidden');
         bwEl.classList.toggle('mythic', anyMythicBoss);
       }
+      if (bprEl) bprEl.classList.toggle('mythic', b0Mythic);
       if (bcsEl) {
         if (activeCastLabel) {
           if (bcsEl.classList.contains('hidden')) bcsEl.classList.remove('hidden');
@@ -4424,15 +5248,79 @@ function update(dt) {
           bcsEl.classList.add('hidden');
         }
       }
-      const bName = bossTitles.length > 1 ? bossTitles.join(' & ') : (bossCnt > 1 ? `${bossTitles[0]} ×${bossCnt}` : bossTitles[0]);
-      if (hudCache.bossName !== bName) {
-        hudCache.bossName = bName;
-        const bnEl = hudEls.bossName || (hudEls.bossName = document.querySelector('.boss-name'));
-        if (bnEl) bnEl.textContent = bName;
+      const b0Name = b0.bossTitle || (b0.type === 'mini_boss' ? '⚔️ 雨夜守桥重铠武者' : '👑 绯红断刃剑姬 · 烬羽');
+      if (hudCache.bossName !== b0Name) {
+        hudCache.bossName = b0Name;
+        const bnEl = hudEls.bossName || (hudEls.bossName = document.querySelector('#bossPrimaryRow .boss-name') || document.querySelector('.boss-name'));
+        if (bnEl) bnEl.textContent = b0Name;
       }
-      setHudWidth('bossFill', Math.round((bossCur / Math.max(1, bossTot)) * 1000) / 10 + '%');
+      const b0Cur = Math.max(0, b0.hp), b0Tot = Math.max(1, b0.maxHp);
+      const b0Pct = Math.max(0, Math.min(100, Math.round((b0Cur / b0Tot) * 1000) / 10));
+      setHudWidth('bossFill', b0Pct + '%');
+      setHudText('bossHpText', `${Math.ceil(b0Cur)} / ${Math.ceil(b0Tot)} (${Math.round(b0Pct)}%)`);
+
+      // 双首领 / 多首领同台时：每个首领独立渲染各自的血条、血量数值与二阶段金框状态！
+      const extraCnt = Math.max(0, bossCnt - 1);
+      if (bexEl) {
+        const rows = hudEls.extraBossRows || (hudEls.extraBossRows = []);
+        while (rows.length > extraCnt) {
+          const rem = rows.pop();
+          if (rem && rem.row && rem.row.parentNode) rem.row.parentNode.removeChild(rem.row);
+        }
+        while (rows.length < extraCnt) {
+          const row = document.createElement('div');
+          row.className = 'boss-row boss-sub-row';
+          const nm = document.createElement('div');
+          nm.className = 'boss-name';
+          const bar = document.createElement('div');
+          bar.className = 'bar bar-boss';
+          const fill = document.createElement('div');
+          fill.className = 'bar-fill hp-fill';
+          fill.style.width = '100%';
+          const txt = document.createElement('div');
+          txt.className = 'bar-text boss-hp-text';
+          bar.appendChild(fill);
+          bar.appendChild(txt);
+          row.appendChild(nm);
+          row.appendChild(bar);
+          bexEl.appendChild(row);
+          rows.push({ row, nm, fill, txt, lastNm: '', lastW: '', lastTxt: '', lastMythic: false });
+        }
+        for (let k = 0; k < extraCnt; k++) {
+          const bk = aliveBosses[k + 1];
+          const slot = rows[k];
+          const bkMythic = !!(bk.mythicPhase2 || (bk.d5LastStandT || 0) > 0);
+          if (slot.lastMythic !== bkMythic) {
+            slot.lastMythic = bkMythic;
+            slot.row.classList.toggle('mythic', bkMythic);
+          }
+          const bkName = bk.bossTitle || (bk.type === 'mini_boss' ? '⚔️ 守誓统领' : '👑 深渊主宰');
+          if (slot.lastNm !== bkName) {
+            slot.lastNm = bkName;
+            slot.nm.textContent = bkName;
+          }
+          const bkCur = Math.max(0, bk.hp), bkTot = Math.max(1, bk.maxHp);
+          const bkPct = Math.max(0, Math.min(100, Math.round((bkCur / bkTot) * 1000) / 10));
+          const wStr = bkPct + '%';
+          if (slot.lastW !== wStr) {
+            slot.lastW = wStr;
+            slot.fill.style.width = wStr;
+          }
+          const tStr = `${Math.ceil(bkCur)} / ${Math.ceil(bkTot)} (${Math.round(bkPct)}%)`;
+          if (slot.lastTxt !== tStr) {
+            slot.lastTxt = tStr;
+            slot.txt.textContent = tStr;
+          }
+        }
+      }
     } else if (!pendingBossSpawn) {
       setHudWidth('bossFill', '0%');
+      setHudText('bossHpText', '');
+      if (bexEl && hudEls.extraBossRows && hudEls.extraBossRows.length > 0) {
+        hudEls.extraBossRows.length = 0;
+        bexEl.innerHTML = '';
+      }
+      if (bprEl) bprEl.classList.remove('mythic');
       if (bcsEl && !bcsEl.classList.contains('hidden')) bcsEl.classList.add('hidden');
       if (bwEl) {
         bwEl.classList.remove('mythic');

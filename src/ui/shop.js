@@ -187,7 +187,7 @@ function settleSpireFloor(flow) {
         pendingCrates++;
         if (drop.isMythic) player.mythicCratesQueued = (player.mythicCratesQueued || 0) + 1;
         else if (drop.isBoss) player.bossCratesQueued = (player.bossCratesQueued || 0) + 1;
-      } else player.mats += 16 + wave * 3;
+      } else player.mats += Math.round((16 + wave * 3) * 1.10);
     }
   }
   settleWaveRewards();
@@ -375,7 +375,7 @@ function toggleSurvivalTrial() {
 }
 
 function calcSurvivalTrialGoldComp(waveNum, hits = 0, p = player) {
-  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const wv = Math.max(1, Number(waveNum) || 1);
   const harvestMul = Math.max(1, Math.min(2.2, (p && p.harvest) || 1));
   // 丰厚渡劫金币补偿：足额弥补 40 秒 70% 刷怪削减与器物缺口，并额外发放身法评级赏金
@@ -482,10 +482,11 @@ function settleWaveRewards() {
   for (let i = 0; i < drops.length; i++) {
     if (drops[i].kind === 'mat') leftoverMats += (drops[i].val || 1);
   }
-  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const matRate = typeof getWaveMatRate === 'function' ? getWaveMatRate(wave) : (0.92 * crystalMul / (1 + Math.min(5, Math.max(0, wave - 1)) * 0.14 + Math.max(0, wave - 6) * 0.075));
-  // 自动回收地上 50% 未拾取晶石 + 适度通关津贴 + 【收获】成长分红 + 【理财冠】利息（整体晶石产出下调 30%）
-  const leftover = Math.round(leftoverMats * matRate * 0.50);
+  const sweepRate = typeof UNCOLLECTED_MAT_SWEEP_RATE === 'number' ? UNCOLLECTED_MAT_SWEEP_RATE : 0.50;
+  // 自动回收地上 50% 未拾取晶石（由 70% 回调还原至 50%） + 适度通关津贴 + 【收获】成长分红 + 【理财冠】利息
+  const leftover = Math.round(leftoverMats * matRate * sweepRate);
   const interestCap = Math.round((24 + wave * 9) * crystalMul);
   const interestGain = player.interest > 0 ? Math.min(interestCap, Math.round(player.mats * player.interest)) : 0;
   const clearBonus = Math.max(2, Math.round((4 + Math.floor(wave * 1.5)) * crystalMul));
@@ -751,7 +752,7 @@ function buildCrateWeaponChoice(isBossCrate, forcedTier = 0, minTierFloor = 1) {
   const tpl = WEAPONS[pickedId];
   const effTier = Math.min(4, Math.max(floorT, wTier, tpl.minTier || 1));
   const tierMul = WEAPON_TIER_COST_MUL[effTier] || 4.4;
-  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const recycleVal = Math.max(6, Math.round(tpl.cost * tierMul * getShopScale() * 0.48 * crystalMul));
   const canMergeNow = player.weapons.some(w => w.id === pickedId && w.tier === effTier && w.tier < 5);
   return { kind: 'weapon', id: pickedId, tpl, tier: effTier, recycleVal, canMergeNow, autoReplaceLowest };
@@ -782,7 +783,7 @@ function showCrateMenu() {
 
   const luck = player.luck || 0;
   const luckF = Math.min(1, Math.max(0, luck) / 95);
-  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70;
+  const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const excludeIds = new Set();
   const choices = [];
 
@@ -1032,7 +1033,7 @@ function getShopScale() {
   return (1 + (wave - 1) * 0.18 + Math.pow(Math.max(0, wave - 1), 1.22) * 0.028) * endlessMul * (diff.shopTax || 1);
 }
 
-let rerollRawCost = 2;
+let rerollRawCost = 1;
 
 function calcDiscountedShopCost(rawCost, minFloor = 2) {
   const base = Math.max(minFloor, Math.round(rawCost || 0));
@@ -1110,12 +1111,26 @@ function openShop(fresh) {
   confirmSellIdx = -1;
   syncSetHp();
   if (fresh) {
+    if (typeof SpireAudio !== 'undefined' && SpireAudio && SpireAudio.phase2Active) {
+      SpireAudio.syncScene((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId, false);
+    }
     survivalTrialQueued = false;
-    // 亲民刷新定价（对齐原版《土豆兄弟》：第 1 波仅需 1💎 起刷、第 2 波 2💎，前期每次仅递增 +1💎）
+    // 跨波累进刷新定价：首店 1💎 起刷，每次付费刷新固定 +2💎；仅第 3 / 6 / 9 / 12 四大回合整备降低 50%（×0.50），其余回合降低 20%（×0.80，保底 1💎）
     freeRerollsLeft = player.freeRerolls || 0;
-    rerollBase = Math.max(1, Math.floor(wave * 0.75) + 1);
-    rerollStep = Math.max(1, Math.floor(wave * 0.45) + 1);
-    rerollRawCost = rerollBase;
+    rerollStep = typeof SHOP_REROLL_STEP === 'number' ? SHOP_REROLL_STEP : 2;
+    const initCost = typeof SHOP_REROLL_INIT_COST === 'number' ? SHOP_REROLL_INIT_COST : 1;
+    const recMul = typeof getShopRerollRecoveryMul === 'function'
+      ? getShopRerollRecoveryMul(wave)
+      : ((wave === 3 || wave === 6 || wave === 9 || wave === 12) ? 0.50 : 0.80);
+    if ((player.shopVisits || 0) === 0) {
+      rerollRawCost = initCost;
+    } else {
+      const prevRaw = Math.max(initCost, Number.isFinite(player.shopRerollRaw) ? player.shopRerollRaw : (Number.isFinite(rerollRawCost) ? rerollRawCost : initCost));
+      rerollRawCost = Math.max(initCost, Math.round(prevRaw * recMul));
+    }
+    rerollBase = rerollRawCost;
+    player.shopRerollRaw = rerollRawCost;
+    player.shopVisits = (player.shopVisits || 0) + 1;
     rerollCost = freeRerollsLeft > 0 ? 0 : calcDiscountedShopCost(rerollRawCost, 1);
     anvilUpgradedMsg = '';
     if (player.hasAnvil && player.weapons.length > 0) {
@@ -1290,6 +1305,7 @@ function renderShop() {
   }
   const canTrial = canOfferSurvivalTrialForWave(nextFloorNum);
   if (!canTrial) survivalTrialQueued = false;
+  const trialSec = typeof getSurvivalTrialDuration === 'function' ? getSurvivalTrialDuration(diff) : 30;
   const trialBar = document.getElementById('shopTrialBar');
   if (trialBar) {
     if (!canTrial) {
@@ -1304,8 +1320,8 @@ function renderShop() {
       const minGoldComp = calcSurvivalTrialGoldComp(nextFloorNum, 3, player).total;
       const maxGoldComp = calcSurvivalTrialGoldComp(nextFloorNum, 0, player).total;
       const titleTxt = survivalTrialQueued
-        ? `🕯️ 已缔结蚀界契约 · 第 ${nextFloorNum} 层化为 40 秒绝境渡劫`
-        : `🕯️ 蚀界生存试炼 · 将第 ${nextFloorNum} 层改为 40 秒身法躲避关`;
+        ? `🕯️ 已缔结蚀界契约 · 第 ${nextFloorNum} 层化为 ${trialSec} 秒绝境渡劫`
+        : `🕯️ 蚀界生存试炼 · 将第 ${nextFloorNum} 层改为 ${trialSec} 秒身法躲避关`;
       const btnTxt = survivalTrialQueued ? '✓ 已开启试炼（点击取消）' : '🕯️ 踏入蚀界试炼';
       trialBar.innerHTML = `
         <div class="shop-trial-info">
@@ -1314,14 +1330,14 @@ function renderShop() {
             <span class="shop-trial-pill">${actLabel}</span>
             <span class="shop-trial-pill gold">保底补偿 ◇${minGoldComp}~${maxGoldComp} & 必得紫/金秘匣</span>
           </div>
-          <div class="shop-trial-desc">七类天外弹道与蚀界裂隙来袭 · 怪物仅留 <b>30%</b>（掉落晶石提升） · 浓雾提灯视野 · 撑满 <b>40秒</b> 补偿 <b>◇${minGoldComp}~${maxGoldComp}</b> 晶石并必出<b>紫/金武器与道具</b>！</div>
+          <div class="shop-trial-desc">七类天外弹道与蚀界裂隙来袭 · 怪物仅留 <b>30%</b>（掉落晶石提升） · 浓雾提灯视野 · 撑满 <b>${trialSec}秒</b> 补偿 <b>◇${minGoldComp}~${maxGoldComp}</b> 晶石并必出<b>紫/金武器与道具</b>！</div>
         </div>
         <button type="button" id="shopTrialToggleBtn" class="shop-trial-toggle${survivalTrialQueued ? ' is-armed' : ''}" onclick="toggleSurvivalTrial()">${btnTxt}</button>`;
     }
   }
 
   const nextLabel = (canTrial && survivalTrialQueued)
-    ? `🕯️ 踏入第 ${nextFloorNum} 层 · 蚀界试炼 (40s) →`
+    ? `🕯️ 踏入第 ${nextFloorNum} 层 · 蚀界试炼 (${trialSec}s) →`
     : (!endlessMode && nextFloorNum === 16 ? '准备好了，推开终门 →' : nextIsBoss
         ? `◆ 迎战第 ${nextFloorNum} 层守誓首领 →`
         : `◆ 登往第 ${nextFloorNum} 层 →`);
@@ -1532,10 +1548,11 @@ function rerollShop() {
   player.mats -= actualCost;
   if (freeRerollsLeft > 0) {
     freeRerollsLeft--;
-    rerollRawCost = rerollBase;
     rerollCost = freeRerollsLeft > 0 ? 0 : calcDiscountedShopCost(rerollRawCost, 1);
   } else {
-    rerollRawCost = Math.max(rerollBase, (Number.isFinite(rerollRawCost) ? rerollRawCost : rerollBase)) + rerollStep;
+    const stepAdd = typeof SHOP_REROLL_STEP === 'number' ? SHOP_REROLL_STEP : 2;
+    rerollRawCost = Math.max(1, Number.isFinite(rerollRawCost) ? rerollRawCost : rerollBase) + stepAdd;
+    if (player) player.shopRerollRaw = rerollRawCost;
     rerollCost = calcDiscountedShopCost(rerollRawCost, 1);
   }
   shopOffers = shopOffers.map(o => (o && o.locked) ? o : null).filter(Boolean);
