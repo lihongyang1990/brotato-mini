@@ -604,54 +604,69 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
     }
   }
 
-  // 3) 日蚀圣女（solar_seraph）/ 饥饿黑影（abyss_devourer）/ 伽蓝二阶（void_weaver）：【超巨型黑洞引力奇点 & 晨曦庇护圣印】进行态
+  // 3) 日蚀圣女（solar_seraph）/ 饥饿黑影（abyss_devourer）/ 伽蓝二阶（void_weaver）：【超巨型黑洞引力奇点 & 晨曦庇护圣印】（含 1.0s 高能蓄力预警 + 进行态）
+  const BLACK_HOLE_WINDUP_SEC = 1.0;
   if (e.eclipseSingularity) {
     const es = e.eclipseSingularity;
-    es.t -= dt;
-    es.spin = (es.spin || 0) + dt * 4.1;
-    const pullRange = es.pullRange || Math.max(760, (es.r || 440) + 320);
-    const inSealNow = Math.hypot(player.x - es.s1x, player.y - es.s1y) <= es.safeR + player.r * 0.45
-      || Math.hypot(player.x - es.s2x, player.y - es.s2y) <= es.safeR + player.r * 0.45;
-    // 全场黑洞吸积引力（吸引力削弱 60%，即 ×0.40：保留清晰引力拖拽感同时确保玩家可凭走位与瞬步脱离或踏入晨曦庇护印）
-    const BLACK_HOLE_PULL_MUL = 0.40;
-    if (distP > 34 && distP < pullRange && !(player.dashT > 0)) {
-      const prox = 1 - Math.min(1, distP / pullRange);
-      const rawPullSpd = ((enraged ? 178 : 162) + prox * 68) * BLACK_HOLE_PULL_MUL;
-      const pull = (inSealNow ? rawPullSpd * 0.15 : rawPullSpd) * dt;
-      const swirl = (inSealNow ? 0 : 28 * BLACK_HOLE_PULL_MUL) * dt;
-      const caP = Math.cos(aimToPlayer), saP = Math.sin(aimToPlayer);
-      const px2 = Math.max(player.r + 10, Math.min(WORLD.w - player.r - 10, player.x - caP * pull + saP * swirl));
-      const py2 = Math.max(player.r + 10, Math.min(WORLD.h - player.r - 10, player.y - saP * pull - caP * swirl));
-      if (!isBlockedByTerrain(px2, py2, player.r)) {
-        player.x = px2; player.y = py2;
+    if ((es.windupT || 0) > 0) {
+      // 1.0 秒前置高能预警阶段：尚不施加任何吸力，提前标出黑洞范围与双生晨曦庇护印供玩家从容走位！
+      es.windupT -= dt;
+      es.spin = (es.spin || 0) + dt * 2.2;
+      if (es.windupT <= 0) {
+        es.windupT = 0;
+        beep(250, 0.16, 'sawtooth', 0.068);
+        shake = Math.max(shake, 3.6);
+        if (rings.length < 44) {
+          rings.push({ x: e.x, y: e.y, r: Math.round((es.r || 440) * 0.45), color: '#c084fc', t: 0.30, maxT: 0.30, kind: 'star' });
+        }
       }
-      player._bhPullT = inSealNow ? 0 : 0.14;
-      player._bhSrcX = e.x;
-      player._bhSrcY = e.y;
-      if (!inSealNow) shake = Math.max(shake, 0.5 + prox * 0.6);
-    }
-    if (es.t <= 0) {
-      e.eclipseSingularity = null;
-      const inSeal1 = Math.hypot(player.x - es.s1x, player.y - es.s1y) <= es.safeR + player.r * 0.45;
-      const inSeal2 = Math.hypot(player.x - es.s2x, player.y - es.s2y) <= es.safeR + player.r * 0.45;
-      beep(175, 0.22, 'sawtooth', 0.085);
-      shake = Math.max(shake, 8.2);
-      if (rings.length < 44) {
-        rings.push({ x: e.x, y: e.y, r: es.r, color: '#c084fc', t: 0.42, maxT: 0.42, kind: 'star' });
-        rings.push({ x: e.x, y: e.y, r: Math.round(es.r * 0.62), color: '#fde68a', t: 0.34, maxT: 0.34, kind: 'hex' });
-        rings.push({ x: es.s1x, y: es.s1y, r: es.safeR, color: '#fde68a', t: 0.32, maxT: 0.32, kind: 'hex' });
-        rings.push({ x: es.s2x, y: es.s2y, r: es.safeR, color: '#fde68a', t: 0.32, maxT: 0.32, kind: 'hex' });
+    } else {
+      es.t -= dt;
+      es.spin = (es.spin || 0) + dt * 4.1;
+      const pullRange = es.pullRange || Math.max(760, (es.r || 440) + 320);
+      const inSealNow = Math.hypot(player.x - es.s1x, player.y - es.s1y) <= es.safeR + player.r * 0.45
+        || Math.hypot(player.x - es.s2x, player.y - es.s2y) <= es.safeR + player.r * 0.45;
+      // 全场黑洞吸积引力（吸引力削弱 60%，即 ×0.40：保留清晰引力拖拽感同时确保玩家可凭走位与瞬步脱离或踏入晨曦庇护印）
+      const BLACK_HOLE_PULL_MUL = 0.40;
+      if (distP > 34 && distP < pullRange && !(player.dashT > 0)) {
+        const prox = 1 - Math.min(1, distP / pullRange);
+        const rawPullSpd = ((enraged ? 178 : 162) + prox * 68) * BLACK_HOLE_PULL_MUL;
+        const pull = (inSealNow ? rawPullSpd * 0.15 : rawPullSpd) * dt;
+        const swirl = (inSealNow ? 0 : 28 * BLACK_HOLE_PULL_MUL) * dt;
+        const caP = Math.cos(aimToPlayer), saP = Math.sin(aimToPlayer);
+        const px2 = Math.max(player.r + 10, Math.min(WORLD.w - player.r - 10, player.x - caP * pull + saP * swirl));
+        const py2 = Math.max(player.r + 10, Math.min(WORLD.h - player.r - 10, player.y - saP * pull - caP * swirl));
+        if (!isBlockedByTerrain(px2, py2, player.r)) {
+          player.x = px2; player.y = py2;
+        }
+        player._bhPullT = inSealNow ? 0 : 0.14;
+        player._bhSrcX = e.x;
+        player._bhSrcY = e.y;
+        if (!inSealNow) shake = Math.max(shake, 0.5 + prox * 0.6);
       }
-      if (inSeal1 || inSeal2) {
-        e.exposeT = Math.max(e.exposeT || 0, 2.35);
-        player.chillSlowT = 0;
-        player.dashHasteT = Math.max(player.dashHasteT || 0, 2.4);
-        beep(820, 0.12, 'triangle', 0.06);
-        addText(player.x, player.y - 44, '☀️ 晨曦庇护抵御黑洞坍缩！疾风赐福 + 首领破防!', '#fde68a', 15, 1.75, true);
-      } else if (Math.hypot(player.x - e.x, player.y - e.y) <= es.r + player.r) {
-        addText(player.x, player.y - 40, '🌑 未入庇护印 · 超巨黑洞奇点坍缩重创!', '#e0aaff', 16, 1.45, true);
-        hurtPlayer(Math.round(e.dmg * 1.18), true, e);
-        if (state !== 'wave') return true;
+      if (es.t <= 0) {
+        e.eclipseSingularity = null;
+        const inSeal1 = Math.hypot(player.x - es.s1x, player.y - es.s1y) <= es.safeR + player.r * 0.45;
+        const inSeal2 = Math.hypot(player.x - es.s2x, player.y - es.s2y) <= es.safeR + player.r * 0.45;
+        beep(175, 0.22, 'sawtooth', 0.085);
+        shake = Math.max(shake, 8.2);
+        if (rings.length < 44) {
+          rings.push({ x: e.x, y: e.y, r: es.r, color: '#c084fc', t: 0.42, maxT: 0.42, kind: 'star' });
+          rings.push({ x: e.x, y: e.y, r: Math.round(es.r * 0.62), color: '#fde68a', t: 0.34, maxT: 0.34, kind: 'hex' });
+          rings.push({ x: es.s1x, y: es.s1y, r: es.safeR, color: '#fde68a', t: 0.32, maxT: 0.32, kind: 'hex' });
+          rings.push({ x: es.s2x, y: es.s2y, r: es.safeR, color: '#fde68a', t: 0.32, maxT: 0.32, kind: 'hex' });
+        }
+        if (inSeal1 || inSeal2) {
+          e.exposeT = Math.max(e.exposeT || 0, 2.35);
+          player.chillSlowT = 0;
+          player.dashHasteT = Math.max(player.dashHasteT || 0, 2.4);
+          beep(820, 0.12, 'triangle', 0.06);
+          addText(player.x, player.y - 44, '☀️ 晨曦庇护抵御黑洞坍缩！疾风赐福 + 首领破防!', '#fde68a', 15, 1.75, true);
+        } else if (Math.hypot(player.x - e.x, player.y - e.y) <= es.r + player.r) {
+          addText(player.x, player.y - 40, '🌑 未入庇护印 · 超巨黑洞奇点坍缩重创!', '#e0aaff', 16, 1.45, true);
+          hurtPlayer(Math.round(e.dmg * 1.18), true, e);
+          if (state !== 'wave') return true;
+        }
       }
     }
   }
@@ -697,12 +712,12 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
       const s1y = Math.max(125, Math.min(WORLD.h - 125, e.y + Math.sin(perp) * 218));
       const s2x = Math.max(125, Math.min(WORLD.w - 125, e.x - Math.cos(perp) * 218));
       const s2y = Math.max(125, Math.min(WORLD.h - 125, e.y - Math.sin(perp) * 218));
-      e.eclipseSingularity = { t: 3.20, maxT: 3.20, r: 430, pullRange: 760, safeR: 72, s1x, s1y, s2x, s2y, spin: 0 };
-      triggerBossActionPose(e, 'cast_up', aimToPlayer, 0.65, '#c084fc');
-      beep(280, 0.16, 'sawtooth', 0.065);
-      shake = Math.max(shake, 3.8);
-      announce('🌌 【黑洞引力奇点】展开！强力吸积牵引全场——速冲入金色【晨曦庇护印】抗衡引力！', '#e0aaff', 3.1);
-      addText(e.x, e.y - e.r - 28, '🌌 超巨黑洞引力奇点！速冲入金色【庇护印】!', '#fde68a', 15, 1.95, true);
+      e.eclipseSingularity = { windupT: BLACK_HOLE_WINDUP_SEC, maxWindupT: BLACK_HOLE_WINDUP_SEC, t: 3.20, maxT: 3.20, r: 430, pullRange: 760, safeR: 72, s1x, s1y, s2x, s2y, spin: 0 };
+      triggerBossActionPose(e, 'cast_up', aimToPlayer, 1.0, '#c084fc');
+      beep(520, 0.14, 'triangle', 0.06);
+      shake = Math.max(shake, 2.2);
+      announce('⚠️ 【黑洞引力奇点】1秒高能预警！速撤离视界或踏入金色【晨曦庇护印】！', '#fde68a', 3.4);
+      addText(e.x, e.y - e.r - 28, '⚠️ 1.0s 预警 · 黑洞引力奇点即将开启!', '#fde68a', 15, 1.95, true);
     } else {
       e.arenaMechCd = enraged ? 8.4 : 9.8;
       const padAng = aimToPlayer + (Math.random() < 0.5 ? 1.15 : -1.15);
@@ -721,12 +736,12 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
     const s1y = Math.max(125, Math.min(WORLD.h - 125, e.y + Math.sin(perp) * 218));
     const s2x = Math.max(125, Math.min(WORLD.w - 125, e.x - Math.cos(perp) * 218));
     const s2y = Math.max(125, Math.min(WORLD.h - 125, e.y - Math.sin(perp) * 218));
-    e.eclipseSingularity = { t: 3.25, maxT: 3.25, r: 440, pullRange: 780, safeR: 72, s1x, s1y, s2x, s2y, spin: 0 };
-    triggerBossActionPose(e, 'cast_up', aimToPlayer, 0.68, '#fde68a');
-    beep(260, 0.18, 'sawtooth', 0.07);
-    shake = Math.max(shake, 4.2);
-    announce('🌌 【黑洞引力奇点】展开！强力吸积牵引全场——速冲入金色【晨曦庇护印】抗衡吸力！', '#e0aaff', 3.2);
-    addText(e.x, e.y - e.r - 28, '🌑 超巨黑洞引力奇点！速踏金色【晨曦庇护印】!', '#fde68a', 15, 1.95, true);
+    e.eclipseSingularity = { windupT: BLACK_HOLE_WINDUP_SEC, maxWindupT: BLACK_HOLE_WINDUP_SEC, t: 3.25, maxT: 3.25, r: 440, pullRange: 780, safeR: 72, s1x, s1y, s2x, s2y, spin: 0 };
+    triggerBossActionPose(e, 'cast_up', aimToPlayer, 1.0, '#fde68a');
+    beep(520, 0.14, 'triangle', 0.065);
+    shake = Math.max(shake, 2.4);
+    announce('⚠️ 【黑洞引力奇点】1秒高能预警！速撤离视界或踏入金色【晨曦庇护印】！', '#fde68a', 3.4);
+    addText(e.x, e.y - e.r - 28, '⚠️ 1.0s 预警 · 超巨黑洞奇点即将开启!', '#fde68a', 15, 1.95, true);
   } else if (vId === 'mech_colossus') {
     e.arenaMechCd = enraged ? 9.4 : 11.0;
     if (pylonCnt < 2 && typeof spawnBossPylon === 'function') {
@@ -3199,7 +3214,8 @@ function update(dt) {
       (e.venomBreathT || 0) > 0 ||
       (e.sigWindupT || 0) > 0 ||
       (e.p2WindupT || 0) > 0 ||
-      (e.tpWindupT || 0) > 0
+      (e.tpWindupT || 0) > 0 ||
+      !!e.eclipseSingularity
     );
     const curSpd = isFrozenLocked ? 0 : (isChannelingStationary ? e.spd * slowFactor * 0.10 : e.spd * slowFactor);
 
@@ -4151,8 +4167,8 @@ function update(dt) {
           spawnWarning(Math.max(80, Math.min(WORLD.w - 80, e.x + (Math.random() - 0.5) * 180)), Math.max(80, Math.min(WORLD.h - 80, e.y + (Math.random() - 0.5) * 180)), 'shielder');
         }
       } else {
-        // 深渊噬界者（零号容器 · 饥饿黑影）：黑洞引力牵引玩家（吸引力同步削弱 60% 即 ×0.40，且开启超巨黑洞奇点期间不双重叠加） + 正反双旋虚空月刃弹幕 + 分裂泥召唤
-        if (distP > 150) { e.x += Math.cos(a) * curSpd * sbMult * dt; e.y += Math.sin(a) * curSpd * sbMult * dt; }
+        // 深渊噬界者（零号容器 · 饥饿黑影）：黑洞引力牵引玩家（吸引力同步削弱 60% 即 ×0.40，且开启超巨黑洞奇点期间驻足锚定、不双重叠加） + 正反双旋虚空月刃弹幕 + 分裂泥召唤
+        if (!e.eclipseSingularity && distP > 150) { e.x += Math.cos(a) * curSpd * sbMult * dt; e.y += Math.sin(a) * curSpd * sbMult * dt; }
         if (!e.eclipseSingularity && distP > 75 && distP < 360 && !(player.dashT > 0)) {
           const pull = 38 * 0.40 * sbMult * dt;
           const px2 = Math.max(player.r + 8, Math.min(WORLD.w - player.r - 8, player.x - Math.cos(a) * pull));
@@ -5154,7 +5170,9 @@ function update(dt) {
           if ((e.p2WindupT || 0) > 0 && e.p2Label) {
             activeCastLabel = `⚠️ 二阶终式蓄力 · ${e.p2Label}`;
           } else if (e.eclipseSingularity) {
-            activeCastLabel = `🌑 黑洞引力奇点 (${e.eclipseSingularity.t.toFixed(1)}s · 冲入金色晨曦庇护印抗衡吸力)`;
+            activeCastLabel = (e.eclipseSingularity.windupT || 0) > 0
+              ? `⚠️ 黑洞引力奇点预警 (${e.eclipseSingularity.windupT.toFixed(1)}s后开启吸力 · 速进金色晨曦庇护印)`
+              : `🌑 黑洞引力奇点 (${e.eclipseSingularity.t.toFixed(1)}s · 冲入金色晨曦庇护印抗衡吸力)`;
           } else if (e.chronoAnchor) {
             activeCastLabel = `⏳ 逆时回溯锚点 (${e.chronoAnchor.t.toFixed(1)}s · 踏入断时阵解锚)`;
           } else if (e.duelRing) {

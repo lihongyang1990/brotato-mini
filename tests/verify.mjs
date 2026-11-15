@@ -2147,7 +2147,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       update(0.02);
       if (!spellZones.some(z => z.kind === 'fire_patch')) return false;
 
-      // 5) Colossal Black Hole Gravity Skill (r >= 430, pullRange >= 750, strong real suction on player)
+      // 5) Colossal Black Hole Gravity Skill (1.0s pre-suction warning + r >= 430 + suction nerfed by 60%)
       enemies.length = 0;
       const bhBoss = createEnemy(900, 600, 'special_boss', 'abyss_devourer');
       bhBoss.arenaMechCd = 0.01;
@@ -2155,11 +2155,18 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       player.x = 1260; player.y = 600;
       tickBossArenaMechanic(bhBoss, 0.02);
       if (!bhBoss.eclipseSingularity || bhBoss.eclipseSingularity.r < 430) return false;
+      if (!(bhBoss.eclipseSingularity.windupT >= 0.98)) return false;
       // Ensure sanctuaries don't overlap player test position
       bhBoss.eclipseSingularity.s1x = 500; bhBoss.eclipseSingularity.s1y = 500;
       bhBoss.eclipseSingularity.s2x = 500; bhBoss.eclipseSingularity.s2y = 700;
       const distBefore = Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y);
-      tickBossArenaMechanic(bhBoss, 0.20);
+      // During the 1.0s warning phase, player must NOT be pulled yet!
+      tickBossArenaMechanic(bhBoss, 0.50);
+      draw(); // Verify 1.0s warning telegraph renders with 0 radialGradient & 0 shadowBlur!
+      if (Math.abs(Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y) - distBefore) > 1e-6) return false;
+      tickBossArenaMechanic(bhBoss, 0.50); // Finish the remaining 0.50s of the 1.0s warning
+      if (bhBoss.eclipseSingularity.windupT !== 0) return false;
+      tickBossArenaMechanic(bhBoss, 0.20); // Now active suction ticks for 0.20s
       const distAfter = Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y);
       const pulledDist = distBefore - distAfter;
       // Suction nerfed by 60% (* 0.40): ~15.9px pull in 0.20s (down from ~39.7px), noticeable yet escapable!

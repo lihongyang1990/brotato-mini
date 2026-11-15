@@ -2552,105 +2552,142 @@ function draw() {
           ctx.restore();
         }
         if (e.eclipseSingularity) {
-          // 🌌 超巨黑日引力奇点（全场吸积盘旋臂 + 坍缩引力透镜波 + 纯黑事件视界巨核 + 玩家引力流线 + 晨曦庇护圣印）
+          // 🌌 超巨黑日引力奇点（1.0s 前置高能预警 -> 全场吸积盘旋臂 + 坍缩引力透镜波 + 纯黑事件视界巨核 + 玩家引力流线 + 晨曦庇护圣印）
           const es = e.eclipseSingularity;
-          const ep = Math.max(0, Math.min(1, 1 - es.t / Math.max(0.1, es.maxT || 3.25)));
+          const inWindup = (es.windupT || 0) > 0;
+          const wp = inWindup ? Math.max(0, Math.min(1, 1 - es.windupT / Math.max(0.1, es.maxWindupT || 1.0))) : 1;
+          const ep = inWindup ? 0 : Math.max(0, Math.min(1, 1 - es.t / Math.max(0.1, es.maxT || 3.25)));
           const esR = Math.max(180, es.r || 440);
           const pullRMax = es.pullRange || Math.max(540, esR * 1.72);
           const spin = (es.spin || 0) + now * 0.0022;
-          drawVfxGlow(ctx, 'glowViolet', e.x, e.y, esR * 1.04, 0.48 + ep * 0.26);
+          drawVfxGlow(ctx, 'glowViolet', e.x, e.y, esR * (inWindup ? 0.42 + wp * 0.56 : 1.04), inWindup ? (0.18 + wp * 0.24) : (0.48 + ep * 0.26));
           ctx.save();
           ctx.lineCap = 'round';
-          // 1) 超远外围引力牵引视界虚线圈与向心吞噬星尘流线
-          ctx.strokeStyle = 'rgba(192, 132, 252, 0.30)';
-          ctx.lineWidth = 1.6;
-          ctx.setLineDash([16, 14]);
-          ctx.beginPath(); ctx.arc(e.x, e.y, pullRMax, 0, Math.PI * 2); ctx.stroke();
-          ctx.setLineDash([]);
-          for (let sk = 0; sk < 14; sk++) {
-            const cyc = ((now * 0.0017 + sk * 0.0714) % 1);
-            const sa = sk * 0.4488 - spin * 0.35;
-            const rOuter = pullRMax * (1 - cyc * 0.72);
-            const rInner = Math.max(48, rOuter - 58 - cyc * 34);
-            ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.65;
-            ctx.strokeStyle = sk % 3 === 0 ? '#fde68a' : '#d8b4fe';
-            ctx.lineWidth = 1.8 + cyc * 1.2;
-            ctx.beginPath();
-            ctx.moveTo(e.x + Math.cos(sa) * rOuter, e.y + Math.sin(sa) * rOuter);
-            ctx.lineTo(e.x + Math.cos(sa + 0.14) * rInner, e.y + Math.sin(sa + 0.14) * rInner);
-            ctx.stroke();
-          }
-          ctx.globalAlpha = 1;
-          // 2) 黑洞湮灭杀伤区边界日蚀符文巨环
-          ctx.fillStyle = `rgba(18, 4, 38, ${0.26 + ep * 0.22})`;
-          ctx.beginPath(); ctx.arc(e.x, e.y, esR, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = 'rgba(216, 180, 254, 0.88)';
-          ctx.lineWidth = 3.2;
-          ctx.beginPath(); ctx.arc(e.x, e.y, esR, 0, Math.PI * 2); ctx.stroke();
-          ctx.strokeStyle = '#ffd166';
-          ctx.lineWidth = 2.0;
-          ctx.setLineDash([18, 10]);
-          ctx.beginPath(); ctx.arc(e.x, e.y, esR - 10, -spin * 0.4, -spin * 0.4 + Math.PI * 2); ctx.stroke();
-          ctx.setLineDash([]);
-          // 3) 6 条高速卷入奇点的相对论紫金吸积盘旋臂
-          for (let arm = 0; arm < 6; arm++) {
-            const a0 = spin * 1.35 + (arm * Math.PI * 2) / 6;
-            ctx.strokeStyle = arm % 2 === 0 ? 'rgba(253, 230, 138, 0.72)' : 'rgba(192, 132, 252, 0.78)';
-            ctx.lineWidth = arm % 2 === 0 ? 3.4 : 4.2;
-            ctx.beginPath();
-            for (let seg = 0; seg <= 10; seg++) {
-              const frac = seg / 10;
-              const rad = esR * (0.92 - frac * 0.76);
-              const ang = a0 + frac * 2.15;
-              const px = e.x + Math.cos(ang) * rad;
-              const py = e.y + Math.sin(ang) * rad;
-              seg === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-            }
-            ctx.stroke();
-          }
-          // 4) 3 道持续向中心急速坍缩的引力透镜波环
-          for (let rw = 0; rw < 3; rw++) {
-            const cyc = ((ep * 2.8 + rw * 0.333) % 1);
-            const waveR = Math.max(44, esR * (1 - cyc * 0.84));
-            ctx.globalAlpha = (1 - cyc * 0.45) * 0.68;
-            ctx.strokeStyle = rw === 0 ? '#fef08a' : '#e9d5ff';
-            ctx.lineWidth = 2.8 - rw * 0.4;
-            ctx.beginPath(); ctx.arc(e.x, e.y, waveR, 0, Math.PI * 2); ctx.stroke();
-          }
-          ctx.globalAlpha = 1;
-          // 5) 预烘焙超巨纯黑事件视界深渊核与光子金环（直径近 300px，震撼全场）
-          const bhCoreR = Math.min(168, Math.max(116, esR * 0.35)) * (0.90 + ep * 0.18);
-          if (typeof vfxSprites !== 'undefined' && vfxSprites.blackHoleCore) {
-            ctx.drawImage(vfxSprites.blackHoleCore, e.x - bhCoreR, e.y - bhCoreR, bhCoreR * 2, bhCoreR * 2);
+          if (inWindup) {
+            // 1.0s 高能蓄力预警阶段：醒目脉冲边界圈 + 蓄能扩散环 + 倒计时铭牌（此时尚无吸力，提前亮出双生晨曦庇护印！）
+            const pulseA = 0.55 + Math.sin(now * 0.018) * 0.30;
+            ctx.strokeStyle = 'rgba(253, 224, 71, 0.36)';
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([14, 14]);
+            ctx.beginPath(); ctx.arc(e.x, e.y, pullRMax, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = `rgba(36, 10, 68, ${0.08 + wp * 0.14})`;
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = `rgba(253, 224, 71, ${pulseA.toFixed(2)})`;
+            ctx.lineWidth = 3.0;
+            ctx.setLineDash([20, 12]);
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR, spin * 0.35, spin * 0.35 + Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            // 由中心向外推开的蓄力充能环（到达外环瞬间开启黑洞吸力）
+            const chargeR = Math.max(32, esR * (0.12 + wp * 0.88));
+            ctx.strokeStyle = 'rgba(216, 180, 254, 0.85)';
+            ctx.lineWidth = 2.6;
+            ctx.beginPath(); ctx.arc(e.x, e.y, chargeR, 0, Math.PI * 2); ctx.stroke();
+            // 中心坍缩奇点胚胎环
+            const seedR = 26 + wp * 46;
+            ctx.fillStyle = 'rgba(8, 2, 20, 0.72)';
+            ctx.strokeStyle = '#fde047';
+            ctx.lineWidth = 2.6;
+            ctx.beginPath(); ctx.arc(e.x, e.y, seedR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.font = '900 14px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.strokeStyle = '#140626';
+            ctx.lineWidth = 3.4;
+            const warnTxt = `⚠️ 黑洞引力预警 ${es.windupT.toFixed(1)}s`;
+            ctx.strokeText(warnTxt, e.x, e.y - e.r - 42);
+            ctx.fillStyle = '#fde047';
+            ctx.fillText(warnTxt, e.x, e.y - e.r - 42);
           } else {
-            ctx.fillStyle = '#020008';
-            ctx.strokeStyle = '#fef08a';
+            // 1) 超远外围引力牵引视界虚线圈与向心吞噬星尘流线
+            ctx.strokeStyle = 'rgba(192, 132, 252, 0.30)';
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([16, 14]);
+            ctx.beginPath(); ctx.arc(e.x, e.y, pullRMax, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            for (let sk = 0; sk < 14; sk++) {
+              const cyc = ((now * 0.0017 + sk * 0.0714) % 1);
+              const sa = sk * 0.4488 - spin * 0.35;
+              const rOuter = pullRMax * (1 - cyc * 0.72);
+              const rInner = Math.max(48, rOuter - 58 - cyc * 34);
+              ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.65;
+              ctx.strokeStyle = sk % 3 === 0 ? '#fde68a' : '#d8b4fe';
+              ctx.lineWidth = 1.8 + cyc * 1.2;
+              ctx.beginPath();
+              ctx.moveTo(e.x + Math.cos(sa) * rOuter, e.y + Math.sin(sa) * rOuter);
+              ctx.lineTo(e.x + Math.cos(sa + 0.14) * rInner, e.y + Math.sin(sa + 0.14) * rInner);
+              ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            // 2) 黑洞湮灭杀伤区边界日蚀符文巨环
+            ctx.fillStyle = `rgba(18, 4, 38, ${0.26 + ep * 0.22})`;
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(216, 180, 254, 0.88)';
             ctx.lineWidth = 3.2;
-            ctx.beginPath(); ctx.arc(e.x, e.y, bhCoreR * 0.36, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-          }
-          // 6) 对主角的直观引力拖拽流线（让玩家清晰看见自己正被黑洞强力拉扯！）
-          if (player && player.hp > 0) {
-            const pdx = e.x - player.x, pdy = e.y - player.y;
-            const pDist = Math.hypot(pdx, pdy);
-            if (pDist > 36 && pDist < pullRMax) {
-              const pux = pdx / pDist, puy = pdy / pDist;
-              const pnx = -puy, pny = pux;
-              for (let lk = -1; lk <= 1; lk++) {
-                const flow = ((now * 0.0045 + (lk + 1) * 0.31) % 1);
-                const startOff = 18 + flow * Math.min(180, pDist * 0.55);
-                const endOff = Math.min(pDist - 24, startOff + 48);
-                if (endOff > startOff + 8) {
-                  const lat = lk * 13 * (1 - flow * 0.5);
-                  ctx.globalAlpha = (1 - flow * 0.65) * 0.82;
-                  ctx.strokeStyle = lk === 0 ? '#fde68a' : '#c084fc';
-                  ctx.lineWidth = lk === 0 ? 2.6 : 1.9;
-                  ctx.beginPath();
-                  ctx.moveTo(player.x + pux * startOff + pnx * lat, player.y + puy * startOff + pny * lat);
-                  ctx.lineTo(player.x + pux * endOff + pnx * lat * 0.4, player.y + puy * endOff + pny * lat * 0.4);
-                  ctx.stroke();
-                }
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = '#ffd166';
+            ctx.lineWidth = 2.0;
+            ctx.setLineDash([18, 10]);
+            ctx.beginPath(); ctx.arc(e.x, e.y, esR - 10, -spin * 0.4, -spin * 0.4 + Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]);
+            // 3) 6 条高速卷入奇点的相对论紫金吸积盘旋臂
+            for (let arm = 0; arm < 6; arm++) {
+              const a0 = spin * 1.35 + (arm * Math.PI * 2) / 6;
+              ctx.strokeStyle = arm % 2 === 0 ? 'rgba(253, 230, 138, 0.72)' : 'rgba(192, 132, 252, 0.78)';
+              ctx.lineWidth = arm % 2 === 0 ? 3.4 : 4.2;
+              ctx.beginPath();
+              for (let seg = 0; seg <= 10; seg++) {
+                const frac = seg / 10;
+                const rad = esR * (0.92 - frac * 0.76);
+                const ang = a0 + frac * 2.15;
+                const px = e.x + Math.cos(ang) * rad;
+                const py = e.y + Math.sin(ang) * rad;
+                seg === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
               }
-              ctx.globalAlpha = 1;
+              ctx.stroke();
+            }
+            // 4) 3 道持续向中心急速坍缩的引力透镜波环
+            for (let rw = 0; rw < 3; rw++) {
+              const cyc = ((ep * 2.8 + rw * 0.333) % 1);
+              const waveR = Math.max(44, esR * (1 - cyc * 0.84));
+              ctx.globalAlpha = (1 - cyc * 0.45) * 0.68;
+              ctx.strokeStyle = rw === 0 ? '#fef08a' : '#e9d5ff';
+              ctx.lineWidth = 2.8 - rw * 0.4;
+              ctx.beginPath(); ctx.arc(e.x, e.y, waveR, 0, Math.PI * 2); ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            // 5) 预烘焙超巨纯黑事件视界深渊核与光子金环（直径近 300px，震撼全场）
+            const bhCoreR = Math.min(168, Math.max(116, esR * 0.35)) * (0.90 + ep * 0.18);
+            if (typeof vfxSprites !== 'undefined' && vfxSprites.blackHoleCore) {
+              ctx.drawImage(vfxSprites.blackHoleCore, e.x - bhCoreR, e.y - bhCoreR, bhCoreR * 2, bhCoreR * 2);
+            } else {
+              ctx.fillStyle = '#020008';
+              ctx.strokeStyle = '#fef08a';
+              ctx.lineWidth = 3.2;
+              ctx.beginPath(); ctx.arc(e.x, e.y, bhCoreR * 0.36, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            }
+            // 6) 对主角的直观引力拖拽流线（让玩家清晰看见自己正被黑洞拉扯！）
+            if (player && player.hp > 0) {
+              const pdx = e.x - player.x, pdy = e.y - player.y;
+              const pDist = Math.hypot(pdx, pdy);
+              if (pDist > 36 && pDist < pullRMax) {
+                const pux = pdx / pDist, puy = pdy / pDist;
+                const pnx = -puy, pny = pux;
+                for (let lk = -1; lk <= 1; lk++) {
+                  const flow = ((now * 0.0045 + (lk + 1) * 0.31) % 1);
+                  const startOff = 18 + flow * Math.min(180, pDist * 0.55);
+                  const endOff = Math.min(pDist - 24, startOff + 48);
+                  if (endOff > startOff + 8) {
+                    const lat = lk * 13 * (1 - flow * 0.5);
+                    ctx.globalAlpha = (1 - flow * 0.65) * 0.82;
+                    ctx.strokeStyle = lk === 0 ? '#fde68a' : '#c084fc';
+                    ctx.lineWidth = lk === 0 ? 2.6 : 1.9;
+                    ctx.beginPath();
+                    ctx.moveTo(player.x + pux * startOff + pnx * lat, player.y + puy * startOff + pny * lat);
+                    ctx.lineTo(player.x + pux * endOff + pnx * lat * 0.4, player.y + puy * endOff + pny * lat * 0.4);
+                    ctx.stroke();
+                  }
+                }
+                ctx.globalAlpha = 1;
+              }
             }
           }
           // 7) 双生【☀️ 晨曦庇护圣印】（站在金印内完全免疫黑洞引力拖拽与坍缩湮灭）
