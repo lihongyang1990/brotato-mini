@@ -29,7 +29,8 @@ const CHANGELOG_HISTORY = [
       '🩸 首领【临死挣扎】新增破框立绘演出：在主线与无尽 D5 触发 10 秒临死挣扎瞬间，强制弹出首领二阶段破框立绘横幅（清晰提示锁血无敌、攻速+20%、伤敌汲血10% 与恐惧威压），一眼看清战场剧变！',
       '😱 临死挣扎【恐惧威压】光环实装：任意首领处于垂死挣扎期间，主角因恐惧移动速度降低 15%（无视地形减速免疫），且【青焰瞬步】冲刺冷却时间增加 50%！',
       '⚙️ 参照《土豆兄弟》彻底重构独立【建筑攻速】体系并提升 20% 基础塔攻速：修复此前角色自身攻速（atkSpd）与工程学伤害（techMul）双重叠乘进炮台冷却、又与每帧 dt 倍率二次叠乘导致炮台失控的根因，现角色攻速与工程学伤害 0% 影响建筑射速，炮台/图腾仅受独立【建筑攻速】词条、机巧羁绊、图腾共鸣与瞬步超频加成，并将基础塔攻速还原后额外提升 +20%（1.20x）！',
-      '🌌 饥饿黑影与【超巨黑洞引力奇点】新增 1.0 秒前置预警 + 吸引力大幅削弱 60%（×0.40）：开启黑洞奇点前新增完整 1.0 秒金色虚线边界与倒计时预警（期间零吸力且提前刷出双生【晨曦庇护印】），并将奇点吸积引力与【零号容器 · 饥饿黑影】本体引力全部削减 60%、移除奇点开启期间的双重吸力叠加！'
+      '🌌 饥饿黑影与【超巨黑洞引力奇点】新增 1.0 秒前置预警 + 吸引力大幅削弱 60%（×0.40）：开启黑洞奇点前新增完整 1.0 秒金色虚线边界与倒计时预警（期间零吸力且提前刷出双生【晨曦庇护印】），并将奇点吸积引力与【零号容器 · 饥饿黑影】本体引力全部削减 60%、移除奇点开启期间的双重吸力叠加！',
+      '👗 主角「零」三套专属战装形象自选（合并 PR #26）：首次启程仪式选装 + 全程自由切换【星渊魔女装 / 绯月执政官 / 星穹晚礼装 / 初始守誓白衣】，全场景无裁切半身立绘与 1024×256 四帧精灵表联动！'
     ]
   },
   {
@@ -378,6 +379,125 @@ const MAX_WEAPON_TIER = 5;
 const TIER_COLORS = ['', '#e2deec', '#4cc9f0', '#c77dff', '#ffd166', '#ff3b6b'];
 const TIER_GLOW   = ['', 'rgba(255,255,255,0)', 'rgba(76,201,240,0.45)', 'rgba(199,125,255,0.55)', 'rgba(255,209,102,0.68)', 'rgba(255,59,107,0.84)'];
 const TIER_NAMES  = ['', '普通', '精良', '史诗', '传说', '神话'];
+
+// ============================================================================
+// 👗 主角「零」三套可选高定战装形象与持久化配置（首次进游戏可选 + 随时切换）
+// ============================================================================
+const ZERO_OUTFIT_STORAGE_KEY = 'spire_zero_outfit_v1';
+const ZERO_OUTFIT_CHOSEN_KEY  = 'spire_zero_outfit_chosen_v1';
+const ZERO_PRIMARY_OUTFIT_IDS = ['witch', 'crimson', 'astral'];
+const ZERO_OUTFITS = {
+  witch: {
+    id: 'witch',
+    code: 'ATTIRE · I',
+    name: '星渊夜鸦 · 苍夜秘术魔女装',
+    shortName: '星渊魔女装',
+    captionSuffix: ' · 星渊魔女',
+    badge: '秘术魔女',
+    desc: '超大宽檐尖顶星芒魔女帽配苍夜丝绒披风，提灯折射深空紫晶微光。',
+    portrait: 'assets/spire/port_zero_witch.jpg',
+    chibi: 'assets/spire/hero_zero_witch.png',
+    sheetKey: 'zero_witch',
+    portraitKey: 'zero_witch',
+    accent: '#c084fc',
+    dashColor: '#c084fc'
+  },
+  crimson: {
+    id: 'crimson',
+    code: 'ATTIRE · II',
+    name: '绯夜狐火 · 守誓巫女战装',
+    shortName: '绯夜巫女装',
+    captionSuffix: ' · 绯夜巫女',
+    badge: '绯夜狐火',
+    desc: '玄黑织金羽织配绯红百褶战袴，斜戴白狐神乐半面与暖焰魂灯。',
+    portrait: 'assets/spire/port_zero_crimson.jpg',
+    chibi: 'assets/spire/hero_zero_crimson.png',
+    sheetKey: 'zero_crimson',
+    portraitKey: 'zero_crimson',
+    accent: '#fb7185',
+    dashColor: '#fb7185'
+  },
+  astral: {
+    id: 'astral',
+    code: 'ATTIRE · III',
+    name: '星穹礼赞 · 逆钟星使晚礼装',
+    shortName: '星穹晚礼装',
+    captionSuffix: ' · 星穹星使',
+    badge: '星穹礼赞',
+    desc: '星夜蓝渐变金丝礼裙配逆转时计胸针，手提黄铜浑天仪星灯。',
+    portrait: 'assets/spire/port_zero_astral.jpg',
+    chibi: 'assets/spire/hero_zero_astral.png',
+    sheetKey: 'zero_astral',
+    portraitKey: 'zero_astral',
+    accent: '#60a5fa',
+    dashColor: '#60a5fa'
+  },
+  default: {
+    id: 'default',
+    code: 'CLASSIC · 00',
+    name: '零号素衣 · 初始守誓白衣',
+    shortName: '初始白衣',
+    captionSuffix: ' · 白衣',
+    badge: '初始素衣',
+    desc: '第九百九十九次于石棺苏醒时的灰白守誓斗篷与苍青提灯。',
+    portrait: 'assets/spire/port_zero.jpg',
+    chibi: 'assets/spire/hero_zero.png',
+    sheetKey: 'zero',
+    portraitKey: 'zero',
+    accent: '#72efdd',
+    dashColor: '#72efdd'
+  }
+};
+
+let selectedZeroOutfit = (function () {
+  try {
+    const saved = typeof localStorage !== 'undefined' && localStorage ? localStorage.getItem(ZERO_OUTFIT_STORAGE_KEY) : null;
+    if (saved && ZERO_OUTFITS[saved]) return saved;
+  } catch (_) {}
+  return 'witch';
+})();
+
+function hasChosenZeroOutfit() {
+  try {
+    return !!(typeof localStorage !== 'undefined' && localStorage && localStorage.getItem(ZERO_OUTFIT_CHOSEN_KEY) === '1');
+  } catch (_) {
+    return false;
+  }
+}
+
+function getActiveZeroOutfitId() {
+  try {
+    if (player && player.cls === 'allrounder' && player.outfit && ZERO_OUTFITS[player.outfit]) {
+      return player.outfit;
+    }
+  } catch (_) {}
+  return ZERO_OUTFITS[selectedZeroOutfit] ? selectedZeroOutfit : 'witch';
+}
+
+function getActiveZeroOutfit() {
+  return ZERO_OUTFITS[getActiveZeroOutfitId()] || ZERO_OUTFITS.default;
+}
+
+function setSelectedZeroOutfit(outfitId, markChosen = true) {
+  const validId = ZERO_OUTFITS[outfitId] ? outfitId : 'witch';
+  selectedZeroOutfit = validId;
+  try {
+    if (player && player.cls === 'allrounder') {
+      player.outfit = validId;
+    }
+  } catch (_) {}
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage) {
+      localStorage.setItem(ZERO_OUTFIT_STORAGE_KEY, validId);
+      if (markChosen) localStorage.setItem(ZERO_OUTFIT_CHOSEN_KEY, '1');
+    }
+  } catch (_) {}
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmZeroOutfit === 'function') {
+    SpireAssets.warmZeroOutfit(validId);
+  }
+  if (typeof syncZeroOutfitUI === 'function') syncZeroOutfitUI();
+  return ZERO_OUTFITS[validId];
+}
 
 // ============================================================================
 // 🛡️ 网页端全链路资源完整性自检与启动门禁系统 (SpireBootGate)

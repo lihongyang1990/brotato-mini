@@ -65,6 +65,13 @@ const SpireDirector = (function () {
     return Object.assign(atlas(key + '-atlas.png', 3), { mood: 'memory' });
   }
   function speakerId(name) { return Object.keys(CAST).find(k => CAST[k].name === name) || null; }
+  function castPortraitPath(key) {
+    if (key === 'zero' && typeof getActiveZeroOutfit === 'function') {
+      const o = getActiveZeroOutfit();
+      if (o && o.portrait) return o.portrait;
+    }
+    return CAST[key].portrait;
+  }
   const lineKey = (line, id, i) => VERSION + ':' + (line.lineId || id + '.line.' + i) + ':' + line.text;
   function persistRead() { try { if (window.localStorage) window.localStorage.setItem('spire-read-lines-v2', JSON.stringify(read)); } catch (_) {} }
   function css(el, key, value) { if (el.style.setProperty) el.style.setProperty(key, value); else el.style[key] = value; }
@@ -377,7 +384,7 @@ const SpireDirector = (function () {
         const el = pair[0], key = pair[1], entering = el.classList.contains('hidden') || el.getAttribute('data-character') !== key;
         el.classList.toggle('hidden', !key); el.classList.toggle('speaking', key === id);
         if (key) {
-          const path = CAST[key].portrait, role = el === ui.left ? 'portrait-left' : 'portrait-right';
+          const path = castPortraitPath(key), role = el === ui.left ? 'portrait-left' : 'portrait-right';
           if (el.getAttribute('data-portrait') !== path) { el.setAttribute('data-portrait', path); el.src = source(path); } el.alt = CAST[key].name; el.setAttribute('data-character', key);
           if (entering || lastPortraitSpeaker !== id) {
             stopRole(role);
@@ -386,7 +393,7 @@ const SpireDirector = (function () {
         }
       }
       const listenerId = id === 'zero' ? other : 'zero'; ui.listener.classList.toggle('hidden', !listenerId);
-      if (listenerId) { const path = CAST[listenerId].portrait; if (ui.listener.getAttribute('data-portrait') !== path) { ui.listener.setAttribute('data-portrait', path); ui.listener.src = source(path); } ui.listener.alt = CAST[listenerId].name + '在听'; }
+      if (listenerId) { const path = castPortraitPath(listenerId); if (ui.listener.getAttribute('data-portrait') !== path) { ui.listener.setAttribute('data-portrait', path); ui.listener.src = source(path); } ui.listener.alt = CAST[listenerId].name + '在听'; }
     } else { ui.left.classList.add('hidden'); ui.right.classList.add('hidden'); ui.listener.classList.add('hidden'); }
     lastPortraitSpeaker = id; syncMotionState();
     if (prefs.instantText) reveal(); else syncText();

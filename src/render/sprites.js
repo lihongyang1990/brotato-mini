@@ -1542,7 +1542,10 @@ function drawPotatoHero() {
   ctx.fillStyle = 'rgba(0,0,0,0.48)';
   ctx.beginPath(); ctx.ellipse(p.x, p.y + 25, 23, 8.6, 0, 0, Math.PI * 2); ctx.fill();
 
-  ctx.strokeStyle = it.berserk ? 'rgba(251, 113, 133, 0.50)' : 'rgba(114, 239, 221, 0.42)';
+  const zeroRingCol = (p.cls === 'allrounder' && typeof getActiveZeroOutfit === 'function')
+    ? (getActiveZeroOutfit().id === 'crimson' ? 'rgba(251, 113, 133, 0.48)' : (getActiveZeroOutfit().id === 'witch' ? 'rgba(192, 132, 252, 0.48)' : (getActiveZeroOutfit().id === 'astral' ? 'rgba(96, 165, 250, 0.48)' : 'rgba(114, 239, 221, 0.42)')))
+    : 'rgba(114, 239, 221, 0.42)';
+  ctx.strokeStyle = it.berserk ? 'rgba(251, 113, 133, 0.50)' : zeroRingCol;
   ctx.lineWidth = 1.9;
   ctx.beginPath(); ctx.ellipse(p.x, p.y + 24, 24.2, 9.0, 0, 0, Math.PI * 2); ctx.stroke();
 

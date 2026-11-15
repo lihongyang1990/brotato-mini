@@ -84,7 +84,7 @@ function resolveSpireBossDefeat(enemy) {
   const flow = spireFloorFlow;
   if (!player || player.hp <= 0 || !isCurrentSpireFlow(flow) || flow.result !== 'active') return;
   // 一阶绝不能从这里通过：护栏也覆盖调试/外部伤害入口。
-  if (enemy.storyPhaseBoss && enemy.storyStage !== 2) {
+  if (enemy.storyPhaseBoss && enemy.storyStage !== 2 && !enemy.mythicPhase2) {
     enemy._storyDefeatQueued = false;
     triggerBossMythicPhase2(enemy);
     return;
@@ -1189,6 +1189,42 @@ function mergeSlot(idx) {
   return true;
 }
 
+function buyOffer(i) {
+  const o = shopOffers[i];
+  if (!o || !player || player.mats < o.cost) return false;
+  if (o.kind === 'weapon') {
+    const tpl = WEAPONS[o.id];
+    if (!tpl || !canBuyWeapon(o.id, o.tier)) return false;
+    confirmSellIdx = -1;
+    player.mats -= o.cost;
+    addOrMergeWeapon(o.id, o.tier);
+    logInfo('SHOP', `购入武器 ${tpl.name} Lv.${o.tier} (-${o.cost}💎, 剩余=${player.mats}💎)`);
+    shopOffers[i] = null;
+    syncShopOfferDiscounts();
+    beep(520, 0.07, 'triangle');
+    renderShop();
+    checkPendingWeaponEvolutions();
+    return true;
+  }
+  const it = o.item;
+  if (!it) return false;
+  confirmSellIdx = -1;
+  player.mats -= o.cost;
+  player.items[it.id] = (player.items[it.id] || 0) + 1;
+  it.apply(player);
+  if (it.id === 'recycler') {
+    freeRerollsLeft++;
+    rerollCost = 0;
+  }
+  syncSetHp();
+  logInfo('SHOP', `购入道具 ${it.name} (-${o.cost}💎, 剩余=${player.mats}💎)`);
+  shopOffers[i] = null;
+  syncShopOfferDiscounts();
+  beep(520, 0.07, 'triangle');
+  renderShop();
+  return true;
+}
+
 function renderShop() {
   syncShopOfferDiscounts();
   renderBuildSummary('statsRow', 'setRow');
@@ -1379,16 +1415,7 @@ function renderShop() {
             </button>
           </div>
         </div>`;
-      el.querySelector('.buy').onclick = () => {
-        confirmSellIdx = -1;
-        player.mats -= o.cost;
-        addOrMergeWeapon(o.id, o.tier);
-        logInfo('SHOP', `购入武器 ${tpl.name} Lv.${o.tier} (-${o.cost}💎, 剩余=${player.mats}💎)`);
-        shopOffers[i] = null;
-        beep(520, 0.07, 'triangle');
-        renderShop();
-        checkPendingWeaponEvolutions();
-      };
+      el.querySelector('.buy').onclick = () => { buyOffer(i); };
     } else {
       const it = o.item;
       if (!it) return;
@@ -1422,22 +1449,7 @@ function renderShop() {
             </button>
           </div>
         </div>`;
-      el.querySelector('.buy').onclick = () => {
-        confirmSellIdx = -1;
-        player.mats -= o.cost;
-        player.items[it.id] = (player.items[it.id] || 0) + 1;
-        it.apply(player);
-        if (it.id === 'recycler') {
-          freeRerollsLeft++;
-          rerollCost = 0;
-        }
-        syncSetHp();
-        logInfo('SHOP', `购入道具 ${it.name} (-${o.cost}💎, 剩余=${player.mats}💎)`);
-        shopOffers[i] = null;
-        syncShopOfferDiscounts();
-        beep(520, 0.07, 'triangle');
-        renderShop();
-      };
+      el.querySelector('.buy').onclick = () => { buyOffer(i); };
     }
     el.querySelector('.lock').onclick = e => {
       if (e && e.stopPropagation) e.stopPropagation();

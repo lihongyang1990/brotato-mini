@@ -1055,6 +1055,87 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   for (const [key, value] of Object.entries(rotation)) assert.strictEqual(value, true, 'Mobile rotation invariant: ' + key);
 }
 
+// Protagonist Zero 3-Outfit First-Entry Ritual & Uncropped Portrait / Sheet Sync Suite
+{
+  const { sandbox: s, stats } = createEnv(false, 1440, 900, 2);
+  s.window.dispatch("pointerdown", {});
+
+  const outfitCheck = vm.runInContext(`(() => {
+    const initialUnchosen = hasChosenZeroOutfit() === false;
+    handleStoryPortalClick();
+    const modalOpenedFirstTime = !document.getElementById('outfitModal').classList.contains('hidden') && menuStage === 'home';
+    const gridCount = document.getElementById('outfitModalGrid').children.length;
+
+    const sheetChecks = {};
+    for (const oid of ['witch', 'crimson', 'astral', 'default']) {
+      selectZeroOutfitFromUI(oid, false);
+      const sh = SpireAssets.getHeroSheet('allrounder', false);
+      const sp = SpireAssets.getHeroSprite('allrounder', false);
+      sheetChecks[oid] = !!(sh && sh.cellW === 256 && sh.cellH === 256 && sh.frames === 4 && sp && sp.w > 64 && getActiveZeroOutfitId() === oid);
+    }
+    selectZeroOutfitFromUI('witch', false);
+    confirmZeroOutfitModal();
+    const confirmedToStory = hasChosenZeroOutfit() === true &&
+      document.getElementById('outfitModal').classList.contains('hidden') &&
+      menuStage === 'story';
+    const storyPortNode1 = document.querySelector('#storyHeroShowcase .prep-zero-portrait');
+    const storyPortWitchOk = !!(storyPortNode1 && storyPortNode1.src.includes('port_zero_witch'));
+    selectZeroOutfitFromUI('astral', true);
+    const storyPortNode2 = document.querySelector('#storyHeroShowcase .prep-zero-portrait');
+    const lazyNodePreserved = (storyPortNode1 === storyPortNode2 && storyPortNode2.src.includes('port_zero_astral'));
+
+    openMenuStage('home');
+    handleStoryPortalClick();
+    const secondClickDirect = menuStage === 'story' && document.getElementById('outfitModal').classList.contains('hidden');
+
+    selectZeroOutfitFromUI('crimson', true);
+    startStoryMode();
+    for (let guard = 0; guard < 40 && SpireDirector.isActive(); guard++) {
+      const elL = document.querySelector('.story-portrait-left');
+      if (elL && elL.src && elL.src.includes('port_zero_')) break;
+      SpireDirector.advanceOrSkip(true);
+    }
+    __drainDirector();
+    if (!(document.querySelector('.story-portrait-left') && document.querySelector('.story-portrait-left').src)) {
+      SpireDirector.onShopEntered(1);
+      for (let guard = 0; guard < 20 && SpireDirector.isActive(); guard++) {
+        const elL = document.querySelector('.story-portrait-left');
+        if (elL && elL.src && elL.src.includes('port_zero_')) break;
+        SpireDirector.advanceOrSkip(true);
+      }
+      __drainDirector();
+    }
+    const avgLeftEl = document.querySelector('.story-portrait-left');
+    const avgLeftSrc = (avgLeftEl && avgLeftEl.src) || '';
+    const avgOutfitSynced = avgLeftSrc.includes('port_zero_crimson');
+    const playerOutfitSynced = (player.outfit === 'crimson');
+    draw();
+
+    return {
+      initialUnchosen, modalOpenedFirstTime, gridCount,
+      allSheetsOk: Object.values(sheetChecks).every(Boolean),
+      confirmedToStory, storyPortWitchOk, lazyNodePreserved, secondClickDirect,
+      avgOutfitSynced, playerOutfitSynced
+    };
+  })()`, s);
+
+  assert.strictEqual(outfitCheck.initialUnchosen, true, "Fresh profile must start with unchosen outfit ritual flag");
+  assert.strictEqual(outfitCheck.modalOpenedFirstTime, true, "First click on Story Portal must open 3-outfit selection modal");
+  assert.strictEqual(outfitCheck.gridCount, 3, "Outfit modal must display the 3 bespoke protagonist outfits");
+  assert.strictEqual(outfitCheck.allSheetsOk, true, "All 3 protagonist outfits + classic white must resolve crisp 1024x256 4-frame sheets & sprites");
+  assert.strictEqual(outfitCheck.confirmedToStory, true, "Confirming outfit modal must persist selection and transition to Story preparation");
+  assert.strictEqual(outfitCheck.storyPortWitchOk, true, "Story preparation portrait must reflect chosen Witch outfit");
+  assert.strictEqual(outfitCheck.lazyNodePreserved, true, "Switching outfits must update portrait src in-place without destroying DOM node");
+  assert.strictEqual(outfitCheck.secondClickDirect, true, "Subsequent Story Portal clicks must enter Story preparation directly");
+  assert.strictEqual(outfitCheck.avgOutfitSynced, true, "AVG story dialogue portrait must dynamically match chosen protagonist outfit");
+  assert.strictEqual(outfitCheck.playerOutfitSynced, true, "Active player entity must carry chosen outfit ID");
+  const baseCssText = fs.readFileSync(path.join(ROOT, "styles/base.css"), "utf8");
+  assert(/\.outfit-pick-portrait[\s\S]{0,180}object-fit:\s*contain/.test(baseCssText), "Outfit modal portrait CSS must style .outfit-pick-portrait with object-fit: contain so full heads & hats never crop");
+  assert.strictEqual(stats.radialGradients, 0, "Outfit suite must create ZERO per-frame radial gradients");
+  assert.strictEqual(stats.shadowBlurs, 0, "Outfit suite must use ZERO shadowBlur");
+  assert.strictEqual(vm.runInContext("logErrCount", s), 0, "Zero runtime errors in Outfit suite");
+}
+
 {
   const { sandbox: s } = createEnv(true, 390, 844, 3);
   const webview = vm.runInContext(`(() => {
@@ -1184,7 +1265,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     const diedCleanly = state === 'end';
     retryFailedWave();
     __drainDirector();
-    for (let k = 0; k < 25; k++) update(0.05);
+    for (let k = 0; k < 25; k++) { pendingBossCutscene = null; bossCutscene = null; update(0.05); }
+    pendingBossCutscene = null;
+    bossCutscene = null;
     draw();
     const magCircleDrawn = typeof player._visMagR === 'number' && player._visMagR >= 120;
     const retryBoss = enemies.find(e => e.type === 'boss');
@@ -1266,7 +1349,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     endlessMode = true;
     wave = 12;
     beginWave();
-    for (let k = 0; k < 20; k++) update(0.05);
+    for (let k = 0; k < 20; k++) { pendingBossCutscene = null; bossCutscene = null; update(0.05); }
+    pendingBossCutscene = null;
+    bossCutscene = null;
     const vBoss = enemies.find(e => e.type === 'boss');
     vBoss.variant = 'plague_empress';
     vBoss.hp = 999999; vBoss.maxHp = 999999;
@@ -1320,10 +1405,13 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     wave = 8;
     beginWave();
     __drainDirector();
-    for (let k = 0; k < 20; k++) update(0.05);
+    for (let k = 0; k < 20; k++) { pendingBossCutscene = null; bossCutscene = null; update(0.05); }
+    pendingBossCutscene = null;
+    bossCutscene = null;
     overtime = true; waveTime = 0;
     const fqBoss = enemies.find(e => e.type === 'boss');
     fqBoss.mythicPhase2 = true;
+    fqBoss.storyStage = 2;
     fqBoss.hp = 1;
     fqBoss.x = 1200; fqBoss.y = 1200;
     player.x = 950; player.y = 1200;
@@ -1545,8 +1633,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       const c2Cls = cards[1].className || '';
       const c1Html = cards[0].innerHTML || '';
       const c2Html = cards[1].innerHTML || '';
-      const c1PurplePlusItem = (/\bt[34]\b/.test(c1Cls) && c1Html.includes('遗物'));
-      const c2PurplePlusWpn = (/\bt[34]\b/.test(c2Cls) && c2Html.includes('兵装'));
+      const c1PurplePlusItem = (/\\bt[34]\\b/.test(c1Cls) && c1Html.includes('遗物'));
+      const c2PurplePlusWpn = (/\\bt[34]\\b/.test(c2Cls) && c2Html.includes('兵装'));
       if (!c1PurplePlusItem || !c2PurplePlusWpn) { crateGuaranteeOk = false; break; }
       if (rollIdx === 19) {
         const takeWpnBtn = cards[1].querySelector('.take-btn');
@@ -1592,7 +1680,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     };
     const staffBoost = getArchetypeAffinityBoosts(committedStaffP);
     const staffWpnMul = getWeaponArchetypeWeightMul('chrono_staff', staffBoost);
-    const staffItemMul = getItemArchetypeWeightMul(ITEMS.find(x => x.id === 'arcane_focus_orb'), staffBoost);
+    const staffItemMul = getItemArchetypeWeightMul(ITEMS.find(x => x.id === 'archmage_crown'), staffBoost);
     const hiddenBoostOk = (
       neutralBoost.staff === 0 &&
       staffBoost.staff > 0.16 &&
@@ -1627,15 +1715,24 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     );
 
     // 验证吸血仅直接攻击触发且受 0.12s ICD 限制
+    beginWave();
+    __drainDirector();
+    player.dodge = 0;
     player.hp = 10; player.maxHp = 50; player.lifesteal = 1.0; player._lifestealCd = 0;
     const dummyE = createEnemy(player.x + 120, player.y, 'chaser');
     dummyE.hp = dummyE.maxHp = 9999;
-    hurtEnemy(dummyE, 10, false, null, true, { isTurret: true, srcId: 'turret_gun' });
-    const turretNoLs = (player.hp === 10);
-    hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
-    const directLsHealed = (player.hp === 11 && player._lifestealCd > 0.10);
-    hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
-    const icdBlockedSecond = (player.hp === 11);
+    const _lsRand = Math.random;
+    Math.random = () => 0.10;
+    try {
+      hurtEnemy(dummyE, 10, false, null, true, { isTurret: true, srcId: 'turret_gun' });
+      var turretNoLs = (player.hp === 10);
+      hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
+      var directLsHealed = (player.hp === 11 && player._lifestealCd > 0.10);
+      hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
+      var icdBlockedSecond = (player.hp === 11);
+    } finally {
+      Math.random = _lsRand;
+    }
     const lifestealRuleOk = (turretNoLs && directLsHealed && icdBlockedSecond);
 
     // 验证小怪不爆 bigCoin 金色大钻，而首领可爆 bigCoin
@@ -1649,6 +1746,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
 
     // 验证八荒血月斩预烘焙精灵存在 & 赛后总结渲染双栏数据及点击查看武器/魔物详情弹窗
     const bmSprite = getBloodMoonWaveSprite();
+    player.hp = 35; player.maxHp = 50; player.dodge = 0;
     hurtPlayer(12, true, 'void_weaver');
     renderEndRunSummary(false);
     const endSumHtml = document.getElementById('endSummaryPanel').innerHTML || '';
@@ -2324,6 +2422,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     assert(map && typeof map === "object", "window.__SPIRE_INLINE_ASSETS__ must be populated");
     for (const key of [
       "assets/spire/port_zero.jpg", "assets/spire/port_jinyu.jpg", "assets/spire/port_astria.jpg",
+      "assets/spire/port_zero_witch.jpg", "assets/spire/port_zero_crimson.jpg", "assets/spire/port_zero_astral.jpg",
+      "assets/spire/hero_zero_witch_sheet.png", "assets/spire/hero_zero_crimson_sheet.png", "assets/spire/hero_zero_astral_sheet.png",
       "assets/spire/port_jialan.jpg", "assets/spire/port_qingyu.jpg", "assets/spire/port_eclipse.jpg",
       "assets/spire/hero_zero_sheet.png", "assets/spire/hero_jinyu_sheet.png", "assets/spire/hero_astria_sheet.png",
       "assets/spire/hero_jialan_sheet.png", "assets/spire/hero_qingyu_sheet.png", "assets/spire/hero_eclipse_sheet.png",
