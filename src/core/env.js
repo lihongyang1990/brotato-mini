@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.17 手机端剧情开局与过场背景图极速秒刷不黑屏：19张剧情原画压缩87.5% + 主殿预解码 + 双缓冲画框防闪黑 + 错峰预热）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.18 手机端与桌面端开始界面版本徽章常驻显示 + 一键直达烬塔纪元志版本记录）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,13 +16,21 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.17';
+const APP_VERSION = 'v2.1.18';
 const APP_BUILD_DATE = '2026-11-15';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.17', date: '2026-11-15', tag: '当前版本 · 手机端开局零黑屏 · 怪物贴图独立通道绝不变圆球 · 商店一屏全显零下拉 · 全图鉴羁绊折叠屏占比80%+',
+    ver: 'v2.1.18', date: '2026-11-15', tag: '当前版本 · 手机端开始界面版本号清晰常驻 · 点击一键查阅纪元志',
+    title: '🏷️ 手机端（竖屏/横屏）开始界面新增黑曜金边版本徽章常驻显示 + 一键点击直达「烬塔纪元志」版本更新记录',
+    items: [
+      '📱 修复手机端竖屏与横屏开始界面隐藏版本号导致无法确认线上缓存是否已更新的问题：移除移动端对 #startVersionPill 的隐藏规则，改为在左上角常驻高辨识度黑曜金边胶囊徽章「✦ v2.1.18 · 纪元志」（与右上角音量/音景按钮同行对称排布，超窄屏自动自适应精简不换行）！',
+      '📜 开始界面版本徽章升级为可交互入口：无论手机端还是桌面端，轻点左上角版本号徽章即可一键呼出「烬塔纪元志」查阅完整版本更新明细；同时在「设置 → 版本记录」按钮上同步标注当前版本号！'
+    ]
+  },
+  {
+    ver: 'v2.1.17', date: '2026-11-15', tag: '手机端开局零黑屏 · 怪物贴图独立通道绝不变圆球 · 商店一屏全显零下拉 · 全图鉴羁绊折叠屏占比80%+',
     title: '📱 手机端四大体验深度重构：开局原画秒刷不黑屏（体积-87.5%） + 怪物贴图独立高优通道根治圆球 + 商店 2×2 一屏全显零下拉零遮挡 + 全图鉴流派羁绊可折叠精简',
     items: [
       '👾 彻底根治手机端怪物显示成纯色圆球：重构双优先级贴图加载器（战斗精灵独享 10 路高优绿色通道，后台大图限流 3 路绝不挤占小怪）、新增每请求 5 秒挂起看门狗超时断连自愈、移除小体积战斗精灵异步解码延迟并常驻轻量离屏画布防 WebKit 内存驱逐，首波核心小怪开机即刻预热，且弱网极端流式过渡期升级为哥特暗影魔偶剪影（彻底告别纯色圆球）！',

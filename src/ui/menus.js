@@ -354,7 +354,8 @@ function initMenuUI() {
   refreshUIPrefControls();
   const vp = document.getElementById('startVersionPill');
   if (vp && typeof APP_VERSION !== 'undefined') {
-    vp.textContent = `ECHOES OF THE ASHEN SPIRE  ·  ${APP_VERSION}`;
+    vp.innerHTML = `<span class="ver-prefix">ECHOES OF THE ASHEN SPIRE  ·  </span><span class="ver-dot" aria-hidden="true">✦</span><span class="ver-num">${APP_VERSION}</span><span class="ver-log-tag"> · 纪元志</span>`;
+    vp.setAttribute('aria-label', `当前版本 ${APP_VERSION}，点击查看版本更新记录`);
   }
   const appIconEl = document.getElementById('brandAppIcon');
   if (appIconEl) appIconEl.src = _menuAssetUrl('assets/spire/app_icon.jpg');

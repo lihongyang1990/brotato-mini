@@ -585,8 +585,9 @@ body.m-portrait .hud-left .xp-text { font-size: 11.5px; }
 body.m-portrait .boss-bar-wrap { grid-column: 1 / -1; grid-row: 4; width: 100%; max-width: 100%; margin-top: 0; padding: 5px 10px; box-sizing: border-box; }
 body.m-portrait .hud-mini-stats { grid-column: 1 / -1; font-size: 11.5px; }
 
-body.m-portrait .home-ver-pill { display: none; }
-body.m-portrait .home-topbar { justify-content: center; }
+body.m-portrait .home-topbar { justify-content: space-between; gap: 8px; }
+body.m-ui .changelog-box { max-height: 92dvh; padding: 12px 14px; gap: 8px; }
+body.m-ui .changelog-list { min-height: 0; }
 body.m-portrait .mode-portal-grid {
   grid-template-columns: 1fr;
   gap: 11px;

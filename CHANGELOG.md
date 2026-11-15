@@ -4,6 +4,15 @@
 
 ---
 
+## [v2.1.18] - 2026-11-15
+### 🏷️ 手机端（竖屏 / 横屏）开始界面版本号常驻显示 & 一键直达「烬塔纪元志」版本记录
+- **修复手机端开始界面不显示版本号的问题（`index.html`、`src/ui/menus.js`、`styles/mobile.css`、`styles/presentation.css`、`styles/base.css`）**：
+  - 移除此前在竖屏（`body.m-portrait .home-ver-pill { display: none; }`）与横屏（`body.m-landscape #menuHomeView .home-ver-pill { display: none; }`）隐藏开始界面版本号的样式，主殿顶栏改为左右对称常驻；
+  - 手机端左上角新增高辨识度黑曜金边版本胶囊徽章 **`✦ v2.1.18 · 纪元志`**（隐藏与主标题重复的英文前缀，与右上角音量/音景按钮同行清爽排布；`≤360px` 超窄屏自动精简为 `✦ v2.1.18` 绝不换行挤压）；
+  - 将 `#startVersionPill` 升级为可点击按钮：手机端与桌面端轻点开始界面左上角版本徽章即可直接打开 **「烬塔纪元志」** 查看更新详情，并在 `设置 → 版本记录` 按钮同步显示当前版本号（`src/ui/presentation.js`），同时优化移动端纪元志弹窗高度自适应（`max-height: 92dvh`）。
+
+---
+
 ## [v2.1.17] - 2026-11-15
 ### 📱 手机端四大体验深度重构：怪物贴图独立通道绝不变圆球 + 商店 2×2 一屏全显零下拉零遮挡 + 全图鉴羁绊折叠屏占比 80%+ + 开局剧情原画秒刷不黑屏（`-87.5%`）
 - **根治手机端怪物显示成纯色圆球（`src/data/boss_portraits.js`、`src/render/sprites.js`）**：
