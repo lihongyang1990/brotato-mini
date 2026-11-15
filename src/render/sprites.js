@@ -1439,9 +1439,9 @@ function drawEnemySprite(e) {
     const lsTxt = `🩸 临死挣扎·无敌 ${e.d5LastStandT.toFixed(1)}s`;
     const lw = 166;
     const ly = -r - 56;
-    ctx.fillStyle = 'rgba(42, 6, 18, 0.92)';
-    ctx.strokeStyle = '#ff4d6d';
-    ctx.lineWidth = 1.8;
+    ctx.fillStyle = 'rgba(42, 6, 18, 0.50)';
+    ctx.strokeStyle = 'rgba(255, 77, 109, 0.70)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.roundRect(-lw * 0.5, ly - 12, lw, 20, 6); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#ffd166';
     ctx.fillText(lsTxt, 0, ly + 2);
@@ -1458,11 +1458,11 @@ function drawEnemySprite(e) {
     ctx.textAlign = 'center';
     const cw = Math.max(132, Math.min(238, activeBadgeTxt.length * 13 + 24));
     const cy = e.y - r - 34;
-    ctx.fillStyle = (e.p2WindupT || 0) > 0 ? 'rgba(34, 8, 20, 0.92)' : 'rgba(12, 9, 22, 0.88)';
-    ctx.strokeStyle = (e.p2WindupT || 0) > 0 ? '#ffd166' : '#fde68a';
-    ctx.lineWidth = 1.7;
+    ctx.fillStyle = (e.p2WindupT || 0) > 0 ? 'rgba(34, 8, 20, 0.50)' : 'rgba(12, 9, 22, 0.48)';
+    ctx.strokeStyle = (e.p2WindupT || 0) > 0 ? 'rgba(255, 209, 102, 0.72)' : 'rgba(253, 230, 138, 0.68)';
+    ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.roundRect(e.x - cw * 0.5, cy - 12, cw, 20, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(251, 113, 133, 0.50)';
+    ctx.fillStyle = 'rgba(251, 113, 133, 0.44)';
     ctx.fillRect(e.x - cw * 0.5 + 3, cy + 4, Math.max(2, (cw - 6) * wProg), 2.5);
     ctx.fillStyle = '#fef08a';
     ctx.fillText(activeBadgeTxt, e.x, cy + 2);
@@ -1477,10 +1477,37 @@ function drawEnemySprite(e) {
     ctx.font = '800 11px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#a3e635';
-    ctx.fillText(`毒×${e.poisonStacks}`, e.x, e.y - r - 20);
+    ctx.fillText(`毒×${e.poisonStacks}`, e.x, e.y - r - 24);
   }
 
-  if (!isBoss && !isMini && (e.type === 'brute' || e.type === 'juggernaut' || e.type === 'iron_guard' || e.elite || e.hp < e.maxHp)) {
+  // 双首领 / 多主宰同屏时，每位首领头顶同步绘制精致独立血条（一阶绯红 / 二阶神话鎏金），一眼锁定集火目标
+  if (isBoss || isMini) {
+    let multiBossAlive = 0;
+    if (typeof enemies !== 'undefined') {
+      for (let bi = 0; bi < enemies.length; bi++) {
+        const be = enemies[bi];
+        if (be.hp > 0 && (be.type === 'boss' || be.type === 'mini_boss' || be.type === 'special_boss')) {
+          multiBossAlive++;
+          if (multiBossAlive >= 2) break;
+        }
+      }
+    }
+    if (multiBossAlive >= 2) {
+      const bw = Math.max(66, r * 1.95);
+      const barY = e.y - r - 15;
+      const hpRatio = Math.max(0, Math.min(1, e.hp / Math.max(1, e.maxHp)));
+      ctx.save();
+      ctx.fillStyle = 'rgba(8, 10, 18, 0.84)';
+      ctx.strokeStyle = e.mythicPhase2 ? '#ffd166' : 'rgba(251, 113, 133, 0.78)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.roundRect(e.x - bw * 0.5, barY, bw, 7, 3.5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = e.mythicPhase2 ? '#ffd166' : (e.type === 'special_boss' ? '#c77dff' : '#ff3b6b');
+      if (hpRatio > 0.005) {
+        ctx.fillRect(e.x - bw * 0.5 + 1.5, barY + 1.5, Math.max(2, (bw - 3) * hpRatio), 4);
+      }
+      ctx.restore();
+    }
+  } else if (e.type === 'brute' || e.type === 'juggernaut' || e.type === 'iron_guard' || e.elite || e.hp < e.maxHp) {
     const bw = Math.max(30, r * 1.85);
     const barY = e.y - Math.max(r + 16, r * 1.48);
     ctx.fillStyle = 'rgba(6,9,16,0.82)';
@@ -1635,7 +1662,7 @@ function drawPotatoHero() {
     }
   }
 
-  // 5. 寒冰地形渐进冰封状态视觉反馈（5秒寒霜进度条 + 冰封 1秒蓝宝石冰晶棱罩）
+  // 5. 寒冰地形渐进冰封状态视觉反馈（D1=4s -> D5=2s 寒霜进度条 + 冰封蓝宝石冰晶棱罩）
   if ((p.iceFreezeT || 0) > 0) {
     ctx.save();
     ctx.translate(p.x, p.y - 8);

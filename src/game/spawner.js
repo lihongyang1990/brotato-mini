@@ -19,7 +19,9 @@ const FALLBACK_MINI_BOSS_DEFS = {
 const FALLBACK_SPECIAL_RELICS = [
   { id: 'blood_altar', icon: '🏮', name: '雨夜断刃祭坛', color: '#ff2a55', bossId: 'crimson_lord', bossIcon: '🦊', bossName: '烬羽 · 第998世残响', epithet: '不肯熄灭的绯红剑魂', bossColor: '#d90429' },
   { id: 'golden_idol', icon: '🕰️', name: '黄金逆钟星盘', color: '#ffd166', bossId: 'golden_golem', bossIcon: '🏆', bossName: '黄金发条圣柜巨神', epithet: '封存千年晶尘的机神', bossColor: '#f59e0b' },
-  { id: 'void_cube', icon: '🌑', name: '黑曜蚀日残镜', color: '#c77dff', bossId: 'abyss_devourer', bossIcon: '👁️', bossName: '零号容器 · 饥饿黑影', epithet: '提灯深处的天灾倒影', bossColor: '#7209b7' }
+  { id: 'void_cube', icon: '🌑', name: '黑曜蚀日残镜', color: '#c77dff', bossId: 'abyss_devourer', bossIcon: '👁️', bossName: '零号容器 · 饥饿黑影', epithet: '提灯深处的天灾倒影', bossColor: '#7209b7' },
+  { id: 'clockwork_altar', icon: '⚙️', name: '星晷重装祭坛', color: '#f77f00', bossId: 'mech_colossus', bossIcon: '⚙️', bossName: '倒悬机神 · 伽蓝重装态', epithet: '无尽钟楼重装主宰 · 祭坛降临', bossColor: '#f77f00' },
+  { id: 'verdant_altar', icon: '🍃', name: '苍岚残羽祭坛', color: '#52b788', bossId: 'plague_empress', bossIcon: '🍃', bossName: '残羽魔女 · 青羽试炼影', epithet: '无尽风语守望魔女 · 祭坛降临', bossColor: '#52b788' }
 ];
 
 function getBossDefs() {
@@ -1030,9 +1032,9 @@ function spawnSpecialRelic(forceId = null) {
   return rel;
 }
 
-// 全屏首领登场（一阶段 33% 概率）与神话二阶段觉醒（二阶段 33% 概率觉醒且 100% 必出立绘）破框横幅触发器
+// 全屏首领登场（一阶段 33% 概率）与神话二阶段觉醒（二阶段 D1=30% -> D5=50% 阶梯概率觉醒且 100% 必出立绘）破框横幅触发器
 const RARE_PORTRAIT_RATE = 0.33;
-const PHASE2_AWAKEN_RATE = 0.33;
+const PHASE2_AWAKEN_RATE = 0.30;
 const BOSS_CUTSCENE_SHOW_SEC = 4.0;
 const BOSS_CUTSCENE_FADE_SEC = 0.85;
 const BOSS_CUTSCENE_TOTAL_SEC = BOSS_CUTSCENE_SHOW_SEC + BOSS_CUTSCENE_FADE_SEC;
@@ -1063,7 +1065,7 @@ function shouldRollRareBossPortrait(variantKey = '', forceCutscene = false) {
 }
 
 function startBossCutscene(mode, variant, title, subtitle, extraTag = '', color = '#ff4d6d', accent = '#ffd166', dur = BOSS_CUTSCENE_TOTAL_SEC, extra = null) {
-  if (!endlessMode) return;
+  if (!endlessMode && mode !== 'last_stand') return;
   const fadeDur = (extra && extra.fadeDur) || BOSS_CUTSCENE_FADE_SEC;
   const totalDur = Math.max(fadeDur + 0.5, dur || BOSS_CUTSCENE_TOTAL_SEC);
   bossCutscene = Object.assign({
@@ -1080,11 +1082,11 @@ function startBossCutscene(mode, variant, title, subtitle, extraTag = '', color 
   }, extra || {});
   pendingBossCutscene = null;
   if (player) player.invuln = 0;
-  if (typeof SpireAudio !== 'undefined') SpireAudio.playCutsceneCue(variant, mode === 'mythic_phase2');
+  if (typeof SpireAudio !== 'undefined') SpireAudio.playCutsceneCue(variant, mode === 'mythic_phase2' || mode === 'last_stand');
 }
 
 function queueBossCutscene(mode, variant, title, subtitle, extraTag = '', color = '#ff4d6d', accent = '#ffd166', dur = BOSS_CUTSCENE_TOTAL_SEC, extra = null) {
-  if (!endlessMode) return;
+  if (!endlessMode && mode !== 'last_stand') return;
   const fadeDur = (extra && extra.fadeDur) || BOSS_CUTSCENE_FADE_SEC;
   const totalDur = Math.max(fadeDur + 0.5, dur || BOSS_CUTSCENE_TOTAL_SEC);
   pendingBossCutscene = Object.assign({
@@ -1262,6 +1264,7 @@ function beginWave(retryMeta = null) {
   player._fissureHitCd = 0; player._fissureLeapHintCd = 0;
   player.frostGauge = 0; player.frostLeaveGrace = 0; player.iceFreezeT = 0; player.frostThawImmT = 0;
   player.waveMythicAwakened = false;
+  player.waveBossCrateDropped = false;
   cam.x = player.x; cam.y = player.y;
   clampCam();
   player.hp = player.maxHp;
@@ -1269,7 +1272,7 @@ function beginWave(retryMeta = null) {
   player.shieldRegenT = 7;
   player.mineCd = 1.25;
   enemies = []; bullets = []; eBullets = []; hazards = []; drops = []; spawns = []; turrets = []; mines = []; rings = []; trees = [];
-  relics = []; sporeZones = []; banners = []; bossCutscene = null; pendingBossCutscene = null; sandGustT = 0;
+  relics = []; sporeZones = []; spellZones = []; banners = []; bossCutscene = null; pendingBossCutscene = null; sandGustT = 0;
   texts = []; particles = []; sparks = []; lightnings = []; slashes = []; beams = []; stains = []; shells = [];
 
   // 保存本回合开战前快照（供阵亡后「重新开始本回合」无损回溯使用）
@@ -1324,9 +1327,9 @@ function beginWave(retryMeta = null) {
     }
   }
 
-  // 1~16 层主线剧情攀登与蚀界生存试炼期间禁用随机奇遇首领祭坛
-  const relicChance = (!survivalTrialWave && endlessMode && wave >= 2 && !isBossWave) ? Math.min(0.45, 0.25 + (player.luck || 0) * 0.0025) : 0;
-  relicSpawnT = Math.random() < relicChance ? (3.2 + Math.random() * 3.0) : -1;
+  // 主线剧情与无尽模式的非首领常规层均恢复随机奇遇召唤祭坛（包含无尽双主宰入池；仅蚀界生存试炼与固定首领层禁用）
+  const relicChance = (!survivalTrialWave && wave >= 2 && !isBossWave) ? Math.min(0.55, 0.36 + (player.luck || 0) * 0.003) : 0;
+  relicSpawnT = Math.random() < relicChance ? (3.0 + Math.random() * 2.8) : -1;
 
   if (survivalTrialWave) {
     const sTheme = getSurvivalTrialTheme();
@@ -2056,7 +2059,7 @@ function createEnemy(x, y, type, variant = '') {
   }
 
   let ent;
-  const mythicRate = PHASE2_AWAKEN_RATE;
+  const mythicRate = typeof getPhase2AwakenRate === 'function' ? getPhase2AwakenRate(diff) : PHASE2_AWAKEN_RATE;
   const bossDefs = getBossDefs();
   const miniBossDefs = getMiniBossDefs();
   const specialRelics = getSpecialRelics();
@@ -2074,8 +2077,10 @@ function createEnemy(x, y, type, variant = '') {
     else baseBossHp = 14800 + Math.max(0, wave - MAX_WAVE) * 3600;
     const bhp = Math.round(baseBossHp * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinScale);
     const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.6 : (wave <= 12 ? 11.2 : 12.6));
-    // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；无尽保留随机神话觉醒。
-    const phase2Chance = isStoryBoss ? 1 : mythicRate;
+    // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；D5 第 16 层（主线与无尽）首领 100% 必定进入二阶段！
+    const isD5Floor16Boss = (wave === 16 && typeof diff !== 'undefined' && diff && diff.id === 5);
+    const forcePhase2 = isStoryBoss || isD5Floor16Boss;
+    const phase2Chance = forcePhase2 ? 1 : mythicRate;
     const bossDodge = (wave === 16 || bKey === 'solar_seraph')
       ? (typeof getFloor16BossDodge === 'function' ? getFloor16BossDodge(diff) : 0)
       : 0;
@@ -2086,8 +2091,8 @@ function createEnemy(x, y, type, variant = '') {
       bossTitle: `${bDef.icon} ${bDef.name}${isStoryBoss ? ' · 第一阶段' : ''}`,
       storyPhaseBoss: isStoryBoss, storyStage: isStoryBoss ? 1 : 0,
       dashT: 2.5, sumT: 5.8, meteorT: 4.1, skillT: 2.0, sigSkillT: 4.2, terrainCd: 6.2, ringCd: 4.9,
-      venomCd: 4.4, p2SkillT: 2.8, arenaMechCd: 4.6,
-      burstLeft: 0, burstCd: 0, canPhase2: Math.random() < phase2Chance, mythicPhase2: false,
+      venomCd: 4.4, p2SkillT: 2.8, arenaMechCd: (bKey === 'solar_seraph' ? 2.5 : 4.2),
+      burstLeft: 0, burstCd: 0, canPhase2: forcePhase2 ? true : (Math.random() < phase2Chance), mythicPhase2: false,
       _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
       mat: wave <= 4 ? 26 : (wave <= 8 ? 34 : (wave <= 12 ? 42 : 52))
     };
@@ -2105,14 +2110,22 @@ function createEnemy(x, y, type, variant = '') {
   } else if (type === 'special_boss') {
     const relDef = specialRelics.find(r => r.bossId === variant) || specialRelics[0];
     const shp = Math.round((960 + wave * 240 + Math.pow(wave, 1.92) * 14) * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul);
-    const sSpd = relDef.bossId === 'crimson_lord' ? 98 : (relDef.bossId === 'golden_golem' ? 74 : 86);
+    const sSpd = relDef.bossId === 'crimson_lord' ? 98
+      : (relDef.bossId === 'golden_golem' ? 74
+        : (relDef.bossId === 'mech_colossus' ? 78
+          : (relDef.bossId === 'plague_empress' ? 85 : 86)));
+    const sMat = relDef.bossId === 'golden_golem' ? 48
+      : (relDef.bossId === 'mech_colossus' ? 34
+        : (relDef.bossId === 'plague_empress' ? 32
+          : (relDef.bossId === 'crimson_lord' ? 30 : 26)));
     ent = {
       ...base, r: 52, hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(9.0 * dm),
       color: relDef.bossColor, type: 'special_boss', variant: relDef.bossId, bossTitle: `${relDef.bossIcon} ${relDef.bossName}`,
-      dashT: 2.1, skillT: 1.9, meteorT: 3.9, sumT: 5.8, terrainCd: 6.2, ringCd: 4.8,
-      venomCd: 4.2, p2SkillT: 2.6,
+      dashT: 2.1, skillT: 1.9, sigSkillT: 3.8, meteorT: 3.9, sumT: 5.8, terrainCd: 6.2, ringCd: 4.8,
+      venomCd: 4.2, p2SkillT: 2.6, arenaMechCd: (relDef.bossId === 'abyss_devourer' ? 2.4 : 4.0),
+      burstLeft: 0, burstCd: 0, _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
       goldStage: 4, canPhase2: Math.random() < mythicRate, mythicPhase2: false,
-      mat: relDef.bossId === 'golden_golem' ? 48 : (relDef.bossId === 'crimson_lord' ? 30 : 26)
+      mat: sMat
     };
   } else if (type === 'stalker') {
     ent = { ...base, r: 21, hp: 20.0 * s, maxHp: 20.0 * s, spd: 138 * sm, dmg: Math.round(5.0 * mobDm), color: '#06d6a0', type, slashCd: 0.7, stepCd: 2.0 + Math.random(), zigT: 0.35 + Math.random() * 0.25, zigDir: Math.random() < 0.5 ? 1 : -1, mat: 2 };

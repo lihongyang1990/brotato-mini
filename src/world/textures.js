@@ -29,6 +29,19 @@ const floorCanvas = document.createElement('canvas');
 const vigNormal = document.createElement('canvas');
 const vigLowHp = document.createElement('canvas');
 const soulFogMaps = {};
+const vfxSprites = {};
+if (typeof globalThis !== 'undefined') globalThis.vfxSprites = vfxSprites;
+
+function drawVfxGlow(ctx, key, x, y, r, alpha = 1) {
+  const sp = vfxSprites[key];
+  if (!sp || !ctx || r <= 0 || alpha <= 0.005) return;
+  const prevA = ctx.globalAlpha;
+  ctx.globalAlpha = prevA * Math.min(1, alpha);
+  ctx.drawImage(sp, x - r, y - r, r * 2, r * 2);
+  ctx.globalAlpha = prevA;
+}
+if (typeof globalThis !== 'undefined') globalThis.drawVfxGlow = drawVfxGlow;
+
 const SOUL_FOG_PALETTE = {
   foundry: [5, 8, 15],
   glacier: [5, 11, 20],
@@ -46,6 +59,61 @@ function buildVignettes() {
     vg.fillStyle = gr;
     vg.fillRect(0, 0, 256, 256);
   });
+
+  // 预烘焙【法术区域 / 首领奥术预警 / 黑洞视界奇点】离屏发光贴图（战斗渲染 0 createRadialGradient / 0 shadowBlur）
+  const glowSpecs = {
+    sanctuaryGlow: ['rgba(255, 244, 184, 0.88)', 'rgba(245, 158, 11, 0.36)', 'rgba(245, 158, 11, 0)'],
+    glowRed:       ['rgba(255, 112, 138, 0.84)', 'rgba(225, 29, 72, 0.34)',  'rgba(159, 18, 57, 0)'],
+    glowOrange:    ['rgba(255, 232, 148, 0.90)', 'rgba(251, 86, 7, 0.40)',   'rgba(194, 65, 12, 0)'],
+    glowGold:      ['rgba(254, 249, 195, 0.88)', 'rgba(234, 179, 8, 0.36)',  'rgba(161, 98, 7, 0)'],
+    glowCyan:      ['rgba(224, 247, 255, 0.88)', 'rgba(14, 165, 233, 0.38)', 'rgba(3, 105, 161, 0)'],
+    glowViolet:    ['rgba(243, 232, 255, 0.86)', 'rgba(147, 51, 234, 0.40)', 'rgba(88, 28, 135, 0)'],
+    glowGreen:     ['rgba(209, 250, 229, 0.82)', 'rgba(16, 185, 129, 0.36)', 'rgba(6, 95, 70, 0)']
+  };
+  Object.keys(glowSpecs).forEach(k => {
+    const gc = document.createElement('canvas');
+    gc.width = 128; gc.height = 128;
+    const gg = gc.getContext('2d');
+    if (gg) {
+      const [c0, c1, c2] = glowSpecs[k];
+      const gr = gg.createRadialGradient(64, 64, 4, 64, 64, 62);
+      gr.addColorStop(0, c0);
+      gr.addColorStop(0.45, c1);
+      gr.addColorStop(1, c2);
+      gg.fillStyle = gr;
+      gg.fillRect(0, 0, 128, 128);
+    }
+    vfxSprites[k] = gc;
+  });
+
+  // 预烘焙【黑日引力奇点 · 事件视界核心与相对论吸积盘】256×256 高精离屏贴图
+  const bh = document.createElement('canvas');
+  bh.width = 256; bh.height = 256;
+  const bg = bh.getContext('2d');
+  if (bg) {
+    const outer = bg.createRadialGradient(128, 128, 30, 128, 128, 126);
+    outer.addColorStop(0, 'rgba(2, 0, 8, 1)');
+    outer.addColorStop(0.28, 'rgba(4, 1, 14, 0.99)');
+    outer.addColorStop(0.35, 'rgba(255, 243, 176, 0.96)');
+    outer.addColorStop(0.43, 'rgba(255, 159, 28, 0.84)');
+    outer.addColorStop(0.55, 'rgba(199, 125, 255, 0.62)');
+    outer.addColorStop(0.74, 'rgba(114, 9, 183, 0.32)');
+    outer.addColorStop(1, 'rgba(18, 4, 36, 0)');
+    bg.fillStyle = outer;
+    bg.fillRect(0, 0, 256, 256);
+    // 纯黑事件视界深渊核
+    bg.fillStyle = '#020008';
+    bg.beginPath();
+    bg.arc(128, 128, 41, 0, Math.PI * 2);
+    bg.fill();
+    // 视界临界光子金环
+    bg.strokeStyle = 'rgba(255, 248, 214, 0.95)';
+    bg.lineWidth = 2.6;
+    bg.beginPath();
+    bg.arc(128, 128, 42.5, 0, Math.PI * 2);
+    bg.stroke();
+  }
+  vfxSprites.blackHoleCore = bh;
 
   // 预烘焙【蚀界生存试炼 · 沉浸浓雾提灯遮罩】（离屏一次性生成，战斗帧 0 createRadialGradient / 0 shadowBlur，外圈 100% 纯黑不透怪）
   Object.keys(SOUL_FOG_PALETTE).forEach(scId => {
