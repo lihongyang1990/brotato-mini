@@ -1816,28 +1816,35 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       crossHaz.color !== survivalFissures[0].color &&
       meteorChainHaz.some(h => h.chainStep >= 2 && Number.isFinite(h.prevX) && Number.isFinite(h.prevY))
     );
-    // 验证跨波累加刷新机制（首店 1 起，每次刷新 +2，下次进店仅恢复 50% 价格而非回 1）
+    // 验证跨波累加刷新机制（首店 1 起，每次刷新 +2；仅第 3/6/9/12 回合降低 50%，其余回合降低 20%）
     player.shopDiscount = 0;
     player.freeRerolls = 0;
     player.shopVisits = 0;
     player.shopRerollRaw = 1;
     player.mats = 9999;
+    wave = 1;
     openShop(true);
     const shop1InitOk = (rerollRawCost === 1 && rerollCost === 1 && player.shopVisits === 1);
     rerollShop(); // 1 -> 3
     rerollShop(); // 3 -> 5
     rerollShop(); // 5 -> 7
     rerollShop(); // 7 -> 9
-    const shop1AccumOk = (rerollRawCost === 9 && rerollCost === 9 && player.shopRerollRaw === 9);
-    openShop(true); // 恢复 50%: round(9 * 0.5) = 5（绝不回 1！）
-    const shop2HalfRecoverOk = (rerollRawCost === 5 && rerollCost === 5 && player.shopVisits === 2);
+    rerollShop(); // 9 -> 11
+    const shop1AccumOk = (rerollRawCost === 11 && rerollCost === 11 && player.shopRerollRaw === 11);
+    wave = 2;
+    openShop(true); // 非 3/6/9/12 回合：降低 20% -> round(11 * 0.80) = 9
+    const shop2NormalRecoverOk = (rerollRawCost === 9 && rerollCost === 9 && player.shopVisits === 2);
+    wave = 3;
+    openShop(true); // 第 3 回合：降低 50% -> round(9 * 0.50) = 5
+    const shop3HalfRecoverOk = (rerollRawCost === 5 && rerollCost === 5 && player.shopVisits === 3);
     rerollShop(); // 5 -> 7
     const shop2StepOk = (rerollRawCost === 7 && rerollCost === 7);
 
     const pickupSweepMobBalanceOk = (
       BASE_PICKUP_MAGNET === 143 &&
       Math.abs(UNCOLLECTED_MAT_SWEEP_RATE - 0.50) < 1e-9 &&
-      shop1InitOk && shop1AccumOk && shop2HalfRecoverOk && shop2StepOk &&
+      Math.abs(BOSS_SIZE_MUL - 1.20) < 1e-9 &&
+      shop1InitOk && shop1AccumOk && shop2NormalRecoverOk && shop3HalfRecoverOk && shop2StepOk &&
       Math.abs(MOB_DMG_MUL - 0.90) < 1e-9 &&
       Math.abs(YELLOW_ARROW_MOB_MUL - 0.80) < 1e-9 &&
       Math.abs(ELITE_MOB_COUNT_MUL - 0.70) < 1e-9 &&
@@ -2460,6 +2467,43 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(mobResilience.attemptsAtLeast2, true, "Transient failure must trigger retry attempt");
   assert.strictEqual(mobResilience.hasVersionQuery, true, "SpireAssets.resolve must append ?v= version tag to prevent broken partial cache");
   assert.strictEqual(mobResilience.hasWarmWave, true, "SpireAssets must expose warmWave and getBossSheet");
+
+  // v2.1.16 Mobile Multi-Touch Move + Dash Non-Conflict Check
+  const touchConflictCheck = vm.runInContext(`(() => {
+    state = 'wave';
+    bossCutscene = null;
+    player.hp = player.maxHp;
+    player.dashCd = 0;
+    player.dashT = 0;
+    player.vx = 0;
+    player.vy = 0;
+    // Simulate fleeing LEFT (moveA = PI) while nearest monster is to the RIGHT (lookA = 0)
+    player.moveA = Math.PI;
+    player.lookA = 0;
+    joy.active = false;
+    joy.lastAt = 0;
+    const fired1 = triggerSoulDash();
+    const fledLeftNotIntoBoss = fired1 && player.dashVx < -500;
+
+    // Simulate active left-thumb joystick pointing UP-LEFT while right-thumb triggers dash via handleDashTouchClick
+    player.dashCd = 0;
+    player.dashT = 0;
+    joy.active = true;
+    joy.id = 11;
+    joy.dx = -0.8;
+    joy.dy = -0.6;
+    joy.mag = 1;
+    joy.lockedMove = true;
+    _lastTouchDashAt = 0;
+    const fired2 = handleDashTouchClick(null);
+    const joyStillIntact = joy.active === true && joy.id === 11 && joy.dx === -0.8;
+    const dashedAlongJoy = fired2 && player.dashVx < -400 && player.dashVy < -300;
+    resetJoy();
+    return { fledLeftNotIntoBoss, joyStillIntact, dashedAlongJoy };
+  })()`, s);
+  assert.strictEqual(touchConflictCheck.fledLeftNotIntoBoss, true, "Releasing thumb before tapping Dash must dash along player.moveA (escape direction), NEVER into nearest monster (player.lookA)");
+  assert.strictEqual(touchConflictCheck.joyStillIntact, true, "Triggering mobile Dash while moving must keep active joystick untouched");
+  assert.strictEqual(touchConflictCheck.dashedAlongJoy, true, "Mobile Dash while moving must dash along active joystick vector");
 }
 
 // ============================================================================

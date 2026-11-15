@@ -1115,11 +1115,13 @@ function openShop(fresh) {
       SpireAudio.syncScene((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId, false);
     }
     survivalTrialQueued = false;
-    // 跨波累进刷新定价：首店 1💎 起刷，每次付费刷新固定 +2💎；之后每次进店仅恢复 50% 价格（减半回落，保底 1💎，绝不直接归 1）
+    // 跨波累进刷新定价：首店 1💎 起刷，每次付费刷新固定 +2💎；仅第 3 / 6 / 9 / 12 四大回合整备降低 50%（×0.50），其余回合降低 20%（×0.80，保底 1💎）
     freeRerollsLeft = player.freeRerolls || 0;
     rerollStep = typeof SHOP_REROLL_STEP === 'number' ? SHOP_REROLL_STEP : 2;
     const initCost = typeof SHOP_REROLL_INIT_COST === 'number' ? SHOP_REROLL_INIT_COST : 1;
-    const recMul = typeof SHOP_REROLL_RECOVERY_MUL === 'number' ? SHOP_REROLL_RECOVERY_MUL : 0.50;
+    const recMul = typeof getShopRerollRecoveryMul === 'function'
+      ? getShopRerollRecoveryMul(wave)
+      : ((wave === 3 || wave === 6 || wave === 9 || wave === 12) ? 0.50 : 0.80);
     if ((player.shopVisits || 0) === 0) {
       rerollRawCost = initCost;
     } else {

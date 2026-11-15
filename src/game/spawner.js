@@ -1024,10 +1024,12 @@ function spawnSpecialRelic(forceId = null) {
   }
   const rel = { x: rx, y: ry, r: 88, def, charge: 0, need: 1.15, pulse: 0 };
   relics.push(rel);
-  if (rings.length < 40) rings.push({ x: rx, y: ry, r: 142, color: def.color, t: 0.48, maxT: 0.48, kind: 'hex' });
-  beep(740, 0.12, 'triangle', 0.06);
-  if (player) addText(player.x, player.y - 54, `奇遇现世：${def.name}！`, '#ffd166', 18, 2.6);
-  announce(`✨ 地图刷新大型召唤法阵【${def.icon}${def.name}】！跟随边缘箭头踏入圈内即可召唤首领`, '#ffd166', 4.2);
+  if (rings.length < 40) rings.push({ x: rx, y: ry, r: 156, color: def.color, t: 0.54, maxT: 0.54, kind: 'hex' });
+  if (rings.length < 40 && player) rings.push({ x: player.x, y: player.y, r: 96, color: '#ffd166', t: 0.42, maxT: 0.42, fill: false });
+  beep(880, 0.16, 'triangle', 0.075);
+  const bossLabel = def.bossName || def.name;
+  if (player) addText(player.x, player.y - 58, `⛩️ 隐藏Boss祭坛现世：${bossLabel}！`, '#ffd166', 19, 3.2);
+  announce(`⛩️ 隐藏首领召唤祭坛现世：【${def.icon}${bossLabel}】！跟随角色脚下金箭头指引踏入召唤（必掉首领秘宝）`, '#ffd166', 5.4);
   logInfo('RELIC', `刷新地图奇遇圣物 ${def.name}(${def.id}) r=${rel.r} at (${Math.round(rx)},${Math.round(ry)})`);
   return rel;
 }
@@ -2070,6 +2072,7 @@ function createEnemy(x, y, type, variant = '') {
   const bossDefs = getBossDefs();
   const miniBossDefs = getMiniBossDefs();
   const specialRelics = getSpecialRelics();
+  const bossSizeMul = typeof BOSS_SIZE_MUL === 'number' ? BOSS_SIZE_MUL : 1.20;
   if (type === 'boss') {
     const bKey = (variant && bossDefs[variant]) ? variant : getFixedActBossForWave(wave);
     const bDef = bossDefs[bKey] || FALLBACK_BOSS_DEFS.butcher;
@@ -2092,7 +2095,7 @@ function createEnemy(x, y, type, variant = '') {
       ? (typeof getFloor16BossDodge === 'function' ? getFloor16BossDodge(diff) : 0)
       : 0;
     ent = {
-      ...base, r: 56, hp: bhp, maxHp: bhp, spd: bDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
+      ...base, r: Math.round(56 * bossSizeMul), hp: bhp, maxHp: bhp, spd: bDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
       dodge: bossDodge,
       color: bDef.color, type: 'boss', variant: bKey,
       bossTitle: `${bDef.icon} ${bDef.name}${isStoryBoss ? ' · 第一阶段' : ''}`,
@@ -2109,7 +2112,7 @@ function createEnemy(x, y, type, variant = '') {
     const twinMiniScale = (diff.dualElite && wave >= 10) ? 0.70 : 1;
     const mhp = Math.round((460 + wave * 95 + Math.pow(Math.max(0, Math.min(16, wave) - 3), 2.05) * 32) * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinMiniScale);
     ent = {
-      ...base, r: 45, hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(8.4 * dm),
+      ...base, r: Math.round(45 * bossSizeMul), hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(8.4 * dm),
       color: mDef.color, type: 'mini_boss', variant: mKey, bossTitle: `${mDef.icon} ${mDef.name}`,
       dashT: 2.3, meteorT: 4.4, skillT: 1.9, ringCd: 5.0, venomCd: 4.0, p2SkillT: 2.6,
       canPhase2: Math.random() < mythicRate, mythicPhase2: false, mat: 24
@@ -2126,7 +2129,7 @@ function createEnemy(x, y, type, variant = '') {
         : (relDef.bossId === 'plague_empress' ? 32
           : (relDef.bossId === 'crimson_lord' ? 30 : 26)));
     ent = {
-      ...base, r: 52, hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(9.0 * dm),
+      ...base, r: Math.round(52 * bossSizeMul), hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(9.0 * dm),
       color: relDef.bossColor, type: 'special_boss', variant: relDef.bossId, bossTitle: `${relDef.bossIcon} ${relDef.bossName}`,
       dashT: 2.1, skillT: 1.9, sigSkillT: 3.8, meteorT: 3.9, sumT: 5.8, terrainCd: 6.2, ringCd: 4.8,
       venomCd: 4.2, p2SkillT: 2.6, arenaMechCd: (relDef.bossId === 'abyss_devourer' ? 2.4 : 4.0),

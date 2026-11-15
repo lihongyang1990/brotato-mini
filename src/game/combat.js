@@ -549,14 +549,21 @@ function triggerSoulDash() {
     dx += joy.dx;
     dy += joy.dy;
   }
-  if (dx === 0 && dy === 0 && (Math.hypot(player.vx || 0, player.vy || 0) > 25)) {
+  if (dx === 0 && dy === 0 && typeof joy !== 'undefined' && (joy.lastAt || 0) > 0) {
+    const nowTs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    if (nowTs - joy.lastAt <= 650 && Math.hypot(joy.lastDx || 0, joy.lastDy || 0) > 0.1) {
+      dx = joy.lastDx;
+      dy = joy.lastDy;
+    }
+  }
+  if (dx === 0 && dy === 0 && (Math.hypot(player.vx || 0, player.vy || 0) > 15)) {
     dx = player.vx;
     dy = player.vy;
   }
   if (dx === 0 && dy === 0) {
-    const la = Number.isFinite(player.lookA) ? player.lookA : ((player.faceDir || 1) > 0 ? 0 : Math.PI);
-    dx = Math.cos(la);
-    dy = Math.sin(la);
+    const ma = Number.isFinite(player.moveA) ? player.moveA : ((player.faceDir || 1) > 0 ? 0 : Math.PI);
+    dx = Math.cos(ma);
+    dy = Math.sin(ma);
   }
   const len = Math.hypot(dx, dy) || 1;
   dx /= len;
@@ -571,7 +578,8 @@ function triggerSoulDash() {
   const dashSpd = 960;
   player.dashVx = dx * dashSpd;
   player.dashVy = dy * dashSpd;
-  player.lookA = Math.atan2(dy, dx);
+  player.moveA = Math.atan2(dy, dx);
+  player.lookA = player.moveA;
   if (Math.abs(dx) > 0.08) player.faceDir = dx > 0 ? 1 : -1;
   player.invuln = 0;
   player.magnetPulseT = Math.max(player.magnetPulseT || 0, 1.15);
