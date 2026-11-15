@@ -26,6 +26,10 @@ function resetCombatFrameBudgets() {
 
 const _EXTRA_PLAYER_DMG_META = {
   soul_dash:          { name: '青焰瞬步战技', icon: '◆' },
+  ult_melee:          { name: '觉醒·霹雳连闪Z字斩', icon: '⚡' },
+  ult_ranged:         { name: '觉醒·天穹千刃剑雨', icon: '🗡️' },
+  ult_staff:          { name: '觉醒·归墟引力黑洞', icon: '🌑' },
+  ult_tech:           { name: '觉醒·镇岳重型臼炮', icon: '⚙️' },
   turret_gun:         { name: '自律发条炮阵', icon: '🛰️' },
   turret_laser:       { name: '贯日浮游激光塔', icon: '🛸' },
   turret_shock:       { name: '紫电震波塔桩', icon: '🗼' },
@@ -1075,6 +1079,15 @@ function awardEnemyRewards(e) {
       player.dashCd = Math.max(0, player.dashCd - 0.65);
     }
   }
+  if (player && (player.ultCd || 0) > 0) {
+    if (e.type === 'boss' || e.type === 'special_boss' || e.type === 'mini_boss') {
+      player.ultCd = Math.max(0, player.ultCd - 1.8);
+    } else if (e.elite) {
+      player.ultCd = Math.max(0, player.ultCd - 0.65);
+    } else {
+      player.ultCd = Math.max(0, player.ultCd - 0.22);
+    }
+  }
   const isBigBoss = e.type === 'boss' || e.type === 'special_boss';
   // 移除普通小怪阵亡时的地面残留血圈与死亡扩散圈（仅精英/统领/首领保留击破光环，彻底消除群怪阵亡满地出圈与卡顿）
   if ((isBigBoss || e.type === 'mini_boss' || e.elite) && rings.length < 28) {
@@ -1318,6 +1331,7 @@ function triggerBullNova() {
 // 全面加固受击结算（参照《土豆兄弟》收敛隐性叠乘减伤并设 66% 非闪避减伤上限 + 记录精准承伤来源）
 function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
   if (!player || state !== 'wave' || player.hp <= 0 || inHurtPlayer) return;
+  if ((player.ultInvulnT || 0) > 0) return;
   if (typeof isSpireCombatSuspended === 'function' && isSpireCombatSuspended()) return;
   if (typeof SpireDirector !== 'undefined' && SpireDirector.isBlockingGameplay()) return;
   if (!Number.isFinite(rawDmg) || rawDmg <= 0) return;
@@ -1410,3 +1424,1121 @@ function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
     inHurtPlayer = false;
   }
 }
+
+// ============================================================================
+// ⚡ 四流派随武器种类自适应【觉醒大招系统】（按键 [E] / 触屏觉醒键，固定对象池零GC、零滤镜超清晰）
+//   1. 近战主修 (melee)  ->《雷鸣八连 · 霹雳一闪残心》（浓墨沧浪雷光连续7段居合连斩 + 浮世绘新月雷浪 + 残心万雷齐爆）
+//   2. 远程主修 (ranged) ->《天穹剑阵 · 千刃破阵雨》（22柄大马士革破阵长剑斜贯入地 + 中央圣遗巨剑终结）
+//   3. 秘术主修 (staff)  ->《归墟视界 · 引力坍缩黑洞》（3.2秒归墟引力视界聚怪吞弹 + 终结奥术坍缩）
+//   4. 机关主修 (tech)   ->《钟楼重工 · 镇岳重型臼炮》（部署8秒360°索敌重型发条臼炮，高爆榴弹连射）
+// ============================================================================
+const ULTIMATE_SPECS = {
+  melee: {
+    id: 'melee',
+    srcId: 'ult_melee',
+    icon: '⚡',
+    shortName: '霹雳一闪',
+    fullName: '雷鸣八连 · 霹雳一闪残心',
+    branchLabel: '近战主修',
+    cd: 12.0,
+    color: '#38bdf8',
+    desc: '化作浓墨沧浪雷光连续瞬移7段居合连斩，挥出浮世绘新月雷浪切碎敌弹，收刀残心瞬间引爆漫天落雷'
+  },
+  ranged: {
+    id: 'ranged',
+    srcId: 'ult_ranged',
+    icon: '🗡️',
+    shortName: '天穹剑雨',
+    fullName: '天穹剑阵 · 千刃破阵雨',
+    branchLabel: '远程主修',
+    cd: 13.0,
+    color: '#93c5fd',
+    desc: '锁定密集敌群展开天穹星轨阵，连续降下22柄破阵长剑并以中央圣遗巨剑贯地终结'
+  },
+  staff: {
+    id: 'staff',
+    srcId: 'ult_staff',
+    icon: '🌑',
+    shortName: '归墟黑洞',
+    fullName: '归墟视界 · 引力坍缩黑洞',
+    branchLabel: '秘术主修',
+    cd: 14.0,
+    color: '#c084fc',
+    desc: '于敌群中心开启3.2秒归墟引力黑洞，持续牵引聚拢魔物、吞噬敌弹并在坍缩时引发奥术震爆'
+  },
+  tech: {
+    id: 'tech',
+    srcId: 'ult_tech',
+    icon: '⚙️',
+    shortName: '镇岳臼炮',
+    fullName: '钟楼重工 · 镇岳重型臼炮',
+    branchLabel: '机关主修',
+    cd: 15.0,
+    color: '#fbbf24',
+    desc: '部署持续8秒的钟楼重工镇岳重型臼炮，360°自主索敌连射高爆榴弹并享受工程与超频加成'
+  }
+};
+
+function _createUltEffectsPool() {
+  const zPts = [];
+  for (let i = 0; i < 8; i++) zPts.push({ x: 0, y: 0 });
+  const zSlashes = [];
+  for (let i = 0; i < 7; i++) {
+    zSlashes.push({
+      active: false, live: false, waveShown: false,
+      x0: 0, y0: 0, x1: 0, y1: 0, ang: 0,
+      t: 0, maxT: 0.48, flip: (i % 2) === 1, seed: i * 1.618 + 0.37
+    });
+  }
+  const zBursts = [];
+  for (let i = 0; i < 8; i++) {
+    zBursts.push({
+      active: false, x: 0, y: 0,
+      t: 0, maxT: 0.52, sz: 148,
+      flip: (i % 2) === 1, rot0: 0, seed: i * 2.17 + 0.53
+    });
+  }
+  const swords = [];
+  for (let i = 0; i < 24; i++) {
+    swords.push({
+      active: false, state: 0, delay: 0,
+      x: 0, y: 0, sx: 0, sy: 0, tx: 0, ty: 0,
+      angle: 0, travelT: 0, maxTravelT: 0.24,
+      embedT: 0, maxEmbedT: 0.86,
+      isGreat: false, dmg: 0, blastR: 68
+    });
+  }
+  const cannonShells = [];
+  for (let i = 0; i < 12; i++) {
+    cannonShells.push({
+      active: false, x: 0, y: 0, px: 0, py: 0,
+      vx: 0, vy: 0, tx: 0, ty: 0,
+      life: 0, maxLife: 0.5, dmg: 0, blastR: 114
+    });
+  }
+  const blasts = [];
+  for (let i = 0; i < 12; i++) {
+    blasts.push({
+      active: false, x: 0, y: 0, r: 100, t: 0, maxT: 0.30, rot: 0
+    });
+  }
+  return {
+    zSlash: {
+      active: false,
+      pts: zPts,
+      count: 8,
+      segIdx: 0,
+      segT: 0,
+      segDur: 0.090,
+      sheatheT: 0,
+      echoT: 0,
+      maxEchoT: 0.48,
+      legDmg: 0,
+      finisherDmg: 0,
+      slashes: zSlashes,
+      bursts: zBursts,
+      segHitSet: new Set(),
+      markedEnemies: []
+    },
+    swordRain: {
+      active: false,
+      x: 0, y: 0, r: 192,
+      t: 0, maxT: 1.28,
+      swords
+    },
+    blackHole: {
+      active: false,
+      x: 0, y: 0,
+      pullR: 238, dmgR: 158,
+      t: 0, maxT: 3.2,
+      tickT: 0, rot: 0,
+      pulseDmg: 0, collapseDmg: 0,
+      absorbed: 0
+    },
+    cannon: {
+      active: false,
+      x: 0, y: 0, r: 28,
+      life: 0, maxLife: 8.0,
+      fireCd: 0.16,
+      angle: 0,
+      recoil: 0,
+      shellDmg: 0,
+      shotsFired: 0
+    },
+    cannonShells,
+    blasts
+  };
+}
+
+const ultEffects = _createUltEffectsPool();
+
+function resetUltEffects() {
+  const z = ultEffects.zSlash;
+  z.active = false;
+  z.segIdx = 0;
+  z.segT = 0;
+  z.sheatheT = 0;
+  z.echoT = 0;
+  z.segHitSet.clear();
+  z.markedEnemies.length = 0;
+  for (let i = 0; i < z.slashes.length; i++) {
+    z.slashes[i].active = false;
+    z.slashes[i].live = false;
+    z.slashes[i].waveShown = false;
+  }
+  for (let i = 0; i < z.bursts.length; i++) {
+    z.bursts[i].active = false;
+  }
+
+  const sr = ultEffects.swordRain;
+  sr.active = false;
+  sr.t = 0;
+  for (let i = 0; i < sr.swords.length; i++) {
+    sr.swords[i].active = false;
+    sr.swords[i].state = 0;
+  }
+
+  const bh = ultEffects.blackHole;
+  bh.active = false;
+  bh.t = 0;
+  bh.absorbed = 0;
+
+  const cn = ultEffects.cannon;
+  cn.active = false;
+  cn.life = 0;
+  cn.recoil = 0;
+
+  for (let i = 0; i < ultEffects.cannonShells.length; i++) ultEffects.cannonShells[i].active = false;
+  for (let i = 0; i < ultEffects.blasts.length; i++) ultEffects.blasts[i].active = false;
+}
+
+function getPlayerUltimateSpec(p) {
+  const ent = p || (typeof player !== 'undefined' ? player : null);
+  if (!ent) return ULTIMATE_SPECS.melee;
+  if (ent.maxSlots === 0) return ULTIMATE_SPECS.melee;
+
+  let melee = 0, ranged = 0, staff = 0, tech = 0;
+  if (Array.isArray(ent.weapons)) {
+    for (let i = 0; i < ent.weapons.length; i++) {
+      const w = ent.weapons[i];
+      if (!w) continue;
+      const tpl = typeof WEAPONS !== 'undefined' && WEAPONS ? WEAPONS[w.id] : null;
+      if (!tpl) continue;
+      const wt = 1.0 + Math.max(0, (w.tier || 1) - 1) * 0.12;
+      if (tpl.set === 'tech' && !tpl.isStaff) {
+        tech += wt;
+      } else if (tpl.isStaff || (tpl.set === 'elemental' && !tpl.melee)) {
+        staff += wt;
+      } else if (tpl.melee) {
+        melee += wt;
+      } else {
+        ranged += wt;
+      }
+    }
+  }
+  tech += ((ent.bonusTurrets || 0) + (ent.laserTurrets || 0) + (ent.shockTurrets || 0)) * 0.35;
+  staff += (ent.totemTurrets || 0) * 0.35;
+
+  const scores = { melee, ranged, staff, tech };
+  const cls = ent.cls || 'allrounder';
+  const tieOrder = cls === 'ranger'
+    ? ['ranged', 'melee', 'staff', 'tech']
+    : (cls === 'engineer'
+        ? ['tech', 'ranged', 'melee', 'staff']
+        : ((cls === 'mage' || cls === 'ghost')
+            ? ['staff', 'melee', 'ranged', 'tech']
+            : ['melee', 'ranged', 'staff', 'tech']));
+
+  let bestKey = tieOrder[0];
+  let bestVal = scores[bestKey] || 0;
+  for (let i = 1; i < tieOrder.length; i++) {
+    const k = tieOrder[i];
+    if ((scores[k] || 0) > bestVal + 0.001) {
+      bestVal = scores[k];
+      bestKey = k;
+    }
+  }
+  return ULTIMATE_SPECS[bestKey] || ULTIMATE_SPECS.melee;
+}
+
+const _ultProbeDummy = { x: 0, y: 0, r: 22 };
+function _clampSafeArenaPos(x, y, pad = 64) {
+  _ultProbeDummy.x = Math.max(pad, Math.min(WORLD.w - pad, x));
+  _ultProbeDummy.y = Math.max(pad, Math.min(WORLD.h - pad, y));
+  _ultProbeDummy.r = 22;
+  if (typeof pushOutOfChasms === 'function') pushOutOfChasms(_ultProbeDummy);
+  _ultProbeDummy.x = Math.max(pad, Math.min(WORLD.w - pad, _ultProbeDummy.x));
+  _ultProbeDummy.y = Math.max(pad, Math.min(WORLD.h - pad, _ultProbeDummy.y));
+  return _ultProbeDummy;
+}
+
+// 寻找视野/射程内敌人最密集的战术簇心（首领权重更高，无怪时顺沿主角朝向落点）
+const _ultClusterOut = { x: 0, y: 0, hasEnemy: false };
+function _findUltClusterTarget(maxDist = 520, fallbackForward = 240) {
+  let bestE = null, bestScore = -1;
+  const maxDSq = maxDist * maxDist;
+  for (let i = 0; i < enemies.length; i++) {
+    const e = enemies[i];
+    if (!e || e.hp <= 0 || e.primed) continue;
+    const dx = e.x - player.x, dy = e.y - player.y;
+    const dSq = dx * dx + dy * dy;
+    if (dSq > maxDSq) continue;
+    let score = (e.type === 'boss' || e.type === 'special_boss') ? 4.5 : (e.type === 'mini_boss' ? 3.2 : (e.elite ? 2.0 : 1.0));
+    for (let j = 0; j < enemies.length; j++) {
+      if (i === j) continue;
+      const o = enemies[j];
+      if (!o || o.hp <= 0) continue;
+      const odx = o.x - e.x, ody = o.y - e.y;
+      if (odx * odx + ody * ody <= 175 * 175) {
+        score += (o.type === 'boss' || o.type === 'mini_boss') ? 2.0 : 0.85;
+      }
+    }
+    score -= Math.sqrt(dSq) * 0.0018;
+    if (score > bestScore) {
+      bestScore = score;
+      bestE = e;
+    }
+  }
+  if (bestE) {
+    // 向邻近敌群重心微偏，确保范围覆盖最大化
+    let sumX = bestE.x * 2.0, sumY = bestE.y * 2.0, sumW = 2.0;
+    for (let j = 0; j < enemies.length; j++) {
+      const o = enemies[j];
+      if (!o || o === bestE || o.hp <= 0) continue;
+      const odx = o.x - bestE.x, ody = o.y - bestE.y;
+      if (odx * odx + ody * ody <= 155 * 155) {
+        sumX += o.x;
+        sumY += o.y;
+        sumW += 1.0;
+      }
+    }
+    const safe = _clampSafeArenaPos(sumX / sumW, sumY / sumW, 74);
+    _ultClusterOut.x = safe.x;
+    _ultClusterOut.y = safe.y;
+    _ultClusterOut.hasEnemy = true;
+    return _ultClusterOut;
+  }
+  const aimA = Number.isFinite(player.lookA) ? player.lookA : ((player.faceDir || 1) >= 0 ? 0 : Math.PI);
+  const safe = _clampSafeArenaPos(
+    player.x + Math.cos(aimA) * fallbackForward,
+    player.y + Math.sin(aimA) * fallbackForward,
+    74
+  );
+  _ultClusterOut.x = safe.x;
+  _ultClusterOut.y = safe.y;
+  _ultClusterOut.hasEnemy = false;
+  return _ultClusterOut;
+}
+
+function _spawnUltBlastSprite(x, y, r) {
+  for (let i = 0; i < ultEffects.blasts.length; i++) {
+    const bl = ultEffects.blasts[i];
+    if (!bl.active) {
+      bl.active = true;
+      bl.x = x;
+      bl.y = y;
+      bl.r = r;
+      bl.maxT = 0.28;
+      bl.t = 0.28;
+      bl.rot = (Math.random() - 0.5) * 0.45;
+      return;
+    }
+  }
+}
+
+const _ultMeleeCand = [];
+function _activateZSlashSlot(z, idx) {
+  if (idx < 0 || idx >= z.slashes.length) return;
+  const s = z.slashes[idx];
+  const p0 = z.pts[idx];
+  const p1 = z.pts[idx + 1];
+  s.active = true;
+  s.live = true;
+  s.waveShown = false;
+  s.x0 = p0.x;
+  s.y0 = p0.y;
+  s.x1 = p0.x;
+  s.y1 = p0.y;
+  s.ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+  s.maxT = 0.48;
+  s.t = 0.48;
+  s.flip = (idx % 2) === 1;
+  s.seed = idx * 1.618 + ((wave || 1) * 0.23) + 0.37;
+}
+
+function _spawnZanshinThunderBurst(z, x, y, sz, idxSeed) {
+  for (let i = 0; i < z.bursts.length; i++) {
+    const b = z.bursts[i];
+    if (!b.active) {
+      b.active = true;
+      b.x = x;
+      b.y = y;
+      b.sz = sz;
+      b.maxT = 0.52;
+      b.t = 0.52;
+      b.flip = (i % 2) === 1;
+      b.rot0 = (idxSeed * 0.85) % (Math.PI * 2);
+      b.seed = idxSeed * 2.31 + i * 1.47 + 0.53;
+      return true;
+    }
+  }
+  return false;
+}
+
+function triggerUltimateSkill() {
+  if (!player || state !== 'wave' || player.hp <= 0) return false;
+  if (typeof isSpireCombatSuspended === 'function' && isSpireCombatSuspended()) return false;
+  if (typeof SpireDirector !== 'undefined' && SpireDirector.isBlockingGameplay()) return false;
+  if (typeof bossCutscene !== 'undefined' && bossCutscene && bossCutscene.t > 0) return false;
+  if ((player.ultCd || 0) > 0.01) {
+    if (!(player._ultWarnCd > 0)) {
+      player._ultWarnCd = 0.45;
+      addText(player.x, player.y - 34, `觉醒冷却 ${player.ultCd.toFixed(1)}s`, '#cbd5e1', 13, 0.52, false);
+    }
+    return false;
+  }
+
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmUltSprites === 'function') {
+    SpireAssets.warmUltSprites();
+  }
+
+  const spec = getPlayerUltimateSpec(player);
+  const cdMul = Math.max(0.68, 1 - Math.min(0.28, (getEffectiveAtkSpd() - 1) * 0.14));
+  const finalCd = +(spec.cd * cdMul).toFixed(2);
+  player.ultMaxCd = finalCd;
+  player.ultCd = finalCd;
+
+  const baseScale = (28 + (wave || 1) * 6.8 + (player.lv || 1) * 2.5) * getEffectiveDmgMul();
+
+  if (spec.id === 'melee') {
+    // ⚡ 1. 近战觉醒：设定集 M1 主推《雷鸣八连 · 霹雳一闪残心》
+    // 浓墨沧浪雷光连续瞬移 7 段居合连斩 + 浮世绘新月雷浪切碎敌弹 + 残心收刀引爆漫天落雷！
+    const z = ultEffects.zSlash;
+    const sx = player.x, sy = player.y;
+    z.pts[0].x = sx;
+    z.pts[0].y = sy;
+
+    _ultMeleeCand.length = 0;
+    const maxChainRSq = 520 * 520;
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i];
+      if (!e || e.hp <= 0 || e.primed) continue;
+      const ex = e.x - sx, ey = e.y - sy;
+      if (ex * ex + ey * ey <= maxChainRSq) {
+        e._ultVisited = false;
+        _ultMeleeCand.push(e);
+      }
+    }
+
+    if (_ultMeleeCand.length >= 5) {
+      // 怪群密集时：复刻设定集 M1 连续在 7 名不同魔物之间Z字弹射瞬斩，织出满屏雷霆残网
+      let curX = sx, curY = sy;
+      let prevVx = (player.faceDir || 1) >= 0 ? 1 : -1, prevVy = 0;
+      for (let k = 0; k < 7; k++) {
+        let bestE = null, bestScore = -1e9;
+        for (let ci = 0; ci < _ultMeleeCand.length; ci++) {
+          const ce = _ultMeleeCand[ci];
+          if (ce._ultVisited) continue;
+          const vx = ce.x - curX, vy = ce.y - curY;
+          const d = Math.hypot(vx, vy);
+          if (d < 28) continue;
+          // 偏好 95~255px 跃迁跨度，并奖励正负交替折角（形成凌厉霹雳折线）
+          let sc = 240 - Math.abs(d - 165);
+          if (ce.type === 'boss' || ce.type === 'special_boss') sc += 65;
+          else if (ce.type === 'mini_boss' || ce.elite) sc += 35;
+          const cross = prevVx * vy - prevVy * vx;
+          const wantSign = (k % 2 === 0) ? -1 : 1;
+          if (cross * wantSign > 0) sc += 55;
+          if (sc > bestScore) {
+            bestScore = sc;
+            bestE = ce;
+          }
+        }
+        if (bestE) {
+          bestE._ultVisited = true;
+          let vx = bestE.x - curX, vy = bestE.y - curY;
+          const d = Math.max(1, Math.hypot(vx, vy));
+          vx /= d; vy /= d;
+          const flank = ((k % 2 === 0) ? -1 : 1) * 24;
+          const safe = _clampSafeArenaPos(bestE.x + vx * 22 - vy * flank, bestE.y + vy * 22 + vx * flank, 58);
+          z.pts[k + 1].x = safe.x;
+          z.pts[k + 1].y = safe.y;
+        } else {
+          const ang = Math.atan2(prevVy, prevVx) + ((k % 2 === 0) ? 1.15 : -1.15);
+          const safe = _clampSafeArenaPos(curX + Math.cos(ang) * 148, curY + Math.sin(ang) * 148, 58);
+          z.pts[k + 1].x = safe.x;
+          z.pts[k + 1].y = safe.y;
+        }
+        prevVx = z.pts[k + 1].x - curX;
+        prevVy = z.pts[k + 1].y - curY;
+        curX = z.pts[k + 1].x;
+        curY = z.pts[k + 1].y;
+      }
+    } else {
+      // 首领单挑 / 少量精英或空场演武：精准贯穿目标簇心的 7 连折返霹雳一闪折线
+      const tgt = _findUltClusterTarget(490, 295);
+      let dx = tgt.x - sx, dy = tgt.y - sy;
+      let dist = Math.hypot(dx, dy);
+      if (dist < 24) {
+        const fa = Number.isFinite(player.lookA) ? player.lookA : ((player.faceDir || 1) >= 0 ? 0 : Math.PI);
+        dx = Math.cos(fa);
+        dy = Math.sin(fa);
+        dist = 295;
+      } else {
+        dx /= dist;
+        dy /= dist;
+      }
+      const px = -dy, py = dx;
+      const spanL = Math.max(265, Math.min(380, tgt.hasEnemy ? dist + 68 : 315));
+      const latW = 88;
+      const fwdSteps = [0.16, 0.31, 0.46, 0.61, 0.76, 0.91, 1.06];
+      const latSteps = [-latW, latW * 1.05, -latW * 1.05, latW * 0.96, -latW * 0.90, latW * 0.80, 0];
+      for (let k = 0; k < 7; k++) {
+        let wx = sx + dx * (spanL * fwdSteps[k]) + px * latSteps[k];
+        let wy = sy + dy * (spanL * fwdSteps[k]) + py * latSteps[k];
+        if (_ultMeleeCand.length > 0 && k < 6) {
+          const focusE = _ultMeleeCand[k % _ultMeleeCand.length];
+          wx = wx * 0.66 + (focusE.x + px * latSteps[k] * 0.48) * 0.34;
+          wy = wy * 0.66 + (focusE.y + py * latSteps[k] * 0.48) * 0.34;
+        }
+        const safe = _clampSafeArenaPos(wx, wy, 58);
+        z.pts[k + 1].x = safe.x;
+        z.pts[k + 1].y = safe.y;
+      }
+    }
+
+    z.count = 8;
+    z.segIdx = 0;
+    z.segT = 0;
+    z.segDur = 0.090;
+    z.active = true;
+    z.sheatheT = 0;
+    z.maxEchoT = 0.48;
+    z.echoT = 0.48;
+    const meleeBonus = typeof getMeleeBasicBonus === 'function' ? getMeleeBasicBonus() : 0;
+    z.legDmg = baseScale * 1.22 * (1 + Math.max(0, meleeBonus) * 0.48);
+    z.finisherDmg = baseScale * 1.58 * (1 + Math.max(0, meleeBonus) * 0.48);
+    z.segHitSet.clear();
+    z.markedEnemies.length = 0;
+    for (let i = 0; i < z.slashes.length; i++) {
+      z.slashes[i].active = false;
+      z.slashes[i].live = false;
+      z.slashes[i].waveShown = false;
+    }
+    for (let i = 0; i < z.bursts.length; i++) {
+      z.bursts[i].active = false;
+    }
+    _activateZSlashSlot(z, 0);
+
+    player.dashT = 0;
+    player.iceFreezeT = 0;
+    player.ultInvulnT = z.segDur * 7 + 0.34;
+    const firstAng = Math.atan2(z.pts[1].y - z.pts[0].y, z.pts[1].x - z.pts[0].x);
+    player.lookA = firstAng;
+    player.faceDir = (z.pts[1].x - z.pts[0].x) >= 0 ? 1 : -1;
+    player._atkPoseT = 0.24;
+    player._atkAngle = firstAng;
+    player._atkAimX = z.pts[1].x - z.pts[0].x;
+
+    if (rings.length < 32) rings.push({ x: player.x, y: player.y, r: 64, color: '#38bdf8', t: 0.20, maxT: 0.20 });
+    addSparks(player.x, player.y, firstAng, '#38bdf8', 4);
+    addSparks(player.x, player.y, firstAng + 0.3, '#fde047', 4);
+    beep(660, 0.07, 'triangle', 0.06);
+    addText(player.x, player.y - 42, '⚡ 雷鸣八连 · 霹雳一闪残心!', '#7dd3fc', 16, 1.18, true);
+  } else if (spec.id === 'ranged') {
+    // 🗡️ 2. 远程觉醒：《天穹剑阵 · 千刃破阵雨》
+    const tgt = _findUltClusterTarget(560, 220);
+    const sr = ultEffects.swordRain;
+    sr.active = true;
+    sr.x = tgt.x;
+    sr.y = tgt.y;
+    sr.r = 188 * getBlastScale();
+    sr.maxT = 1.28;
+    sr.t = 1.28;
+
+    const perSwordDmg = baseScale * 0.64;
+    const fallOffX = -86, fallOffY = -368;
+    const fallAng = Math.atan2(-fallOffY, -fallOffX);
+    for (let i = 0; i < 22; i++) {
+      const sw = sr.swords[i];
+      // 黄金角均匀分布落点，兼具秩序感与密集覆盖，绝不杂乱糊屏
+      const rad = Math.sqrt((i + 0.5) / 22) * (sr.r * 0.86);
+      const theta = i * 2.39996 + (wave || 1) * 0.37;
+      const safe = _clampSafeArenaPos(sr.x + Math.cos(theta) * rad, sr.y + Math.sin(theta) * rad, 48);
+      sw.active = true;
+      sw.state = 0; // 0: waiting delay, 1: falling, 2: embedded
+      sw.delay = i * 0.040;
+      sw.tx = safe.x;
+      sw.ty = safe.y;
+      sw.sx = safe.x + fallOffX;
+      sw.sy = safe.y + fallOffY;
+      sw.x = sw.sx;
+      sw.y = sw.sy;
+      sw.angle = fallAng;
+      sw.maxTravelT = 0.21;
+      sw.travelT = 0.21;
+      sw.maxEmbedT = 0.85;
+      sw.embedT = 0.85;
+      sw.isGreat = false;
+      sw.dmg = perSwordDmg;
+      sw.blastR = 68 * getBlastScale();
+    }
+    // 第 23 柄：中央贯地终结圣遗巨剑
+    const fin = sr.swords[22];
+    fin.active = true;
+    fin.state = 0;
+    fin.delay = 0.90;
+    fin.tx = sr.x;
+    fin.ty = sr.y;
+    fin.sx = sr.x + fallOffX * 0.65;
+    fin.sy = sr.y + fallOffY * 1.12;
+    fin.x = fin.sx;
+    fin.y = fin.sy;
+    fin.angle = Math.atan2(fin.ty - fin.sy, fin.tx - fin.sx);
+    fin.maxTravelT = 0.22;
+    fin.travelT = 0.22;
+    fin.maxEmbedT = 1.05;
+    fin.embedT = 1.05;
+    fin.isGreat = true;
+    fin.dmg = baseScale * 2.38;
+    fin.blastR = 132 * getBlastScale();
+    sr.swords[23].active = false;
+
+    player._atkPoseT = 0.22;
+    beep(740, 0.08, 'sine', 0.055);
+    addText(player.x, player.y - 42, '🗡️ 天穹剑阵 · 千刃破阵雨!', '#93c5fd', 16, 1.15, true);
+  } else if (spec.id === 'staff') {
+    // 🌑 3. 秘术觉醒：《归墟视界 · 引力坍缩黑洞》
+    const tgt = _findUltClusterTarget(520, 210);
+    const bh = ultEffects.blackHole;
+    bh.active = true;
+    bh.x = tgt.x;
+    bh.y = tgt.y;
+    bh.pullR = 238 * getBlastScale();
+    bh.dmgR = 158 * getBlastScale();
+    bh.maxT = 3.20;
+    bh.t = 3.20;
+    bh.tickT = 0.12;
+    bh.rot = 0;
+    const elemScale = Math.sqrt(Math.max(1, getElemMul()));
+    bh.pulseDmg = baseScale * 0.48 * elemScale;
+    bh.collapseDmg = baseScale * 1.96 * elemScale;
+    bh.absorbed = 0;
+
+    player._atkPoseT = 0.24;
+    if (rings.length < 32) rings.push({ x: bh.x, y: bh.y, r: bh.dmgR, color: '#c084fc', t: 0.26, maxT: 0.26 });
+    beep(280, 0.12, 'sine', 0.065);
+    addText(player.x, player.y - 42, '🌑 归墟视界 · 引力坍缩黑洞!', '#d8b4fe', 16, 1.15, true);
+  } else {
+    // ⚙️ 4. 机关觉醒：《钟楼重工 · 镇岳重型臼炮》
+    const face = (player.faceDir || 1) >= 0 ? 1 : -1;
+    const safe = _clampSafeArenaPos(player.x + face * 54, player.y + 10, 68);
+    const cn = ultEffects.cannon;
+    cn.active = true;
+    cn.x = safe.x;
+    cn.y = safe.y;
+    cn.r = 28;
+    cn.maxLife = 8.0;
+    cn.life = 8.0;
+    cn.fireCd = 0.14;
+    cn.angle = Number.isFinite(player.lookA) ? player.lookA : (face > 0 ? 0 : Math.PI);
+    cn.recoil = 6;
+    cn.shellDmg = baseScale * 0.94 * getTechMul();
+    cn.shotsFired = 0;
+
+    // 落地锚定震波：震退贴脸小怪
+    const deployDmg = baseScale * 0.82 * getTechMul();
+    if (rings.length < 32) rings.push({ x: cn.x, y: cn.y, r: 108, color: '#fbbf24', t: 0.24, maxT: 0.24, kind: 'hex' });
+    addSparks(cn.x, cn.y, -Math.PI * 0.5, '#fbbf24', 5);
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      if (!e || e.hp <= 0 || e.primed) continue;
+      const dxE = e.x - cn.x, dyE = e.y - cn.y, lim = 108 + e.r;
+      if (dxE * dxE + dyE * dyE <= lim * lim) {
+        hurtEnemy(e, deployDmg, false, Math.atan2(dyE, dxE), true, { isTurret: true, knockMult: 1.5, silentHit: true, srcId: 'ult_tech' });
+        if (state !== 'wave') break;
+      }
+    }
+    beep(195, 0.10, 'sawtooth', 0.06);
+    addText(player.x, player.y - 42, '⚙️ 钟楼重工 · 镇岳重型臼炮部署!', '#fbbf24', 16, 1.2, true);
+  }
+  return true;
+}
+
+function updateUltEffects(dt) {
+  if (!player || state !== 'wave') return;
+  if ((player._ultWarnCd || 0) > 0) player._ultWarnCd = Math.max(0, player._ultWarnCd - dt);
+
+  // 1. 更新近战觉醒：《雷鸣八连 · 霹雳一闪残心》
+  const z = ultEffects.zSlash;
+  for (let si = 0; si < z.slashes.length; si++) {
+    const sl = z.slashes[si];
+    if (sl.active && !sl.live) {
+      sl.t -= dt;
+      if (sl.t <= 0) sl.active = false;
+    }
+  }
+  for (let bi = 0; bi < z.bursts.length; bi++) {
+    const bu = z.bursts[bi];
+    if (bu.active) {
+      bu.t -= dt;
+      if (bu.t <= 0) bu.active = false;
+    }
+  }
+
+  if (z.active) {
+    const idx = z.segIdx;
+    const a = z.pts[idx];
+    const b = z.pts[idx + 1];
+    z.segT += dt;
+    const u = Math.min(1, z.segT / Math.max(0.02, z.segDur));
+    // 利落快进微收（让每一折转角、角色残影与新月雷浪都清晰可辨）
+    const ease = 1 - (1 - u) * (1 - u);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const segAng = Math.atan2(dy, dx);
+
+    player.x = a.x + dx * ease;
+    player.y = a.y + dy * ease;
+    if (typeof pushOutOfChasms === 'function') pushOutOfChasms(player);
+    player.x = Math.max(player.r + 8, Math.min(WORLD.w - player.r - 8, player.x));
+    player.y = Math.max(player.r + 8, Math.min(WORLD.h - player.r - 8, player.y));
+
+    if (idx < z.slashes.length) {
+      const curS = z.slashes[idx];
+      curS.x1 = player.x;
+      curS.y1 = player.y;
+      curS.ang = segAng;
+      if (u >= 0.26) curS.waveShown = true;
+    }
+
+    player.moving = true;
+    if (Math.abs(dx) > 2) player.faceDir = dx >= 0 ? 1 : -1;
+    player.lookA = segAng;
+    player._atkPoseT = 0.20;
+    player._atkAngle = segAng;
+    player._atkAimX = dx;
+    player._leanA = (player.faceDir || 1) * 0.16;
+    player.vx = (dx / Math.max(0.04, z.segDur)) * 0.20;
+    player.vy = (dy / Math.max(0.04, z.segDur)) * 0.20;
+
+    // 浮世绘新月雷浪斩碎沿途敌方弹幕
+    for (let bi = eBullets.length - 1; bi >= 0; bi--) {
+      const eb = eBullets[bi];
+      const seg = pointSegClosest(eb.x, eb.y, a.x, a.y, player.x, player.y);
+      if (seg.dSq <= 74 * 74) {
+        if (_frameSparks < 16) {
+          _frameSparks++;
+          addSparks(eb.x, eb.y, segAng, (bi & 1) ? '#38bdf8' : '#fde047', 2);
+        }
+        eBullets.splice(bi, 1);
+      }
+    }
+
+    // 对本段雷鸣斩掠过的敌人结算一次迅雷居合伤害并挂上【残心雷印】
+    const critChance = Math.min(0.95, getEffectiveCrit() + 0.25);
+    const critMul = getEffectiveCritMult(1.95);
+    for (let ei = enemies.length - 1; ei >= 0; ei--) {
+      const e = enemies[ei];
+      if (!e || e.hp <= 0 || e.primed || z.segHitSet.has(e)) continue;
+      const seg = pointSegClosest(e.x, e.y, a.x, a.y, player.x, player.y);
+      const hitLim = 74 + e.r;
+      if (seg.dSq <= hitLim * hitLim) {
+        z.segHitSet.add(e);
+        if (z.markedEnemies.length < 48 && !z.markedEnemies.includes(e)) {
+          z.markedEnemies.push(e);
+        }
+        const isCrit = Math.random() < critChance;
+        if (_frameSparks < 18) {
+          _frameSparks += 2;
+          addSparks(e.x, e.y, segAng, '#38bdf8', 1);
+          addSparks(e.x, e.y, segAng + 0.25, '#fde047', 1);
+        }
+        hurtEnemy(e, z.legDmg * (isCrit ? critMul : 1), isCrit, segAng, true, {
+          isMelee: true,
+          forceChill: true,
+          knockMult: 0.42,
+          srcId: 'ult_melee'
+        });
+        if (state !== 'wave') return;
+      }
+    }
+
+    if (z.segT >= z.segDur) {
+      player.x = b.x;
+      player.y = b.y;
+      if (typeof pushOutOfChasms === 'function') pushOutOfChasms(player);
+      if (idx < z.slashes.length) {
+        const curS = z.slashes[idx];
+        curS.x1 = b.x;
+        curS.y1 = b.y;
+        curS.live = false;
+        curS.waveShown = true;
+        curS.t = curS.maxT;
+      }
+      addSparks(b.x, b.y, segAng + Math.PI * 0.5, (idx & 1) ? '#38bdf8' : '#fde047', 3);
+      beep(610 + z.segIdx * 62, 0.040, 'triangle', 0.042);
+      z.segIdx++;
+      z.segT = 0;
+      z.segHitSet.clear();
+      if (z.segIdx < z.count - 1) {
+        _activateZSlashSlot(z, z.segIdx);
+      } else {
+        z.active = false;
+        z.sheatheT = 0.14;
+        z.echoT = z.maxEchoT;
+        player.vx = 0;
+        player.vy = 0;
+        player._atkPoseT = 0.28;
+      }
+    }
+  } else {
+    if (z.sheatheT > 0) {
+      z.sheatheT -= dt;
+      player._atkPoseT = Math.max(player._atkPoseT || 0, 0.18);
+      if (z.sheatheT <= 0) {
+        z.sheatheT = 0;
+        beep(192, 0.10, 'sawtooth', 0.055);
+        beep(880, 0.075, 'sine', 0.050);
+        if (rings.length < 32) rings.push({ x: player.x, y: player.y, r: 74, color: '#38bdf8', t: 0.22, maxT: 0.22 });
+        const critMul = getEffectiveCritMult(1.90);
+        let burstSpawned = 0;
+        for (let mi = 0; mi < z.markedEnemies.length; mi++) {
+          const me = z.markedEnemies[mi];
+          if (!me || me.hp <= 0 || me.primed) continue;
+          const bx = me.x, by = me.y;
+          const bSz = Math.min(184, 136 + (me.r || 18) * 1.1);
+          if (burstSpawned < 8 && _spawnZanshinThunderBurst(z, bx, by, bSz, mi + 1)) {
+            burstSpawned++;
+          }
+          if (_frameSparks < 16) {
+            _frameSparks += 2;
+            addSparks(bx, by, -Math.PI * 0.5, '#38bdf8', 2);
+            addSparks(bx, by, -Math.PI * 0.5 + 0.3, '#fde047', 1);
+          }
+          hurtEnemy(me, z.finisherDmg * critMul * 0.78, true, Math.atan2(by - player.y, bx - player.x), true, {
+            isMelee: true,
+            noProc: true,
+            silentHit: mi > 2,
+            srcId: 'ult_melee'
+          });
+          if (state !== 'wave') return;
+        }
+        if (burstSpawned === 0) {
+          const endPt = z.pts[z.count - 1];
+          _spawnZanshinThunderBurst(z, endPt.x, endPt.y, 152, 1);
+        }
+        z.markedEnemies.length = 0;
+      }
+    }
+    if (z.echoT > 0) {
+      z.echoT = Math.max(0, z.echoT - dt);
+    }
+  }
+
+  // 2. 更新远程觉醒：《天穹剑阵 · 千刃破阵雨》
+  const sr = ultEffects.swordRain;
+  if (sr.active) {
+    sr.t = Math.max(0, sr.t - dt);
+    let anySwordAlive = sr.t > 0;
+    const critChance = getEffectiveCrit();
+    const critMul = getEffectiveCritMult(1.85);
+    for (let i = 0; i < sr.swords.length; i++) {
+      const sw = sr.swords[i];
+      if (!sw.active) continue;
+      anySwordAlive = true;
+      if (sw.state === 0) {
+        sw.delay -= dt;
+        if (sw.delay <= 0) {
+          sw.state = 1;
+          sw.x = sw.sx;
+          sw.y = sw.sy;
+        }
+      } else if (sw.state === 1) {
+        sw.travelT -= dt;
+        const p = Math.min(1, 1 - sw.travelT / Math.max(0.02, sw.maxTravelT));
+        sw.x = sw.sx + (sw.tx - sw.sx) * p;
+        sw.y = sw.sy + (sw.ty - sw.sy) * p;
+        if (sw.travelT <= 0) {
+          sw.state = 2;
+          sw.x = sw.tx;
+          sw.y = sw.ty;
+          if (sw.isGreat) {
+            beep(210, 0.11, 'sawtooth', 0.065);
+            if (rings.length < 34) {
+              rings.push({ x: sw.tx, y: sw.ty, r: sw.blastR, color: '#fbbf24', t: 0.26, maxT: 0.26 });
+            }
+            addSparks(sw.tx, sw.ty, -Math.PI * 0.5, '#fde68a', 6);
+          } else {
+            if (_frameHitBeeps < 3) {
+              _frameHitBeeps++;
+              beep(720 + (i % 5) * 45, 0.028, 'triangle', 0.026);
+            }
+            if (_frameSparks < 16) {
+              _frameSparks += 2;
+              addSparks(sw.tx, sw.ty, -Math.PI * 0.5, '#93c5fd', 2);
+            }
+            if ((i % 4 === 0) && rings.length < 30) {
+              rings.push({ x: sw.tx, y: sw.ty, r: sw.blastR * 0.82, color: '#60a5fa', t: 0.16, maxT: 0.16 });
+            }
+          }
+          for (let ei = enemies.length - 1; ei >= 0; ei--) {
+            const e = enemies[ei];
+            if (!e || e.hp <= 0 || e.primed) continue;
+            const dxE = e.x - sw.tx, dyE = e.y - sw.ty, lim = sw.blastR + e.r;
+            if (dxE * dxE + dyE * dyE <= lim * lim) {
+              const isCrit = sw.isGreat ? true : (Math.random() < critChance);
+              hurtEnemy(e, sw.dmg * (isCrit ? critMul : 1), isCrit, Math.atan2(dyE, dxE), true, {
+                noProc: !sw.isGreat,
+                silentHit: !sw.isGreat,
+                knockMult: sw.isGreat ? 1.45 : 0.35,
+                srcId: 'ult_ranged'
+              });
+              if (state !== 'wave') return;
+            }
+          }
+        }
+      } else {
+        sw.embedT -= dt;
+        if (sw.embedT <= 0) {
+          sw.active = false;
+        }
+      }
+    }
+    if (!anySwordAlive) sr.active = false;
+  }
+
+  // 3. 更新秘术觉醒：《归墟视界 · 引力坍缩黑洞》
+  const bh = ultEffects.blackHole;
+  if (bh.active) {
+    bh.t -= dt;
+    bh.rot += dt * 2.8;
+    const pullRSq = bh.pullR * bh.pullR;
+    // 平滑牵引周围敌人（首领仅受 22% 微弱引力且不拉入裂谷）
+    for (let ei = 0; ei < enemies.length; ei++) {
+      const e = enemies[ei];
+      if (!e || e.hp <= 0) continue;
+      const dxB = bh.x - e.x, dyB = bh.y - e.y;
+      const dSq = dxB * dxB + dyB * dyB;
+      if (dSq > 16 * 16 && dSq <= pullRSq) {
+        const d = Math.sqrt(dSq) || 1;
+        const isBossEnt = e.type === 'boss' || e.type === 'special_boss' || e.type === 'mini_boss';
+        const pullSpd = (isBossEnt ? 28 : 132) * (0.55 + 0.45 * (1 - d / bh.pullR));
+        e.x += (dxB / d) * pullSpd * dt;
+        e.y += (dyB / d) * pullSpd * dt;
+        if (typeof pushOutOfChasms === 'function' && terrains.length > 0) pushOutOfChasms(e);
+        e.x = Math.max(e.r + 12, Math.min(WORLD.w - e.r - 12, e.x));
+        e.y = Math.max(e.r + 12, Math.min(WORLD.h - e.r - 12, e.y));
+      }
+    }
+    // 吞噬飞入视界半径内的敌方普通弹幕（封顶 24 枚）
+    if (bh.absorbed < 24) {
+      const eatR = Math.min(148, bh.dmgR * 0.94);
+      const eatRSq = eatR * eatR;
+      for (let bi = eBullets.length - 1; bi >= 0 && bh.absorbed < 24; bi--) {
+        const eb = eBullets[bi];
+        const bdx = bh.x - eb.x, bdy = bh.y - eb.y;
+        const bdSq = bdx * bdx + bdy * bdy;
+        if (bdSq <= eatRSq) {
+          if (bdSq <= 34 * 34) {
+            bh.absorbed++;
+            eBullets.splice(bi, 1);
+          } else {
+            const bd = Math.sqrt(bdSq) || 1;
+            eb.x += (bdx / bd) * 260 * dt;
+            eb.y += (bdy / bd) * 260 * dt;
+          }
+        }
+      }
+    }
+    // 周期奥术脉冲伤害
+    bh.tickT -= dt;
+    if (bh.tickT <= 0) {
+      bh.tickT = 0.34;
+      const critChance = getEffectiveCrit();
+      const critMul = getEffectiveCritMult(1.85);
+      for (let ei = enemies.length - 1; ei >= 0; ei--) {
+        const e = enemies[ei];
+        if (!e || e.hp <= 0 || e.primed) continue;
+        const dxE = e.x - bh.x, dyE = e.y - bh.y, lim = bh.dmgR + e.r;
+        if (dxE * dxE + dyE * dyE <= lim * lim) {
+          e.chillT = Math.max(e.chillT || 0, 1.1);
+          const isCrit = Math.random() < critChance;
+          hurtEnemy(e, bh.pulseDmg * (isCrit ? critMul : 1), isCrit, Math.atan2(bh.y - e.y, bh.x - e.x), true, {
+            noProc: true,
+            silentHit: true,
+            knockMult: 0,
+            srcId: 'ult_staff'
+          });
+          if (state !== 'wave') return;
+        }
+      }
+    }
+    // 视界坍缩终结震爆
+    if (bh.t <= 0) {
+      bh.active = false;
+      beep(175, 0.14, 'sawtooth', 0.068);
+      const colR = bh.dmgR * 1.14;
+      if (rings.length < 34) rings.push({ x: bh.x, y: bh.y, r: colR, color: '#e9d5ff', t: 0.28, maxT: 0.28 });
+      addBurst(bh.x, bh.y, '#c084fc', 10, 165);
+      const bonusMul = 1 + Math.min(0.36, bh.absorbed * 0.015);
+      const critMul = getEffectiveCritMult(1.90);
+      for (let ei = enemies.length - 1; ei >= 0; ei--) {
+        const e = enemies[ei];
+        if (!e || e.hp <= 0 || e.primed) continue;
+        const dxE = e.x - bh.x, dyE = e.y - bh.y, lim = colR + e.r;
+        if (dxE * dxE + dyE * dyE <= lim * lim) {
+          hurtEnemy(e, bh.collapseDmg * bonusMul * critMul * 0.72, true, Math.atan2(dyE, dxE), true, {
+            knockMult: 1.45,
+            srcId: 'ult_staff'
+          });
+          if (state !== 'wave') return;
+        }
+      }
+    }
+  }
+
+  // 4. 更新机关觉醒：《钟楼重工 · 镇岳重型臼炮》与重炮榴弹/爆轰精灵池
+  const cn = ultEffects.cannon;
+  if (cn.active) {
+    cn.life -= dt;
+    if (cn.recoil > 0) cn.recoil = Math.max(0, cn.recoil - dt * 34);
+    if (cn.life <= 0) {
+      cn.active = false;
+      addBurst(cn.x, cn.y, '#fbbf24', 7, 115);
+    } else {
+      // 优先锁定高威胁首领/精英或最近敌人
+      let bestE = null, bestScore = -1e9;
+      for (let i = 0; i < enemies.length; i++) {
+        const e = enemies[i];
+        if (!e || e.hp <= 0 || e.primed) continue;
+        const d = Math.hypot(e.x - cn.x, e.y - cn.y);
+        if (d > 680) continue;
+        const threat = (e.type === 'boss' || e.type === 'special_boss') ? 260 : (e.type === 'mini_boss' ? 180 : (e.elite ? 95 : 0));
+        const sc = threat - d * 0.65;
+        if (sc > bestScore) { bestScore = sc; bestE = e; }
+      }
+      if (bestE) {
+        const targetA = Math.atan2(bestE.y - cn.y, bestE.x - cn.x);
+        let diffA = (targetA - cn.angle) % (Math.PI * 2);
+        if (diffA > Math.PI) diffA -= Math.PI * 2;
+        else if (diffA < -Math.PI) diffA += Math.PI * 2;
+        cn.angle += diffA * Math.min(1, dt * 12);
+      }
+      const overclockMul = (player.turretOverclockT || 0) > 0 ? 1.65 : 1.0;
+      const hasteMul = (1 + Math.max(0, player.turretAspdBonus || 0)) * overclockMul;
+      cn.fireCd -= dt * hasteMul;
+      if (cn.fireCd <= 0 && bestE) {
+        cn.fireCd = 0.76;
+        cn.recoil = 9.5;
+        cn.shotsFired++;
+        const muzX = cn.x + Math.cos(cn.angle) * 38;
+        const muzY = cn.y - 10 + Math.sin(cn.angle) * 38;
+        beep(168, 0.075, 'sawtooth', 0.05);
+        pushParticle({ x: muzX, y: muzY, vx: 0, vy: 0, r: 9.5, color: '#fbbf24', muzzle: true, angle: cn.angle, t: 0.10, maxT: 0.10 });
+        pushParticle({
+          x: muzX, y: muzY,
+          vx: Math.cos(cn.angle) * 55 + (Math.random() - 0.5) * 24,
+          vy: Math.sin(cn.angle) * 55 - 18,
+          r: 4.8, color: 'rgba(226, 232, 240, 0.52)', t: 0.28, maxT: 0.28
+        });
+        if (typeof shells !== 'undefined' && shells.length < 28) {
+          const ejA = cn.angle - Math.PI * 0.55 + (Math.random() - 0.5) * 0.3;
+          shells.push({
+            x: cn.x - Math.cos(cn.angle) * 8,
+            y: cn.y - 10 - Math.sin(cn.angle) * 8,
+            vx: Math.cos(ejA) * 95,
+            vy: Math.sin(ejA) * 95 - 45,
+            rot: Math.random() * 6.28,
+            vrot: 11,
+            t: 0.48
+          });
+        }
+        // 发射高初速重型榴弹
+        for (let si = 0; si < ultEffects.cannonShells.length; si++) {
+          const sh = ultEffects.cannonShells[si];
+          if (!sh.active) {
+            const dist = Math.max(48, Math.hypot(bestE.x - muzX, bestE.y - muzY));
+            const spd = 920;
+            sh.active = true;
+            sh.x = muzX;
+            sh.y = muzY;
+            sh.px = muzX;
+            sh.py = muzY;
+            sh.tx = bestE.x;
+            sh.ty = bestE.y;
+            sh.vx = Math.cos(cn.angle) * spd;
+            sh.vy = Math.sin(cn.angle) * spd;
+            sh.maxLife = Math.min(0.76, dist / spd + 0.04);
+            sh.life = sh.maxLife;
+            sh.dmg = cn.shellDmg;
+            sh.blastR = 114 * getBlastScale();
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  for (let si = 0; si < ultEffects.cannonShells.length; si++) {
+    const sh = ultEffects.cannonShells[si];
+    if (!sh.active) continue;
+    sh.px = sh.x;
+    sh.py = sh.y;
+    sh.x += sh.vx * dt;
+    sh.y += sh.vy * dt;
+    sh.life -= dt;
+    let explode = sh.life <= 0 || sh.x < 28 || sh.x > WORLD.w - 28 || sh.y < 28 || sh.y > WORLD.h - 28;
+    if (!explode) {
+      for (let ei = 0; ei < enemies.length; ei++) {
+        const e = enemies[ei];
+        if (!e || e.hp <= 0 || e.primed) continue;
+        const dxE = e.x - sh.x, dyE = e.y - sh.y, lim = e.r + 12;
+        if (dxE * dxE + dyE * dyE <= lim * lim) {
+          explode = true;
+          break;
+        }
+      }
+    }
+    if (explode) {
+      sh.active = false;
+      _spawnUltBlastSprite(sh.x, sh.y, sh.blastR);
+      if (rings.length < 32) rings.push({ x: sh.x, y: sh.y, r: sh.blastR, color: '#fb923c', t: 0.20, maxT: 0.20 });
+      if (_frameHitBeeps < 3) {
+        _frameHitBeeps++;
+        beep(132, 0.08, 'sawtooth', 0.045);
+      }
+      const critChance = getEffectiveCrit();
+      const critMul = getEffectiveCritMult(1.85);
+      for (let ei = enemies.length - 1; ei >= 0; ei--) {
+        const e = enemies[ei];
+        if (!e || e.hp <= 0 || e.primed) continue;
+        const dxE = e.x - sh.x, dyE = e.y - sh.y, lim = sh.blastR + e.r;
+        if (dxE * dxE + dyE * dyE <= lim * lim) {
+          const isCrit = Math.random() < critChance;
+          hurtEnemy(e, sh.dmg * (isCrit ? critMul : 1), isCrit, Math.atan2(dyE, dxE), true, {
+            isTurret: true,
+            isExplosion: true,
+            silentHit: true,
+            knockMult: 1.15,
+            srcId: 'ult_tech'
+          });
+          if (state !== 'wave') return;
+        }
+      }
+    }
+  }
+
+  for (let bi = 0; bi < ultEffects.blasts.length; bi++) {
+    const bl = ultEffects.blasts[bi];
+    if (!bl.active) continue;
+    bl.t -= dt;
+    if (bl.t <= 0) bl.active = false;
+  }
+}
+
+globalThis.ULTIMATE_SPECS = ULTIMATE_SPECS;
+globalThis.ultEffects = ultEffects;
+globalThis.resetUltEffects = resetUltEffects;
+globalThis.getPlayerUltimateSpec = getPlayerUltimateSpec;
+globalThis.triggerUltimateSkill = triggerUltimateSkill;
+globalThis.updateUltEffects = updateUltEffects;

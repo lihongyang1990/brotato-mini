@@ -366,6 +366,32 @@ const SpireAssets = (function () {
     return flash ? ent.flashView : ent.normalView;
   }
 
+  // 主角 [E] 四流派觉醒大招超清透明贴图映射（浮世绘霹雳雷浪 / 重型臼炮底座与炮管 / 爆破火云 / 天穹长剑与重剑 / 归墟黑洞）
+  const ULT_SPRITE_MAP = {
+    thunder_slash: { src: 'assets/spire/ult_thunder_slash.png', maxPx: 260 },
+    cannon_base:   { src: 'assets/spire/ult_cannon_base.png', maxPx: 256 },
+    cannon_barrel: { src: 'assets/spire/ult_cannon_barrel.png', maxPx: 280 },
+    explosion:     { src: 'assets/spire/ult_explosion.png', maxPx: 260 },
+    sword_long:    { src: 'assets/spire/ult_sword_long.png', maxPx: 280 },
+    sword_great:   { src: 'assets/spire/ult_sword_great.png', maxPx: 350 },
+    blackhole:     { src: 'assets/spire/ult_blackhole.png', maxPx: 300 }
+  };
+
+  function getUltSprite(key) {
+    const spec = ULT_SPRITE_MAP[key];
+    if (!spec) return null;
+    const ent = ensureSpriteEntry(spec.src, spec.maxPx);
+    return ent ? ent.normalView : null;
+  }
+
+  function warmUltSprites() {
+    if (typeof Image === 'undefined') return;
+    for (const k of Object.keys(ULT_SPRITE_MAP)) {
+      const spec = ULT_SPRITE_MAP[k];
+      ensureSpriteEntry(spec.src, spec.maxPx);
+    }
+  }
+
   function pickMonsterPath(e) {
     if (!e) return MONSTER_SPRITE_MAP.chaser;
     if ((e.type === 'boss' || e.type === 'mini_boss' || e.type === 'special_boss') && e.variant && BOSS_SPRITE_MAP[e.variant]) {
@@ -438,7 +464,8 @@ const SpireAssets = (function () {
       () => getArenaBg('foundry'),
       () => ensureSpriteEntry(PROP_MAP.foundry, 224),
       ...['chaser', 'swarmer', 'stalker', 'magma_imp', 'shielder', 'shooter']
-        .map(k => () => ensureSpriteEntry(MONSTER_SPRITE_MAP[k], 256))
+        .map(k => () => ensureSpriteEntry(MONSTER_SPRITE_MAP[k], 256)),
+      ...Object.keys(ULT_SPRITE_MAP).map(k => () => ensureSpriteEntry(ULT_SPRITE_MAP[k].src, ULT_SPRITE_MAP[k].maxPx))
     ];
     const idle = typeof requestIdleCallback === 'function'
       ? cb => requestIdleCallback(cb, { timeout: 1500 })
@@ -460,7 +487,9 @@ const SpireAssets = (function () {
     getArenaBg,
     getPortrait,
     getPortraitSrc,
-    getCutscene
+    getCutscene,
+    getUltSprite,
+    warmUltSprites
   };
 })();
 

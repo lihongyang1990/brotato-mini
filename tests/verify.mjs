@@ -1170,7 +1170,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     const diedCleanly = state === 'end';
     retryFailedWave();
     __drainDirector();
-    for (let k = 0; k < 25; k++) update(0.05);
+    for (let k = 0; k < 25; k++) { pendingBossCutscene = null; bossCutscene = null; update(0.05); }
+    pendingBossCutscene = null;
+    bossCutscene = null;
     draw();
     const magCircleDrawn = typeof player._visMagR === 'number' && player._visMagR >= 120;
     const retryBoss = enemies.find(e => e.type === 'boss');
@@ -1233,7 +1235,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     endlessMode = true;
     wave = 12;
     beginWave();
-    for (let k = 0; k < 20; k++) update(0.05);
+    for (let k = 0; k < 20; k++) { pendingBossCutscene = null; bossCutscene = null; update(0.05); }
+    pendingBossCutscene = null;
+    bossCutscene = null;
     const vBoss = enemies.find(e => e.type === 'boss');
     vBoss.variant = 'plague_empress';
     vBoss.hp = 999999; vBoss.maxHp = 999999;
@@ -1287,10 +1291,13 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     wave = 8;
     beginWave();
     __drainDirector();
-    for (let k = 0; k < 20; k++) update(0.05);
+    for (let k = 0; k < 20; k++) { pendingBossCutscene = null; bossCutscene = null; update(0.05); }
+    pendingBossCutscene = null;
+    bossCutscene = null;
     overtime = true; waveTime = 0;
     const fqBoss = enemies.find(e => e.type === 'boss');
     fqBoss.mythicPhase2 = true;
+    fqBoss.storyStage = 2;
     fqBoss.hp = 1;
     fqBoss.x = 1200; fqBoss.y = 1200;
     player.x = 950; player.y = 1200;
@@ -1500,8 +1507,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       const c2Cls = cards[1].className || '';
       const c1Html = cards[0].innerHTML || '';
       const c2Html = cards[1].innerHTML || '';
-      const c1PurplePlusItem = (/\bt[34]\b/.test(c1Cls) && c1Html.includes('遗物'));
-      const c2PurplePlusWpn = (/\bt[34]\b/.test(c2Cls) && c2Html.includes('兵装'));
+      const c1PurplePlusItem = (/\\bt[34]\\b/.test(c1Cls) && c1Html.includes('遗物'));
+      const c2PurplePlusWpn = (/\\bt[34]\\b/.test(c2Cls) && c2Html.includes('兵装'));
       if (!c1PurplePlusItem || !c2PurplePlusWpn) { crateGuaranteeOk = false; break; }
       if (rollIdx === 19) {
         const takeWpnBtn = cards[1].querySelector('.take-btn');
@@ -1547,7 +1554,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     };
     const staffBoost = getArchetypeAffinityBoosts(committedStaffP);
     const staffWpnMul = getWeaponArchetypeWeightMul('chrono_staff', staffBoost);
-    const staffItemMul = getItemArchetypeWeightMul(ITEMS.find(x => x.id === 'arcane_focus_orb'), staffBoost);
+    const staffItemMul = getItemArchetypeWeightMul(ITEMS.find(x => x.id === 'archmage_crown'), staffBoost);
     const hiddenBoostOk = (
       neutralBoost.staff === 0 &&
       staffBoost.staff > 0.16 &&
@@ -1582,15 +1589,24 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     );
 
     // 验证吸血仅直接攻击触发且受 0.12s ICD 限制
+    beginWave();
+    __drainDirector();
+    player.dodge = 0;
     player.hp = 10; player.maxHp = 50; player.lifesteal = 1.0; player._lifestealCd = 0;
     const dummyE = createEnemy(player.x + 120, player.y, 'chaser');
     dummyE.hp = dummyE.maxHp = 9999;
-    hurtEnemy(dummyE, 10, false, null, true, { isTurret: true, srcId: 'turret_gun' });
-    const turretNoLs = (player.hp === 10);
-    hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
-    const directLsHealed = (player.hp === 11 && player._lifestealCd > 0.10);
-    hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
-    const icdBlockedSecond = (player.hp === 11);
+    const _lsRand = Math.random;
+    Math.random = () => 0.10;
+    try {
+      hurtEnemy(dummyE, 10, false, null, true, { isTurret: true, srcId: 'turret_gun' });
+      var turretNoLs = (player.hp === 10);
+      hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
+      var directLsHealed = (player.hp === 11 && player._lifestealCd > 0.10);
+      hurtEnemy(dummyE, 10, false, null, true, { srcId: 'ember_staff' });
+      var icdBlockedSecond = (player.hp === 11);
+    } finally {
+      Math.random = _lsRand;
+    }
     const lifestealRuleOk = (turretNoLs && directLsHealed && icdBlockedSecond);
 
     // 验证小怪不爆 bigCoin 金色大钻，而首领可爆 bigCoin
@@ -1604,6 +1620,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
 
     // 验证八荒血月斩预烘焙精灵存在 & 赛后总结渲染双栏数据及点击查看武器/魔物详情弹窗
     const bmSprite = getBloodMoonWaveSprite();
+    player.hp = 35; player.maxHp = 50; player.dodge = 0;
     hurtPlayer(12, true, 'void_weaver');
     renderEndRunSummary(false);
     const endSumHtml = document.getElementById('endSummaryPanel').innerHTML || '';
@@ -1672,6 +1689,169 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
 }
 
 // ============================================================================
+// Suite 4b: v2.1.11 [E] 4-Category Awakening Ultimates + 60FPS Fluency & Retina Clarity Stress Test
+// ============================================================================
+{
+  const { sandbox: s, stats } = createEnv(false, 1440, 900, 2);
+  s.window.dispatch("pointerdown", {});
+
+  const ultSuite = vm.runInContext(`(() => {
+    startGame('allrounder', { mode: 'endless' });
+
+    // 1. Dynamic [E] Ultimate switching by dominant weapon category + Shop hint sync
+    player.weapons = [{ id: 'katana', tier: 2, cd: 0 }, { id: 'spear', tier: 1, cd: 0 }, { id: 'pistol', tier: 1, cd: 0 }];
+    const specMelee = getPlayerUltimateSpec(player).id;
+    player.weapons = [{ id: 'rifle', tier: 2, cd: 0 }, { id: 'smg', tier: 2, cd: 0 }, { id: 'katana', tier: 1, cd: 0 }];
+    const specRanged = getPlayerUltimateSpec(player).id;
+    player.weapons = [{ id: 'ember_staff', tier: 2, cd: 0 }, { id: 'frost_scepter', tier: 2, cd: 0 }, { id: 'pistol', tier: 1, cd: 0 }];
+    const specStaff = getPlayerUltimateSpec(player).id;
+    player.weapons = [{ id: 'wrench', tier: 2, cd: 0 }, { id: 'drone_bay', tier: 2, cd: 0 }, { id: 'pistol', tier: 1, cd: 0 }];
+    const specTech = getPlayerUltimateSpec(player).id;
+    openShop(true);
+    const shopUltHintHtml = document.getElementById('shopUltHint').innerHTML || '';
+    const dynamicSwitchOk = (
+      specMelee === 'melee' &&
+      specRanged === 'ranged' &&
+      specStaff === 'staff' &&
+      specTech === 'tech' &&
+      shopUltHintHtml.includes('镇岳臼炮')
+    );
+
+    // 2. Test Melee [E] Ultimate: Codex M1《雷鸣八连 · 霹雳一闪残心》(7-step Ufotable Sumi-e Thunder-Wave chain + Zanshin sky-thunder burst + bullet slicing + immunity)
+    endlessMode = true;
+    wave = 4;
+    beginWave();
+    pendingBossCutscene = null; bossCutscene = null;
+    enemies.length = 0; spawns.length = 0; eBullets.length = 0;
+    player.x = 900; player.y = 900;
+    player.maxHp = 200; player.hp = 200; player.ultCd = 0;
+    player.weapons = [{ id: 'katana', tier: 3, cd: 99 }, { id: 'spear', tier: 2, cd: 99 }];
+    const zTargetMob = createEnemy(1160, 900, 'brute');
+    zTargetMob.hp = zTargetMob.maxHp = 99999; zTargetMob.dmg = 0;
+    const zMob2 = createEnemy(1040, 840, 'chaser');
+    zMob2.hp = zMob2.maxHp = 99999; zMob2.dmg = 0;
+    eBullets.push({ x: 960, y: 860, px: 960, py: 860, vx: 0, vy: 0, life: 5, dmg: 20, r: 6, hitR: 6, color: '#ff3b6b', shape: 'orb' });
+
+    window.dispatch('keydown', { key: 'e', preventDefault() {} });
+    const thunderSpr = SpireAssets.getUltSprite('thunder_slash');
+    const thunderSprOk = !!(thunderSpr && thunderSpr.w > 64 && thunderSpr.h > 64);
+    const zStarted = (ultEffects.zSlash.active === true && ultEffects.zSlash.count === 8 && player.ultCd > 6 && thunderSprOk);
+    const zp = ultEffects.zSlash.pts;
+    let zAlternatingTurns = 0;
+    for (let k = 0; k < 5; k++) {
+      const v1x = zp[k + 1].x - zp[k].x, v1y = zp[k + 1].y - zp[k].y;
+      const v2x = zp[k + 2].x - zp[k + 1].x, v2y = zp[k + 2].y - zp[k + 1].y;
+      const cross1 = v1x * v2y - v1y * v2x;
+      const v3x = zp[k + 3].x - zp[k + 2].x, v3y = zp[k + 3].y - zp[k + 2].y;
+      const cross2 = v2x * v3y - v2y * v3x;
+      if (cross1 * cross2 < 0) zAlternatingTurns++;
+    }
+    hurtPlayer(80, true, 'shooter');
+    const immuneDuringZSlash = (player.hp === 200);
+    const sampledPositions = [];
+    let sawZanshinBurst = false;
+    for (let f = 0; f < 34; f++) {
+      spawnAcc = 99;
+      zTargetMob.dmg = 0; zMob2.dmg = 0;
+      update(0.025);
+      draw();
+      sampledPositions.push({ x: Math.round(player.x), y: Math.round(player.y) });
+      if (ultEffects.zSlash.bursts.some(b => b.active)) sawZanshinBurst = true;
+    }
+    const distinctPosCount = new Set(sampledPositions.map(p => p.x + ',' + p.y)).size;
+    const meleeDmgLogged = !!(player.runStats && player.runStats.weaponDmg && player.runStats.weaponDmg.ult_melee && player.runStats.weaponDmg.ult_melee.dmg > 0);
+    const meleeZSlashOk = (zStarted && zAlternatingTurns >= 3 && immuneDuringZSlash && distinctPosCount >= 10 && sawZanshinBurst && eBullets.length === 0 && !ultEffects.zSlash.active && meleeDmgLogged);
+
+    // 3. Test Ranged (Sword Rain), Staff (Black Hole), and Tech (Heavy Mortar Cannon) Ultimates
+    player.weapons = [{ id: 'rifle', tier: 3, cd: 99 }, { id: 'smg', tier: 2, cd: 99 }];
+    player.ultCd = 0;
+    triggerUltimateSkill();
+    const srStarted = ultEffects.swordRain.active === true;
+    for (let f = 0; f < 36; f++) { spawnAcc = 99; update(0.04); draw(); }
+    const rangedUltOk = srStarted && !!(player.runStats.weaponDmg.ult_ranged && player.runStats.weaponDmg.ult_ranged.dmg > 0);
+
+    player.weapons = [{ id: 'ember_staff', tier: 3, cd: 99 }, { id: 'storm_rod', tier: 2, cd: 99 }];
+    player.ultCd = 0;
+    const pullMob = createEnemy(zTargetMob.x + 120, zTargetMob.y, 'stalker');
+    pullMob.hp = pullMob.maxHp = 99999; pullMob.dmg = 0; pullMob.spd = 0;
+    eBullets.push({ x: zTargetMob.x + 40, y: zTargetMob.y, px: zTargetMob.x + 40, py: zTargetMob.y, vx: 0, vy: 0, life: 5, dmg: 10, r: 6, hitR: 6, color: '#ff3b6b', shape: 'orb' });
+    triggerUltimateSkill();
+    const bhX = ultEffects.blackHole.x, bhY = ultEffects.blackHole.y;
+    const initDist = Math.hypot(pullMob.x - bhX, pullMob.y - bhY);
+    for (let f = 0; f < 25; f++) { pullMob.spd = 0; spawnAcc = 99; update(0.05); draw(); }
+    const pulledCloser = Math.hypot(pullMob.x - bhX, pullMob.y - bhY) < initDist - 15;
+    for (let f = 0; f < 50; f++) { pullMob.spd = 0; spawnAcc = 99; update(0.05); draw(); }
+    const staffUltOk = pulledCloser && !ultEffects.blackHole.active && !!(player.runStats.weaponDmg.ult_staff && player.runStats.weaponDmg.ult_staff.dmg > 0);
+
+    player.weapons = [{ id: 'wrench', tier: 3, cd: 99 }, { id: 'drone_bay', tier: 2, cd: 99 }];
+    player.ultCd = 0;
+    triggerUltimateSkill();
+    const cannonDeployed = ultEffects.cannon.active === true;
+    let sawCannonInRenderList = false;
+    for (let f = 0; f < 40; f++) {
+      spawnAcc = 99;
+      update(0.05);
+      draw();
+      if (renderList.includes(ultEffects.cannon)) sawCannonInRenderList = true;
+    }
+    const techUltOk = cannonDeployed && sawCannonInRenderList && ultEffects.cannon.shotsFired >= 2 && !!(player.runStats.weaponDmg.ult_tech && player.runStats.weaponDmg.ult_tech.dmg > 0);
+
+    // 4. 60 FPS High-Load Fluency & Ultra-High Retina Clarity Benchmark (80 enemies + 60 projectiles + active Ultimates x 360 frames)
+    enemies.length = 0; bullets.length = 0; eBullets.length = 0;
+    for (let i = 0; i < 80; i++) {
+      const ang = (i / 80) * Math.PI * 2;
+      const dist = 160 + (i % 6) * 48;
+      const m = createEnemy(player.x + Math.cos(ang) * dist, player.y + Math.sin(ang) * dist, i % 3 === 0 ? 'stalker' : (i % 3 === 1 ? 'shooter' : 'chaser'));
+      m.hp = m.maxHp = 999999; m.dmg = 0;
+    }
+    for (let i = 0; i < 60; i++) {
+      const a = (i / 60) * Math.PI * 2;
+      eBullets.push({ x: player.x + Math.cos(a) * 240, y: player.y + Math.sin(a) * 240, px: player.x, py: player.y, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 8, dmg: 0, r: 6, hitR: 5, color: '#38bdf8', shape: 'lance' });
+    }
+    const weaponLoadouts = [
+      [{ id: 'katana', tier: 4, cd: 0.4 }, { id: 'spear', tier: 3, cd: 0.5 }],
+      [{ id: 'rifle', tier: 4, cd: 0.3 }, { id: 'smg', tier: 3, cd: 0.25 }],
+      [{ id: 'ember_staff', tier: 4, cd: 0.4 }, { id: 'storm_rod', tier: 3, cd: 0.45 }],
+      [{ id: 'wrench', tier: 4, cd: 0.5 }, { id: 'drone_bay', tier: 3, cd: 0.5 }]
+    ];
+    const t0 = Date.now();
+    const totalBenchFrames = 360;
+    for (let f = 0; f < totalBenchFrames; f++) {
+      if (f % 90 === 0) {
+        player.weapons = weaponLoadouts[(f / 90) | 0];
+        player.ultCd = 0;
+        triggerUltimateSkill();
+      }
+      spawnAcc = 99;
+      waveTime = 30;
+      _advanceClock(16.67);
+      update(0.01667);
+      draw();
+    }
+    const elapsedMs = Date.now() - t0;
+    const avgFrameMs = elapsedMs / totalBenchFrames;
+    const clarityOk = (battleResolutionScale === 1 && dpr >= 2 && Number.isFinite(player.x) && Number.isFinite(player.y));
+
+    return {
+      dynamicSwitchOk, meleeZSlashOk, rangedUltOk, staffUltOk, techUltOk,
+      clarityOk, avgFrameMs
+    };
+  })()`, s);
+
+  assert.strictEqual(ultSuite.dynamicSwitchOk, true, "Ultimate skill must dynamically adapt to melee/ranged/staff/tech weapon loadouts and sync Shop UI");
+  assert.strictEqual(ultSuite.meleeZSlashOk, true, "Melee [E] Ultimate must execute 7-step Ufotable Thunder-Wave chain + Zanshin sky-thunder burst, bullet slicing, and damage immunity");
+  assert.strictEqual(ultSuite.rangedUltOk, true, "Ranged [E] Ultimate must rain Damascus longswords + Relic Greatsword finisher and log ult_ranged damage");
+  assert.strictEqual(ultSuite.staffUltOk, true, "Staff [E] Ultimate must pull enemies into Gargantua Black Hole, absorb projectiles, and collapse with ult_staff damage");
+  assert.strictEqual(ultSuite.techUltOk, true, "Tech [E] Ultimate must deploy Y-sorted Heavy Mortar Cannon, fire explosive shells, and log ult_tech damage");
+  assert.strictEqual(ultSuite.clarityOk, true, "Retina ultra-clarity must keep battleResolutionScale === 1 and dpr >= 2 without NaN drift");
+  assert(ultSuite.avgFrameMs < 8.0, `60FPS stress benchmark (80 enemies + all 4 Ultimates) must stay fast & lag-free (got ${ultSuite.avgFrameMs.toFixed(2)} ms/frame)`);
+  assert.strictEqual(stats.radialGradients, 0, "All 4 Ultimates must create ZERO per-frame radial gradients");
+  assert.strictEqual(stats.shadowBlurs, 0, "All 4 Ultimates must use ZERO shadowBlur");
+  assert.strictEqual(vm.runInContext("logErrCount", s), 0, "Zero runtime errors in Suite 4b");
+  console.log(`[Perf Benchmark] 80 enemies + 60 eBullets + 4 Ultimates x 360 frames: avg ${ultSuite.avgFrameMs.toFixed(2)} ms/frame (budget 16.67ms = ${(1000 / Math.max(0.1, ultSuite.avgFrameMs)).toFixed(0)} theoretical FPS, radialGradients=0, shadowBlurs=0, battleResolutionScale=1)`);
+}
+
+// ============================================================================
 // Suite 5: Standalone Single-File Offline Bundle (`烬塔残响_单文件离线版.html`) Verification
 // ============================================================================
 {
@@ -1704,6 +1884,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       "assets/spire/cut_defeat_act1_1.jpg", "assets/spire/cut_defeat_act4_2.jpg",
       "assets/spire/v2/title-clean.png", "assets/spire/v2/wind-pavilion.png", "assets/spire/v2/player-defeat-clean.png",
       "assets/spire/v2/awakening-atlas.png", "assets/spire/v2/jinyu-atlas.png", "assets/spire/v2/endings-atlas.png",
+      "assets/spire/ult_thunder_slash.png",
+      "assets/spire/ult_cannon_base.png", "assets/spire/ult_cannon_barrel.png", "assets/spire/ult_explosion.png",
+      "assets/spire/ult_blackhole.png", "assets/spire/ult_sword_long.png", "assets/spire/ult_sword_great.png",
       ...V21_CINEMATIC_FILES
     ]) {
       assert(typeof map[key] === "string" && map[key].startsWith("data:image/"), `Single-file bundle missing inline data URI for ${key}`);

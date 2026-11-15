@@ -3,7 +3,8 @@
    ========================================================================= */
 body.m-ui .m-only { display: flex !important; }
 body.m-ui .d-only { display: none !important; }
-body.m-ui #hud:not(.hidden) ~ .dash-touch-btn { display: flex !important; }
+body.m-ui #hud:not(.hidden) ~ .dash-touch-btn,
+body.m-ui #hud:not(.hidden) ~ .ult-touch-btn { display: flex !important; }
 
 body.m-ui .overlay {
   height: 100%;
@@ -567,6 +568,14 @@ body.m-ui .dash-touch-btn {
   bottom: calc(18px + env(safe-area-inset-bottom, 0px));
   touch-action: none;
 }
+body.m-ui .ult-touch-btn {
+  right: calc(102px + env(safe-area-inset-right, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  width: 62px;
+  height: 62px;
+  touch-action: none;
+}
+body.m-ui .shop-ult-hint { font-size: 10.5px; padding: 2px 7px; }
 body.m-ui .shop-merchant-wrap { gap: 9px; }
 body.m-ui .shop-wallet-group { gap: 6px; }
 body.m-ui .shop-title-group { flex: 1; }

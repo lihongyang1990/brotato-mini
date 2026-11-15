@@ -128,8 +128,8 @@ function _renderHeroSpotlight(containerId, clsObj, isStoryLocked) {
           </div>
           ${clsObj.dashName ? `
           <div class="combat-spec-box dash-box">
-            <div class="cs-label">SOUL DASH [SPACE / 右键]  ·  ${clsObj.dashName}</div>
-            <div class="cs-desc">${clsObj.dashDesc || ''}</div>
+            <div class="cs-label">SOUL DASH [SPACE / 右键] & AWAKENING [E]  ·  ${clsObj.dashName}</div>
+            <div class="cs-desc">${clsObj.dashDesc || ''} · 按 [E] 随主修武器流派释放专属觉醒奥义（霹雳一闪残心/剑雨/黑洞/镇岳臼炮）</div>
           </div>` : ''}
         </div>
       `}
@@ -381,6 +381,12 @@ window.addEventListener('keydown', e => {
       !(typeof SpireDirector !== 'undefined' && SpireDirector && SpireDirector.isBlockingGameplay())) {
     if (e.preventDefault) e.preventDefault();
     if (typeof triggerSoulDash === 'function') triggerSoulDash();
+    return;
+  }
+  if (k === 'e' && state === 'wave' && player && !bossCutscene &&
+      !(typeof SpireDirector !== 'undefined' && SpireDirector && SpireDirector.isBlockingGameplay())) {
+    if (e.preventDefault) e.preventDefault();
+    if (typeof triggerUltimateSkill === 'function') triggerUltimateSkill();
     return;
   }
   keys[k] = true;
@@ -718,6 +724,7 @@ function startGame(cls, opts) {
     invulnBonus: 0, fastShield: false, soulBolt: false, noSlow: false, bossCratesQueued: 0, mythicCratesQueued: 0,
     survivalActsCleared: {}, survivalCratesQueued: 0, survivalGoldCratesQueued: 0, survivalFlawlessCnt: 0,
     _fissureHitCd: 0, _fissureLeapHintCd: 0, recentCrateIds: [],
+    ultCd: 0, ultMaxCd: 15.0, ultInvulnT: 0,
     rarePortraitShown: false, shownBossPortraits: {}, mythicAwakenedCount: 0, waveMythicAwakened: false, retryCount: 0,
     lavaExposure: 0, lavaTick: 0, terrainHintT: 0, terrainSpdMul: 1,
     lv: 1, xp: 0, xpNeed: 10, mats: Math.round(diff.matBonus * (typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.70)), kills: 0, invuln: 0, hurtFlashT: 0, walkT: 0, dustT: 0, moving: false,
@@ -794,6 +801,7 @@ function showStart() {
   survivalTrialHits = 0;
   survivalFissures = [];
   survivalSkyVolleys = [];
+  if (typeof resetUltEffects === 'function') resetUltEffects();
   waveCheckpoint = null;
   document.getElementById('hud').classList.add('hidden');
   const sm = document.getElementById('startMenu');
@@ -994,6 +1002,9 @@ function retryFailedWave(options) {
   player.invuln = 0;
   player.hurtFlashT = 0;
   inHurtPlayer = false;
+  player.ultCd = 0;
+  player.ultInvulnT = 0;
+  if (typeof resetUltEffects === 'function') resetUltEffects();
 
   for (const k in keys) keys[k] = false;
   resetJoy();

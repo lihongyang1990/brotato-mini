@@ -214,6 +214,53 @@ canvas {
 .dash-touch-icon { font-size: 16px; line-height: 1; color: var(--gold); }
 .dash-touch-lbl { font-size: 11px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
 
+/* HUD 流派觉醒大招 [E] 状态槽与触屏觉醒按钮 */
+.hud-ult-wrap {
+  border-color: rgba(251, 191, 36, 0.42);
+}
+.hud-ult-wrap .hud-ult-fill {
+  background: linear-gradient(90deg, rgba(146, 64, 14, 0.94), rgba(245, 158, 11, 0.96));
+}
+.hud-ult-wrap .hud-ult-text {
+  color: #fef3c7;
+}
+.hud-ult-wrap[data-ult="ranged"] { border-color: rgba(56, 189, 248, 0.48); }
+.hud-ult-wrap[data-ult="ranged"] .hud-ult-fill { background: linear-gradient(90deg, rgba(12, 74, 110, 0.95), rgba(56, 189, 248, 0.95)); }
+.hud-ult-wrap[data-ult="staff"] { border-color: rgba(192, 132, 252, 0.50); }
+.hud-ult-wrap[data-ult="staff"] .hud-ult-fill { background: linear-gradient(90deg, rgba(88, 28, 135, 0.95), rgba(168, 85, 247, 0.96)); }
+.hud-ult-wrap[data-ult="tech"] { border-color: rgba(251, 146, 60, 0.48); }
+.hud-ult-wrap[data-ult="tech"] .hud-ult-fill { background: linear-gradient(90deg, rgba(124, 45, 18, 0.95), rgba(249, 115, 22, 0.96)); }
+
+.ult-touch-btn {
+  position: fixed;
+  right: 112px;
+  bottom: 26px;
+  z-index: 26;
+  width: 68px;
+  height: 68px;
+  display: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, rgba(120, 62, 18, 0.96), rgba(20, 16, 28, 0.98));
+  border: 1.8px solid #fbbf24;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.76), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: #fef3c7;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.ult-touch-btn:active { transform: scale(0.93); }
+.ult-touch-btn.cooling {
+  background: rgba(12, 16, 26, 0.94);
+  border-color: rgba(148, 163, 184, 0.34);
+  color: var(--slate);
+}
+.ult-touch-icon { font-size: 16px; line-height: 1; }
+.ult-touch-lbl { font-size: 11px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
 .hud-center {
   justify-self: center;
   text-align: center;
@@ -1952,6 +1999,27 @@ body:not(.m-ui) #shopCards .card.sold-out {
 .arsenal-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
 .slot-hint { font-size: 12px; color: var(--slate); font-weight: 500; }
 .slot-hint b { color: var(--gold-bright); }
+.shop-ult-hint {
+  font-size: 11.5px;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.36);
+  border-radius: 5px;
+  padding: 3px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.shop-ult-hint b { color: #fde68a; }
+.ult-cat-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(251, 191, 36, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  color: var(--gold-bright);
+  font-weight: 600;
+}
 .slots { display: flex; gap: 8px; flex-wrap: wrap; }
 .slot {
   width: 104px;

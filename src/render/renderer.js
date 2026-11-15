@@ -1,4 +1,462 @@
 // 绘制嵌地石砌方砖真地形块（细长矩石槽 / 折角L型块 / T型拼接块 / 错位阶梯双拼块 / 重型方砖池 / 石砌断层深渊，0渐变0滤镜）
+// ⚡ 四流派【觉醒大招】地面层与高空层高精渲染（0 createRadialGradient / 0 shadowBlur / 0 filter，Retina 超清晰）
+const _ultBoltPts = new Float32Array(26);
+const _ultSubBoltPts = new Float32Array(18);
+
+function _traceFlatPts(buf, count) {
+  ctx.beginPath();
+  ctx.moveTo(buf[0], buf[1]);
+  for (let i = 1; i < count; i++) {
+    ctx.lineTo(buf[i * 2], buf[i * 2 + 1]);
+  }
+}
+
+// 设定集 v4.0 主推款：鬼灭浮世绘 4 层浓墨沧浪雷光长带（粗墨黑外廓 -> 沧浪电青 -> 耀金雷弧 -> 炽白极芯，零对象分配）
+function drawKnyThunderRibbon(x1, y1, x2, y2, alpha, seed) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 6 || alpha <= 0.02) return;
+  const nx = -dy / len, ny = dx / len;
+  const segs = 12;
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    let jit = 0;
+    if (i > 0 && i < segs) {
+      const amp = Math.sin(t * Math.PI) * 18;
+      jit = Math.sin(seed * 13.7 + i * 4.3) * amp + Math.cos(seed * 7.1 - i * 8.9) * (amp * 0.45);
+    }
+    _ultBoltPts[i * 2] = x1 + dx * t + nx * jit;
+    _ultBoltPts[i * 2 + 1] = y1 + dy * t + ny * jit;
+  }
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'miter';
+  ctx.miterLimit = 3.2;
+
+  // Pass 1: 浮世绘浓墨黑外描边
+  ctx.globalAlpha = alpha * 0.90;
+  ctx.strokeStyle = '#090b10';
+  ctx.lineWidth = 13.2;
+  _traceFlatPts(_ultBoltPts, segs + 1);
+  ctx.stroke();
+
+  // Pass 2: 沧浪电青激流层
+  ctx.globalAlpha = alpha * 0.96;
+  ctx.strokeStyle = '#0ea5e9';
+  ctx.lineWidth = 8.6;
+  _traceFlatPts(_ultBoltPts, segs + 1);
+  ctx.stroke();
+
+  // Pass 3: 霹雳耀金内雷层
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#fde047';
+  ctx.lineWidth = 4.8;
+  _traceFlatPts(_ultBoltPts, segs + 1);
+  ctx.stroke();
+
+  // Pass 4: 炽白雷芯锋线
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2.2;
+  _traceFlatPts(_ultBoltPts, segs + 1);
+  ctx.stroke();
+
+  // 伴生细电芒交错副弧（增强雷之呼吸狂暴电弧质感）
+  const subSegs = 8;
+  for (let i = 0; i <= subSegs; i++) {
+    const t = i / subSegs;
+    let jit = 0;
+    if (i > 0 && i < subSegs) {
+      const amp = Math.sin(t * Math.PI) * 12;
+      jit = Math.cos(seed * 9.3 + i * 5.7) * -amp;
+    }
+    _ultSubBoltPts[i * 2] = x1 + dx * t + nx * jit;
+    _ultSubBoltPts[i * 2 + 1] = y1 + dy * t + ny * jit;
+  }
+  ctx.globalAlpha = alpha * 0.85;
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.1;
+  _traceFlatPts(_ultSubBoltPts, subSegs + 1);
+  ctx.stroke();
+  ctx.strokeStyle = '#fef08a';
+  ctx.lineWidth = 1.1;
+  _traceFlatPts(_ultSubBoltPts, subSegs + 1);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawUltGroundEffects(vL, vR, vT, vB, now) {
+  if (typeof ultEffects === 'undefined' || !ultEffects) return;
+
+  // 1. 秘术觉醒：《归墟视界 · 引力坍缩黑洞》（高精吸积盘精灵 + 纤细引力刻度圈）
+  const bh = ultEffects.blackHole;
+  if (bh && bh.active) {
+    const pad = bh.pullR + 24;
+    if (!(bh.x + pad < vL || bh.x - pad > vR || bh.y + pad < vT || bh.y - pad > vB)) {
+      const fadeIn = Math.min(1, (bh.maxT - bh.t + 0.04) / 0.22);
+      const fadeOut = Math.min(1, bh.t / 0.24);
+      const alpha = Math.max(0.05, Math.min(fadeIn, fadeOut));
+      const bhSpr = (typeof SpireAssets !== 'undefined' && SpireAssets.getUltSprite) ? SpireAssets.getUltSprite('blackhole') : null;
+      ctx.save();
+      ctx.translate(bh.x, bh.y);
+      // 外围克制纤细引力视界虚线环（不铺满屏色块）
+      ctx.globalAlpha = alpha * 0.34;
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath();
+      ctx.arc(0, 0, bh.pullR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.globalAlpha = alpha * 0.62;
+      ctx.strokeStyle = '#f5d0fe';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(0, 0, bh.dmgR * (0.94 + Math.sin(now * 0.008) * 0.03), 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.globalAlpha = alpha * 0.96;
+      if (bhSpr && bhSpr.canvas) {
+        const sz = Math.round(bh.dmgR * 1.18);
+        ctx.save();
+        ctx.rotate(bh.rot || 0);
+        ctx.drawImage(bhSpr.canvas, -sz * 0.5, -sz * 0.5, sz, sz);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = '#07040e';
+        ctx.strokeStyle = '#c084fc';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, bh.dmgR * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // 2. 远程觉醒：《天穹剑阵 · 千刃破阵雨》（克制星轨瞄准细环 + 入地剑身残影）
+  const sr = ultEffects.swordRain;
+  if (sr && sr.active) {
+    if (sr.t > 0 && !(sr.x + sr.r < vL || sr.x - sr.r > vR || sr.y + sr.r < vT || sr.y - sr.r > vB)) {
+      const sigA = Math.min(1, sr.t / 0.28) * 0.42;
+      ctx.save();
+      ctx.translate(sr.x, sr.y);
+      ctx.globalAlpha = sigA;
+      ctx.strokeStyle = '#93c5fd';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, sr.r * 0.88, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.2;
+      for (let k = 0; k < 4; k++) {
+        const ka = k * Math.PI * 0.5 + now * 0.0008;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ka) * (sr.r * 0.76), Math.sin(ka) * (sr.r * 0.76));
+        ctx.lineTo(Math.cos(ka) * (sr.r * 0.94), Math.sin(ka) * (sr.r * 0.94));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    const longSpr = (typeof SpireAssets !== 'undefined' && SpireAssets.getUltSprite) ? SpireAssets.getUltSprite('sword_long') : null;
+    const greatSpr = (typeof SpireAssets !== 'undefined' && SpireAssets.getUltSprite) ? SpireAssets.getUltSprite('sword_great') : null;
+    for (let i = 0; i < sr.swords.length; i++) {
+      const sw = sr.swords[i];
+      if (!sw.active || sw.state !== 2) continue;
+      if (sw.tx + 60 < vL || sw.tx - 60 > vR || sw.ty + 60 < vT || sw.ty - 120 > vB) continue;
+      const a = Math.max(0.04, Math.min(1, sw.embedT / Math.max(0.1, sw.maxEmbedT * 0.55)));
+      const spr = sw.isGreat ? greatSpr : longSpr;
+      ctx.save();
+      ctx.translate(sw.tx, sw.ty);
+      ctx.globalAlpha = a;
+      // 石板嵌裂暗痕与冷铁微芒
+      ctx.fillStyle = 'rgba(7, 10, 18, 0.76)';
+      ctx.beginPath();
+      ctx.ellipse(0, 2, sw.isGreat ? 16 : 9, sw.isGreat ? 5.5 : 3.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = sw.isGreat ? '#fbbf24' : '#93c5fd';
+      ctx.lineWidth = sw.isGreat ? 1.8 : 1.2;
+      ctx.beginPath();
+      ctx.moveTo(sw.isGreat ? -18 : -10, 2);
+      ctx.lineTo(sw.isGreat ? 18 : 10, 2);
+      ctx.stroke();
+
+      const tilt = (sw.angle - Math.PI * 0.5) * 0.42;
+      ctx.rotate(tilt);
+      if (spr && spr.canvas) {
+        const dw = sw.isGreat ? 34 : 21;
+        const fullH = sw.isGreat ? 128 : 82;
+        const srcH = Math.round(spr.h * 0.72);
+        const visH = fullH * 0.72;
+        ctx.drawImage(spr.canvas, 0, 0, spr.w, srcH, -dw * 0.5, -visH + 3, dw, visH);
+      } else {
+        ctx.strokeStyle = sw.isGreat ? '#fde68a' : '#bfdbfe';
+        ctx.lineWidth = sw.isGreat ? 4.2 : 2.6;
+        ctx.beginPath();
+        ctx.moveTo(0, 2);
+        ctx.lineTo(0, sw.isGreat ? -74 : -48);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // 3. 近战觉醒：《雷鸣八连 · 霹雳一闪残心》地面焦痕导引与【残心雷印】（主体浓墨沧浪雷光与浮世绘雷浪绘于高空层）
+  const z = ultEffects.zSlash;
+  if (z && (z.active || z.sheatheT > 0 || z.echoT > 0)) {
+    const pts = z.pts;
+    const alpha = z.active ? 1.0 : (z.sheatheT > 0 ? 1.0 : Math.max(0.04, z.echoT / Math.max(0.05, z.maxEchoT)));
+    const tipX = (z.active && player) ? player.x : pts[z.count - 1].x;
+    const tipY = (z.active && player) ? player.y : pts[z.count - 1].y;
+
+    ctx.save();
+    // 冲刺途中预先勾勒后续瞬斩虚线导引，让玩家清晰预判完整 7 连闪动向
+    if (z.active && z.segIdx < z.count - 1) {
+      ctx.globalAlpha = 0.28;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([7, 6]);
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      for (let k = z.segIdx + 1; k < z.count; k++) {
+        ctx.lineTo(pts[k].x, pts[k].y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 地面石板焦黑雷痕余韵
+    const fullNodes = z.active ? (z.segIdx + 1) : z.count;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = alpha * 0.34;
+    ctx.strokeStyle = '#090b10';
+    ctx.lineWidth = 6.5;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let k = 1; k < fullNodes; k++) ctx.lineTo(pts[k].x, pts[k].y);
+    if (z.active) ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+
+    // 被命中的敌人脚下浮现沧浪耀金【残心雷印】，提示收刀瞬间万雷齐爆
+    if ((z.active || z.sheatheT > 0) && z.markedEnemies.length > 0) {
+      for (let mi = 0; mi < z.markedEnemies.length; mi++) {
+        const me = z.markedEnemies[mi];
+        if (!me || me.hp <= 0) continue;
+        const ms = Math.min(18, 10 + (me.r || 16) * 0.24);
+        ctx.globalAlpha = 0.90;
+        ctx.strokeStyle = '#090b10';
+        ctx.lineWidth = 4.2;
+        ctx.beginPath();
+        ctx.moveTo(me.x - ms, me.y - ms); ctx.lineTo(me.x + ms, me.y + ms);
+        ctx.moveTo(me.x + ms, me.y - ms); ctx.lineTo(me.x - ms, me.y + ms);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#0ea5e9';
+        ctx.lineWidth = 2.6;
+        ctx.stroke();
+
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(me.x, me.y - ms * 1.25);
+        ctx.lineTo(me.x + ms * 1.25, me.y);
+        ctx.lineTo(me.x, me.y + ms * 1.25);
+        ctx.lineTo(me.x - ms * 1.25, me.y);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+}
+
+function drawUltAerialEffects(vL, vR, vT, vB, now) {
+  if (typeof ultEffects === 'undefined' || !ultEffects) return;
+
+  // 0. 近战觉醒：《雷鸣八连 · 霹雳一闪残心》（浓墨沧浪雷光长带 + 实机4帧突进残影 + 浮世绘新月雷浪贴图 + 残心天雷齐爆）
+  const z = ultEffects.zSlash;
+  if (z) {
+    const thunderSpr = (typeof SpireAssets !== 'undefined' && SpireAssets.getUltSprite) ? SpireAssets.getUltSprite('thunder_slash') : null;
+    const heroSheet = (typeof SpireAssets !== 'undefined' && SpireAssets.getHeroSheet && player) ? SpireAssets.getHeroSheet(player.cls || 'allrounder', false) : null;
+    const clk = now || 0;
+
+    for (let i = 0; i < z.slashes.length; i++) {
+      const s = z.slashes[i];
+      if (!s.active) continue;
+      const minX = Math.min(s.x0, s.x1) - 150, maxX = Math.max(s.x0, s.x1) + 150;
+      const minY = Math.min(s.y0, s.y1) - 150, maxY = Math.max(s.y0, s.y1) + 150;
+      if (maxX < vL || minX > vR || maxY < vT || minY > vB) continue;
+
+      const a = s.live ? 1.0 : Math.max(0.04, s.t / Math.max(0.05, s.maxT));
+      const dynSeed = s.live ? (s.seed + ((clk * 0.045) | 0) * 0.31) : s.seed;
+      drawKnyThunderRibbon(s.x0, s.y0, s.x1, s.y1, a, dynSeed);
+
+      // 主角第 4 帧（冲刺挥斩帧）半透明残影，同步当前所选魔女/巫女/星使战装
+      if (heroSheet && heroSheet.canvas && a > 0.14) {
+        const gx = s.x0 * 0.24 + s.x1 * 0.76;
+        const gy = s.y0 * 0.24 + s.y1 * 0.76;
+        const gSz = 80;
+        ctx.save();
+        ctx.globalAlpha = a * 0.46;
+        ctx.translate(gx, gy - 8);
+        if (Math.cos(s.ang) < 0) ctx.scale(-1, 1);
+        ctx.drawImage(heroSheet.canvas, heroSheet.cellW * 3, 0, heroSheet.cellW, heroSheet.cellH, -gSz * 0.5, -gSz * 0.5, gSz, gSz);
+        ctx.restore();
+      }
+
+      // 浮世绘浓墨沧浪金雷新月斩波贴图（ult_thunder_slash.png）
+      if (s.waveShown) {
+        const cSz = 184 * (0.86 + (1 - a) * 0.25);
+        ctx.save();
+        ctx.translate(s.x1, s.y1);
+        ctx.rotate(s.ang + (s.flip ? 0.35 : -0.35));
+        ctx.globalAlpha = Math.min(1, a * 1.06);
+        if (thunderSpr && thunderSpr.canvas) {
+          ctx.drawImage(thunderSpr.canvas, -cSz * 0.5, -cSz * 0.5, cSz, cSz);
+        } else {
+          ctx.strokeStyle = '#090b10'; ctx.lineWidth = 10 * a;
+          ctx.beginPath(); ctx.arc(-10, 0, cSz * 0.38, -0.95, 0.95); ctx.stroke();
+          ctx.strokeStyle = '#0ea5e9'; ctx.lineWidth = 6 * a; ctx.stroke();
+          ctx.strokeStyle = '#fde047'; ctx.lineWidth = 3 * a; ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    // 收刀残心 · 万雷齐爆：九霄垂直劈落浓墨沧浪雷柱 + 旋转新月雷浪涡流
+    for (let bi = 0; bi < z.bursts.length; bi++) {
+      const b = z.bursts[bi];
+      if (!b.active) continue;
+      if (b.x + 130 < vL || b.x - 130 > vR || b.y + 110 < vT || b.y - 220 > vB) continue;
+      const p = 1 - b.t / Math.max(0.05, b.maxT);
+      const fade = Math.max(0.04, 1 - p);
+
+      drawKnyThunderRibbon(b.x + (b.flip ? -16 : 16), b.y - 196, b.x, b.y, fade, b.seed);
+
+      const w = b.sz * (0.82 + p * 0.38);
+      const h = b.sz * 0.66 * (0.86 + p * 0.28);
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.rot0 + p * 2.5);
+      ctx.globalAlpha = fade;
+      if (thunderSpr && thunderSpr.canvas) {
+        ctx.drawImage(thunderSpr.canvas, -w * 0.5, -h * 0.5, w, h);
+      } else {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 4.5 * fade;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, w * 0.42, h * 0.42, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // 1. 远程觉醒：《天穹剑阵 · 千刃破阵雨》高空疾坠剑体与破空锋线
+  const sr = ultEffects.swordRain;
+  if (sr && sr.active) {
+    const longSpr = (typeof SpireAssets !== 'undefined' && SpireAssets.getUltSprite) ? SpireAssets.getUltSprite('sword_long') : null;
+    const greatSpr = (typeof SpireAssets !== 'undefined' && SpireAssets.getUltSprite) ? SpireAssets.getUltSprite('sword_great') : null;
+    for (let i = 0; i < sr.swords.length; i++) {
+      const sw = sr.swords[i];
+      if (!sw.active || sw.state !== 1) continue;
+      if (sw.x + 140 < vL || sw.x - 140 > vR || sw.y + 140 < vT || sw.y - 260 > vB) continue;
+      const spr = sw.isGreat ? greatSpr : longSpr;
+      ctx.save();
+      ctx.translate(sw.x, sw.y);
+      ctx.rotate(sw.angle - Math.PI * 0.5);
+      // 利落破空尾迹细线
+      ctx.strokeStyle = sw.isGreat ? 'rgba(253, 224, 71, 0.72)' : 'rgba(147, 197, 253, 0.65)';
+      ctx.lineWidth = sw.isGreat ? 3.2 : 1.8;
+      ctx.beginPath();
+      ctx.moveTo(0, sw.isGreat ? -95 : -60);
+      ctx.lineTo(0, sw.isGreat ? -210 : -145);
+      ctx.stroke();
+
+      if (spr && spr.canvas) {
+        const dw = sw.isGreat ? 38 : 23;
+        const dh = sw.isGreat ? 142 : 90;
+        ctx.drawImage(spr.canvas, -dw * 0.5, -dh, dw, dh);
+      } else {
+        ctx.fillStyle = sw.isGreat ? '#fde68a' : '#dbeafe';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-5, -68);
+        ctx.lineTo(5, -68);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  // 2. 机关觉醒：《钟楼重工 · 镇岳重型臼炮》高速重型黄铜榴弹与高精爆轰贴图
+  const shellsPool = ultEffects.cannonShells;
+  for (let i = 0; i < shellsPool.length; i++) {
+    const sh = shellsPool[i];
+    if (!sh.active) continue;
+    if (sh.x + 40 < vL || sh.x - 40 > vR || sh.y + 40 < vT || sh.y - 40 > vB) continue;
+    const ang = Math.atan2(sh.vy, sh.vx);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.58)';
+    ctx.lineWidth = 4.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sh.px, sh.py);
+    ctx.lineTo(sh.x, sh.y);
+    ctx.stroke();
+
+    ctx.translate(sh.x, sh.y);
+    ctx.rotate(ang);
+    ctx.fillStyle = '#fbbf24';
+    ctx.strokeStyle = '#18181b';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(10, 0);
+    ctx.lineTo(2, -4.8);
+    ctx.lineTo(-8, -4.2);
+    ctx.lineTo(-8, 4.2);
+    ctx.lineTo(2, 4.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#fef9c3';
+    ctx.beginPath();
+    ctx.arc(3, 0, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const expSpr = (typeof SpireAssets !== 'undefined' && SpireAssets.getUltSprite) ? SpireAssets.getUltSprite('explosion') : null;
+  const blasts = ultEffects.blasts;
+  for (let i = 0; i < blasts.length; i++) {
+    const bl = blasts[i];
+    if (!bl.active) continue;
+    if (bl.x + bl.r < vL || bl.x - bl.r > vR || bl.y + bl.r < vT || bl.y - bl.r > vB) continue;
+    const p = 1 - bl.t / Math.max(0.02, bl.maxT);
+    const alpha = p < 0.25 ? 1 : Math.max(0.04, 1 - (p - 0.25) / 0.75);
+    const sz = bl.r * (0.72 + p * 0.42) * 1.45;
+    ctx.save();
+    ctx.translate(bl.x, bl.y);
+    ctx.rotate(bl.rot || 0);
+    ctx.globalAlpha = alpha;
+    if (expSpr && expSpr.canvas) {
+      ctx.drawImage(expSpr.canvas, -sz * 0.5, -sz * 0.5, sz, sz);
+    } else {
+      ctx.strokeStyle = '#fb923c';
+      ctx.lineWidth = 4 * alpha;
+      ctx.beginPath();
+      ctx.arc(0, 0, sz * 0.4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 function tracePolygon(verts) {
   if (!verts || !verts.length) return;
   ctx.beginPath();
@@ -2145,6 +2603,9 @@ function draw() {
       }
     }
 
+    // 四流派【觉醒大招】地面特效层（绘于角色/魔物下方，确保金雷Z字斩期间人物动向 100% 清晰无遮挡）
+    drawUltGroundEffects(vL, vR, vT, vB, now);
+
     // 异星晶树、炮台、怪物、土豆英雄按 Y 轴深度排序渲染（零闭包分配 + 视锥剔除）
     renderList.length = 0;
     for (let i = 0; i < trees.length; i++) {
@@ -2174,6 +2635,13 @@ function draw() {
       t._rk = 1;
       renderList.push(t);
     }
+    if (typeof ultEffects !== 'undefined' && ultEffects.cannon && ultEffects.cannon.active) {
+      const cn = ultEffects.cannon;
+      if (!(cn.x + 70 < vL || cn.x - 70 > vR || cn.y + 70 < vT || cn.y - 70 > vB)) {
+        cn._rk = 4;
+        renderList.push(cn);
+      }
+    }
     if (player) {
       player._rk = 2;
       renderList.push(player);
@@ -2193,6 +2661,7 @@ function draw() {
       }
       else if (it._rk === 1) drawTurretSprite(it);
       else if (it._rk === 3) drawTreeSprite(it);
+      else if (it._rk === 4) drawUltHeavyCannon(it);
       else drawPotatoHero();
     }
 
@@ -2317,6 +2786,9 @@ function draw() {
       ctx.stroke();
       ctx.restore();
     }
+
+    // 四流派【觉醒大招】高空浓墨雷光、飞剑、重炮榴弹与爆轰贴图层
+    drawUltAerialEffects(vL, vR, vT, vB, now);
 
     // 投射物绘制（火焰气流、电浆球、冰锥、弹弓圆石、旋转手里剑、火箭弹头、带辉光曳光弹）
     for (let i = 0; i < bullets.length; i++) {

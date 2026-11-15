@@ -1083,8 +1083,30 @@ function drawPotatoHero() {
   ctx.beginPath(); ctx.ellipse(p.x, p.y + 24, 24.2, 9.0, 0, 0, Math.PI * 2); ctx.stroke();
 
   // 2. 4 帧动作精灵表状态机与柔顺插值绘制（仅真实扣血受击时柔和微闪，瞬步/过场无敌态不闪白）
-  const hurtFlash = (p.hurtFlashT || 0) > 0 && (((p.hurtFlashT * 16) | 0) % 2 === 0);
-  const inAtkPose = (p._atkPoseT || 0) > 0;
+  const inZSlash = typeof ultEffects !== 'undefined' && ultEffects && ultEffects.zSlash && ultEffects.zSlash.active;
+  if (inZSlash) {
+    const zAng = ultEffects.zSlash.curSegAng || p.lookA || 0;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.92)';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.ellipse(p.x, p.y + 22, 30, 11, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.translate(p.x, p.y + 18);
+    ctx.rotate(zAng);
+    ctx.fillStyle = '#fde047';
+    ctx.strokeStyle = '#0c0a06';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(38, 0);
+    ctx.lineTo(20, -9);
+    ctx.lineTo(25, 0);
+    ctx.lineTo(20, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+  const hurtFlash = !inZSlash && (p.hurtFlashT || 0) > 0 && (((p.hurtFlashT * 16) | 0) % 2 === 0);
+  const inAtkPose = inZSlash || (p._atkPoseT || 0) > 0;
   const desiredFace = (inAtkPose && p._atkAimX !== undefined && Math.abs(p._atkAimX) > 0.16)
     ? (p._atkAimX < 0 ? -1 : 1)
     : (p.faceDir || 1);
@@ -1099,10 +1121,10 @@ function drawPotatoHero() {
   const visFlip = Math.abs(p._visFlip) < 0.24 ? (p._visFlip < 0 ? -0.24 : 0.24) : p._visFlip;
 
   if (heroSheet && heroSheet.canvas) {
-    // 仅在主动灵魂瞬步（inDash）期间绘制精简残影，移除后期高移速常驻精灵表重绘开销
+    // 仅在主动灵魂瞬步（inDash）或觉醒Z字闪斩期间绘制精简残影，移除后期高移速常驻精灵表重绘开销
     const inDash = (p.dashT || 0) > 0;
-    if (inDash) {
-      _pushGhostTrail(p, now, 3, visFlip < 0 ? -1 : 1, 32, 0.42);
+    if (inDash || inZSlash) {
+      _pushGhostTrail(p, now, 3, visFlip < 0 ? -1 : 1, inZSlash ? 22 : 32, inZSlash ? 0.36 : 0.42);
     }
     _decayAndDrawGhostTrail(p, dt, SpireAssets.getHeroSheet(p.cls, false) || heroSheet, drawSize, footAnchorY);
 
@@ -1130,7 +1152,8 @@ function drawPotatoHero() {
     ctx.scale(visFlip * sxScale, syScale);
     if (p.cls === 'ghost') ctx.globalAlpha = 0.93;
     const cw = heroSheet.cellW, ch = heroSheet.cellH;
-    const sx = Math.min(heroSheet.frames - 1, Math.max(0, p._curFrameIdx || 0)) * cw;
+    const frameIdx = inZSlash ? (heroSheet.frames - 1) : Math.min(heroSheet.frames - 1, Math.max(0, p._curFrameIdx || 0));
+    const sx = frameIdx * cw;
     ctx.drawImage(heroSheet.canvas, sx, 0, cw, ch, -drawSize * 0.5, -drawSize * 0.93, drawSize, drawSize);
     ctx.restore();
   } else {
@@ -1441,3 +1464,67 @@ function getBloodMoonWaveSprite() {
   return _bloodMoonWaveCanvas;
 }
 globalThis.getBloodMoonWaveSprite = getBloodMoonWaveSprite;
+
+// ⚙️ 机关觉醒《钟楼重工 · 镇岳重型臼炮》高精双层分体精灵绘制（Y轴深度排序，底座锚定 + 360°旋转后坐炮管 + 持续读条）
+function drawUltHeavyCannon(c) {
+  if (!c || !c.active) return;
+  const baseSpr = (typeof SpireAssets !== 'undefined' && SpireAssets.getUltSprite) ? SpireAssets.getUltSprite('cannon_base') : null;
+  const barrelSpr = (typeof SpireAssets !== 'undefined' && SpireAssets.getUltSprite) ? SpireAssets.getUltSprite('cannon_barrel') : null;
+
+  ctx.save();
+  // 地面承重锚定阴影与精工黄铜刻度圈
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.50)';
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y + 15, 36, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.42)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y + 14, 39, 15.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  if (baseSpr && baseSpr.canvas) {
+    const bw = 88, bh = 74;
+    ctx.drawImage(baseSpr.canvas, c.x - bw * 0.5, c.y - bh * 0.68, bw, bh);
+  } else {
+    ctx.fillStyle = '#27272a';
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.roundRect(c.x - 26, c.y - 16, 52, 30, 6);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // 360° 索敌旋转重炮管 + 真实开火后坐缩退
+  const rec = c.recoil || 0;
+  const ang = c.angle || 0;
+  ctx.save();
+  ctx.translate(c.x - Math.cos(ang) * rec, c.y - 10 - Math.sin(ang) * rec);
+  ctx.rotate(ang);
+  if (Math.cos(ang) < 0) ctx.scale(1, -1);
+  if (barrelSpr && barrelSpr.canvas) {
+    const lw = 96, lh = 50;
+    ctx.drawImage(barrelSpr.canvas, -lw * 0.30, -lh * 0.50, lw, lh);
+  } else {
+    ctx.fillStyle = '#3f3f46';
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.roundRect(-16, -11, 56, 22, 4);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 紧凑黑曜鎏金驻场倒计时条
+  const ratio = Math.max(0, Math.min(1, c.life / Math.max(0.1, c.maxLife)));
+  const barW = 48, barY = c.y + 24;
+  ctx.fillStyle = 'rgba(7, 10, 18, 0.86)';
+  ctx.fillRect(c.x - barW * 0.5, barY, barW, 5);
+  ctx.fillStyle = ratio > 0.28 ? '#fbbf24' : '#fb7185';
+  ctx.fillRect(c.x - barW * 0.5 + 1, barY + 1, (barW - 2) * ratio, 3);
+  ctx.restore();
+}
+globalThis.drawUltHeavyCannon = drawUltHeavyCannon;

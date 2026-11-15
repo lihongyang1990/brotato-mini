@@ -517,6 +517,8 @@ function update(dt) {
     }
   }
   if (player.dashCd > 0) player.dashCd = Math.max(0, player.dashCd - dt);
+  if (player.ultCd > 0) player.ultCd = Math.max(0, player.ultCd - dt);
+  if (player.ultInvulnT > 0) player.ultInvulnT = Math.max(0, player.ultInvulnT - dt);
   if (player.dashHasteT > 0) player.dashHasteT = Math.max(0, player.dashHasteT - dt);
   if (player.dashSurgeT > 0) player.dashSurgeT = Math.max(0, player.dashSurgeT - dt);
   if (player._salvoCd > 0) player._salvoCd = Math.max(0, player._salvoCd - dt);
@@ -1150,7 +1152,10 @@ function update(dt) {
     dx = joy.dx; dy = joy.dy; moveScale = joy.mag;
   }
   const prevPx = player.x, prevPy = player.y;
-  if ((player.iceFreezeT || 0) > 0) {
+  const zSlashActive = typeof ultEffects !== 'undefined' && ultEffects.zSlash && ultEffects.zSlash.active;
+  if (zSlashActive) {
+    player.walkT += dt * 24;
+  } else if ((player.iceFreezeT || 0) > 0) {
     player.dashT = 0;
     player.moving = false;
     player.vx = 0;
@@ -1224,6 +1229,10 @@ function update(dt) {
     const targetLean = Math.max(-0.11, Math.min(0.11, (player.vx / Math.max(160, player.spd)) * 0.085));
     player._leanA = (player._leanA || 0) + (targetLean - (player._leanA || 0)) * Math.min(1, dt * 16);
   }
+  if (typeof updateUltEffects === 'function') {
+    updateUltEffects(dt);
+    if (state !== 'wave') return;
+  }
   const movedStep = Math.hypot(player.x - prevPx, player.y - prevPy);
   if (player.strideQuake && movedStep > 0.1 && !(player.dashT > 0)) {
     player._strideDist = (player._strideDist || 0) + movedStep;
@@ -1284,7 +1293,9 @@ function update(dt) {
     const dSq = dxN * dxN + dyN * dyN;
     if (dSq < nearestDSq) { nearestDSq = dSq; nearestE = e; }
   }
-  if (nearestE) player.lookA = Math.atan2(nearestE.y - player.y, nearestE.x - player.x);
+  if (nearestE && !(typeof ultEffects !== 'undefined' && ultEffects.zSlash && ultEffects.zSlash.active)) {
+    player.lookA = Math.atan2(nearestE.y - player.y, nearestE.x - player.x);
+  }
 
   // 36 把武器自动索敌、攻击范围加成与全流派差异化攻击表现（全面复用缓存，零临时数组分配）
   const setB = getSetBonuses();
@@ -4353,6 +4364,26 @@ function update(dt) {
       if (dwEl) dwEl.classList.toggle('cooling', dashCooling);
       const dtEl = hudEls.dashTouchBtn || (hudEls.dashTouchBtn = document.getElementById('dashTouchBtn'));
       if (dtEl) dtEl.classList.toggle('cooling', dashCooling);
+    }
+
+    // 同步桌面端 [E] 觉醒大招充能条 & 移动端拇指觉醒键状态
+    const uSpec = typeof getPlayerUltimateSpec === 'function' ? getPlayerUltimateSpec(player) : null;
+    const uCd = player.ultCd || 0;
+    const uMax = Math.max(1.0, player.ultMaxCd || (uSpec ? uSpec.cd : 12.0));
+    const ultCooling = uCd > 0.02;
+    const ultPct = ultCooling ? Math.max(0, Math.min(100, (1 - uCd / uMax) * 100)) : 100;
+    const uIcon = uSpec ? uSpec.icon : '⚡';
+    const uShort = uSpec ? uSpec.shortName : '霹雳连闪';
+    setHudWidth('hudUltFill', ultPct.toFixed(1) + '%');
+    setHudText('hudUltText', ultCooling ? `${uIcon} ${uShort} ${uCd.toFixed(1)}s` : `${uIcon} 觉醒就绪 [E] · ${uShort}`);
+    setHudText('ultTouchIcon', uIcon);
+    setHudText('ultTouchLabel', ultCooling ? `${uCd.toFixed(1)}s` : '觉醒');
+    if (hudCache.ultCooling !== ultCooling) {
+      hudCache.ultCooling = ultCooling;
+      const uwEl = hudEls.hudUltWrap || (hudEls.hudUltWrap = document.getElementById('hudUltWrap'));
+      if (uwEl) uwEl.classList.toggle('cooling', ultCooling);
+      const utEl = hudEls.ultTouchBtn || (hudEls.ultTouchBtn = document.getElementById('ultTouchBtn'));
+      if (utEl) utEl.classList.toggle('cooling', ultCooling);
     }
 
     let bossCnt = 0, bossCur = 0, bossTot = 0, anyMythicBoss = false, activeCastLabel = '';

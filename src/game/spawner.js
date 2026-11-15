@@ -1181,6 +1181,12 @@ function beginWave(retryMeta = null) {
   player.shield = player.maxShield;
   player.shieldRegenT = 7;
   player.mineCd = 1.25;
+  player.ultCd = 0;
+  player.ultInvulnT = 0;
+  if (typeof resetUltEffects === 'function') resetUltEffects();
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmUltSprites === 'function') {
+    SpireAssets.warmUltSprites();
+  }
   enemies = []; bullets = []; eBullets = []; hazards = []; drops = []; spawns = []; turrets = []; mines = []; rings = []; trees = [];
   relics = []; sporeZones = []; banners = []; bossCutscene = null; pendingBossCutscene = null; sandGustT = 0;
   texts = []; particles = []; sparks = []; lightnings = []; slashes = []; beams = []; stains = []; shells = [];
