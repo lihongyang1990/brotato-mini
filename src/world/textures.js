@@ -480,6 +480,8 @@ function computeFloorBakeScale(worldW, worldH, mobilePerf, deviceDpr) {
   return Math.max(0.85, Math.min(capScale, Math.round(rawScale * 100) / 100));
 }
 
+let floorBakedWithArenaArt = false;
+
 function buildFloorTexture() {
   const sc = curScene || SCENES[0];
   const pad = FLOOR_PAD;
@@ -497,6 +499,7 @@ function buildFloorTexture() {
   bakedSceneKey = `${WORLD.w}x${WORLD.h}_${floorBakeScale}_${sc.id}_${sceneSeed}`;
 
   const bgArt = (typeof getSpireArenaBgImage === 'function') ? getSpireArenaBgImage(sc.id) : null;
+  floorBakedWithArenaArt = !!(bgArt && (bgArt.naturalWidth || bgArt.width));
   const g = floorCanvas.getContext('2d', { alpha: false });
   g.setTransform(floorBakeScale, 0, 0, floorBakeScale, 0, 0);
   g.imageSmoothingEnabled = true;

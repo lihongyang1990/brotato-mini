@@ -4,6 +4,21 @@
 
 ---
 
+## [v2.1.21] - 2026-11-15
+### 📱 手机端剧情改为【全屏触屏任意处继续】（移除右下角继续键） + 🖼️ 移动端贴图加载与 GPU 画布池深度优化 + ⚖️ 手机端怪量 `-20%` & 金币 `+20%` 专项平衡
+- **手机端剧情演出全屏触屏继续 & 移除右下角继续键（`src/game/director.js`、`styles/narrative.css`）**：
+  - 在手机竖屏、手机横屏及 `body.m-ui` 触控视界下隐藏 `.story-next` 与 `.story-cinematic-next`（`display: none !important`），释放底部阅读视野并消除单手够右下角小按钮的操作负担；
+  - 将剧情点击监听统一收口至 `#spireNarrative` 根节点：除顶部工具栏（回看 / 自动 / 隐藏 / 跳过已读 / 退出预览）、分支选项面板与回看弹窗外，轻触 **CG 原画、过场字幕、章节扉页、对话框/角色名栏/底栏或屏幕留白任意位置** 均可平顺推进台词，同时完整保留长句上下滑动防误触拦截与 `轻触屏幕任意处继续` 提示。
+- **深度根治移动端偶发未刷出贴图 / 贴图静默空白的六大底层诱因（`src/data/boss_portraits.js`、`src/game/director.js`、`src/core/audio.js`、`src/world/textures.js`、`src/render/renderer.js`、`src/render/sprites.js`）**：
+  - **消除 WebKit 离屏 2D Canvas 数量超限引发的贴图静默丢失**：移除 `ensureSpriteEntry` 为 45 种怪物/场景道具逐一常驻分配 `<canvas>` 的设计（改用常驻 `_pinnedImages` 强引用解码后的 `HTMLImageElement` 直绘，并将移动端受击/精英染色 LRU 画布池上限由 `24` 下调至 `12`），使全局活跃 2D Canvas 总数始终远低于移动端 iOS WebKit IOSurface 硬上限；
+  - **屏上急需贴图 LIFO 插队抢占 + 严格高低优隔离 + 去重预热**：`getMonsterSprite` / `getHeroSheet` / `getPropSprite` 渲染请求支持 `'urgent'` 插队置顶拉取；移动端高优并发收敛为 `4` 槽位防蜂窝队头阻塞，且高优队列非空时暂停启动低优剧情大图；`director.js` 的 `warmArtPath` 统一走 `SpireAssets.loadImage` 消除重复裸 `Image()` 抢占带宽；
+  - **蜂窝弱网容错与底图延迟重烘焙**：看门狗超时放宽至 `14s / 20s`、重试增至 `4` 次且前两次保留标准缓存 URL；进战初期外部 `~3MB` WAV 音轨最多让路 `1.25s` 优先保障战斗贴图秒出；竞技场原画在首帧烘焙后延迟就绪时，`draw()` 自动探测并触发二次高清地坪重烘焙。
+- **手机端战斗密度与金币产出专项平衡（`src/data/arsenal.js`、`src/game/spawner.js`、`src/game/update.js`）**：
+  - 新增 `MOBILE_MOB_COUNT_MUL = 0.80` 与 `MOBILE_GOLD_YIELD_MUL = 1.20`（仅对 `isMobileCombatBalance()` 即 `uiMode !== 'desktop'` 生效，桌面端 PC 与触屏笔记本保持 100% 原版数值不变，全体首领数量不变）；
+  - 手机端非首领怪物开场群、持续刷新批次（无偏伯努利取整）、远程同屏上限、自爆虫软上限与全局活跃怪物上限统一下调 **20%**，同时全体非首领小怪 `mat` 晶石/金币产出同步上调 **+20%**（自动联动拾取金币、经验与回合末地面清扫回收），兼顾小屏走位爽快感、帧率稳定与商店发育强度。
+
+---
+
 ## [v2.1.20] - 2026-11-15
 ### 🎁 全体首领秘宝箱改为【击败直接获得 · 无需拾取】 & 🐛 修复召唤首领击败后丢箱 Bug
 - **首领秘宝统一改为击败即刻直接入袋（`src/game/combat.js`、`src/game/spawner.js`）**：

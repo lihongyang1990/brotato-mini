@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.20 全系首领秘宝改为击败直接入袋无需拾取 + 修复召唤首领在无尽超时死战/满箱时丢箱 Bug）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.21 手机端全屏触屏继续移除右下角继续键 + 深度根治移动端贴图漏刷/显存超限空白 + 手机端怪物数量-20%且金币产出+20%专项平衡）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,13 +16,22 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.20';
+const APP_VERSION = 'v2.1.21';
 const APP_BUILD_DATE = '2026-11-15';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.20', date: '2026-11-15', tag: '当前版本 · 首领秘宝箱改为击败直接入袋无需拾取 · 修复召唤首领丢箱 Bug',
+    ver: 'v2.1.21', date: '2026-11-15', tag: '当前版本 · 手机端全屏轻触继续 · 贴图加载与GPU缓存深度优化 · 手机端怪量-20%金币+20%平衡',
+    title: '📱 手机端剧情改为【全屏轻触任意处继续】移除右下角继续键 + 🖼️ 根治移动端贴图漏刷/IOSurface画布超限空白 + ⚖️ 手机端怪物数量 -20% & 金币产出 +20% 平衡调优',
+    items: [
+      '👆 手机端剧情演出改为【全屏轻触任意处继续】：彻底隐藏手机竖屏/横屏/触控视界右下角的「继续 ›」按钮；除顶部功能栏、剧情选项与对白回看外，轻触 CG 画幅、过场字幕、章节扉页、对话框任意位置或屏幕留白均可推进台词（保留长文本上下滑动阅读防误触保护）！',
+      '🖼️ 深度根治移动端偶发未刷出怪物/地面贴图的六大底层诱因：1) 移除怪物/道具贴图的 45 张常驻离屏 2D Canvas 预烘焙（直绘常驻解码 HTMLImageElement + LRU 染色池紧缩至 12 张），彻底消除手机 WebKit 超出 ~64 张 IOSurface 上限后静默清空贴图的问题；2) 屏上急需贴图支持 LIFO 插队抢占置顶拉取，后台剧情图严格让路并消除重复裸 Image 请求；3) 放宽蜂窝网络看门狗超时至 14s、前两次重试保留标准缓存 URL，且进战初期 3MB WAV 音轨自动为高优贴图让出带宽；4) 竞技场底图延迟就绪时自动触发二次地坪重烘焙！',
+      '⚖️ 手机端战斗节奏与经济专项平衡：手机端（竖屏/横屏/触控视界）非首领怪物开场群、持续刷新量与同屏活跃上限统一下调 20%（降低小屏走位拥挤度与渲染负载），同时全体非首领小怪封魂晶石/金币产出相应提高 +20%，确保手机端商店成型节奏与桌面端完全对齐！'
+    ]
+  },
+  {
+    ver: 'v2.1.20', date: '2026-11-15', tag: '首领秘宝箱改为击败直接入袋无需拾取 · 修复召唤首领丢箱 Bug',
     title: '🎁 全体首领/统领/祭坛主宰【秘宝箱】改为击败即刻直接获得（无需跑尸拾取） + 🐛 修复无尽超时死战与满箱吞掉召唤首领秘宝 Bug',
     items: [
       '🎁 全体首领秘宝改为【击败直接入袋 · 无需拾取】：讨伐五大祭坛召唤首领、主线/无尽层域主宰、幕中先锋统领以及隐藏二阶段神话形态时，【首领秘宝箱】与【传说秘宝舱】不再掉落地面等待走过去触碰，而是在首领阵亡瞬间100%直接发放至角色囊中（顶部 HUD 实时显示「遗匣×N」，回合结算即刻开启）！',

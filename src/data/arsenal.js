@@ -243,6 +243,11 @@ const SHOP_REROLL_HALF_RECOVERY_MUL = 0.50;
 const SHOP_REROLL_RECOVERY_MUL = 0.80;
 const BOSS_SIZE_MUL = 1.20;
 const MOB_DMG_MUL = 0.90;
+const MOBILE_MOB_COUNT_MUL = 0.80;
+const MOBILE_GOLD_YIELD_MUL = 1.20;
+function isMobileCombatBalance() {
+  return typeof uiMode !== 'undefined' && uiMode !== 'desktop';
+}
 function getShopRerollRecoveryMul(w) {
   const wv = Math.round(Number(w) || 0);
   return (wv === 3 || wv === 6 || wv === 9 || wv === 12)
@@ -260,6 +265,9 @@ if (typeof globalThis !== 'undefined') {
   globalThis.getShopRerollRecoveryMul = getShopRerollRecoveryMul;
   globalThis.BOSS_SIZE_MUL = BOSS_SIZE_MUL;
   globalThis.MOB_DMG_MUL = MOB_DMG_MUL;
+  globalThis.MOBILE_MOB_COUNT_MUL = MOBILE_MOB_COUNT_MUL;
+  globalThis.MOBILE_GOLD_YIELD_MUL = MOBILE_GOLD_YIELD_MUL;
+  globalThis.isMobileCombatBalance = isMobileCombatBalance;
 }
 const BOSS_HP_MUL = 4.80;
 const LATE_BOSS_HP_MUL = 9.60;

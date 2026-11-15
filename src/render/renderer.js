@@ -689,6 +689,8 @@ function drawCrispArenaBalustrade(vL, vR, vT, vB, sceneId) {
   ctx.restore();
 }
 
+let _lastFloorArtProbeAt = 0;
+
 // 战场主相机裁剪渲染、首领预警提示、悬浮摇杆绘制与 RAF 主循环
 function draw() {
   const now = performance.now();
@@ -708,6 +710,15 @@ function draw() {
   const halfH = (viewH / camZoom) * 0.5;
   const vL = cam.x - halfW - 64, vR = cam.x + halfW + 64;
   const vT = cam.y - halfH - 64, vB = cam.y + halfH + 64;
+
+  // 若首帧烘焙时竞技场底图仍在蜂窝网络下载中，每 450ms 自动探测并在就绪瞬间重烘焙一次
+  if (typeof floorBakedWithArenaArt !== 'undefined' && !floorBakedWithArenaArt && now - _lastFloorArtProbeAt > 450) {
+    _lastFloorArtProbeAt = now;
+    const probeScId = (curScene && curScene.id) || 'foundry';
+    if (typeof getSpireArenaBgImage === 'function' && getSpireArenaBgImage(probeScId) && typeof buildFloorTexture === 'function') {
+      buildFloorTexture();
+    }
+  }
 
   // 直接绘制常驻 GPU 硬件纹理的 <=3840px 超清地坪贴图（消除每帧动态子矩形取整与双网格叠加引起的闪烁抖动）
   if (floorCanvas.width > 2 && floorCanvas.height > 2) {

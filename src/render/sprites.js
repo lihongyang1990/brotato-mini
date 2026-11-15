@@ -1388,7 +1388,13 @@ function drawEnemySprite(e) {
         : (isMini ? Math.max(161, r * 3.08) : Math.max(60, r * 3.22));
       const sc = targetSize / Math.max(16, Math.max(spr.w, spr.h));
       const dw = spr.w * sc, dh = spr.h * sc;
-      ctx.drawImage(spr.canvas, -dw * 0.5, -dh * 0.56, dw, dh);
+      try {
+        ctx.drawImage(spr.canvas, -dw * 0.5, -dh * 0.56, dw, dh);
+      } catch (_) {
+        if (spr.rawImg && spr.rawImg !== spr.canvas) {
+          try { ctx.drawImage(spr.rawImg, -dw * 0.5, -dh * 0.56, dw, dh); } catch (_e) {}
+        }
+      }
     } else {
       // 极端弱网贴图流式解码过渡期：绘制哥特暗影魔偶剪影（斗篷肩甲+双角+魂瞳），彻底告别纯色圆球占位
       const bodyCol = flash ? '#f8d7da' : '#161d2e';

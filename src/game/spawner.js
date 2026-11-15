@@ -1312,13 +1312,16 @@ function beginWave(retryMeta = null) {
     sceneEventT = 999;
   }
 
-  // 非首领层开场立即刷出合围前锋群（蚀界生存试炼严格只保留 30% 怪物数量！）
+  // 非首领层开场立即刷出合围前锋群（手机端下调 20% 怪物数量；蚀界生存试炼严格只保留 30% 怪物数量）
   if (!isBossWave) {
+    const mobCountMul = (typeof isMobileCombatBalance === 'function' && isMobileCombatBalance())
+      ? (typeof MOBILE_MOB_COUNT_MUL === 'number' ? MOBILE_MOB_COUNT_MUL : 0.80)
+      : 1.0;
     const earlyOpenMul = wave <= 2 ? 0.62 : (wave <= 4 ? 0.70 : (wave === 5 ? 0.80 : (wave === 6 ? 0.94 : 1.0)));
     const baseOpen = Math.max(2, Math.round((wave === 1 ? 5 : 4) * earlyOpenMul * diff.spawnMul));
-    const rawOpen = survivalTrialWave ? (baseOpen * 0.30) : baseOpen;
-    const openCnt = survivalTrialWave
-      ? (Math.floor(rawOpen) + (Math.random() < (rawOpen - Math.floor(rawOpen)) ? 1 : 0))
+    const rawOpen = baseOpen * mobCountMul * (survivalTrialWave ? 0.30 : 1.0);
+    const openCnt = (survivalTrialWave || mobCountMul < 1)
+      ? Math.max(survivalTrialWave ? 0 : 1, Math.floor(rawOpen) + (Math.random() < (rawOpen - Math.floor(rawOpen)) ? 1 : 0))
       : baseOpen;
     for (let oi = 0; oi < openCnt; oi++) {
       const oa = (oi / Math.max(1, openCnt)) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
@@ -1560,7 +1563,10 @@ function pickWaveEnemyType(wv) {
     return 'chaser';
   }
   const rangedCountMul = typeof RANGED_ENEMY_COUNT_MUL === 'number' ? RANGED_ENEMY_COUNT_MUL : 0.80;
-  const maxRanged = Math.max(2, Math.round(Math.min(12, 3 + Math.floor(wave * 0.85)) * rangedCountMul));
+  const mobCountMul = (typeof isMobileCombatBalance === 'function' && isMobileCombatBalance())
+    ? (typeof MOBILE_MOB_COUNT_MUL === 'number' ? MOBILE_MOB_COUNT_MUL : 0.80)
+    : 1.0;
+  const maxRanged = Math.max(1, Math.round(Math.min(12, 3 + Math.floor(wave * 0.85)) * rangedCountMul * mobCountMul));
   const allowRanged = countActiveRangedEnemies() < maxRanged;
 
   const isExclRanged = !!(curScene.exclMob && RANGED_ENEMY_TYPES.has(curScene.exclMob));
@@ -2062,12 +2068,19 @@ function createEnemy(x, y, type, variant = '') {
 
   const lateCoinMul = wave >= 6 ? 0.80 : (wave === 5 ? 0.90 : 1.00);
   const trialCoinMul = (typeof survivalTrialWave !== 'undefined' && survivalTrialWave) ? 1.40 : 1.00;
+  const isMobBal = typeof isMobileCombatBalance === 'function' && isMobileCombatBalance();
+  const mobileCoinMul = isMobBal
+    ? (typeof MOBILE_GOLD_YIELD_MUL === 'number' ? MOBILE_GOLD_YIELD_MUL : 1.20)
+    : 1.00;
   if (type === 'swarmer') {
-    const softCap = isTouch ? 64 : 80;
+    const baseSoftCap = isTouch ? 64 : 80;
+    const softCap = isMobBal
+      ? Math.max(24, Math.round(baseSoftCap * (typeof MOBILE_MOB_COUNT_MUL === 'number' ? MOBILE_MOB_COUNT_MUL : 0.80)))
+      : baseSoftCap;
     const swCnt = Math.max(1, Math.min(wave >= 6 ? 3 : 2, softCap - (enemies.length + Math.max(0, spawns.length - 1))));
     for (let k = 0; k < swCnt; k++) {
       const ox = x + (Math.random() - 0.5) * 54, oy = y + (Math.random() - 0.5) * 54;
-      const swMat = +((k === 0 ? 0.90 : 0.45) * lateCoinMul * trialCoinMul).toFixed(2);
+      const swMat = +((k === 0 ? 0.90 : 0.45) * lateCoinMul * trialCoinMul * mobileCoinMul).toFixed(2);
       enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * mobDm)), color: '#ffbe0b', type, mat: swMat });
     }
     addBurst(x, y, '#ff4d6d', 5, 85);
@@ -2200,10 +2213,10 @@ function createEnemy(x, y, type, variant = '') {
     ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(3.8 * mobDm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
   }
 
-  // 中后期普通与特异小怪晶石产出下调约 20%（配合 dropCrystals 概率单枚掉落，不再爆大号金币堆；蚀界试炼小怪额外补偿晶石）
+  // 中后期普通与特异小怪晶石产出下调约 20%（手机端为适配 -20% 怪物数量相应提升 +20% 金币/晶石产出，平衡手机端经济曲线）
   const isBossLike = type === 'boss' || type === 'mini_boss' || type === 'special_boss';
   if (!isBossLike) {
-    ent.mat = +((ent.mat || 0) * lateCoinMul * trialCoinMul).toFixed(2);
+    ent.mat = +((ent.mat || 0) * lateCoinMul * trialCoinMul * mobileCoinMul).toFixed(2);
   }
   // 第 3 波起按难度刷出双形态【狂化精英词缀怪】（蚀界生存试炼期间禁用狂化精英词缀）：
   // 1) frenzy（血怒狂化 · 隐隐发红）：相对基础精英形态额外获得 血量+20%、移速+20%、攻速+20%（无亡语弹）；
