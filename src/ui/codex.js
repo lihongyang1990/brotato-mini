@@ -1,5 +1,12 @@
 // 📖 《烬塔残响》圣典全图鉴交互与原画展示引擎（全面接入角色立绘、分层域 Q 版怪物贴图与层域全景图）
-let codexTab = 'weapons', codexFilter = 'all', codexPrevState = 'menu';
+let codexTab = 'weapons', codexFilter = 'all', codexPrevState = 'menu', codexSynergyOpen = false;
+
+function toggleCodexSynergy() {
+  codexSynergyOpen = !codexSynergyOpen;
+  beep(475, 0.03, 'triangle', 0.025);
+  renderCodex();
+}
+globalThis.toggleCodexSynergy = toggleCodexSynergy;
 
 function _spireImgUrl(relPath) {
   if (!relPath) return '';
@@ -13,6 +20,7 @@ function openCodex(initialTab) {
   if (state === 'wave') pauseGame();
   if (state !== 'codex') codexPrevState = state;
   if (initialTab) { codexTab = initialTab; codexFilter = 'all'; }
+  codexSynergyOpen = false;
   beep(520, 0.05, 'triangle', 0.04);
   renderCodex();
   const modal = document.getElementById('codexModal');
@@ -31,6 +39,7 @@ function closeCodex() {
 function setCodexTab(tab) {
   codexTab = tab;
   codexFilter = 'all';
+  codexSynergyOpen = false;
   beep(490, 0.035, 'triangle', 0.03);
   renderCodex();
   const sc = document.getElementById('codexScroll');
@@ -39,6 +48,7 @@ function setCodexTab(tab) {
 
 function setCodexFilter(f) {
   codexFilter = f;
+  if (SET_DEFS && SET_DEFS[f]) codexSynergyOpen = false;
   beep(460, 0.03, 'triangle', 0.025);
   renderCodex();
   const sc = document.getElementById('codexScroll');
@@ -72,6 +82,7 @@ function renderCodex() {
 
   filtersEl.innerHTML = '';
   bannerEl.innerHTML = '';
+  bannerEl.classList.remove('is-weapons-banner', 'is-synergy-open');
   gridEl.innerHTML = '';
   gridEl.classList.toggle('wide', codexTab === 'heroes' || codexTab === 'monsters' || codexTab === 'world');
 
@@ -94,8 +105,28 @@ function renderCodex() {
       { id: 'staff', label: '🪄秘术法杖' },
       ...Object.entries(SET_DEFS).map(([k, v]) => ({ id: k, label: v.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '') }))
     ]);
-    bannerEl.innerHTML = Object.values(SET_DEFS)
-      .map(s => `<span class="set-pill"><b>${s.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')}</b> ${s.desc}</span>`).join('');
+    bannerEl.classList.toggle('is-synergy-open', !!codexSynergyOpen);
+    bannerEl.classList.toggle('is-weapons-banner', true);
+    if (SET_DEFS[codexFilter]) {
+      const selSet = SET_DEFS[codexFilter];
+      const selName = selSet.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '');
+      bannerEl.innerHTML = `
+        <div class="codex-active-set-row">
+          <span class="set-pill active-set-pill"><b>${selName}</b> ${selSet.desc}</span>
+          <button type="button" class="codex-syn-toggle" onclick="setCodexFilter('all')">全部兵装 ✕</button>
+        </div>`;
+    } else {
+      const setEntries = Object.entries(SET_DEFS);
+      const pillsHtml = setEntries
+        .map(([k, s]) => `<span class="set-pill" role="button" tabindex="0" onclick="setCodexFilter('${k}')"><b>${s.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')}</b> ${s.desc}</span>`)
+        .join('');
+      bannerEl.innerHTML = `
+        <button type="button" class="codex-syn-bar" onclick="toggleCodexSynergy()">
+          <span class="codex-syn-summary">✦ 流派与四象元素羁绊总览（共 ${setEntries.length} 项 · 点此或点上方流派筛选）</span>
+          <span class="codex-syn-pill">${codexSynergyOpen ? '收起 ▴' : '展开羁绊 ▾'}</span>
+        </button>
+        <div class="codex-syn-list">${pillsHtml}</div>`;
+    }
     Object.entries(WEAPONS).forEach(([id, w]) => {
       if (codexFilter === 'melee' && !w.melee) return;
       if (codexFilter === 'ranged' && (w.melee || w.isStaff)) return;

@@ -1322,17 +1322,24 @@ function renderShop() {
       const titleTxt = survivalTrialQueued
         ? `🕯️ 已缔结蚀界契约 · 第 ${nextFloorNum} 层化为 ${trialSec} 秒绝境渡劫`
         : `🕯️ 蚀界生存试炼 · 将第 ${nextFloorNum} 层改为 ${trialSec} 秒身法躲避关`;
+      const mobTitleTxt = survivalTrialQueued
+        ? `🕯️ 已签第${nextFloorNum}层(${trialSec}s) · 奖◇${minGoldComp}~${maxGoldComp}+紫金匣`
+        : `🕯️ 蚀界试炼(${trialSec}s身法关) · 奖◇${minGoldComp}~${maxGoldComp}+紫金匣`;
       const btnTxt = survivalTrialQueued ? '✓ 已开启试炼（点击取消）' : '🕯️ 踏入蚀界试炼';
+      const mobBtnTxt = survivalTrialQueued ? '✓ 已开启' : '🕯️ 开启试炼';
       trialBar.innerHTML = `
         <div class="shop-trial-info">
-          <div class="shop-trial-head">
-            <span class="shop-trial-title">${titleTxt}</span>
-            <span class="shop-trial-pill">${actLabel}</span>
-            <span class="shop-trial-pill gold">保底补偿 ◇${minGoldComp}~${maxGoldComp} & 必得紫/金秘匣</span>
+          <div class="shop-trial-desk">
+            <div class="shop-trial-head">
+              <span class="shop-trial-title">${titleTxt}</span>
+              <span class="shop-trial-pill">${actLabel}</span>
+              <span class="shop-trial-pill gold">保底补偿 ◇${minGoldComp}~${maxGoldComp} & 必得紫/金秘匣</span>
+            </div>
+            <div class="shop-trial-desc">七类天外弹道与蚀界裂隙来袭 · 怪物仅留 <b>30%</b>（掉落晶石提升） · 浓雾提灯视野 · 撑满 <b>${trialSec}秒</b> 补偿 <b>◇${minGoldComp}~${maxGoldComp}</b> 晶石并必出<b>紫/金武器与道具</b>！</div>
           </div>
-          <div class="shop-trial-desc">七类天外弹道与蚀界裂隙来袭 · 怪物仅留 <b>30%</b>（掉落晶石提升） · 浓雾提灯视野 · 撑满 <b>${trialSec}秒</b> 补偿 <b>◇${minGoldComp}~${maxGoldComp}</b> 晶石并必出<b>紫/金武器与道具</b>！</div>
+          <div class="shop-trial-mob">${mobTitleTxt}</div>
         </div>
-        <button type="button" id="shopTrialToggleBtn" class="shop-trial-toggle${survivalTrialQueued ? ' is-armed' : ''}" onclick="toggleSurvivalTrial()">${btnTxt}</button>`;
+        <button type="button" id="shopTrialToggleBtn" class="shop-trial-toggle${survivalTrialQueued ? ' is-armed' : ''}" onclick="toggleSurvivalTrial()"><span class="shop-trial-btn-desk">${btnTxt}</span><span class="shop-trial-btn-mob">${mobBtnTxt}</span></button>`;
     }
   }
 
@@ -1610,8 +1617,9 @@ function showSpireEndMenu(win, ending = '') {
   const background = !win && wave === 4
     ? 'assets/spire/v2/player-defeat-clean.png'
     : `assets/spire/scene_${actIndex}_vista.jpg`;
-  const imageUrl = typeof resolveSpireAssetUrl === 'function' ? resolveSpireAssetUrl(background) :
-    ((typeof window !== 'undefined' && window.__SPIRE_INLINE_ASSETS__ && window.__SPIRE_INLINE_ASSETS__[background]) || background);
+  const imageUrl = (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.resolve === 'function') ? SpireAssets.resolve(background) :
+    (typeof resolveSpireAssetUrl === 'function' ? resolveSpireAssetUrl(background) :
+    ((typeof window !== 'undefined' && window.__SPIRE_INLINE_ASSETS__ && window.__SPIRE_INLINE_ASSETS__[background]) || background));
   if (em.style && typeof em.style.setProperty === 'function') em.style.setProperty('--ending-art', `url("${imageUrl}")`);
   em.classList.remove('hidden');
   em.scrollTop = 0;

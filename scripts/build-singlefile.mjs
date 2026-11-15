@@ -54,10 +54,24 @@ for (const subDir of ['assets/spire', 'assets/audio']) {
       const ext = path.extname(name).toLowerCase();
       // Reference boards contain baked UI and are documentation, not runtime art.
       if (!MIME_BY_EXT[ext] || name.endsWith('-reference.png')) continue;
-      inlineAssets[path.relative(ROOT, abs).split(path.sep).join('/')] = toDataUri(abs);
+      const relKey = path.relative(ROOT, abs).split(path.sep).join('/');
+      // For opaque V2/V3 story CGs & atlases, skip encoding multi-MB .png when its 1672x941 Q82 .jpg twin exists;
+      // runtime & tests get both .jpg and .png keys pointing to the lightweight JPEG data URI.
+      if (/^assets\/spire\/v[23]\/.+\.png$/i.test(relKey)) {
+        const jpgTwin = abs.slice(0, -4) + '.jpg';
+        if (fs.existsSync(jpgTwin)) continue;
+      }
+      inlineAssets[relKey] = toDataUri(abs);
     }
   };
   collect(absDir);
+}
+const serializedInlineAssets = { ...inlineAssets };
+for (const k of Object.keys(serializedInlineAssets)) {
+  if (/^assets\/spire\/v[23]\/.+\.jpg$/i.test(k)) {
+    const pngAlias = k.slice(0, -4) + '.png';
+    if (!inlineAssets[pngAlias]) inlineAssets[pngAlias] = serializedInlineAssets[k];
+  }
 }
 
 // Collect all CSS <link rel="stylesheet" href="...">
@@ -108,7 +122,7 @@ bundled = bundled.replace(
 );
 
 // Replace script tags with inline asset registry + combined JS <script>
-const inlineAssetsScript = `<script id="spire-inline-assets-v240">\nwindow.__SPIRE_INLINE_ASSETS__ = ${JSON.stringify(inlineAssets)};\n</script>`;
+const inlineAssetsScript = `<script id="spire-inline-assets-v240">\nwindow.__SPIRE_INLINE_ASSETS__ = ${JSON.stringify(serializedInlineAssets)};\nfor (const k of Object.keys(window.__SPIRE_INLINE_ASSETS__)) {\n  if (/^assets\\/spire\\/v[23]\\/.+\\.jpg$/i.test(k)) {\n    const p = k.slice(0, -4) + '.png';\n    if (!window.__SPIRE_INLINE_ASSETS__[p]) window.__SPIRE_INLINE_ASSETS__[p] = window.__SPIRE_INLINE_ASSETS__[k];\n  }\n}\n</script>`;
 const scriptBlockRegex = /(?:\s*<!--[^\n]*脚本[^\n]*-->\r?\n)?(?:\s*<script\s+defer\s+src="[^"]+"\s*><\/script>\r?\n)+/;
 if (!scriptBlockRegex.test(bundled)) {
   throw new Error('Failed to locate deferred script block in index.html for replacement');

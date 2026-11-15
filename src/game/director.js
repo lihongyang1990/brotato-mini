@@ -35,7 +35,52 @@ const SpireDirector = (function () {
     }
   } catch (_) {}
   const once = fn => { let done = false; return () => { if (!done) { done = true; if (fn) fn(); } }; };
-  const source = path => (window.__SPIRE_INLINE_ASSETS__ && window.__SPIRE_INLINE_ASSETS__[path]) || path;
+  const _artCache = Object.create(null);
+  function fastStoryPath(path) {
+    if (typeof path === 'string' && /^assets\/spire\/v[23]\/(?!.*-reference\.png$).+\.png$/i.test(path)) {
+      return path.slice(0, -4) + '.jpg';
+    }
+    return path;
+  }
+  function source(path) {
+    if (!path) return '';
+    if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.resolve === 'function') {
+      return SpireAssets.resolve(path);
+    }
+    const fast = fastStoryPath(path);
+    const inline = window.__SPIRE_INLINE_ASSETS__;
+    if (inline) return inline[fast] || inline[path] || path;
+    return fast;
+  }
+  function warmArtPath(path, highPriority) {
+    if (!path || typeof Image === 'undefined') return null;
+    const url = source(path);
+    if (!url) return null;
+    let entry = _artCache[url];
+    if (!entry) {
+      const img = new Image();
+      img.decoding = 'async';
+      if (highPriority) { try { img.fetchPriority = 'high'; } catch (_) {} }
+      entry = { img, ready: false, decoded: false };
+      _artCache[url] = entry;
+      const markReady = () => {
+        entry.ready = true;
+        if (!entry.decoded && typeof img.decode === 'function') {
+          entry.decoded = true;
+          try { const p = img.decode(); if (p && p.catch) p.catch(() => {}); } catch (_) {}
+        }
+      };
+      img.onload = markReady;
+      img.src = url;
+      if (img.complete && (img.naturalWidth || img.width)) markReady();
+    } else if (highPriority && !entry.ready) {
+      try { entry.img.fetchPriority = 'high'; } catch (_) {}
+    }
+    if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.loadImage === 'function') {
+      SpireAssets.loadImage(path, null, null, !!highPriority);
+    }
+    return entry;
+  }
   const isStory = () => !(typeof endlessMode !== 'undefined' && endlessMode);
   const floorData = n => D.floors[Math.max(0, Math.min(15, Number(n) - 1))];
   const bossKey = n => BOSS[Math.max(0, Math.min(3, Math.ceil(Number(n) / 4) - 1))];
@@ -90,9 +135,21 @@ const SpireDirector = (function () {
     if (ui) return;
     const root = node('section', 'spire-narrative hidden', document.body); root.id = 'spireNarrative'; root.tabIndex = -1;
     root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', '剧情演出');
-    const frame = node('div', 'story-film-frame', root), artWindow = node('div', 'story-art-window', frame), camera = node('div', 'story-camera', artWindow), image = node('img', 'story-scene-image', camera);
-    image.alt = ''; image.draggable = false; image.addEventListener('load', fitArt);
-    image.addEventListener('error', () => { const art = image._storyArt; if (art && art.fallback) setArt(art.fallback); else frame.classList.add('art-unavailable'); });
+    const frame = node('div', 'story-film-frame', root), artWindow = node('div', 'story-art-window', frame), backdrop = node('div', 'story-art-backdrop', artWindow), camera = node('div', 'story-camera', artWindow), image = node('img', 'story-scene-image', camera);
+    image.alt = ''; image.draggable = false; image.decoding = 'async'; image.loading = 'eager';
+    try { image.fetchPriority = 'high'; } catch (_) {}
+    backdrop.style.backgroundImage = 'url("' + source(A + 'title-clean.png') + '")';
+    image.addEventListener('load', () => {
+      artWindow.classList.remove('art-loading');
+      const art = image._storyArt;
+      if (art && !art.cols && image.src) backdrop.style.backgroundImage = 'url("' + image.src + '")';
+      fitArt();
+    });
+    image.addEventListener('error', () => {
+      const art = image._storyArt;
+      if (art && art.fallback) setArt(art.fallback);
+      else { artWindow.classList.remove('art-loading'); frame.classList.add('art-unavailable'); }
+    });
     frame.addEventListener('click', () => advanceOrSkip(false));
     const atmosphere = node('div', 'story-atmosphere', frame), particles = [];
     for (let i = 0; i < 8; i++) particles.push(node('i', 'story-particle', atmosphere));
@@ -100,6 +157,7 @@ const SpireDirector = (function () {
     node('div', 'story-film-shade', root);
     const left = node('img', 'story-portrait story-portrait-left', root), right = node('img', 'story-portrait story-portrait-right', root);
     left.alt = right.alt = ''; left.draggable = right.draggable = false;
+    left.decoding = right.decoding = 'async'; left.loading = right.loading = 'eager';
     const toolbar = node('div', 'story-toolbar', root), chapter = node('div', 'story-chapter', toolbar), controls = node('div', 'story-controls', toolbar);
     const logBtn = button('回看', '', controls, toggleLog, '回看已显示的对白');
     const autoBtn = button('自动', '', controls, toggleAutoPlay, '切换自动阅读');
@@ -123,7 +181,7 @@ const SpireDirector = (function () {
     const log = node('div', 'story-log hidden', root); log.setAttribute('role', 'dialog'); log.setAttribute('aria-label', '对白回看');
     const logHead = node('div', 'story-log-head', log); node('h2', '', logHead, '刚才的话');
     const logClose = button('返回剧情', '', logHead, toggleLog), logList = node('div', 'story-log-list', log); logList.tabIndex = 0;
-    ui = { root, frame, artWindow, camera, image, atmosphere, particles, light, shutter, left, right, toolbar, chapter, logBtn, autoBtn, skipBtn, sizeBtn, closeBtn, dialog, nameRow, listener, name, role, progress, text, accessible, readHint, nextBtn, cinematic, cinName, cinText, cinNext, titleCard, overline, title, subtitle, choices, restore, log, logList, logClose };
+    ui = { root, frame, artWindow, backdrop, camera, image, atmosphere, particles, light, shutter, left, right, toolbar, chapter, logBtn, autoBtn, skipBtn, sizeBtn, closeBtn, dialog, nameRow, listener, name, role, progress, text, accessible, readHint, nextBtn, cinematic, cinName, cinText, cinNext, titleCard, overline, title, subtitle, choices, restore, log, logList, logClose };
     root.addEventListener('click', ev => { if (hidden && ev.target !== restore) setHidden(false); });
     // A reading gesture must never become a "next line" click after native scrolling.
     root.addEventListener('pointerdown', ev => { pointerTrack = { id: ev.pointerId, x: ev.clientX, y: ev.clientY }; suppressDragClick = false; if (cur) cur.readHold = 1.2; }, { passive: true });
@@ -253,14 +311,24 @@ const SpireDirector = (function () {
       animate(particle, rain ? [{ transform: 'translate3d(35px,0,0) rotate(12deg)', opacity: 0 }, { opacity: .2, offset: .18 }, { opacity: .13, offset: .8 }, { transform: 'translate3d(-90px,' + (h + 120) + 'px,0) rotate(12deg)', opacity: 0 }] : [{ transform: 'translate3d(0,20px,0)', opacity: 0 }, { opacity: .28, offset: .3 }, { opacity: .16, offset: .7 }, { transform: 'translate3d(' + (i % 2 ? 34 : -24) + 'px,-80px,0)', opacity: 0 }], { duration, delay: -(i * duration / count), iterations: Infinity, easing: 'linear' }, 'atmosphere');
     }
     if (art.standalone && !['grief', 'mirror'].includes(motionPreset)) animate(ui.light, [{ opacity: 0 }, { opacity: .1 }, { opacity: .025 }], { duration: 11000, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' }, 'light');
-    if (transition) animate(ui.shutter, [{ opacity: .92 }, { opacity: 0 }], { duration: motionPreset === 'rupture' ? 360 : motionPreset === 'grief' ? 1000 : 700, easing: 'ease-out', fill: 'both' }, 'transition');
+    if (transition) animate(ui.shutter, [{ opacity: .38 }, { opacity: 0 }], { duration: motionPreset === 'rupture' ? 280 : motionPreset === 'grief' ? 680 : 420, easing: 'ease-out', fill: 'both' }, 'transition');
     syncMotionState();
   }
   function setArt(art) {
     if (!ui || !art) return; const signature = art.path + ':' + (art.panel || 0) + ':' + (art.mood || 'quiet'), changed = signature !== artSignature;
     ui.frame.classList.remove('art-unavailable'); ui.image._storyArt = art; artSignature = signature;
     ui.root.setAttribute('data-art-format', art.cols ? 'atlas' : art.standalone ? 'cg' : 'background');
-    if (ui.image.getAttribute('data-art-path') !== art.path) { ui.image.setAttribute('data-art-path', art.path); ui.image.src = source(art.path); }
+    const resolved = source(art.path);
+    warmArtPath(art.path, true);
+    if (ui.image.getAttribute('data-art-path') !== art.path || (ui.image.complete && !ui.image.naturalWidth)) {
+      ui.artWindow.classList.add('art-loading');
+      ui.image.setAttribute('data-art-path', art.path);
+      ui.image.src = resolved;
+    }
+    if (ui.image.complete && ui.image.naturalWidth > 0) {
+      ui.artWindow.classList.remove('art-loading');
+      if (!art.cols && ui.image.src) ui.backdrop.style.backgroundImage = 'url("' + ui.image.src + '")';
+    }
     fitArt(); if (changed || !motion.length) startSceneMotion(changed); else syncMotionState();
   }
   function fitArt() {
@@ -292,15 +360,47 @@ const SpireDirector = (function () {
     if (cur.awaitingScroll !== waiting) { cur.awaitingScroll = waiting; syncText(); }
   }
   function resetInput() { if (typeof resetJoy === 'function') resetJoy(); if (typeof keys !== 'undefined' && keys) for (const k of Object.keys(keys)) keys[k] = false; }
+  function warmSceneItem(item, highPriority) {
+    if (!item || item.kind === 'callback') return;
+    const art = item.art || vista(item.floor || 1);
+    if (art && art.path) warmArtPath(art.path, highPriority);
+    if (art && art.fallback && art.fallback.path && !highPriority) warmArtPath(art.fallback.path, false);
+    if (item.kind === 'dialogue' && item.portraits !== false && Array.isArray(item.lines)) {
+      warmArtPath(castPortraitPath('zero'), false);
+      for (let i = 0; i < item.lines.length; i++) {
+        const sid = speakerId(item.lines[i] && item.lines[i].speaker);
+        if (sid && sid !== 'zero') { warmArtPath(castPortraitPath(sid), false); break; }
+      }
+    }
+  }
+  function preloadUpcoming() {
+    if (cur) warmSceneItem(cur, true);
+    const limit = Math.min(queue.length, 5);
+    for (let i = 0; i < limit; i++) warmSceneItem(queue[i], i < 2);
+  }
+  function preloadStoryEntry(floorNum) {
+    const n = Math.max(1, Math.min(16, Math.floor(Number(floorNum) || 1)));
+    warmArtPath(A + 'title-clean.png', false);
+    if (n === 1) {
+      const op = openingScenes();
+      for (let i = 0; i < op.length; i++) warmSceneItem(op[i], i < 3);
+      const q0 = qingyuScenes(D.qingyu_arc.stages[0]);
+      for (let i = 0; i < q0.length; i++) warmSceneItem(q0[i], false);
+    }
+    warmArtPath(vista(n).path, n > 1);
+    const fb = floorBefore(n);
+    for (let i = 0; i < fb.length; i++) warmSceneItem(fb[i], n > 1);
+  }
   function enqueue(items, done) {
     if (typeof done === 'function') items = items.concat([{ kind: 'callback', callback: once(done) }]);
-    queue.push.apply(queue, items); if (!cur) next();
+    queue.push.apply(queue, items); preloadUpcoming(); if (!cur) next();
   }
   function next() {
     if (cur) return;
     while (queue.length && queue[0].kind === 'callback') { queue.shift().callback(); if (cur) return; }
     if (!queue.length) { hideStage(); return; }
     cur = queue.shift(); Object.assign(cur, { idx: 0, elapsed: 0, lineElapsed: 0, wait: 0, readHold: 0, awaitingScroll: false, revealed: false, logged: false });
+    preloadUpcoming();
     ensureUi(); resetInput(); if (ui.root.classList.contains('hidden')) previousFocus = document.activeElement;
     ui.root.classList.remove('hidden'); document.body.classList.add('story-presenting');
     hidden = logOpen = false; ui.log.classList.add('hidden'); ui.root.classList.remove('story-ui-hidden');
@@ -585,7 +685,7 @@ const SpireDirector = (function () {
   function getRunState() { return { seen: Object.assign({}, seen) }; }
   function restoreRunState(value) { seen = Object.assign({}, value && value.seen || {}); }
   return { CHAR_CAST: CAST, onResize: fitArt, abortActive, resetForNewRun, triggerHitstop, toggleAutoPlay, setAutoPlay, isAutoPlay: () => auto,
-    playOpeningSequence, onWaveStart, onBossPhase2, onBossDefeated, onFloorCleared, onPlayerDefeated, onFinalChoice, playEnding,
+    playOpeningSequence, preloadStoryEntry, onWaveStart, onBossPhase2, onBossDefeated, onFloorCleared, onPlayerDefeated, onFinalChoice, playEnding,
     advanceOrSkip, update, render: function () {}, isBlockingGameplay: isActive, isActive, getTimeScale: () => hitstop > 0 ? .04 : 1,
     replayEvent, getReplayEvents, closeReplay, getPreferences, setPreferences, getState, choose, getRunState, restoreRunState,
     toggleLog, setHidden, setSkipRead: value => { skipRead = !!value; syncControls(); } };

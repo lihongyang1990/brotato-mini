@@ -1390,10 +1390,33 @@ function drawEnemySprite(e) {
       const dw = spr.w * sc, dh = spr.h * sc;
       ctx.drawImage(spr.canvas, -dw * 0.5, -dh * 0.56, dw, dh);
     } else {
-      ctx.fillStyle = flash ? '#f8d7da' : (e.color || '#be123c');
-      ctx.strokeStyle = '#090d16';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // 极端弱网贴图流式解码过渡期：绘制哥特暗影魔偶剪影（斗篷肩甲+双角+魂瞳），彻底告别纯色圆球占位
+      const bodyCol = flash ? '#f8d7da' : '#161d2e';
+      const trimCol = flash ? '#ffffff' : (e.color || '#be123c');
+      ctx.fillStyle = bodyCol;
+      ctx.strokeStyle = trimCol;
+      ctx.lineWidth = Math.max(1.8, r * 0.11);
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 1.18);
+      ctx.lineTo(r * 0.68, -r * 0.36);
+      ctx.lineTo(r * 0.92, r * 0.72);
+      ctx.lineTo(r * 0.34, r * 0.46);
+      ctx.lineTo(0, r * 0.84);
+      ctx.lineTo(-r * 0.34, r * 0.46);
+      ctx.lineTo(-r * 0.92, r * 0.72);
+      ctx.lineTo(-r * 0.68, -r * 0.36);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // 双角/冠冕与发光魂瞳
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.36, -r * 0.82); ctx.lineTo(-r * 0.64, -r * 1.32); ctx.lineTo(-r * 0.12, -r * 0.98);
+      ctx.moveTo(r * 0.36, -r * 0.82);  ctx.lineTo(r * 0.64, -r * 1.32);  ctx.lineTo(r * 0.12, -r * 0.98);
+      ctx.fillStyle = trimCol;
+      ctx.fill();
+      ctx.fillStyle = flash ? '#090d16' : '#fde68a';
+      ctx.fillRect(-r * 0.32, -r * 0.42, Math.max(2.2, r * 0.22), Math.max(2, r * 0.14));
+      ctx.fillRect(r * 0.10, -r * 0.42, Math.max(2.2, r * 0.22), Math.max(2, r * 0.14));
     }
     ctx.restore();
   }
