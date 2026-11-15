@@ -1,4 +1,4 @@
-// 核心画布环境、DPR 像素比与全局品质常量（v2.1.19 首领剧毒龙息立体流体特效重制 + 赤烬魂灯杖重做为 Dota2 卡尔式「混沌陨石」天降翻滚碾压火路）
+// 核心画布环境、DPR 像素比与全局品质常量（v2.1.20 全系首领秘宝改为击败直接入袋无需拾取 + 修复召唤首领在无尽超时死战/满箱时丢箱 Bug）
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     const rad = Math.min(typeof r === 'number' ? r : 4, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
@@ -16,13 +16,21 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.19';
+const APP_VERSION = 'v2.1.20';
 const APP_BUILD_DATE = '2026-11-15';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.19', date: '2026-11-15', tag: '当前版本 · Dota2卡尔式混沌陨石法杖 · 首领剧毒龙息特效重制',
+    ver: 'v2.1.20', date: '2026-11-15', tag: '当前版本 · 首领秘宝箱改为击败直接入袋无需拾取 · 修复召唤首领丢箱 Bug',
+    title: '🎁 全体首领/统领/祭坛主宰【秘宝箱】改为击败即刻直接获得（无需跑尸拾取） + 🐛 修复无尽超时死战与满箱吞掉召唤首领秘宝 Bug',
+    items: [
+      '🎁 全体首领秘宝改为【击败直接入袋 · 无需拾取】：讨伐五大祭坛召唤首领、主线/无尽层域主宰、幕中先锋统领以及隐藏二阶段神话形态时，【首领秘宝箱】与【传说秘宝舱】不再掉落地面等待走过去触碰，而是在首领阵亡瞬间100%直接发放至角色囊中（顶部 HUD 实时显示「遗匣×N」，回合结算即刻开启）！',
+      '🐛 修复召唤首领击败后没给宝箱的底层 Bug：1) 修复无尽模式下进入「超时死战」击杀祭坛首领会当帧立即结束回合、且无尽结算漏回收地面宝箱直接清空掉落物导致丢箱的问题；2) 解除普通精英宝箱单波 3 枚上限对首领秘宝的误拦截，首领秘宝独立保底绝不折算丢失！'
+    ]
+  },
+  {
+    ver: 'v2.1.19', date: '2026-11-15', tag: 'Dota2卡尔式混沌陨石法杖 · 首领剧毒龙息特效重制',
     title: '☄️ 赤烬魂灯杖重做为 Dota 2 卡尔式【混沌陨石】（天外斜坠 + 3D熔岩巨石翻滚碾压 + 焦土火路） + 🐉 首领【剧毒龙息】特效全面重制',
     items: [
       '☄️ 法杖【赤烬魂灯杖】火球重做为 Dota 2 祈求者卡尔同款【混沌陨石 (Chaos Meteor)】：施法后巨型 3D 龟裂黑曜熔岩陨石自九霄斜坠轰击落点，随后沿施法者→目标向量方向一路沉重向前翻滚推进（无限穿透群怪、每 0.26 秒造成接触碾压重伤并顺向推挤点燃），同时沿翻滚车辙铺开整条熊熊燃烧的【焦土熔火长廊】（五阶赫利俄斯进化并排召唤双巨陨犁地，九幽进化召唤青焰毒火冥陨）；并修复地面法术区透明度衰减字段错配导致法阵偏淡的问题！',

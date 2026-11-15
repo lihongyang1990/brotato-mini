@@ -1347,6 +1347,37 @@ function killEnemyRewards(e) {
   awardEnemyRewards(e);
 }
 
+// 首领秘宝箱与二阶段传说秘宝舱统一直接发放进结算队列（无需走过去拾取，不受普通宝箱数量上限拦截，超时死战秒结算绝不丢失）
+function grantBossCrateDirect(opts = {}) {
+  if (!player) return false;
+  const isMythic = !!opts.isMythic;
+  pendingCrates++;
+  if (isMythic) {
+    player.mythicCratesQueued = (player.mythicCratesQueued || 0) + 1;
+  } else {
+    player.bossCratesQueued = (player.bossCratesQueued || 0) + 1;
+  }
+  const fxX = Number.isFinite(opts.x) ? opts.x : player.x;
+  const fxY = Number.isFinite(opts.y) ? opts.y : player.y;
+  if (typeof rings !== 'undefined' && Array.isArray(rings) && rings.length < 36) {
+    rings.push({ x: fxX, y: fxY, r: isMythic ? 116 : 92, color: '#ffd166', t: 0.28, maxT: 0.28, kind: 'star' });
+  }
+  addText(
+    player.x,
+    player.y - 36,
+    isMythic ? `◆ 传说秘宝舱已直接入袋！（遗匣×${pendingCrates}）` : `◆ 首领秘宝已直接入袋！（遗匣×${pendingCrates}）`,
+    '#ffd166',
+    19,
+    2.1,
+    true
+  );
+  beep(isMythic ? 940 : 880, 0.13, 'triangle', 0.068);
+  return true;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.grantBossCrateDirect = grantBossCrateDirect;
+}
+
 // 真正的奖励只由击败流程调用一次。主线首领在告别演出结束后才抵达这里。
 function awardEnemyRewards(e) {
   if (!e || e._rewarded || !player || player.hp <= 0) return;
@@ -1460,47 +1491,47 @@ function awardEnemyRewards(e) {
     }
   }
 
-  // 若击败的是【隐藏二阶段·真红神话形态】首领，额外爆出必出传说装的【神话秘宝舱】与永久弑神赐福！
+  // 若击败的是【隐藏二阶段·真红神话形态】首领，额外直接获得必出传说装的【神话秘宝舱】与永久弑神赐福！
   if (e.mythicPhase2 && !e.storyPhaseBoss) {
     dropCrystals(e.x, e.y, 36, true);
     player.dmgMul += 0.15;
     player.critDmg = (player.critDmg || 0) + 0.25;
-    drops.push({ x: e.x + 14, y: e.y, kind: 'crate', isBoss: true, isMythic: true, bob: 0 });
-    addText(e.x, e.y - e.r - 36, '◆ 弑神秘宝！全伤+15% 暴伤+25% + 传说舱!', '#ffd166', 19, 2.8);
-    announce('◆ 成功讨伐隐藏二阶段首领！获永久弑神赐福并掉落【传说秘宝舱】！', '#ffd166', 4.5);
+    grantBossCrateDirect({ isMythic: true, x: e.x, y: e.y });
+    addText(e.x, e.y - e.r - 36, '◆ 弑神秘宝！全伤+15% 暴伤+25% + 传说舱已入袋!', '#ffd166', 19, 2.8);
+    announce('◆ 成功讨伐隐藏二阶段首领！获永久弑神赐福并直接获得【传说秘宝舱】（结算开启）！', '#ffd166', 4.5);
   }
 
   if (e.type === 'special_boss') {
     beep(840, 0.16, 'triangle', 0.07);
     if (e.variant === 'crimson_lord') {
       player.hp = player.maxHp;
-      drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
-      addText(e.x, e.y - e.r - 22, '◆ 鲜血赐福：满血恢复 + 首领秘宝！', '#ff4d6d', 18, 2.5);
-      announce('◆ 击败猩红血主！已恢复满生命并掉落首领秘宝箱', '#ff758f', 3.8);
+      grantBossCrateDirect({ isMythic: false, x: e.x, y: e.y });
+      addText(e.x, e.y - e.r - 22, '◆ 鲜血赐福：满血恢复 + 首领秘宝已入袋！', '#ff4d6d', 18, 2.5);
+      announce('◆ 击败猩红血主！已恢复满生命并直接获得【首领秘宝箱】（结算开启）', '#ff758f', 3.8);
     } else if (e.variant === 'golden_golem') {
-      drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
-      addText(e.x, e.y - e.r - 22, '◆ 黄金秘宝崩裂：巨量晶石 + 首领秘宝！', '#ffd166', 18, 2.5);
-      announce('◆ 击败黄金巨神！爆出海量晶石与首领秘宝箱', '#ffd166', 3.8);
+      grantBossCrateDirect({ isMythic: false, x: e.x, y: e.y });
+      addText(e.x, e.y - e.r - 22, '◆ 黄金秘宝：巨量晶石 + 首领秘宝已入袋！', '#ffd166', 18, 2.5);
+      announce('◆ 击败黄金巨神！爆出海量晶石并直接获得【首领秘宝箱】（结算开启）', '#ffd166', 3.8);
     } else if (e.variant === 'mech_colossus') {
       player.techBonus = (player.techBonus || 0) + 0.14;
       player.atkSpd += 0.08;
-      drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
-      addText(e.x, e.y - e.r - 22, '◆ 机神赐福：工程+14% 攻速+8% + 首领秘宝！', '#f77f00', 18, 2.5);
-      announce('◆ 击败祭坛倒悬机神！工程伤害永久 +14%、攻速 +8% 并掉首领秘宝箱', '#fbbf24', 3.8);
+      grantBossCrateDirect({ isMythic: false, x: e.x, y: e.y });
+      addText(e.x, e.y - e.r - 22, '◆ 机神赐福：工程+14% 攻速+8% + 首领秘宝已入袋！', '#f77f00', 18, 2.5);
+      announce('◆ 击败祭坛倒悬机神！工程伤害永久 +14%、攻速 +8% 并直接获得【首领秘宝箱】', '#fbbf24', 3.8);
     } else if (e.variant === 'plague_empress') {
       player.maxHp += 10;
       player.hp = Math.min(player.maxHp, player.hp + 10);
       if (!player.noRegen) player.regen += 1.5;
-      drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
-      addText(e.x, e.y - e.r - 22, '◆ 苍岚赐福：生命+10 再生+1.5 + 首领秘宝！', '#52b788', 18, 2.5);
-      announce('◆ 击败祭坛残羽魔女！最大生命 +10、再生 +1.5/s 并掉首领秘宝箱', '#80ed99', 3.8);
+      grantBossCrateDirect({ isMythic: false, x: e.x, y: e.y });
+      addText(e.x, e.y - e.r - 22, '◆ 苍岚赐福：生命+10 再生+1.5 + 首领秘宝已入袋！', '#52b788', 18, 2.5);
+      announce('◆ 击败祭坛残羽魔女！最大生命 +10、再生 +1.5/s 并直接获得【首领秘宝箱】', '#80ed99', 3.8);
     } else {
       player.dmgMul += 0.12;
-      drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
-      addText(e.x, e.y - e.r - 22, '◆ 虚空赐福：全伤永久+12% + 首领秘宝！', '#c77dff', 18, 2.5);
-      announce('◆ 击败深渊噬界者！全体伤害永久 +12% 并掉首领秘宝箱', '#e0aaff', 3.8);
+      grantBossCrateDirect({ isMythic: false, x: e.x, y: e.y });
+      addText(e.x, e.y - e.r - 22, '◆ 虚空赐福：全伤永久+12% + 首领秘宝已入袋！', '#c77dff', 18, 2.5);
+      announce('◆ 击败深渊噬界者！全体伤害永久 +12% 并直接获得【首领秘宝箱】', '#e0aaff', 3.8);
     }
-    logInfo('SPECIAL_BOSS', `击杀特殊首领 ${e.bossTitle || e.variant}`);
+    logInfo('SPECIAL_BOSS', `击杀特殊首领 ${e.bossTitle || e.variant} · 首领秘宝已直接入袋(pendingCrates=${pendingCrates})`);
   } else {
     const luck = Math.min(90, Math.max(0, player.luck || 0));
     let cratesOnMap = 0;
@@ -1510,10 +1541,10 @@ function awardEnemyRewards(e) {
       const otherWaveBossRemaining = enemies.some(o => o !== e && (o.type === 'boss' || o.type === 'mini_boss') && o.hp > 0)
         || spawns.some(s => s.type === 'boss' || s.type === 'mini_boss');
       const alreadyDroppedBossCrate = !!(player && player.waveBossCrateDropped);
-      if (!otherWaveBossRemaining && !alreadyDroppedBossCrate && cratesOnMap < 4) {
+      if (!otherWaveBossRemaining && !alreadyDroppedBossCrate) {
         if (player) player.waveBossCrateDropped = true;
-        drops.push({ x: e.x, y: e.y, kind: 'crate', isBoss: true, bob: 0 });
-        addText(e.x, e.y - e.r - 16, '◆ 首领秘宝箱!', '#ffd166', 16, 1.65, true);
+        grantBossCrateDirect({ isMythic: false, x: e.x, y: e.y });
+        addText(e.x, e.y - e.r - 16, '◆ 首领秘宝已入袋!', '#ffd166', 16, 1.65, true);
       } else if (otherWaveBossRemaining) {
         addText(e.x, e.y - e.r - 16, '◆ 斩破其一 · 决杀余首夺宝!', '#ffd166', 15, 1.55, true);
       }

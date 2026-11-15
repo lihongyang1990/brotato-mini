@@ -179,15 +179,18 @@ function settleSpireFloor(flow) {
     if (story.finalChoice === 'refuse' && hasSpireTrueEnding()) playSpireEnding('B', flow);
     return;
   }
-  // 剧场关闭后再回收战利品，避免箱子/奖励卡压在告别台词上。
-  if (!endlessMode) {
-    for (const drop of drops) {
-      if (drop.kind !== 'crate') continue;
-      if (drop.isMythic || pendingCrates < 3) {
-        pendingCrates++;
-        if (drop.isMythic) player.mythicCratesQueued = (player.mythicCratesQueued || 0) + 1;
-        else if (drop.isBoss) player.bossCratesQueued = (player.bossCratesQueued || 0) + 1;
-      } else player.mats += Math.round((16 + wave * 3) * 1.10);
+  // 无论剧情或无尽模式，结算前统一自动回收地上未拾取战利品箱（首领/神话箱不受普通箱上限限制；普通精英箱独立计入上限 3）。
+  for (const drop of drops) {
+    if (drop.kind !== 'crate') continue;
+    const specialQueued = (player.mythicCratesQueued || 0) + (player.bossCratesQueued || 0)
+      + (player.survivalCratesQueued || 0) + (player.survivalGoldCratesQueued || 0);
+    const regularCratesQueued = Math.max(0, pendingCrates - specialQueued);
+    if (drop.isMythic || drop.isBoss || regularCratesQueued < 3) {
+      pendingCrates++;
+      if (drop.isMythic) player.mythicCratesQueued = (player.mythicCratesQueued || 0) + 1;
+      else if (drop.isBoss) player.bossCratesQueued = (player.bossCratesQueued || 0) + 1;
+    } else {
+      player.mats += Math.round((16 + wave * 3) * 1.10);
     }
   }
   settleWaveRewards();
@@ -761,7 +764,17 @@ function buildCrateWeaponChoice(isBossCrate, forcedTier = 0, minTierFloor = 1) {
 function showCrateMenu() {
   state = 'crate';
   const cm = document.getElementById('crateMenu');
-  if (!cm) { pendingCrates = 0; advancePostWave(); return; }
+  if (!cm) {
+    pendingCrates = 0;
+    if (player) {
+      player.bossCratesQueued = 0;
+      player.mythicCratesQueued = 0;
+      player.survivalCratesQueued = 0;
+      player.survivalGoldCratesQueued = 0;
+    }
+    advancePostWave();
+    return;
+  }
   cm.classList.remove('hidden');
   cm.scrollTop = 0;
 
@@ -2445,6 +2458,10 @@ function continueEndless() {
   document.getElementById('endMenu').classList.add('hidden');
   // 真结局后由第 17 层继续；没有把结局演出当成普通宝箱结算。
   pendingCrates = 0;
+  player.bossCratesQueued = 0;
+  player.mythicCratesQueued = 0;
+  player.survivalCratesQueued = 0;
+  player.survivalGoldCratesQueued = 0;
   pendingLevels = 0;
   wave = MAX_WAVE + 1;
   beginWave();
