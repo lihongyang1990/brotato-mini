@@ -983,6 +983,12 @@ function hurtTree(tr, rawDmg) {
     beep(580, 0.08, 'triangle', 0.05);
     addBurst(tr.x, tr.y - 6, '#5ef29b', 10, 145);
     dropCrystals(tr.x, tr.y, 2 + Math.floor(wave * 0.45));
+    if (player && player.pocketFactory && (player._pocketTurretsSpawned || 0) < 5 && typeof turrets !== 'undefined' && turrets.length < 18) {
+      player._pocketTurretsSpawned = (player._pocketTurretsSpawned || 0) + 1;
+      turrets.push({ x: tr.x, y: tr.y, kind: 'gun', tier: 2, cd: 0.22, angle: 0, recoil: 0, pulsePhase: 0 });
+      if (rings.length < 38) rings.push({ x: tr.x, y: tr.y, r: 46, color: '#fbbf24', t: 0.24, maxT: 0.24, kind: 'hex' });
+      addText(tr.x, tr.y - 40, '⚙️ 母盒展开·发条炮台!', '#ffd166', 14, 1.4, true);
+    }
     const luck = Math.min(90, Math.max(0, (player && player.luck) || 0));
     let cratesOnMap = 0;
     for (let di = 0; di < drops.length; di++) if (drops[di].kind === 'crate') cratesOnMap++;
@@ -1303,6 +1309,11 @@ function beginWave(retryMeta = null) {
   player.frostGauge = 0; player.frostLeaveGrace = 0; player.iceFreezeT = 0; player.frostThawImmT = 0;
   player.waveMythicAwakened = false;
   player.waveBossCrateDropped = false;
+  player._waveCritMats = 0;
+  player._pocketTurretsSpawned = 0;
+  player._bloodShieldPool = 0;
+  player._stillTime = 0;
+  player._gardenCd = (player.gardenPlots || 0) > 0 ? Math.max(4.5, 11 / player.gardenPlots) : 11;
   cam.x = player.x; cam.y = player.y;
   clampCam();
   player.hp = player.maxHp;

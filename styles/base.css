@@ -1827,6 +1827,14 @@ body:not(.m-ui) #shopCards .card.sold-out {
   display: block;
   pointer-events: none;
 }
+.pill-art-ico {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+  vertical-align: -3px;
+  margin-right: 3px;
+  pointer-events: none;
+}
 .slot-icon {
   display: flex;
   align-items: center;

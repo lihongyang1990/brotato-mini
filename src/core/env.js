@@ -16,13 +16,23 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.22';
-const APP_BUILD_DATE = '2026-11-15';
+const APP_VERSION = 'v2.2.0';
+const APP_BUILD_DATE = '2026-11-16';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.22', date: '2026-11-15', tag: '当前版本 · 首领冰棱柱20秒破防(+20%承伤)与20秒重召 · 寒晶方砖提示修正 · 首领十字/一字扫射长度按厄度递增(D5+30%)',
+    ver: 'v2.2.0', date: '2026-11-16', tag: '当前版本 · 全流派军械库补完(42兵装/84神话进化 + 138圣遗物) · 全遗物专属高清矢量贴图重绘 · 核心大模块架构瘦身',
+    title: '⚔️ 全流派军械库与遗物大补完（42把兵装×84种五阶进化 + 138件圣遗物） + 🎨 全装备专属高清矢量圣徽贴图重绘（彻底根除斗篷/砺剑石错用斧头贴图） + 📐 模块化架构瘦身',
+    items: [
+      '⚔️ 新增 6 把跨流派拼图守誓兵装（36 ➔ 42 把兵装 · 84 种五阶神话二选一进化）：新增古誓回旋近战【苍骨回旋战刃】（补齐 6/6 古誓羁绊，近身挥斩并掷出折返骨轮往返双段切割）、封魂铳【断界三连脉冲步铳】（补齐 6/6 封魂铳羁绊，三连点射终弹破甲易伤）、黑曜重装【黑曜链枷流星锤】（护甲+爆破范围双增幅大弧度旋锤）、星芒疾风【追风双弦猎弓】（移速同步转化为射速/伤害/暴击）、嗜血秘术【猩红渴血魔杖】（法杖×汲血×暴击跨界，张开猩红渴血阵抽血回春）与重装秘术【星蚀引力权杖】（法杖×护甲×爆破跨界，展开黑洞奇点聚怪并终结坍缩核爆）！',
+      '🎒 扩充 46 件全流派核心圣遗物（92 ➔ 138 件遗物，呈 T1:42 / T2:40 / T3:34 / T4:22 金字塔分布）：全面补齐经济运营（青羽行商布袋、金丝藏晶衬垫、贪婪黄金天平、苦修献祭荆棘冠、翠微灵果盆栽、赤椒炼金火油）、物理远程终极装（万铳神机·无限弹链、分裂幻影弹巢、贯星死神轨道镜）、星芒暴击（百步穿杨·星神之瞳、弑巨星芒重腰带、猎魔金羽战利品）、风语闪避跨界转化（疾风超导发条炉：移速转全伤、青羽的暗影连帽衫：闪避转攻速、幻影肾上腺针、幻步反击风刃）、猩红汲血终极装（绯红真祖圣爵：满血汲血转猩红血盾、鲜血契约圣印：吸血转全伤、不死鸟涅槃血羽：免死浴火重生）、秘术法杖与机巧跨界（万法归宗·禁忌法典：35%双重咏唱、随身发条母盒：碎器物产炮台、逆命双生沙漏：兵装槽+1）！',
+      '🎨 全量 138 件遗物与补给专属 192×192 高清矢量圣徽贴图重绘（relic_sprites.js）：彻底修复此前遗物沿用系统 Emoji 导致的贴图错位问题（如【守林人斗篷】【守桥砺剑石】误用斧头🪓、【永冻观星披风】误用老鹰🦅、【青岚风语披肩】误用火箭🚀、【凝滞钟摆锤】误用蜗牛🐌等）；复用单张离屏画布按需导出 DataURL（0 新增常驻 Canvas 上下文、0 实时径向渐变），在行商、开箱、圣典、驻留栏与赛后结算全面呈现高辨识度哥特鎏金装备原画！',
+      '📐 核心引擎模块化拆分与单文件离线制品同步：将超长核心文件拆分为职责清晰的独立模块（boss_ai.js 独立承载怪物与首领多维状态机、vfx_overlays.js 独立承载世界法阵预警与屏幕魂雾立绘层、relic_sprites.js 独立承载遗物原画烘焙），同步更新单文件离线版与自动化回归套件！'
+    ]
+  },
+  {
+    ver: 'v2.1.22', date: '2026-11-15', tag: '首领冰棱柱20秒破防(+20%承伤)与20秒重召 · 寒晶方砖提示修正 · 首领十字/一字扫射长度按厄度递增(D5+30%)',
     title: '❄️ 首领冰棱柱/阵眼击破机制重制（20秒真实破防+20%承伤 & 20秒重召） + 🧊 寒晶方砖台提示修正为【寒缓冰封】 + ⚔️ 首领十字/一字旋转扫射技能长度随厄度阶梯加强（D1不变 → D5延长30%）',
     items: [
       '🛡️💥 击破冰棱柱/阵眼触发【20秒真实破防（首领承伤 +20%）】：重制永冻星使【极光冰棱柱】、倒悬机神【磁暴引力桩】与青羽试炼影【万蛊共生苞】击破回报——此前击破仅赋予 1.85 秒短暂硬直且单柱残留仍挂满 28% 减伤；现改为每座阵眼独立提供 14% 棱障（击破首柱即减半并震断冰弦），场上阵眼全破瞬间立即使首领进入长达 20 秒的【真实破防】状态，期间承受玩家全流派伤害实打实增加 +20%（脚下双环破防光圈、倒计时铭牌与顶部首领血条同步实时显示剩余秒数）！',
@@ -721,19 +731,22 @@ const SpireBootGate = (function () {
       ['05/textures', () => typeof buildFloorTexture === 'function'],
       ['06/viewport', () => typeof resize === 'function' && typeof clampCam === 'function'],
       ['07/audio', () => typeof SpireAudio === 'object' && typeof beep === 'function'],
-      ['08/arsenal', () => typeof WEAPONS === 'object' && WEAPONS !== null && Object.keys(WEAPONS).length === 36 && Array.isArray(ITEMS) && ITEMS.length >= 90 && Array.isArray(CLASSES) && CLASSES.length >= 6],
-      ['09/monsters', () => typeof BOSS_DEFS === 'object' && BOSS_DEFS !== null && Object.keys(BOSS_DEFS).length >= 6],
-      ['10/codex', () => typeof openCodex === 'function'],
-      ['11/story-v2', () => typeof SpireStoryV2 === 'object' && SpireStoryV2 !== null && !!SpireStoryV2.opening],
-      ['12/director', () => typeof SpireDirector === 'object' && SpireDirector !== null && typeof SpireDirector.render === 'function'],
-      ['13/menus', () => typeof startGame === 'function' && typeof showStart === 'function' && typeof initMenuUI === 'function'],
-      ['14/presentation', () => typeof SpireSave === 'object' && typeof continueSpireStory === 'function'],
-      ['15/spawner', () => typeof beginWave === 'function' && typeof createEnemy === 'function' && typeof spawnArenaTerrains === 'function'],
-      ['16/combat', () => typeof hurtEnemy === 'function' && typeof hurtPlayer === 'function'],
-      ['17/update', () => typeof update === 'function' && typeof triggerSoulDash === 'function'],
-      ['18/shop', () => typeof openShop === 'function' && typeof finishWave === 'function'],
-      ['19/sprites', () => typeof getBakedWeaponSprite === 'function'],
-      ['20/renderer', () => typeof draw === 'function' && typeof loop === 'function']
+      ['08/arsenal', () => typeof WEAPONS === 'object' && WEAPONS !== null && Object.keys(WEAPONS).length === 42 && Array.isArray(ITEMS) && ITEMS.length >= 138 && Array.isArray(CLASSES) && CLASSES.length >= 6],
+      ['09/relic_sprites', () => typeof getItemArtDataUrl === 'function' && typeof renderItemEmblemHtml === 'function'],
+      ['10/monsters', () => typeof BOSS_DEFS === 'object' && BOSS_DEFS !== null && Object.keys(BOSS_DEFS).length >= 6],
+      ['11/codex', () => typeof openCodex === 'function'],
+      ['12/story-v2', () => typeof SpireStoryV2 === 'object' && SpireStoryV2 !== null && !!SpireStoryV2.opening],
+      ['13/director', () => typeof SpireDirector === 'object' && SpireDirector !== null && typeof SpireDirector.render === 'function'],
+      ['14/menus', () => typeof startGame === 'function' && typeof showStart === 'function' && typeof initMenuUI === 'function'],
+      ['15/presentation', () => typeof SpireSave === 'object' && typeof continueSpireStory === 'function'],
+      ['16/spawner', () => typeof beginWave === 'function' && typeof createEnemy === 'function' && typeof spawnArenaTerrains === 'function'],
+      ['17/combat', () => typeof hurtEnemy === 'function' && typeof hurtPlayer === 'function'],
+      ['18/boss_ai', () => typeof updateEnemiesAndBosses === 'function' && typeof tickBossArenaMechanic === 'function'],
+      ['19/update', () => typeof update === 'function' && typeof triggerSoulDash === 'function'],
+      ['20/shop', () => typeof openShop === 'function' && typeof finishWave === 'function'],
+      ['21/sprites', () => typeof getBakedWeaponSprite === 'function'],
+      ['22/vfx_overlays', () => typeof drawWorldZonesAndTelegraphs === 'function' && typeof drawBattleScreenOverlays === 'function'],
+      ['23/renderer', () => typeof draw === 'function' && typeof loop === 'function']
     ];
 
     let modulesReady = true;

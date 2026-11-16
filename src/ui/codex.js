@@ -185,9 +185,10 @@ function renderCodex() {
       const tNames = ['', 'T1 普通', 'T2 精良', 'T3 史诗', 'T4 传说'];
       const card = document.createElement('div');
       card.className = `codex-card t${it.tier}`;
+      const itemArt = typeof renderItemEmblemHtml === 'function' ? renderItemEmblemHtml(it) : it.icon;
       card.innerHTML = `
         <div class="codex-card-top">
-          <div class="item-emblem t${it.tier}">${it.icon}</div>
+          <div class="item-emblem t${it.tier}">${itemArt}</div>
           <div class="card-meta">
             <div class="codex-card-title">${it.name}</div>
             <div class="card-badges">
