@@ -990,7 +990,8 @@ function update(dt) {
     ? (bossDuelActive ? (wave >= 12 ? 28 : (wave <= 4 ? 20 : 24)) : Math.min(wave >= 10 ? 76 : 64, Math.round((28 + wave * 2.8) * earlySpawnMul * lateSurgeMul)))
     : (bossDuelActive ? (wave >= 12 ? 36 : (wave <= 4 ? 26 : 30)) : Math.min(wave >= 10 ? 98 : 80, Math.round((34 + wave * 3.2) * earlySpawnMul * lateSurgeMul)));
   const lureMul = (!bossDuelActive && !survivalTrialWave) ? (1 + Math.min(0.40, player.mobSpawnBonus || 0)) : 1.0;
-  const rawMaxActive = Math.round((mobCountMul < 1 ? Math.max(4, Math.round(baseMaxActive * mobCountMul)) : baseMaxActive) * lureMul);
+  const diffCapMul = (!bossDuelActive && (diff.spawnMul || 1) < 1) ? diff.spawnMul : 1.0;
+  const rawMaxActive = Math.max(4, Math.round((mobCountMul < 1 ? Math.max(4, Math.round(baseMaxActive * mobCountMul)) : baseMaxActive) * diffCapMul * lureMul));
   const maxActiveEnemies = survivalTrialWave ? Math.max(3, Math.round(rawMaxActive * 0.30)) : rawMaxActive;
   if (!overtime && spawnAcc <= 0 && waveTime > 1.5 && (enemies.length + spawns.length) < maxActiveEnemies) {
     const baseCount = bossDuelActive ? (wave >= 12 ? 2.4 : (wave <= 4 ? 1.8 : 2.0)) : (2.45 + Math.min(wave, 6) * 0.28 + Math.max(0, Math.min(16, wave) - 6) * 0.26);

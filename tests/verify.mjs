@@ -1780,15 +1780,16 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       getMidLateWaveHpMul(11) > 1.92 &&
       Math.abs(getMidLateWaveHpMul(16) - 3.00) < 1e-9
     );
-    // D1 unchanged (1.14 / 1.15), D5 tuned to +70% HP (1.70) & +50% DMG (1.50), D2-D4 scaled proportionally & strictly monotonic
+    // D0 (-50% HP/DMG, -20% spawn), D1 pure baseline (1.00 / 1.00), D2-D4 scaled proportionally, D5 unchanged (1.70 / 1.50)
     const diffRebalanceOk = (
-      DIFFS[1].hpMul === 1.14 && DIFFS[1].dmgMul === 1.15 && DIFFS[1].spdMul === 0.98 && DIFFS[1].spawnMul === 1.05 && DIFFS[1].eliteRate === 0.05 && DIFFS[1].shopTax === 1.00 &&
-      DIFFS[2].hpMul === 1.28 && DIFFS[2].dmgMul === 1.24 &&
-      DIFFS[3].hpMul === 1.42 && DIFFS[3].dmgMul === 1.33 &&
-      DIFFS[4].hpMul === 1.56 && DIFFS[4].dmgMul === 1.41 &&
+      DIFFS[0].hpMul === 0.50 && DIFFS[0].dmgMul === 0.50 && DIFFS[0].spawnMul === 0.80 &&
+      DIFFS[1].hpMul === 1.00 && DIFFS[1].dmgMul === 1.00 && DIFFS[1].spdMul === 0.98 && DIFFS[1].spawnMul === 1.05 && DIFFS[1].eliteRate === 0.05 && DIFFS[1].shopTax === 1.00 &&
+      DIFFS[2].hpMul === 1.18 && DIFFS[2].dmgMul === 1.13 &&
+      DIFFS[3].hpMul === 1.35 && DIFFS[3].dmgMul === 1.25 &&
+      DIFFS[4].hpMul === 1.53 && DIFFS[4].dmgMul === 1.38 &&
       DIFFS[5].hpMul === 1.70 && DIFFS[5].dmgMul === 1.50 && DIFFS[5].spdMul === 1.08 && DIFFS[5].spawnMul === 1.27 && DIFFS[5].eliteRate === 0.144 && DIFFS[5].shopTax === 1.11 &&
-      DIFFS[1].hpMul < DIFFS[2].hpMul && DIFFS[2].hpMul < DIFFS[3].hpMul && DIFFS[3].hpMul < DIFFS[4].hpMul && DIFFS[4].hpMul < DIFFS[5].hpMul &&
-      DIFFS[1].dmgMul < DIFFS[2].dmgMul && DIFFS[2].dmgMul < DIFFS[3].dmgMul && DIFFS[3].dmgMul < DIFFS[4].dmgMul && DIFFS[4].dmgMul < DIFFS[5].dmgMul
+      DIFFS[0].hpMul < DIFFS[1].hpMul && DIFFS[1].hpMul < DIFFS[2].hpMul && DIFFS[2].hpMul < DIFFS[3].hpMul && DIFFS[3].hpMul < DIFFS[4].hpMul && DIFFS[4].hpMul < DIFFS[5].hpMul &&
+      DIFFS[0].dmgMul < DIFFS[1].dmgMul && DIFFS[1].dmgMul < DIFFS[2].dmgMul && DIFFS[2].dmgMul < DIFFS[3].dmgMul && DIFFS[3].dmgMul < DIFFS[4].dmgMul && DIFFS[4].dmgMul < DIFFS[5].dmgMul
     );
     // Differentiated Survival Trial telegraphs (distinct colors, chainStep metadata, full mist+world render pass)
     state = 'wave';
