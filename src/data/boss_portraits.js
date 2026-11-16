@@ -426,7 +426,20 @@ const SpireAssets = (function () {
         }
       };
 
-      if (!isDataUri && typeof setTimeout === 'function') {
+      if (!isDataUri) {
+        if (slotIsHi) _inflightHi++;
+        else _inflightLo++;
+      }
+      // 前两次尝试保持标准版本化 URL 以充分利用浏览器与 SW 缓存；第 3 次起附带确定性重试序号破除坏缓存
+      if (attempt <= 1 || isDataUri) {
+        img.src = baseUrl;
+      } else {
+        const clean = fastStoryPath(relPath).split('?')[0];
+        const verTag = (typeof APP_VERSION === 'string' && APP_VERSION) ? APP_VERSION : '1';
+        img.src = clean + '?v=' + encodeURIComponent(verTag) + '&_retry=' + attempt;
+      }
+
+      if (!settled && !isDataUri && typeof setTimeout === 'function') {
         const timeoutMs = slotIsHi ? 14000 : 20000;
         watchdog = setTimeout(function () {
           if (settled) return;
@@ -441,19 +454,6 @@ const SpireAssets = (function () {
             _handleFinalFailure();
           }
         }, timeoutMs);
-      }
-
-      if (!isDataUri) {
-        if (slotIsHi) _inflightHi++;
-        else _inflightLo++;
-      }
-      // 前两次尝试保持标准版本化 URL 以充分利用浏览器与 SW 缓存；第 3 次起附带确定性重试序号破除坏缓存
-      if (attempt <= 1 || isDataUri) {
-        img.src = baseUrl;
-      } else {
-        const clean = fastStoryPath(relPath).split('?')[0];
-        const verTag = (typeof APP_VERSION === 'string' && APP_VERSION) ? APP_VERSION : '1';
-        img.src = clean + '?v=' + encodeURIComponent(verTag) + '&_retry=' + attempt;
       }
     };
 

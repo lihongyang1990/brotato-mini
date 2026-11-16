@@ -218,6 +218,13 @@ function _wpnEmblem(id, tier, evoId, fallbackIcon) {
   return fallbackIcon || '⚔️';
 }
 
+function _itmEmblem(itemObj, fallbackTier = 1) {
+  if (typeof renderItemEmblemHtml === 'function') {
+    return renderItemEmblemHtml(itemObj, fallbackTier, (itemObj && itemObj.icon) || '✨');
+  }
+  return (itemObj && itemObj.icon) || '✨';
+}
+
 function getPendingEvoWeapon() {
   if (!player || !Array.isArray(player.weapons)) return null;
   for (let i = 0; i < player.weapons.length; i++) {
@@ -551,7 +558,7 @@ const ARCHETYPE_HIDDEN_BOOST_MAX = 0.20;
 function getArchetypeAffinityBoosts(p = player) {
   const boosts = {
     tech: 0, staff: 0, elemental: 0, melee: 0, ranged: 0,
-    tank: 0, crit: 0, dodge: 0, vampire: 0, explosive: 0
+    tank: 0, crit: 0, dodge: 0, vampire: 0, explosive: 0, econ: 0
   };
   if (!p) return boosts;
 
@@ -570,17 +577,19 @@ function getArchetypeAffinityBoosts(p = player) {
   }
 
   const constructCnt = (p.bonusTurrets || 0) + (p.laserTurrets || 0) + (p.mineLayers || 0) + (p.shockTurrets || 0) + (p.totemTurrets || 0);
+  const bonusSpd = Math.max(0, (p.spdMul || 1) - 1.08);
   const rawScores = {
-    tech: (p.cls === 'engineer' ? 0.26 : 0) + techW * 0.26 + constructCnt * 0.25 + (p.techBonus || 0) * 1.35 + ((p.turretAspdBonus || 0) + (p.mineHaste || 0)) * 0.9,
-    staff: staffW * 0.34 + ((p.staffVolley || 0) + (p.staffPierce || 0)) * 0.26 + (p.staffHaste || 0) * 1.25 + (p.archmageMeteor ? 0.36 : 0) + Math.max(0, (p.staffRange || 0)) * 0.006,
+    tech: (p.cls === 'engineer' ? 0.26 : 0) + techW * 0.26 + constructCnt * 0.25 + (p.techBonus || 0) * 1.35 + ((p.turretAspdBonus || 0) + (p.mineHaste || 0)) * 0.9 + (p.pocketFactory ? 0.28 : 0),
+    staff: staffW * 0.34 + ((p.staffVolley || 0) + (p.staffPierce || 0)) * 0.26 + (p.staffHaste || 0) * 1.25 + (p.archmageMeteor ? 0.36 : 0) + Math.max(0, (p.staffRange || 0)) * 0.006 + (p.staffZoneScale || 0) * 0.9,
     elemental: elemW * 0.26 + staffW * 0.12 + (p.elemBonus || 0) * 1.45 + ((p.burnChance || 0) + (p.chillChance || 0) + (p.poisonChance || 0)) * 0.78 + (p.dotHaste || 0) * 1.15 + (p.elemCrit ? 0.28 : 0),
     melee: (p.cls === 'brawler' ? 0.26 : 0) + meleeW * 0.25 + (p.meleeBonus || 0) * 1.45 + (p.meleeSweepBonus || 0) * 0.20,
-    ranged: (p.cls === 'ranger' ? 0.26 : 0) + rangedW * 0.25 + (p.rangedBonus || 0) * 1.45 + ((p.bounceBonus || 0) + (p.pierceBonus || 0)) * 0.20,
+    ranged: (p.cls === 'ranger' ? 0.26 : 0) + rangedW * 0.25 + (p.rangedBonus || 0) * 1.45 + ((p.bounceBonus || 0) + (p.pierceBonus || 0) + (p.rangedPelletsBonus || 0)) * 0.20,
     tank: (p.cls === 'bull' ? 0.36 : 0) + heavyW * 0.24 + Math.max(0, p.armor || 0) * 0.055 + Math.max(0, (p.maxHp || 30) - 36) * 0.014 + (p.maxShield || 0) * 0.028,
     crit: preciseW * 0.25 + Math.max(0, (p.crit || 0) - 0.06) * 1.65 + Math.max(0, p.critDmg || 0) * 0.55,
-    dodge: (p.cls === 'ghost' ? 0.26 : 0) + Math.max(0, (p.dodge || 0) - 0.04) * 1.65 + (p.dashSurge ? 0.26 : 0),
+    dodge: (p.cls === 'ghost' ? 0.26 : 0) + Math.max(0, (p.dodge || 0) - 0.04) * 1.65 + bonusSpd * 1.25 + (p.dashSurge ? 0.26 : 0),
     vampire: (p.cls === 'vampire' ? 0.28 : 0) + Math.max(0, p.lifesteal || 0) * 2.50,
-    explosive: (p.blastChance || 0) * 1.65 + Math.max(0, (p.explosionScale || 1) - 1) * 1.35 + heavyW * 0.12
+    explosive: (p.blastChance || 0) * 1.65 + Math.max(0, (p.explosionScale || 1) - 1) * 1.35 + heavyW * 0.12,
+    econ: Math.max(0, (p.harvestFlat || 0) - 8) * 0.022 + (p.interest || 0) * 2.2 + Math.max(0, (p.luck || 0) - 10) * 0.018
   };
 
   for (const k of Object.keys(boosts)) {
@@ -901,11 +910,15 @@ function showCrateMenu() {
   }
 
   const consumeCrate = () => {
+    if ((player.crateMatBonus || 0) > 0) {
+      player.mats += player.crateMatBonus;
+    }
     if (isMythicCrate && player.mythicCratesQueued > 0) player.mythicCratesQueued--;
     else if (isSurvivalGoldCrate && player.survivalGoldCratesQueued > 0) player.survivalGoldCratesQueued--;
     else if (isSurvivalCrate && player.survivalCratesQueued > 0) player.survivalCratesQueued--;
     else if (isBossCrate && player.bossCratesQueued > 0) player.bossCratesQueued--;
     pendingCrates--;
+    syncSetHp();
     advancePostWave();
   };
 
@@ -925,7 +938,7 @@ function showCrateMenu() {
     if (c.kind === 'item') {
       const it = c.item;
       const ownedCnt = (player.items && player.items[it.id]) || 0;
-      icon = it.icon;
+      icon = _itmEmblem(it, it.tier);
       title = it.name;
       badgesHtml += `<span class="tag t${it.tier}">${TIER_NAMES[it.tier]}遗物</span>`;
       if (it.maxCount) badgesHtml += `<span class="tag">${it.maxCount === 1 ? '唯一' : '上限×' + it.maxCount}</span>`;
@@ -943,7 +956,7 @@ function showCrateMenu() {
       descHtml = `<div class="card-desc">${tpl.desc}</div>`;
     } else if (c.kind === 'supply') {
       const sup = c.supply;
-      icon = sup.icon;
+      icon = _itmEmblem(sup, c.tier);
       title = sup.name;
       badgesHtml += `<span class="tag t${c.tier}">魂灯秘髓</span>`;
       descHtml = `<div class="card-desc">${sup.desc}</div>`;
@@ -1113,6 +1126,16 @@ function rollOffers() {
       const rawCost = Math.max(2, Math.round(it.cost * shopScale * (1 + ownedCnt * 0.22)));
       const cost = calcDiscountedShopCost(rawCost, 2);
       locked.push({ kind: 'item', item: it, tier: it.tier, rawCost, cost, locked: false });
+    }
+  }
+  // 前 1~3 层开荒平滑保底：若 4 个槽位全部未出现武器或 T1 通用/经济遗物，将末位柔和保底为 T1 经济/通用遗物
+  if (wave <= 3 && locked.length === 4 && !locked.some(o => o && (o.locked || o.kind === 'weapon' || (o.item && o.item.tier === 1 && Array.isArray(o.item.tags) && (o.item.tags.includes('econ') || o.item.tags.includes('general')))))) {
+    const econPool = ITEMS.filter(it => it.tier === 1 && Array.isArray(it.tags) && (it.tags.includes('econ') || it.tags.includes('general')) && isItemAvailable(it, usedItems, true));
+    if (econPool.length > 0) {
+      const pick = econPool[Math.floor(Math.random() * econPool.length)];
+      const ownedCnt = (player.items && player.items[pick.id]) || 0;
+      const rawCost = Math.max(2, Math.round(pick.cost * shopScale * (1 + ownedCnt * 0.22)));
+      locked[3] = { kind: 'item', item: pick, tier: 1, rawCost, cost: calcDiscountedShopCost(rawCost, 2), locked: false };
     }
   }
   shopOffers = locked;
@@ -1392,16 +1415,19 @@ function renderShop() {
       const rngBonus = tpl.rangeScale ? Math.max(0, totalRange) * tpl.rangeScale : 0;
       const hpBonus = tpl.hpScale ? Math.max(0, player.maxHp) * tpl.hpScale : 0;
       const armBonus = tpl.armorScale ? Math.max(0, getTotalArmor()) * tpl.armorScale : 0;
+      const blastBonus = tpl.blastScaleDmg ? Math.max(0, getBlastScale() - 1) * tpl.dmg * tpl.blastScaleDmg : 0;
+      const spdBonus = tpl.spdScale ? Math.max(0, getEffectiveSpdMul() - 1) * tpl.dmg * tpl.spdScale : 0;
       const stickBonus = o.id === 'stick' ? Math.max(0, (getSetBonuses().sticks || 0)) * 4.8 : 0;
-      const dmg = Math.round(((tpl.dmg + aspdBonus + rngBonus + hpBonus + armBonus) * (1 + (o.tier - 1) * 0.55) + stickBonus) * (getEffectiveDmgMul() + (tpl.melee ? player.meleeBonus : (tpl.isStaff ? 0 : (player.rangedBonus || 0)))) * scale);
+      const dmg = Math.round(((tpl.dmg + aspdBonus + rngBonus + hpBonus + armBonus + blastBonus + spdBonus) * (1 + (o.tier - 1) * 0.55) + stickBonus) * (getEffectiveDmgMul() + (tpl.melee ? player.meleeBonus : (tpl.isStaff ? 0 : (player.rangedBonus || 0)))) * scale);
       const effRange = typeof calcWeaponEffectiveRange === 'function'
         ? calcWeaponEffectiveRange(tpl, o.tier, null, totalRange)
         : Math.max(tpl.melee ? 74 : 54, tpl.range + (tpl.melee ? Math.round(totalRange * 0.56 + (player.meleeSweepBonus || 0) * 16) : totalRange) + (o.tier - 1) * (tpl.melee ? 8 : 13));
-      const effCd = (tpl.cd / Math.max(0.18, getEffectiveAtkSpd() * (tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1) * (1 + (o.tier - 1) * 0.08))).toFixed(2);
+      const effCd = (tpl.cd / Math.max(0.18, getEffectiveAtkSpd() * (tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1) * (tpl.spdScale ? (1 + Math.max(0, getEffectiveSpdMul() - 1) * 0.45) : 1) * (1 + (o.tier - 1) * 0.08))).toFixed(2);
       const ok = player.mats >= o.cost && canBuyWeapon(o.id, o.tier);
       const hasMergePair = o.tier < 5 && player.weapons.some(w => w.id === o.id && w.tier === o.tier);
       const willAwakenT5 = hasMergePair && o.tier === 4;
-      const pelletsTxt = tpl.pellets ? `×${tpl.pellets}` : '';
+      const totalShowPellets = (tpl.burstShots ? tpl.burstShots : (tpl.pellets ? tpl.pellets + (!tpl.isStaff && !tpl.melee && !tpl.isFlame ? (player.rangedPelletsBonus || 0) : 0) : 0));
+      const pelletsTxt = totalShowPellets > 1 ? `×${totalShowPellets}` : '';
       const priceHtml = (o.rawCost && o.rawCost > o.cost)
         ? `<s style="opacity:.55;font-size:.82em;margin-right:3px">${o.rawCost}</s>◇ ${o.cost}`
         : `◇ ${o.cost}`;
@@ -1449,7 +1475,7 @@ function renderShop() {
       el.innerHTML = `
         <div class="card-main">
           <div class="card-head">
-            <div class="item-emblem t${o.tier}">${it.icon}</div>
+            <div class="item-emblem t${o.tier}">${_itmEmblem(it, o.tier)}</div>
             <div class="card-meta">
               <div class="card-title">${it.name}</div>
               <div class="card-badges">
@@ -1560,6 +1586,10 @@ function rerollShop() {
     if (arr) arr.textContent = '详情 ▾';
   }
   player.mats -= actualCost;
+  if (actualCost > 0 && (player.luckyRerollChance || 0) > 0 && Math.random() < Math.min(0.50, player.luckyRerollChance)) {
+    player.mats += actualCost;
+  }
+  if (player.paddingStacks > 0) syncSetHp();
   if (freeRerollsLeft > 0) {
     freeRerollsLeft--;
     rerollCost = freeRerollsLeft > 0 ? 0 : calcDiscountedShopCost(rerollRawCost, 1);
@@ -2217,7 +2247,7 @@ function openEndSummaryDetail(kind, id) {
     if (titleEl) titleEl.textContent = `${it.name} · 遗物详情`;
     bodyEl.innerHTML = `
       <div class="end-detail-hero">
-        <div class="item-emblem t${it.tier} end-detail-emblem">${it.icon}</div>
+        <div class="item-emblem t${it.tier} end-detail-emblem">${_itmEmblem(it, it.tier)}</div>
         <div class="end-detail-hero-info">
           <div class="end-detail-name">${_escRunHtml(it.name)}</div>
           <div class="card-badges">
@@ -2398,8 +2428,10 @@ function renderEndRunSummary(win = false) {
     ? iEntries.map(e => {
         const it = e.item;
         const safeId = _escRunAttr(e.id);
+        const itIcoHtml = _itmEmblem(it, it.tier);
+        const isImgIco = typeof itIcoHtml === 'string' && itIcoHtml.includes('<img');
         return `<div class="end-sum-row is-clickable" role="button" tabindex="0" data-sum-kind="item" data-sum-id="${safeId}" title="点击查看【${_escRunAttr(it.name)}】详情" onclick="openEndSummaryDetail('item','${safeId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEndSummaryDetail('item','${safeId}');}">
-          <div class="end-sum-ico emoji">${it.icon}</div>
+          <div class="end-sum-ico${isImgIco ? '' : ' emoji'}">${itIcoHtml}</div>
           <div class="end-sum-main">
             <div class="end-sum-line">
               <span class="end-sum-name">${_escRunHtml(it.name)}<em class="end-sum-tag">${_escRunHtml(TIER_NAMES[it.tier] || ('T' + it.tier))}</em></span>
