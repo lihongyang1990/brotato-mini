@@ -795,19 +795,24 @@ function triggerBossMythicPhase2(e) {
     player.waveMythicAwakened = true;
     if (!storyPhase) player.mythicAwakenedCount = (player.mythicAwakenedCount || 0) + 1;
   }
+  const isEasyD0 = (typeof diff !== 'undefined' && diff && diff.id === 0);
   e.mythicPhase2 = true;
   if (storyPhase) e.storyStage = 2;
   e.canPhase2 = false;
-  e.maxHp = Math.max(450, Math.round(e.maxHp * 1.50));
+  e.maxHp = isEasyD0 ? Math.max(240, Math.round(e.maxHp * 0.85)) : Math.max(450, Math.round(e.maxHp * 1.50));
   e.hp = e.maxHp;
   e.r = Math.round(e.r * 1.14);
-  e.dmg = Math.round(e.dmg * 1.30);
-  e.spd *= 1.10;
+  if (!isEasyD0) {
+    e.dmg = Math.round(e.dmg * 1.30);
+    e.spd *= 1.10;
+  }
   e.exposeT = 0;
   e.p2SkillT = 1.85;
   e.p2WindupT = 0;
   if (storyPhase) {
     e.bossTitle = String(e.bossTitle || '守誓者').replace(/ · 第一阶段$/, '') + ' · 第二阶段';
+  } else if (e.variant === 'plague_empress') {
+    e.bossTitle = '🍃 残羽魔女 · 青羽试炼影 · 第二阶段 · 千夜翠岚';
   } else if (!String(e.bossTitle || '').includes('神话')) {
     e.bossTitle = `⚡ ${e.bossTitle || '深渊首领'} · 神话二阶段`;
   }
@@ -819,6 +824,7 @@ function triggerBossMythicPhase2(e) {
       if (Math.hypot(eBullets[i].x - player.x, eBullets[i].y - player.y) < 260) eBullets.splice(i, 1);
     }
   }
+  shake = Math.max(shake, 36);
   beep(155, 0.32, 'sawtooth', 0.09);
   if (typeof SpireAudio !== 'undefined' && SpireAudio && typeof SpireAudio.enterPhase2 === 'function') {
     SpireAudio.enterPhase2((typeof curScene !== 'undefined' && curScene && curScene.id) || SpireAudio.activeSceneId);
@@ -827,10 +833,10 @@ function triggerBossMythicPhase2(e) {
     SpireDirector.triggerHitstop(0.055);
   }
   if (rings.length < 30) {
-    rings.push({ x: e.x, y: e.y, r: 240, color: '#ffd166', t: 0.42, maxT: 0.42, fill: false });
-    rings.push({ x: e.x, y: e.y, r: 165, color: '#ff2a55', t: 0.34, maxT: 0.34 });
+    rings.push({ x: e.x, y: e.y, r: 280, color: '#ffd166', t: 0.48, maxT: 0.48, fill: false });
+    rings.push({ x: e.x, y: e.y, r: 185, color: '#ff2a55', t: 0.38, maxT: 0.38 });
   }
-  addBurst(e.x, e.y, '#ffd166', 24, 250);
+  addBurst(e.x, e.y, '#ffd166', 28, 280);
   if (lightnings.length < 35) {
     for (let k = -1; k <= 1; k++) {
       lightnings.push({ pts: [{ x: e.x + k * 42, y: Math.max(10, e.y - 320) }, { x: e.x + k * 18, y: e.y - 140 }, { x: e.x, y: e.y }], color: k === 0 ? '#ffd166' : '#ff2a55', t: 0.35, maxT: 0.35 });
@@ -845,13 +851,24 @@ function triggerBossMythicPhase2(e) {
     if (player) addText(player.x, player.y - 74, '◆ 蚀日浓雾降临 · 凭魂灯照明迎敌!', '#f6d379', 18, 2.5, true);
     announce('🌫️ D5 第 16 层终幕神罚 ·【蚀日浓雾】笼罩全场！二阶段全程迷雾封锁视野，留意提灯边缘首领方位！', '#f6d379', 4.4);
   }
-  if (storyPhase && typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.onBossPhase2 === 'function') {
-    SpireDirector.onBossPhase2(wave, e);
-  }
-  // 随机觉醒立绘横幅属于无尽模式；主线由剧情导演演出，不叠加横幅或神话掉落承诺。
-  if (endlessMode) {
+  const isQingyuP2 = e.variant === 'plague_empress';
+  const isStorySpecialSovereign = !endlessMode && (e.variant === 'plague_empress' || e.variant === 'mech_colossus');
+  const useFullCinematicP2 = storyPhase || isQingyuP2 || isStorySpecialSovereign;
+
+  if (useFullCinematicP2) {
+    if (typeof startPhase2RuptureBeat === 'function') {
+      startPhase2RuptureBeat(e, 'story');
+    }
+    if (storyPhase && typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.onBossPhase2 === 'function') {
+      SpireDirector.onBossPhase2(wave, e);
+    } else if (typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.onSpecialBossPhase2 === 'function') {
+      SpireDirector.onSpecialBossPhase2(e.variant, e);
+    }
+  } else if (endlessMode) {
+    // 随机觉醒立绘横幅属于无尽模式；主线与青羽试炼影由五拍剧情导演演出，不叠加横幅。
+    const p2Spec = (typeof BOSS_PORTRAIT_DATA !== 'undefined' && BOSS_PORTRAIT_DATA && e.variant) ? BOSS_PORTRAIT_DATA[e.variant] : null;
     const p2Title = (e.bossTitle || '神话首领').replace(/^⚡\s*/, '');
-    const p2Sub = '宿命死战 · 二阶段专属隐藏立绘与专属终式解封！';
+    const p2Sub = p2Spec && p2Spec.mythicTitle ? `宿命死战 · 二阶段觉醒形态【${p2Spec.mythicTitle}】解封！` : '宿命死战 · 二阶段专属觉醒立绘与专属终式解封！';
     const p2Tag = '不加冗余时间 · 解锁二阶段专属终极杀招 · 击败必爆【传说圣遗物匣】与永久赐福！';
     const p2Dur = (typeof BOSS_CUTSCENE_TOTAL_SEC === 'number') ? BOSS_CUTSCENE_TOTAL_SEC : 4.85;
     const dirBlocking = (typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.isBlockingGameplay === 'function' && SpireDirector.isBlockingGameplay());
@@ -859,6 +876,9 @@ function triggerBossMythicPhase2(e) {
       queueBossCutscene('mythic_phase2', e.variant, p2Title, p2Sub, p2Tag, '#ff2a55', '#ffd166', p2Dur);
     } else if (typeof startBossCutscene === 'function') {
       startBossCutscene('mythic_phase2', e.variant, p2Title, p2Sub, p2Tag, '#ff2a55', '#ffd166', p2Dur);
+    }
+    if (typeof startPhase2ShatterSequence === 'function') {
+      startPhase2ShatterSequence(e, 'endless');
     }
   }
   if (storyPhase) {
@@ -869,6 +889,299 @@ function triggerBossMythicPhase2(e) {
     logInfo('MYTHIC_PHASE2', `首领触发隐藏二阶段死战觉醒 ${e.bossTitle} · HP=${e.maxHp} · DMG=${e.dmg}`);
   }
   return true;
+}
+
+// ============================================================================
+// 💥 二阶段觉醒「分镜碎裂 ➔ 斜切立绘名牌登场 ➔ 二次碎裂切入实机战场」高性能转场系统
+// 预烘焙 560×315 轻量碎片图集（0 shadowBlur / 0 radialGradient / 0 大图实时重采样）
+// ============================================================================
+const PHASE2_SHATTER_CONFIGS = {
+  butcher: {
+    variant: 'butcher',
+    name: '烬羽',
+    title: '绯夜燃魂 · 双刀烬羽织',
+    quote: '「双刃既出，寸雨不留——看清这最后一道火光吧！」',
+    theme: '#e8563f', themeSoft: 'rgba(232, 86, 63, 0.22)', themeGold: '#f0b865',
+    portPath: 'assets/spire/port_jinyu_p2.jpg',
+    shot3Path: 'assets/spire/v3/jinyu-p2-awaken.jpg'
+  },
+  frost_queen: {
+    variant: 'frost_queen',
+    name: '艾丝特莉亚',
+    title: '碎冕极光 · 六翼凛冬礼装',
+    quote: '「霜翼为弦，怀表计拍——听完这最后一阙凛冬圣咏吧。」',
+    theme: '#5cc8ff', themeSoft: 'rgba(92, 200, 255, 0.22)', themeGold: '#ffd88a',
+    portPath: 'assets/spire/port_astria_p2.jpg',
+    shot3Path: 'assets/spire/v3/astria-wings.jpg'
+  },
+  void_weaver: {
+    variant: 'void_weaver',
+    name: '伽蓝',
+    title: '逆时神枢 · 星晷超载少主装',
+    quote: '「时针归零，分针断罪——这一秒，我绝不让给任何人！」',
+    theme: '#9d6bff', themeSoft: 'rgba(157, 107, 255, 0.22)', themeGold: '#f2c15a',
+    portPath: 'assets/spire/port_jialan_p2.jpg',
+    shot3Path: 'assets/spire/v3/jialan-p2-awaken.jpg'
+  },
+  solar_seraph: {
+    variant: 'solar_seraph',
+    name: '日蚀圣女',
+    title: '破镜真我 · 黑曜金纹镜像礼装',
+    quote: '「黑日悬顶，碎镜映心——拥抱我，或者超越我吧，零。」',
+    theme: '#eab354', themeSoft: 'rgba(234, 179, 84, 0.24)', themeGold: '#ffe29a',
+    portPath: 'assets/spire/port_eclipse_p2.jpg',
+    shot3Path: 'assets/spire/v3/eclipse-p2-awaken.jpg'
+  },
+  plague_empress: {
+    variant: 'plague_empress',
+    name: '青羽试炼影',
+    title: '千夜苍岚 · 神风羽弓魔女装',
+    quote: '「羽扇化弓，弦引千风——看清这一箭的轨迹吧！」',
+    theme: '#38d9a9', themeSoft: 'rgba(56, 217, 169, 0.22)', themeGold: '#a3f7d8',
+    portPath: 'assets/spire/port_qingyu_p2.jpg',
+    shot3Path: 'assets/spire/v3/qingyu-p2-awaken.jpg'
+  },
+  mech_colossus: {
+    variant: 'mech_colossus',
+    name: '倒悬机神',
+    title: '熔核超载 · 裂胸双锯蒸汽巨像',
+    quote: '【主发条超载 200% —— 神枢炉心，全弹倾泻！】',
+    theme: '#f08c2b', themeSoft: 'rgba(240, 140, 43, 0.24)', themeGold: '#ffd470',
+    portPath: 'assets/spire/port_colossus_p2.jpg',
+    shot3Path: 'assets/spire/v3/colossus-p2-awaken.jpg'
+  }
+};
+const _STORY_KEY_TO_VARIANT = { jinyu: 'butcher', astria: 'frost_queen', jialan: 'void_weaver', eclipse: 'solar_seraph', qingyu: 'plague_empress', colossus: 'mech_colossus' };
+let _p2ShardCanvas = null, _p2ShardCtx = null;
+
+function _ensureP2ShardCanvas() {
+  if (!_p2ShardCanvas && typeof document !== 'undefined') {
+    _p2ShardCanvas = document.createElement('canvas');
+    _p2ShardCanvas.width = 560;
+    _p2ShardCanvas.height = 315;
+    _p2ShardCtx = _p2ShardCanvas.getContext('2d');
+  }
+  return _p2ShardCtx;
+}
+
+function _bakeP2ShardSource(cfg, isNameplateSnap) {
+  const g = _ensureP2ShardCanvas();
+  if (!g) return;
+  const bw = 560, bh = 315;
+  g.clearRect(0, 0, bw, bh);
+  g.fillStyle = '#080b14';
+  g.fillRect(0, 0, bw, bh);
+
+  const shotIm = (typeof SpireAssets !== 'undefined' && SpireAssets && cfg.shot3Path)
+    ? SpireAssets.loadImage(cfg.shot3Path, null, null, true)
+    : null;
+
+  if (!isNameplateSnap && shotIm && (shotIm.naturalWidth || shotIm.width)) {
+    const iw = shotIm.naturalWidth || shotIm.width, ih = shotIm.naturalHeight || shotIm.height;
+    const sc = Math.max(bw / iw, bh / ih);
+    const dw = iw * sc, dh = ih * sc;
+    g.drawImage(shotIm, (bw - dw) * 0.5, (bh - dh) * 0.5, dw, dh);
+    return;
+  }
+
+  // 二次碎裂（名牌碎入实机战场）：把斜切名牌立绘与第三镜残影合成为高辨识度碎片纹理
+  if (shotIm && (shotIm.naturalWidth || shotIm.width)) {
+    g.globalAlpha = 0.72;
+    const iw = shotIm.naturalWidth || shotIm.width, ih = shotIm.naturalHeight || shotIm.height;
+    const sc = Math.max(bw / iw, bh / ih);
+    const dw = iw * sc, dh = ih * sc;
+    g.drawImage(shotIm, (bw - dw) * 0.5, (bh - dh) * 0.5, dw, dh);
+    g.globalAlpha = 1;
+  }
+  g.save();
+  g.translate(bw * 0.5, bh * 0.5);
+  g.rotate(-0.14);
+  g.fillStyle = cfg.themeSoft;
+  g.fillRect(-bw, -68, bw * 2, 136);
+  g.strokeStyle = cfg.theme;
+  g.lineWidth = 2.2;
+  g.strokeRect(-bw, -68, bw * 2, 136);
+  g.restore();
+
+  const portIm = (typeof SpireAssets !== 'undefined' && SpireAssets && cfg.portPath)
+    ? SpireAssets.loadImage(cfg.portPath, null, null, true)
+    : null;
+  if (portIm && (portIm.naturalWidth || portIm.width)) {
+    const pw = portIm.naturalWidth || portIm.width, ph = portIm.naturalHeight || portIm.height;
+    const psc = Math.min(200 / pw, (bh - 20) / ph);
+    const dw = pw * psc, dh = ph * psc;
+    g.drawImage(portIm, bw * 0.28 - dw * 0.5, (bh - dh) * 0.5, dw, dh);
+  }
+}
+
+function _buildP2ShardArray(vw, vh) {
+  const W = Math.max(320, vw || 1280), H = Math.max(240, vh || 720);
+  const cols = 6, rows = 3;
+  const cw = W / cols, ch = H / rows;
+  const scw = 560 / cols, sch = 315 / rows;
+  const out = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cx = (c + 0.5) * cw;
+      const cy = (r + 0.5) * ch;
+      const dx = cx - W * 0.5;
+      const dy = cy - H * 0.5;
+      const dist = Math.hypot(dx, dy) || 1;
+      out.push({
+        sx: c * scw, sy: r * sch, sw: scw, sh: sch,
+        dw: cw * 0.90, dh: ch * 0.90,
+        x: cx, y: cy,
+        vx: (dx / dist) * (290 + Math.random() * 340),
+        vy: (dy / dist) * (230 + Math.random() * 270) - 72,
+        rot: 0,
+        vrot: (Math.random() - 0.5) * 5.1,
+        alpha: 1
+      });
+    }
+  }
+  return out;
+}
+
+function _resolvePhase2ShatterTarget(bossOrKey) {
+  const rawKey = typeof bossOrKey === 'string' ? bossOrKey : (bossOrKey && bossOrKey.variant ? bossOrKey.variant : 'butcher');
+  const variant = _STORY_KEY_TO_VARIANT[rawKey] || rawKey;
+  const cfg = PHASE2_SHATTER_CONFIGS[variant] || {
+    variant,
+    name: (bossOrKey && bossOrKey.bossTitle) ? String(bossOrKey.bossTitle).replace(/^[⚡🦊❄️⚙️🕰️🍃🌑🏮🔥🌿🧊🛡️🏆👁️\s]+/, '').split(' · ')[0] : '深渊首领',
+    title: '神话二阶段 · 狂厄解封',
+    quote: '「宿命枷锁已碎——迎接真正的终焉吧！」',
+    theme: '#ff5238', themeSoft: 'rgba(255, 82, 56, 0.22)', themeGold: '#ffd166',
+    portPath: (typeof SpireAssets !== 'undefined' && SpireAssets && SpireAssets.getPortraitSrc) ? ('assets/spire/port_jinyu_p2.jpg') : '',
+    shot3Path: 'assets/spire/v3/jinyu-p2-awaken.jpg'
+  };
+  const bossEnt = (bossOrKey && typeof bossOrKey === 'object') ? bossOrKey : (Array.isArray(enemies) ? enemies.find(x => x && x.variant === variant && x.hp > 0) : null);
+  return { variant, cfg, bossEnt };
+}
+
+// 第一拍（0.72s）：一阶段首领在战场上迸发巨型扩散破防光圈 + 强烈震屏，随后无缝切入三镜蜕变分镜！
+function startPhase2RuptureBeat(bossOrKey, afterRuptureMode) {
+  const { variant, cfg, bossEnt } = _resolvePhase2ShatterTarget(bossOrKey);
+  if (bossEnt) {
+    bossEnt._ruptureHoldP1 = true;
+    if (typeof rings !== 'undefined' && rings.length < 34) {
+      rings.push({ x: bossEnt.x, y: bossEnt.y, r: 340, color: cfg.themeGold, t: 0.62, maxT: 0.62, fill: false });
+      rings.push({ x: bossEnt.x, y: bossEnt.y, r: 240, color: cfg.theme, t: 0.50, maxT: 0.50, fill: false });
+    }
+    if (typeof addBurst === 'function') {
+      addBurst(bossEnt.x, bossEnt.y, cfg.theme, 26, 340);
+      addBurst(bossEnt.x, bossEnt.y, cfg.themeGold, 18, 250);
+    }
+  }
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.loadImage === 'function') {
+    if (cfg.portPath) SpireAssets.loadImage(cfg.portPath, null, null, true);
+    if (cfg.shot3Path) SpireAssets.loadImage(cfg.shot3Path, null, null, true);
+  }
+  if (typeof shake === 'number') shake = Math.max(shake, 38);
+  if (typeof beep === 'function') {
+    beep(138, 0.34, 'sawtooth', 0.095);
+    beep(312, 0.18, 'triangle', 0.068);
+  }
+  phase2ShatterFx = {
+    stage: 'rupture',
+    variant,
+    boss: bossEnt,
+    cfg,
+    t: 0,
+    dur: 0.72,
+    fxShake: 36,
+    flashT: 0.14,
+    afterRuptureMode: afterRuptureMode || 'story',
+    hudT: 3.8,
+    shards: [],
+    buf: null
+  };
+  return phase2ShatterFx;
+}
+
+function startPhase2ShatterSequence(bossOrKey, modeHint) {
+  const { variant, cfg, bossEnt } = _resolvePhase2ShatterTarget(bossOrKey);
+  if (bossEnt) bossEnt._ruptureHoldP1 = false;
+  const vw = typeof viewW === 'number' && viewW > 0 ? viewW : 1280;
+  const vh = typeof viewH === 'number' && viewH > 0 ? viewH : 720;
+
+  if (modeHint === 'endless') {
+    _bakeP2ShardSource(cfg, true);
+    if (typeof shake === 'number') shake = Math.max(shake, 34);
+    phase2ShatterFx = {
+      stage: 'arena_shatter',
+      variant,
+      boss: bossEnt,
+      cfg,
+      t: 0,
+      dur: 1.75,
+      fxShake: 30,
+      flashT: 0.10,
+      hudT: 3.6,
+      shards: _buildP2ShardArray(vw, vh),
+      buf: _p2ShardCanvas
+    };
+    return phase2ShatterFx;
+  }
+
+  _bakeP2ShardSource(cfg, false);
+  if (typeof shake === 'number') shake = Math.max(shake, 34);
+  if (typeof beep === 'function') {
+    beep(196, 0.22, 'sawtooth', 0.08);
+    beep(420, 0.11, 'triangle', 0.055);
+  }
+  phase2ShatterFx = {
+    stage: 'nameplate',
+    variant,
+    boss: bossEnt,
+    cfg,
+    t: 0,
+    dur: 1.75,
+    fxShake: 34,
+    flashT: 0.11,
+    hudT: 3.8,
+    shards: _buildP2ShardArray(vw, vh),
+    buf: _p2ShardCanvas
+  };
+  return phase2ShatterFx;
+}
+
+function advancePhase2ShatterToArena() {
+  if (!phase2ShatterFx || phase2ShatterFx.stage !== 'nameplate') return false;
+  const vw = typeof viewW === 'number' && viewW > 0 ? viewW : 1280;
+  const vh = typeof viewH === 'number' && viewH > 0 ? viewH : 720;
+  const cfg = phase2ShatterFx.cfg;
+  const b = phase2ShatterFx.boss;
+  if (b) {
+    b._ruptureHoldP1 = false;
+    if (typeof rings !== 'undefined' && rings.length < 34 && cfg) {
+      rings.push({ x: b.x, y: b.y, r: 340, color: cfg.themeGold, t: 0.48, maxT: 0.48, fill: false });
+      rings.push({ x: b.x, y: b.y, r: 220, color: cfg.theme, t: 0.38, maxT: 0.38, fill: false });
+    }
+    if (typeof addBurst === 'function' && cfg) {
+      addBurst(b.x, b.y, cfg.themeGold, 24, 310);
+      addBurst(b.x, b.y, cfg.theme, 16, 230);
+    }
+  }
+  _bakeP2ShardSource(cfg, true);
+  phase2ShatterFx.stage = 'arena_shatter';
+  phase2ShatterFx.t = 0;
+  phase2ShatterFx.fxShake = 32;
+  phase2ShatterFx.flashT = 0.10;
+  phase2ShatterFx.shards = _buildP2ShardArray(vw, vh);
+  phase2ShatterFx.buf = _p2ShardCanvas;
+  if (typeof shake === 'number') shake = Math.max(shake, 38);
+  if (typeof beep === 'function') {
+    beep(152, 0.26, 'sawtooth', 0.088);
+    beep(340, 0.14, 'triangle', 0.06);
+  }
+  return true;
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.PHASE2_SHATTER_CONFIGS = PHASE2_SHATTER_CONFIGS;
+  globalThis.startPhase2RuptureBeat = startPhase2RuptureBeat;
+  globalThis.startPhase2ShatterSequence = startPhase2ShatterSequence;
+  globalThis.advancePhase2ShatterToArena = advancePhase2ShatterToArena;
 }
 
 // D5（第999次神罚）专属二阶段首领【10秒临死挣扎】常量与状态触发器（整场首领战仅触发一次：10s 无敌 + 攻速+20% + 每次伤害到玩家回血 10%）
@@ -1629,6 +1942,9 @@ function awardEnemyRewards(e) {
     }
     if (typeof bossCutscene !== 'undefined' && bossCutscene && bossCutscene.variant === e.variant) {
       bossCutscene = null;
+    }
+    if (typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && phase2ShatterFx.variant === e.variant) {
+      phase2ShatterFx = null;
     }
   }
   if (e.type === 'boss' || e.type === 'special_boss' || e.type === 'mini_boss') {

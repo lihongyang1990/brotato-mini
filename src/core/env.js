@@ -16,13 +16,22 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.2.2';
+const APP_VERSION = 'v2.2.3';
 const APP_BUILD_DATE = '2026-11-16';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.2.2', date: '2026-11-16', tag: '当前版本 · 全兵装/遗物【吃伤乘区彩色标签】 + Brotato式随身兵装操作浮窗（点击检视/合成/回收，防误触秒卖）',
+    ver: 'v2.2.3', date: '2026-11-16', tag: '当前版本 · 六大主宰二阶段五拍破屏演出 · 青羽执扇化弓重绘 · D0轻松模式减半与60FPS提速',
+    title: '🔥 六大主宰二阶段神装觉醒 & 五拍破屏分镜演出 + 🍃 青羽全新「执扇 ➔ 挽弓」形象重绘 + ⚡ D0 难度减半与 60FPS 渲染提速',
+    items: [
+      '💥 六大首领二阶段全新神装形象与五拍破屏演出：为烬羽、艾丝特莉亚、伽蓝、日蚀圣女、青羽试炼影与倒悬机神补齐二阶段专属无裁切立绘、Q 版四帧新小人与宽银幕三镜蜕变分镜；实装「一阶段破防双层冲击光圈 ➔ 三镜剧情演绎 ➔ 碎屏斜切名牌亮相 ➔ 二次碎裂切回战场」高燃演出与强震屏打击感（青羽试炼影设为 100% 必进二阶段）！',
+      '🍃 青羽一、二阶段美术形象重塑：全面重绘青羽全套立绘、四帧小人与觉醒分镜为纤细清丽的少女风语魔女造型，确立「一阶段单手执翠玉羽扇 ➔ 二阶段化扇为苍岚神风羽弓（无风灯）」的武器蜕变呼应！',
+      '⚡ D0「寻光」轻松模式减负 & 60FPS 性能优化：大幅下调 D0 怪物血量、伤害、移速与刷怪密度并提高金币补给，支持轻松通关体验完整剧情；引入相机视口子矩形地坪裁剪、高分屏像素预算优化与轻量碎屏图集预烘焙，全程零 shadowBlur 稳定满帧！'
+    ]
+  },
+  {
+    ver: 'v2.2.2', date: '2026-11-16', tag: '全兵装/遗物【吃伤乘区彩色标签】 + Brotato式随身兵装操作浮窗（点击检视/合成/回收，防误触秒卖）',
     title: '🏷️ 全兵装与遗物【吃伤乘区彩色标签】全界面实装 + 🛡️ Brotato 式随身兵装详情检视与「合成 / 回收 / 取消」操作浮窗（彻底杜绝单击误触秒卖）',
     items: [
       '🛡️ 参照《土豆兄弟 (Brotato)》重做随身兵装槽交互：彻底取消桌面端单击兵装直接秒卖回收的高危设定！现在点击任意随身兵装槽将弹出专属【兵装详情与操作浮窗】，完整展示实时面板伤害/间隔/射程/暴击、本局累计输出与斩杀数、套装羁绊进度及五阶进化预览，并提供清晰的【◆ 共鸣合成】【♻️ 熔炼回收 (+◇XX)】【✕ 取消】独立按钮（仅剩 1 把兵装时也可随时点开查看详情，回收键自动锁止）！',
@@ -809,9 +818,9 @@ const SpireBootGate = (function () {
     // 20/20 核心脚本与 4/4 样式表已 100% 就绪：首屏原画通过 SpireAssets 共享缓存渐进预热，
     // 最长仅柔和等待 900ms 即自动放行入殿，彻底根除手机蜂窝网络波动误弹“未加载完全/缓存冲突”拦截框！
     const criticalList = [
-      ['主殿背景原画', 'assets/spire/v2/title-clean.png', true],
+      ['主殿背景原画', 'assets/spire/v2/title-clean.jpg', true],
       ['主角立绘档案', 'assets/spire/port_zero.jpg', true],
-      ['序章石棺原画', 'assets/spire/v3/awakening-coffin.png', false],
+      ['序章石棺原画', 'assets/spire/v3/awakening-coffin.jpg', false],
       ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png', false],
       ['风语行商立绘', 'assets/spire/port_qingyu.jpg', false],
       ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg', false]

@@ -691,17 +691,34 @@ function drawCrispArenaBalustrade(vL, vR, vT, vB, sceneId) {
 
 let _lastFloorArtProbeAt = 0;
 
+function _computeImpactShakeOffset(amp, nowMs) {
+  if (!(amp > 0.05)) return { x: 0, y: 0 };
+  const slamX = Math.sin(nowMs * 0.088) * 0.52 + (Math.random() - 0.5) * 0.92;
+  const slamY = Math.cos(nowMs * 0.114) * 0.52 + (Math.random() - 0.5) * 0.92;
+  return { x: slamX * amp, y: slamY * amp };
+}
+
 // 战场主相机裁剪渲染、首领预警提示、悬浮摇杆绘制与 RAF 主循环
 function draw() {
   const now = performance.now();
   if (typeof _frameNow !== 'undefined') _frameNow = now;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (state === 'wave' && typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && phase2ShatterFx.stage === 'nameplate') {
+    drawPhase2ShatterOverlay(true);
+    return;
+  }
   ctx.fillStyle = (curScene && curScene.voidBg) || '#110e17';
   ctx.fillRect(0, 0, viewW, viewH);
 
   ctx.save();
-  const sx = shake > 0 ? (Math.random() - 0.5) * shake : 0;
-  const sy = shake > 0 ? (Math.random() - 0.5) * shake : 0;
+  const activeShakeAmp = Math.max(
+    shake > 0 ? shake : 0,
+    (typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && (phase2ShatterFx.stage === 'rupture' || phase2ShatterFx.stage === 'arena_shatter'))
+      ? (phase2ShatterFx.fxShake || 0)
+      : 0
+  );
+  const camShk = _computeImpactShakeOffset(activeShakeAmp, now);
+  const sx = camShk.x, sy = camShk.y;
   ctx.translate(viewW / 2 + sx, viewH / 2 + sy);
   ctx.scale(camZoom, camZoom);
   ctx.translate(-cam.x, -cam.y);
@@ -720,9 +737,27 @@ function draw() {
     }
   }
 
-  // 直接绘制常驻 GPU 硬件纹理的 <=3840px 超清地坪贴图（消除每帧动态子矩形取整与双网格叠加引起的闪烁抖动）
+  // 仅裁剪绘制相机视野内的常驻 GPU 地坪子矩形（严格对齐整数源纹素杜绝抖动，跳过约 65% 屏外像素提升帧率！）
   if (floorCanvas.width > 2 && floorCanvas.height > 2) {
-    ctx.drawImage(floorCanvas, -FLOOR_PAD, -FLOOR_PAD, WORLD.w + FLOOR_PAD * 2, WORLD.h + FLOOR_PAD * 2);
+    const fullW = WORLD.w + FLOOR_PAD * 2;
+    const fullH = WORLD.h + FLOOR_PAD * 2;
+    const rx = floorCanvas.width / fullW;
+    const ry = floorCanvas.height / fullH;
+    const wx0 = Math.max(-FLOOR_PAD, vL);
+    const wy0 = Math.max(-FLOOR_PAD, vT);
+    const wx1 = Math.min(WORLD.w + FLOOR_PAD, vR);
+    const wy1 = Math.min(WORLD.h + FLOOR_PAD, vB);
+    const sx0 = Math.max(0, Math.floor((wx0 + FLOOR_PAD) * rx));
+    const sy0 = Math.max(0, Math.floor((wy0 + FLOOR_PAD) * ry));
+    const sx1 = Math.min(floorCanvas.width, Math.ceil((wx1 + FLOOR_PAD) * rx));
+    const sy1 = Math.min(floorCanvas.height, Math.ceil((wy1 + FLOOR_PAD) * ry));
+    if (sx1 > sx0 && sy1 > sy0) {
+      ctx.drawImage(
+        floorCanvas,
+        sx0, sy0, sx1 - sx0, sy1 - sy0,
+        sx0 / rx - FLOOR_PAD, sy0 / ry - FLOOR_PAD, (sx1 - sx0) / rx, (sy1 - sy0) / ry
+      );
+    }
   }
 
   const activeSceneId = (curScene && curScene.id) || 'foundry';
@@ -2005,6 +2040,227 @@ function draw() {
   ctx.restore();
 
   drawBattleScreenOverlays(now, sx, sy);
+
+  if (state === 'wave' && typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && phase2ShatterFx.stage !== 'nameplate' &&
+      (phase2ShatterFx.stage === 'rupture' || !(typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.isBlockingGameplay === 'function' && SpireDirector.isBlockingGameplay()))) {
+    drawPhase2ShatterOverlay(false);
+  }
+}
+
+function drawPhase2ShatterOverlay(isFullNameplate) {
+  const fx = typeof phase2ShatterFx !== 'undefined' ? phase2ShatterFx : null;
+  if (!fx || !fx.cfg) return;
+  const cfg = fx.cfg;
+  const compact = viewW < 680;
+  const nowMs = (typeof _frameNow === 'number' && _frameNow > 0) ? _frameNow : performance.now();
+  ctx.save();
+
+  // 第一拍（rupture）：战场一阶段首领迸发巨型扩散双层光圈 + 破防横幅 + 强震屏，播完切入三镜剧情！
+  if (!isFullNameplate && fx.stage === 'rupture') {
+    const bEnt = (fx.boss && fx.boss.hp > 0) ? fx.boss : (Array.isArray(enemies) ? enemies.find(x => x && x.variant === fx.variant && x.hp > 0) : null);
+    const bx = bEnt ? ((bEnt.x - cam.x) * camZoom + viewW * 0.5) : (viewW * 0.5);
+    const by = bEnt ? ((bEnt.y - cam.y) * camZoom + viewH * 0.5) : (viewH * 0.46);
+    const dur = Math.max(0.25, fx.dur || 0.72);
+    const prog = Math.max(0, Math.min(1, (fx.t || 0) / dur));
+    const easeOut = 1 - Math.pow(1 - prog, 2.25);
+    const maxR = Math.hypot(viewW, viewH) * 0.62;
+
+    if ((fx.flashT || 0) > 0) {
+      ctx.fillStyle = `rgba(255, 250, 235, ${(Math.min(1, fx.flashT / 0.14) * 0.84).toFixed(3)})`;
+      ctx.fillRect(0, 0, viewW, viewH);
+    }
+
+    // 爆掉的双层巨型冲击光圈 + 八向裂变锋芒线（零 shadowBlur / 零 radialGradient）
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - prog * 0.88);
+    ctx.strokeStyle = cfg.themeGold;
+    ctx.lineWidth = Math.max(1.6, 22 * (1 - prog));
+    ctx.beginPath();
+    ctx.arc(bx, by, 22 + easeOut * maxR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = cfg.theme;
+    ctx.lineWidth = Math.max(1.2, 13 * (1 - prog));
+    ctx.beginPath();
+    ctx.arc(bx, by, 12 + easeOut * maxR * 0.74, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (prog < 0.75) {
+      const rayP = prog / 0.75;
+      ctx.strokeStyle = cfg.themeGold;
+      ctx.lineWidth = Math.max(1.0, 4.2 * (1 - rayP));
+      for (let k = 0; k < 8; k++) {
+        const ang = k * Math.PI * 0.25 + 0.18;
+        const r0 = 36 + rayP * maxR * 0.28;
+        const r1 = 110 + rayP * maxR * 0.58;
+        ctx.beginPath();
+        ctx.moveTo(bx + Math.cos(ang) * r0, by + Math.sin(ang) * r0);
+        ctx.lineTo(bx + Math.cos(ang) * r1, by + Math.sin(ang) * r1);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    const bShk = _computeImpactShakeOffset((fx.fxShake || 0) * 0.36, nowMs + 73);
+    const plateW = Math.min(compact ? viewW - 36 : 510, viewW - 28);
+    const plateH = compact ? 54 : 64;
+    const px = (viewW - plateW) * 0.5 + bShk.x;
+    const py = viewH * 0.5 - plateH * 0.5 + bShk.y;
+    ctx.fillStyle = 'rgba(8, 11, 20, 0.90)';
+    ctx.fillRect(px, py, plateW, plateH);
+    ctx.strokeStyle = cfg.theme;
+    ctx.lineWidth = 2.2;
+    ctx.strokeRect(px, py, plateW, plateH);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${compact ? 16 : 20}px "PingFang SC", -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('⚡ 临界破防 · 信物共鸣解封！', px + plateW * 0.5, py + plateH * 0.5 + (compact ? 6 : 7));
+
+    ctx.restore();
+    return;
+  }
+
+  if (isFullNameplate) {
+    // 第三拍（nameplate）：分镜碎裂 + 斜切神话觉醒名牌亮相 + 强烈震屏！
+    ctx.fillStyle = '#080b14';
+    ctx.fillRect(-56, -56, viewW + 112, viewH + 112);
+
+    const npShk = _computeImpactShakeOffset(fx.fxShake || 0, nowMs);
+    ctx.translate(npShk.x, npShk.y);
+
+    const bandHalfH = compact ? Math.min(130, viewH * 0.22) : Math.min(142, viewH * 0.23);
+    ctx.save();
+    ctx.translate(viewW * 0.5, viewH * 0.5);
+    ctx.rotate(-0.14);
+    ctx.fillStyle = cfg.themeSoft;
+    ctx.fillRect(-viewW, -bandHalfH, viewW * 2, bandHalfH * 2);
+    ctx.strokeStyle = cfg.theme;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(-viewW, -bandHalfH, viewW * 2, bandHalfH * 2);
+    ctx.restore();
+
+    // 2. 100% 完整无裁切二阶段觉醒立绘滑入（左侧黄金构图位）
+    const slideIn = Math.min(1, (fx.t || 0) / 0.28);
+    const easeSlide = 1 - Math.pow(1 - slideIn, 3);
+    const portIm = (typeof SpireAssets !== 'undefined' && SpireAssets && cfg.portPath)
+      ? SpireAssets.loadImage(cfg.portPath, null, null, 'urgent')
+      : null;
+
+    if (compact) {
+      if (portIm && (portIm.naturalWidth || portIm.width)) {
+        const iw = portIm.naturalWidth || portIm.width, ih = portIm.naturalHeight || portIm.height;
+        const maxW = viewW * 0.68, maxH = viewH * 0.50;
+        const sc = Math.min(maxW / iw, maxH / ih);
+        const dw = iw * sc, dh = ih * sc;
+        const px = viewW * 0.5 - dw * 0.5 + (1 - easeSlide) * -80;
+        const py = viewH * 0.34 - dh * 0.5;
+        ctx.drawImage(portIm, px, py, dw, dh);
+      }
+      ctx.textAlign = 'center';
+      ctx.fillStyle = cfg.themeGold;
+      ctx.font = 'bold 12px "PingFang SC", -apple-system, sans-serif';
+      ctx.fillText('PHASE II AWAKENED FORM · 二阶段神装解封', viewW * 0.5, viewH * 0.66);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 30px "PingFang SC", -apple-system, sans-serif';
+      ctx.fillText(cfg.name, viewW * 0.5, viewH * 0.73);
+      ctx.fillStyle = cfg.theme;
+      ctx.font = 'bold 18px "PingFang SC", -apple-system, sans-serif';
+      ctx.fillText(cfg.title, viewW * 0.5, viewH * 0.79);
+      ctx.fillStyle = '#dce5f7';
+      ctx.font = '13px "Noto Serif SC", serif';
+      ctx.fillText(cfg.quote, viewW * 0.5, viewH * 0.85);
+    } else {
+      if (portIm && (portIm.naturalWidth || portIm.width)) {
+        const iw = portIm.naturalWidth || portIm.width, ih = portIm.naturalHeight || portIm.height;
+        const maxW = Math.min(440, viewW * 0.36), maxH = viewH - 44;
+        const sc = Math.min(maxW / iw, maxH / ih);
+        const dw = iw * sc, dh = ih * sc;
+        const px = viewW * 0.30 - dw * 0.5 + (1 - easeSlide) * -140;
+        const py = viewH * 0.50 - dh * 0.5;
+        ctx.drawImage(portIm, px, py, dw, dh);
+      }
+      const tx = viewW * 0.49;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = cfg.themeGold;
+      ctx.font = 'bold 15px "PingFang SC", -apple-system, sans-serif';
+      ctx.fillText('PHASE II AWAKENED FORM · 二阶段神装解封', tx, viewH * 0.36);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 42px "PingFang SC", -apple-system, sans-serif';
+      ctx.fillText(cfg.name, tx, viewH * 0.46);
+
+      ctx.fillStyle = cfg.theme;
+      ctx.font = 'bold 24px "PingFang SC", -apple-system, sans-serif';
+      ctx.fillText(cfg.title, tx, viewH * 0.55);
+
+      ctx.fillStyle = '#dce5f7';
+      ctx.font = '15px "Noto Serif SC", "PingFang SC", serif';
+      ctx.fillText(cfg.quote, tx, viewH * 0.65);
+
+      ctx.fillStyle = 'rgba(226, 232, 240, 0.72)';
+      ctx.font = '600 12px "PingFang SC", -apple-system, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('点击屏幕 / 空格 破屏开战 ▸', viewW - 28, viewH - 22);
+    }
+  } else {
+    if ((fx.hudT || 0) > 0 && (!endlessMode || fx.variant === 'plague_empress')) {
+      // 实机战场顶部二阶段觉醒铭牌血条框（1:1 对应设定集截图顶部名牌效果）
+      const hudAlpha = Math.min(1, fx.hudT / 0.55);
+      const barW = Math.min(540, viewW - 40), barH = 13;
+      const bx = (viewW - barW) * 0.5, by = compact ? 58 : 22;
+      const liveBoss = (fx.boss && fx.boss.hp > 0) ? fx.boss : (Array.isArray(enemies) ? enemies.find(x => x && x.variant === fx.variant && x.hp > 0) : null);
+      const hpRatio = liveBoss ? Math.max(0, Math.min(1, liveBoss.hp / Math.max(1, liveBoss.maxHp))) : 1;
+
+      ctx.save();
+      ctx.globalAlpha = hudAlpha * 0.92;
+      ctx.fillStyle = 'rgba(6, 9, 16, 0.86)';
+      ctx.fillRect(bx - 12, by - 8, barW + 24, 50);
+      ctx.strokeStyle = cfg.theme;
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(bx - 12, by - 8, barW + 24, 50);
+
+      ctx.fillStyle = '#1d2538';
+      ctx.fillRect(bx, by + 18, barW, barH);
+      ctx.fillStyle = cfg.theme;
+      ctx.fillRect(bx, by + 18, barW * hpRatio, barH);
+
+      ctx.fillStyle = '#ffe29a';
+      ctx.fillRect(bx + barW * 0.5 - 1.5, by + 15, 3, barH + 6);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${compact ? 12 : 14}px "PingFang SC", -apple-system, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(`★ ${cfg.name} · 二阶段 · ${cfg.title}`, viewW * 0.5, by + 11);
+      ctx.restore();
+    }
+    const arShk = _computeImpactShakeOffset((fx.fxShake || 0) * 0.42, nowMs + 31);
+    ctx.translate(arShk.x, arShk.y);
+  }
+
+  // 破镜瞬间高光闪白（强化碎裂爆破打击感）
+  if ((fx.flashT || 0) > 0) {
+    ctx.fillStyle = `rgba(255, 248, 225, ${(Math.min(1, fx.flashT / 0.11) * 0.68).toFixed(3)})`;
+    ctx.fillRect(-56, -56, viewW + 112, viewH + 112);
+  }
+
+  // 3. 高速飞散的金边碎镜残片（取自轻量预烘焙 560×315 图集，零大图卡顿！）
+  if (fx.buf && Array.isArray(fx.shards) && fx.shards.length > 0) {
+    for (let i = 0; i < fx.shards.length; i++) {
+      const s = fx.shards[i];
+      if (s.alpha <= 0.01) continue;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, s.alpha));
+      ctx.translate(s.x, s.y);
+      ctx.rotate(s.rot);
+      ctx.drawImage(fx.buf, s.sx, s.sy, s.sw, s.sh, -s.dw * 0.5, -s.dh * 0.5, s.dw, s.dh);
+      ctx.strokeStyle = 'rgba(255, 236, 179, 0.78)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-s.dw * 0.5, -s.dh * 0.5, s.dw, s.dh);
+      ctx.restore();
+    }
+  }
+
+  ctx.restore();
 }
 
 logInfo('BOOT', `引擎启动完成 · view=${viewW}x${viewH}(dpr=${dpr}) · ui=${uiMode} · world=${WORLD.w}x${WORLD.h}(scale=${curFloorScale})`);
@@ -2012,7 +2268,9 @@ last = performance.now();
 // Full-screen HTML menus and the narrative stage cover the battlefield entirely.
 // Keep the last battle frame on pause; never repaint thousands of hidden sprites.
 function shouldRenderBattlefield() {
-  return state === 'wave' && !(typeof SpireDirector !== 'undefined' && SpireDirector.isBlockingGameplay());
+  if (state !== 'wave') return false;
+  if (typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && phase2ShatterFx.stage === 'rupture') return true;
+  return !(typeof SpireDirector !== 'undefined' && SpireDirector.isBlockingGameplay());
 }
 
 let framePacingRemainder = 0;
@@ -2074,7 +2332,7 @@ function loop(now) {
     maxFrameMsWindow = 0;
   }
 
-  if (playing && !bossCutscene) recordBattleFrame(rawMs);
+  if (playing && !bossCutscene && !(typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx)) recordBattleFrame(rawMs);
   const updateStart = playing ? performance.now() : 0;
   try {
     update(dt);

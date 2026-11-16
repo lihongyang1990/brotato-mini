@@ -13,7 +13,7 @@ const BOSS_DEFS = {
     desc: '遵从遗愿冰封王城的挚友星使：升起可破坏的【双生极光共鸣棱柱】（拉起极光冰弦并赋予棱障减伤，击破冰棱柱可斩断护盾并使首领陷入 20 秒真实破防：承伤 +20%，20 秒后方重新召唤新柱！）、扫射极光冰束与六合冰牢；二阶段解锁【绝对零度四翼极光环】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   mech_colossus: {
-    id: 'mech_colossus', icon: '⚙️', sprite: 'assets/spire/boss_mech_colossus.png', portrait: 'assets/spire/port_jialan.jpg',
+    id: 'mech_colossus', icon: '⚙️', sprite: 'assets/spire/boss_mech_colossus.png', portrait: 'assets/spire/port_colossus.jpg',
     name: '倒悬机神 · 伽蓝重装态', epithet: '三层逆转发条钟楼镇守者', color: '#f77f00', spd: 78,
     desc: '伽蓝操控的钟楼重装巨像：部署可破坏的【超导磁暴引力桩】牵引猎物（击破引力桩可令机神陷入 20 秒真实破防：承伤 +20%，20 秒后方重新部署新桩！）、横扫熔核加特林与钢铁矩阵排炮；二阶段解锁终式【末日熔核锯刃风暴】，D5 二阶段独享 10 秒【临死挣扎】！'
   },

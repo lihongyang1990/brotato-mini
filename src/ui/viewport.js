@@ -193,13 +193,12 @@ function resetBattleFrameSample() {
 }
 
 function syncBattleCanvasResolution() {
-  // 严格按视界布局区分桌面/移动像素预算（触控笔记本仍按桌面超清渲染，杜绝地面与石栏变糊！）
+  // 严格按视界布局区分桌面/移动像素预算（控制在甜点级超清预算内并采用 GPU 硬件双线性采样，彻底根除高分屏全屏 Lanczos 采样卡顿！）
   const mobilePerf = uiMode !== 'desktop';
-  const pixelBudget = mobilePerf ? 3600000 : 11200000;
+  const pixelBudget = mobilePerf ? 3100000 : 5200000;
   const nativeDpr = Math.max(0.5, window.devicePixelRatio || 1);
-  const baseDpr = Math.min(nativeDpr, mobilePerf ? 1.75 : 2.25,
+  const baseDpr = Math.min(nativeDpr, mobilePerf ? 1.65 : 2.0,
     Math.sqrt(pixelBudget / Math.max(1, viewW * viewH)));
-  battleResolutionScale = 1;
   dpr = Math.max(0.75, baseDpr * battleResolutionScale);
   const cw = Math.max(1, Math.round(viewW * dpr));
   const ch = Math.max(1, Math.round(viewH * dpr));
@@ -209,7 +208,7 @@ function syncBattleCanvasResolution() {
   }
   if (ctx) {
     ctx.imageSmoothingEnabled = true;
-    try { ctx.imageSmoothingQuality = 'high'; } catch (_) {}
+    ctx.imageSmoothingQuality = 'medium';
   }
 }
 
@@ -220,9 +219,16 @@ function recordBattleFrame(frameMs) {
   }
   battleSampleMs += frameMs;
   battleSampleFrames++;
-  if (battleSampleMs < 2500) return;
+  if (battleSampleMs < 1400) return;
+  const avgMs = battleSampleMs / Math.max(1, battleSampleFrames);
   resetBattleFrameSample();
-  // 保持 battleResolutionScale = 1 恒定超清，绝不动态降采样模糊地面与护栏（帧率由底层零GC/节流保障）
+  if (avgMs > 20.5 && battleResolutionScale > 0.78) {
+    battleResolutionScale = Math.max(0.76, +(battleResolutionScale - 0.10).toFixed(2));
+    syncBattleCanvasResolution();
+  } else if (avgMs < 12.5 && battleResolutionScale < 1) {
+    battleResolutionScale = Math.min(1, +(battleResolutionScale + 0.06).toFixed(2));
+    syncBattleCanvasResolution();
+  }
 }
 
 function resize() {

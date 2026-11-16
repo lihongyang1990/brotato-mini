@@ -1248,7 +1248,35 @@ function drawEnemySprite(e) {
   ctx.fillStyle = 'rgba(0,0,0,0.44)';
   ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.88, r * 0.96, r * 0.38, 0, 0, Math.PI * 2); ctx.fill();
 
-  if (e.mythicPhase2) {
+  const showP2Visual = !!(e.mythicPhase2 && !e._ruptureHoldP1);
+  if (isBoss && showP2Visual) {
+    const p2SigilCols = {
+      butcher: ['#e8563f', '#f0b865'],
+      frost_queen: ['#5cc8ff', '#ffd88a'],
+      void_weaver: ['#9d6bff', '#f2c15a'],
+      mech_colossus: ['#f08c2b', '#ffd470'],
+      plague_empress: ['#38d9a9', '#a3f7d8'],
+      solar_seraph: ['#eab354', '#ffe29a']
+    }[e.variant] || ['#fb7185', '#fde68a'];
+    ctx.save();
+    ctx.translate(e.x, e.y + r * 0.62);
+    ctx.scale(1, 0.38);
+    ctx.rotate(now * 0.0016);
+    ctx.strokeStyle = p2SigilCols[0];
+    ctx.lineWidth = 3.8;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.50, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = p2SigilCols[1];
+    for (let k = 0; k < 4; k++) {
+      const ka = k * Math.PI * 0.5;
+      const kx = Math.cos(ka) * r * 1.50, ky = Math.sin(ka) * r * 1.50;
+      ctx.fillRect(kx - 4, ky - 4, 8, 8);
+    }
+    ctx.rotate(-now * 0.0034);
+    ctx.strokeStyle = p2SigilCols[1];
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.15, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  } else if (showP2Visual) {
     ctx.strokeStyle = 'rgba(246, 211, 121, 0.90)';
     ctx.lineWidth = 3.0;
     ctx.beginPath(); ctx.arc(e.x, e.y + 2, r + 14 + Math.sin(now * 0.014) * 3, 0, Math.PI * 2); ctx.stroke();
@@ -1321,8 +1349,8 @@ function drawEnemySprite(e) {
   }
 
   // 2. 首领与统领全技能施法动作解算（浮空咏唱 / 蓄势屈膝 / 挥刃前扑 / 炮口后坐 / 重踏下砸 / 相位分身）
-  const bossSheet = (isBoss && e.variant && typeof SpireAssets !== 'undefined' && SpireAssets.getHeroSheet)
-    ? SpireAssets.getHeroSheet(e.variant, flash)
+  const bossSheet = (isBoss && e.variant && typeof SpireAssets !== 'undefined' && (SpireAssets.getBossSheet || SpireAssets.getHeroSheet))
+    ? (SpireAssets.getBossSheet ? SpireAssets.getBossSheet(e.variant, flash, true, showP2Visual) : SpireAssets.getHeroSheet(e.variant, flash))
     : null;
   let aimHintA = e.lockedAim;
   if (aimHintA === undefined && (e._actPoseT || 0) > 0 && Number.isFinite(e._actAng)) aimHintA = e._actAng;
@@ -1433,7 +1461,7 @@ function drawEnemySprite(e) {
     if (e.dashing || (e.tpWindupT || 0) > 0 || ((e._actPoseT || 0) > 0.15 && (e._actKind === 'slash' || e._actKind === 'thrust' || e._actKind === 'spin'))) {
       _pushGhostTrail(e, now, e._curFrameIdx, visFlip < 0 ? -1 : 1, 38);
     }
-    _decayAndDrawGhostTrail(e, dt, SpireAssets.getHeroSheet(e.variant, false) || bossSheet, drawSize, footOffset);
+    _decayAndDrawGhostTrail(e, dt, (SpireAssets.getBossSheet ? SpireAssets.getBossSheet(e.variant, false, true, showP2Visual) : SpireAssets.getHeroSheet(e.variant, false)) || bossSheet, drawSize, footOffset);
 
     // 伽蓝相位折跃蓄力期间额外浮现左右裂相残影分身，直观传达“即将空间折跃”
     if ((e.tpWindupT || 0) > 0) {
@@ -1997,7 +2025,6 @@ function drawBossPortrait(variant, cx, cy, scale, isMythic) {
     const breath = Math.sin(now * 0.0024) * 2.2;
     const sway = Math.cos(now * 0.0015) * 1.0;
     ctx.imageSmoothingEnabled = true;
-    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
     if (isTallFallback) {
       ctx.save();
       ctx.beginPath();

@@ -367,6 +367,41 @@ function tickChaosMeteor(b, idx, dt) {
 function update(dt) {
   if (!Number.isFinite(dt) || dt <= 0) return;
   if (typeof SpireAudio !== 'undefined') SpireAudio.tick(dt);
+  // 第一拍（0.72s）：一阶段首领在战场上迸发巨型扩散破防光圈 + 强烈震屏，播完后再揭开三镜分镜帷幕！
+  if (state === 'wave' && typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && phase2ShatterFx.stage === 'rupture') {
+    const rfx = phase2ShatterFx;
+    rfx.t += dt;
+    rfx.fxShake = Math.max(0, (rfx.fxShake || 0) - dt * 42);
+    rfx.flashT = Math.max(0, (rfx.flashT || 0) - dt);
+    if (shake > 0) shake = Math.max(0, shake - dt * 32);
+    for (let i = rings.length - 1; i >= 0; i--) {
+      rings[i].t -= dt * 0.85;
+      if (rings[i].t <= 0) rings.splice(i, 1);
+    }
+    for (let i = lightnings.length - 1; i >= 0; i--) {
+      lightnings[i].t -= dt * 0.85;
+      if (lightnings[i].t <= 0) lightnings.splice(i, 1);
+    }
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.t -= dt * 0.9;
+      if (p.t <= 0) particles.splice(i, 1);
+    }
+    if (rfx.t >= (rfx.dur || 0.72)) {
+      if (rfx.boss) rfx.boss._ruptureHoldP1 = false;
+      if (typeof SpireDirector !== 'undefined' && SpireDirector && SpireDirector.isActive()) {
+        phase2ShatterFx = null;
+        if (typeof SpireDirector.releaseRuptureHold === 'function') SpireDirector.releaseRuptureHold();
+      } else if (typeof startPhase2ShatterSequence === 'function') {
+        startPhase2ShatterSequence(rfx.boss || rfx.variant, rfx.afterRuptureMode || 'story');
+      } else {
+        phase2ShatterFx = null;
+      }
+    }
+    return;
+  }
   if (typeof SpireDirector !== 'undefined' && SpireDirector) {
     SpireDirector.update(dt);
     if (SpireDirector.isBlockingGameplay()) {
@@ -381,13 +416,42 @@ function update(dt) {
   if (typeof isSpireCombatSuspended === 'function' && isSpireCombatSuspended()) return;
   if (typeof isAudioModalOpen === 'function' && isAudioModalOpen()) return;
   if (typeof resetCombatFrameBudgets === 'function') resetCombatFrameBudgets();
-  if (shake > 0) shake = Math.max(0, shake - dt * 36);
+  if (shake > 0) shake = Math.max(0, shake - dt * 28);
   if (player._atkPoseT > 0) player._atkPoseT = Math.max(0, player._atkPoseT - dt);
   if ((player._bhPullT || 0) > 0) player._bhPullT = Math.max(0, player._bhPullT - dt);
   if (typeof pendingBossCutscene !== 'undefined' && pendingBossCutscene && !bossCutscene && typeof startBossCutscene === 'function') {
     const pc = pendingBossCutscene;
     pendingBossCutscene = null;
     startBossCutscene(pc.mode, pc.variant, pc.title, pc.subtitle, pc.extraTag, pc.color, pc.accent, pc.dur, { fadeDur: pc.fadeDur });
+  }
+  // 二阶段「分镜碎裂 ➔ 斜切立绘名牌亮相 ➔ 二次碎裂切入战场」推进（名牌展示期暂停波次计时与敌弹，二次碎入战场立即恢复实机交锋！）
+  if (typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx) {
+    const fx = phase2ShatterFx;
+    fx.t += dt;
+    fx.fxShake = Math.max(0, (fx.fxShake || 0) - dt * 42);
+    fx.flashT = Math.max(0, (fx.flashT || 0) - dt);
+    if (Array.isArray(fx.shards)) {
+      for (let i = fx.shards.length - 1; i >= 0; i--) {
+        const s = fx.shards[i];
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+        s.vy += 420 * dt;
+        s.rot += s.vrot * dt;
+        s.alpha -= dt * 1.12;
+        if (s.alpha <= 0) fx.shards.splice(i, 1);
+      }
+    }
+    if (fx.stage === 'nameplate') {
+      if (fx.t >= (fx.dur || 1.75)) {
+        if (typeof advancePhase2ShatterToArena === 'function') advancePhase2ShatterToArena();
+      }
+      return;
+    } else {
+      fx.hudT = Math.max(0, (fx.hudT || 0) - dt);
+      if ((!fx.shards || fx.shards.length === 0) && fx.hudT <= 0) {
+        phase2ShatterFx = null;
+      }
+    }
   }
   // 首领召唤 / 终局降临 / 隐藏神话二阶段全屏静止登场演出
   if (bossCutscene && bossCutscene.t > 0) {

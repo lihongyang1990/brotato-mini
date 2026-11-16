@@ -18,68 +18,7 @@ const SPIRE_STORY_PACK = {
     wasteland: 'assets/spire/scene_3_vista.jpg',
     desert:    'assets/spire/scene_4_vista.jpg'
   },
-  cutscenes: {
-    act1: {
-      actKey: 'act1',
-      chapter: '第一幕 · 雨夜长桥 · 断刃狐面之约',
-      speaker: '绯红断刃剑姬 · 烬羽',
-      frames: [
-        'assets/spire/cut_act1_1.jpg',
-        'assets/spire/cut_act1_2.jpg',
-        'assets/spire/cut_act1_3.jpg'
-      ],
-      lines: [
-        '「九百九十八次雨夜，你每次提着这盏青灯走上孤桥，都会忘记我的名字。」',
-        '「既然立下守桥死誓——想踏过第一幕长桥，就先斩断我这柄残红太刀吧！」',
-        '「狐面碎裂之时，愿这一缕余烬，能替你照亮通往永冻冰窟的路……」'
-      ]
-    },
-    act2: {
-      actKey: 'act2',
-      chapter: '第二幕 · 永冻冰窟 · 碎冕星使的叹息',
-      speaker: '永冻星使 · 艾丝特莉亚',
-      frames: [
-        'assets/spire/cut_act2_1.jpg',
-        'assets/spire/cut_act2_2.jpg',
-        'assets/spire/cut_act2_3.jpg'
-      ],
-      lines: [
-        '「千年前黑日降临之夜，是你亲口求我冰封整座王城，连同你的罪与记忆。」',
-        '「时间早已冻停在银怀表里……若你执意唤醒真相，便承受碎冕星霜的审判！」',
-        '「原来冰泪融化时是温热的……去吧，伽蓝还在倒悬钟楼等你。」'
-      ]
-    },
-    act3: {
-      actKey: 'act3',
-      chapter: '第三幕 · 倒悬钟楼 · 逆转黄金发条',
-      speaker: '紫电弦月人偶 · 伽蓝',
-      frames: [
-        'assets/spire/cut_act3_1.jpg',
-        'assets/spire/cut_act3_2.jpg',
-        'assets/spire/cut_act3_3.jpg'
-      ],
-      lines: [
-        '「嘀嗒、嘀嗒——第 999 号提灯容器，你比上一世早到了整整三秒钟。」',
-        '「我把灵魂锻进这具发条躯壳，就是为了在钟摆停摆前，替你校准弑神的枪口！」',
-        '「黄金发条拧断了……往上走吧，黑水巨镜里坐着的，正是你自己！」'
-      ]
-    },
-    act4: {
-      actKey: 'act4',
-      chapter: '终幕 · 日蚀镜界 · 第999次救赎',
-      speaker: '第999号 · 日蚀圣女（镜中真我）',
-      frames: [
-        'assets/spire/cut_act4_1.jpg',
-        'assets/spire/cut_act4_2.jpg',
-        'assets/spire/cut_act4_3.jpg'
-      ],
-      lines: [
-        '「欢迎归来，我的第 999 具白衣分身。你一路收集的魂火，终于足够点燃黑日。」',
-        '「九百九十八次轮回皆归灰烬——唯有斩碎镜中的我，第一千道破晓才会降临！」',
-        '「黑纱坠落，宿命闭环……这一次，换你带着挚友们的残响活下去！」'
-      ]
-    }
-  },
+  cutscenes: {},
   // 适配 16 层四幕攀登的 15 段青羽行商层间私语（第 1→2 层 至 第 15→16 层逐层推进伏笔）
   witchWhispers: [
     '青羽轻拂帽檐风翎：「提灯少女，欢迎来到风语行商……哪怕失去了记忆，你的手指依然记得握铳的姿势呢。」',
@@ -147,6 +86,20 @@ const SpireAssets = (function () {
     solar_seraph:  'assets/spire/hero_eclipse_sheet.png'
   };
 
+  // 二阶段觉醒形态 1024×256 四帧横版透明精灵表（原版二头身 Q 版画风 1:1 呼应一阶段，半血实时切换）
+  const HERO_P2_SHEET_MAP = {
+    jinyu:          'assets/spire/hero_jinyu_p2_sheet.png',
+    butcher:        'assets/spire/hero_jinyu_p2_sheet.png',
+    astria:         'assets/spire/hero_astria_p2_sheet.png',
+    frost_queen:    'assets/spire/hero_astria_p2_sheet.png',
+    jialan:         'assets/spire/hero_jialan_p2_sheet.png',
+    void_weaver:    'assets/spire/hero_jialan_p2_sheet.png',
+    qingyu:         'assets/spire/hero_qingyu_p2_sheet.png',
+    plague_empress: 'assets/spire/hero_qingyu_p2_sheet.png',
+    eclipse:        'assets/spire/hero_eclipse_p2_sheet.png',
+    solar_seraph:   'assets/spire/hero_eclipse_p2_sheet.png'
+  };
+
   // 设定集【左栏二次元半身立绘】高清映射（兼容角色 ID 与首领 variant ID）
   const PORTRAIT_MAP = {
     zero:             'assets/spire/port_zero.jpg',
@@ -167,7 +120,7 @@ const SpireAssets = (function () {
     jialan:           'assets/spire/port_jialan.jpg',
     engineer:         'assets/spire/port_jialan.jpg',
     void_weaver:      'assets/spire/port_jialan.jpg',
-    mech_colossus:    'assets/spire/port_jialan.jpg',
+    mech_colossus:    'assets/spire/port_colossus.jpg',
     shadow_stalker:   'assets/spire/port_jialan.jpg',
     storm_siren:      'assets/spire/port_jialan.jpg',
     golden_golem:     'assets/spire/port_jialan.jpg',
@@ -180,6 +133,21 @@ const SpireAssets = (function () {
     solar_seraph:     'assets/spire/port_eclipse.jpg',
     iron_warden:      'assets/spire/port_eclipse.jpg',
     abyss_devourer:   'assets/spire/port_eclipse.jpg'
+  };
+
+  // 二阶段觉醒形态高清半身立绘映射（#161c26 暗石板金框原版画风统一）
+  const PORTRAIT_P2_MAP = {
+    jinyu:          'assets/spire/port_jinyu_p2.jpg',
+    butcher:        'assets/spire/port_jinyu_p2.jpg',
+    astria:         'assets/spire/port_astria_p2.jpg',
+    frost_queen:    'assets/spire/port_astria_p2.jpg',
+    jialan:         'assets/spire/port_jialan_p2.jpg',
+    void_weaver:    'assets/spire/port_jialan_p2.jpg',
+    mech_colossus:  'assets/spire/port_colossus_p2.jpg',
+    qingyu:         'assets/spire/port_qingyu_p2.jpg',
+    plague_empress: 'assets/spire/port_qingyu_p2.jpg',
+    eclipse:        'assets/spire/port_eclipse_p2.jpg',
+    solar_seraph:   'assets/spire/port_eclipse_p2.jpg'
   };
 
   const PROP_MAP = {
@@ -236,6 +204,16 @@ const SpireAssets = (function () {
     storm_siren:      'assets/spire/mb_storm_siren.png',
     venom_matriarch:  'assets/spire/mb_venom_matriarch.png',
     iron_warden:      'assets/spire/mb_iron_warden.png'
+  };
+
+  // 六大主宰二阶段觉醒单帧高清贴图映射（含倒悬机神裂胸双锯超载态）
+  const BOSS_P2_SPRITE_MAP = {
+    butcher:        'assets/spire/hero_jinyu_p2.png',
+    frost_queen:    'assets/spire/hero_astria_p2.png',
+    void_weaver:    'assets/spire/hero_jialan_p2.png',
+    mech_colossus:  'assets/spire/boss_mech_colossus_p2.png',
+    plague_empress: 'assets/spire/hero_qingyu_p2.png',
+    solar_seraph:   'assets/spire/hero_eclipse_p2.png'
   };
 
   function _isCompactDevice() {
@@ -666,11 +644,18 @@ const SpireAssets = (function () {
     return flash ? _getSheetFlashView(ent) : ent.normalView;
   }
 
-  function getBossSheet(variant, flash, urgent) {
+  function getBossSheet(variant, flash, urgent, isPhase2) {
     if (!variant) return null;
     const isUrgent = urgent !== false;
-    if (BOSS_SPRITE_MAP[variant]) {
-      ensureSpriteEntry(BOSS_SPRITE_MAP[variant], 300, isUrgent);
+    const sprMap = (isPhase2 && BOSS_P2_SPRITE_MAP[variant]) ? BOSS_P2_SPRITE_MAP : BOSS_SPRITE_MAP;
+    if (sprMap[variant]) {
+      ensureSpriteEntry(sprMap[variant], 300, isUrgent);
+    }
+    if (isPhase2 && HERO_P2_SHEET_MAP[variant]) {
+      const p2Ent = ensureSheetEntry(HERO_P2_SHEET_MAP[variant], isUrgent);
+      if (p2Ent) {
+        return flash ? _getSheetFlashView(p2Ent) : p2Ent.normalView;
+      }
     }
     if (HERO_SHEET_MAP[variant]) {
       return getHeroSheet(variant, flash, isUrgent);
@@ -707,8 +692,13 @@ const SpireAssets = (function () {
 
   function pickMonsterPath(e) {
     if (!e) return MONSTER_SPRITE_MAP.chaser;
-    if ((e.type === 'boss' || e.type === 'mini_boss' || e.type === 'special_boss') && e.variant && BOSS_SPRITE_MAP[e.variant]) {
-      return BOSS_SPRITE_MAP[e.variant];
+    if ((e.type === 'boss' || e.type === 'mini_boss' || e.type === 'special_boss') && e.variant) {
+      if (e.mythicPhase2 && !e._ruptureHoldP1 && BOSS_P2_SPRITE_MAP[e.variant]) {
+        return BOSS_P2_SPRITE_MAP[e.variant];
+      }
+      if (BOSS_SPRITE_MAP[e.variant]) {
+        return BOSS_SPRITE_MAP[e.variant];
+      }
     }
     if (e.type && MONSTER_SPRITE_MAP[e.type]) {
       return MONSTER_SPRITE_MAP[e.type];
@@ -776,13 +766,13 @@ const SpireAssets = (function () {
     }, true);
   }
 
-  function getPortrait(keyOrVariant) {
-    const rel = PORTRAIT_MAP[keyOrVariant] || 'assets/spire/port_zero.jpg';
+  function getPortrait(keyOrVariant, isPhase2) {
+    const rel = (isPhase2 && PORTRAIT_P2_MAP[keyOrVariant]) ? PORTRAIT_P2_MAP[keyOrVariant] : (PORTRAIT_MAP[keyOrVariant] || 'assets/spire/port_zero.jpg');
     return loadImage(rel);
   }
 
-  function getPortraitSrc(keyOrVariant) {
-    const rel = PORTRAIT_MAP[keyOrVariant] || 'assets/spire/port_zero.jpg';
+  function getPortraitSrc(keyOrVariant, isPhase2) {
+    const rel = (isPhase2 && PORTRAIT_P2_MAP[keyOrVariant]) ? PORTRAIT_P2_MAP[keyOrVariant] : (PORTRAIT_MAP[keyOrVariant] || 'assets/spire/port_zero.jpg');
     return resolve(rel);
   }
 
@@ -833,7 +823,17 @@ const SpireAssets = (function () {
     }
     if (w === 3 || w === 4 || w === 7 || w === 8 || w === 11 || w === 12 || w === 15 || w >= 16) {
       const actBoss = w <= 4 ? 'butcher' : (w <= 8 ? 'frost_queen' : (w <= 12 ? 'void_weaver' : 'solar_seraph'));
-      getBossSheet(actBoss, false, false);
+      getBossSheet(actBoss, false, false, false);
+      getBossSheet(actBoss, false, false, true);
+      getPortrait(actBoss, true);
+      if (w > 16) {
+        getBossSheet('mech_colossus', false, false, false);
+        getBossSheet('mech_colossus', false, false, true);
+        getPortrait('mech_colossus', true);
+        getBossSheet('plague_empress', false, false, false);
+        getBossSheet('plague_empress', false, false, true);
+        getPortrait('plague_empress', true);
+      }
     }
   }
 
@@ -853,8 +853,8 @@ const SpireAssets = (function () {
 
     // 第二优先级：序章首屏背景图与竞技场底图在空闲帧平缓预热，绝不抢占小怪并发槽位
     const jobs = [
-      () => loadImage('assets/spire/v3/awakening-coffin.png', null, null, false),
-      () => loadImage('assets/spire/v3/awakening-lantern.png', null, null, false),
+      () => loadImage('assets/spire/v3/awakening-coffin.jpg', null, null, false),
+      () => loadImage('assets/spire/v3/awakening-lantern.jpg', null, null, false),
       () => loadImage('assets/spire/scene_1_vista.jpg', null, null, false),
       () => getArenaBg('foundry')
     ];
@@ -900,38 +900,38 @@ const BOSS_PORTRAIT_DATA = {
   butcher: {
     w: 440, h: 516,
     personaName: '烬羽 · 绯红断刃剑姬',
-    summerTitle: '绯红魔角夏装',
-    mythicTitle: '真红魅魔纱裙泳装'
+    summerTitle: '绯雨守桥 · 单刀试剑常服',
+    mythicTitle: '绯夜燃魂 · 双刀烬羽织'
   },
   frost_queen: {
     w: 440, h: 516,
     personaName: '艾丝特莉亚 · 永冻星使',
-    summerTitle: '冰晶碎冕夏装',
-    mythicTitle: '凛冬冰晶轻纱泳装'
+    summerTitle: '捧盒孤王 · 午夜蓝宫廷裙',
+    mythicTitle: '碎冕极光 · 六翼凛冬礼装'
   },
   mech_colossus: {
     w: 440, h: 516,
-    personaName: '泰娅 · 倒悬重装机神',
-    summerTitle: '炽橙机能夏装',
-    mythicTitle: '超载炽金度假泳装'
+    personaName: '倒悬机神 · 神枢重装巨像',
+    summerTitle: '黑铁铆钉 · 封闭守卫态',
+    mythicTitle: '熔核超载 · 裂胸双锯巨像'
   },
   void_weaver: {
     w: 440, h: 516,
     personaName: '伽蓝 · 紫电弦月少主',
-    summerTitle: '紫晶蝶翼夏装',
-    mythicTitle: '星渊蝶纱魅影泳装'
+    summerTitle: '守礼发条 · 紫金燕尾常服',
+    mythicTitle: '逆时神枢 · 星晷超载少主装'
   },
   plague_empress: {
     w: 440, h: 516,
     personaName: '青羽 · 残羽风语魔女',
-    summerTitle: '翠蝶流金夏装',
-    mythicTitle: '万蛊翠纱魅影泳装'
+    summerTitle: '提灯引路 · 墨绿短披肩',
+    mythicTitle: '千夜苍岚 · 神风羽弓魔女装'
   },
   solar_seraph: {
     w: 440, h: 516,
     personaName: '日蚀圣女 · 镜中真我',
-    summerTitle: '圣羽绯阳夏装',
-    mythicTitle: '破晓流金绯纱泳装'
+    summerTitle: '盲眼纯白 · 隔镜司祭长裙',
+    mythicTitle: '破镜真我 · 黑曜金纹镜像礼装'
   },
   crimson_lord: {
     w: 440, h: 516,
