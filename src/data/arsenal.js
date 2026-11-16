@@ -870,3 +870,133 @@ const UPGRADES = [
   { name: '回响垂青', icon: '🍀', desc: '收获 +6（波末结晶且成长），幸运 +6', apply: p => { p.harvestFlat += 6; p.luck += 6; } },
   { id_alias: 'magnet', name: '引魂灯芯', icon: '🧲', desc: '拾取范围 +65，经验与采集效率 +10%', apply: p => { p.magnet += 65; p.harvest += 0.10; } }
 ];
+
+// ============================================================================
+// 🏷️ 兵装【吃伤乘区标注】与遗物/刻印【生效范围标注】统一计算引擎
+// 让每把兵装直观标出「近战 / 远程 / 法杖 / 元素 / 工程 / 生命 / 护甲 / 移速 / 汲血」等全部真实加成来源
+// ============================================================================
+function getWeaponScalingTags(tpl, wId = '') {
+  if (!tpl) return [];
+  const tags = [];
+  if (tpl.isStaff) {
+    tags.push({ cls: 'ts-staff', label: '🪄法杖', short: '法杖', tip: '秘术法杖独立乘区：吃【全体伤害】与下方标注属性，不吃【远程伤害】与【近战伤害】' });
+    if (tpl.elemScale) {
+      tags.push({ cls: 'ts-elem', label: '🔥元素', short: '元素', tip: `享受 ${Math.round(tpl.elemScale * 100)}%【元素伤害】增幅` });
+    }
+    if (tpl.techScale) {
+      tags.push({ cls: 'ts-tech', label: '⚙️工程', short: '工程', tip: `享受 ${Math.round((typeof tpl.techScale === 'number' ? tpl.techScale : 1) * 100)}%【工程伤害】增幅` });
+    }
+    if (tpl.lifestealScale) {
+      tags.push({ cls: 'ts-leech', label: '🩸汲血', short: '汲血', tip: '生命窃取属性同步直接增幅法杖伤害' });
+    }
+  } else {
+    if (tpl.melee) {
+      tags.push({ cls: 'ts-melee', label: '⚔️近战', short: '近战', tip: '享受 100%【近战伤害】与【全体伤害】加成' });
+    } else {
+      tags.push({ cls: 'ts-ranged', label: '🔫远程', short: '远程', tip: '享受 100%【远程伤害】与【全体伤害】加成' });
+    }
+    if (tpl.set === 'elemental') {
+      tags.push({ cls: 'ts-elem', label: '🔥元素', short: '元素', tip: '同时享受 100%【元素伤害】独立乘区加成！' });
+    }
+    if (tpl.techScale) {
+      tags.push({ cls: 'ts-tech', label: '⚙️工程', short: '工程', tip: `同时享受 ${Math.round((typeof tpl.techScale === 'number' ? tpl.techScale : 1) * 100)}%【工程伤害】联动增伤！` });
+    }
+  }
+  if (tpl.hpScale) tags.push({ cls: 'ts-hp', label: '❤️生命', short: '生命', tip: '最大生命值额外提升基础伤害' });
+  if (tpl.armorScale) tags.push({ cls: 'ts-armor', label: '🛡️护甲', short: '护甲', tip: '护甲值额外提升基础伤害' });
+  if (tpl.blastScaleDmg) tags.push({ cls: 'ts-blast', label: '💥爆破', short: '爆破', tip: '爆炸范围加成同步提升基础伤害' });
+  if (tpl.spdScale) tags.push({ cls: 'ts-spd', label: '💨移速', short: '移速', tip: '额外移速同步提升伤害、射速与暴击率' });
+  if (tpl.aspdScale) tags.push({ cls: 'ts-aspd', label: '⚡攻速', short: '攻速', tip: '攻击速度加成额外提升基础伤害' });
+  if (tpl.rangeScale) tags.push({ cls: 'ts-range', label: '📏范围', short: '范围', tip: '攻击范围加成额外提升基础伤害' });
+  if (wId === 'wrench' || tpl.deploysLaserTurret || tpl.spawnsMine || tpl.deploysTotem) {
+    tags.push({ cls: 'ts-summon', label: '🗼产建筑', short: '建筑', tip: '附带部署自律建筑（建筑伤害吃【工程伤害】与【全体伤害】，攻速仅吃【建筑攻速】）' });
+  }
+  return tags;
+}
+
+function renderWeaponScalingBadgesHtml(tpl, wId = '') {
+  const tags = getWeaponScalingTags(tpl, wId);
+  if (!tags.length) return '';
+  return tags.map(t => `<span class="tag tag-scale ${t.cls}" title="${t.tip}">${t.label}</span>`).join('');
+}
+
+function renderWeaponSlotScaleHtml(tpl, wId = '') {
+  const tags = getWeaponScalingTags(tpl, wId);
+  if (!tags.length) return '';
+  const txt = tags.slice(0, 3).map(t => t.short).join('·');
+  const tip = '吃伤加成：' + tags.map(t => t.label).join(' + ') + '（及全体伤害）';
+  return `<div class="slot-scale" title="${tip}">${txt}</div>`;
+}
+
+function getRelicScopeTags(it) {
+  if (!it || !it.desc) return [];
+  const d = it.desc;
+  const out = [];
+  if (/远程兵装伤害|远程伤害|远程魂弹|常规远程兵装|远程投射物/.test(d)) {
+    out.push({ cls: 'ts-ranged', label: '🔫远程有效', tip: '仅对标有【🔫远程】的常规远程兵装生效（法杖与建筑不吃远程加成）' });
+  }
+  if (/近战伤害|近战加成|近战挥砍|近战挥击|近战暴击|近战兵装/.test(d)) {
+    out.push({ cls: 'ts-melee', label: '⚔️近战有效', tip: '对标有【⚔️近战】的兵装生效' });
+  }
+  if (/【法杖】|【秘术法杖】|法杖吟唱|法杖冷却/.test(d)) {
+    out.push({ cls: 'ts-staff', label: '🪄法杖专属', tip: '对标有【🪄法杖】的 6 把秘术法杖生效' });
+  }
+  if (/元素伤害|元素与反应伤害|元素与工程伤害|元素与爆炸伤害/.test(d)) {
+    out.push({ cls: 'ts-elem', label: '🔥元素加成', tip: '对标有【🔥元素】的兵装/法杖及灼烧·风毒·元素反应生效' });
+  }
+  if (/工程伤害|发条机巧|建筑攻速|友方建筑|友方炮台|座自律|座【|部署 \+?1 座|部署 2 座|感应地雷|发条星雷/.test(d)) {
+    out.push({ cls: 'ts-tech', label: '⚙️工程/建筑', tip: '对全部炮台/图腾/地雷及标有【⚙️工程】的兵装生效' });
+  }
+  if (out.length === 0 && /全体伤害|全伤 \+/.test(d)) {
+    out.push({ cls: 'ts-all', label: '✦全系通用', tip: '对近战、远程、法杖与建筑构装全部生效' });
+  }
+  return out.slice(0, 2);
+}
+
+function renderRelicScopeBadgesHtml(it) {
+  const tags = getRelicScopeTags(it);
+  if (!tags.length) return '';
+  return tags.map(t => `<span class="tag tag-scale ${t.cls}" title="${t.tip}">${t.label}</span>`).join('');
+}
+
+function calcWeaponPreviewDmg(wId, tpl, tier = 1, evoObj = null) {
+  if (!tpl) return 0;
+  const hasPlayer = typeof player !== 'undefined' && player;
+  const totalRange = (hasPlayer && typeof getTotalRangeBonus === 'function') ? getTotalRangeBonus() : 0;
+  const effAspd = (hasPlayer && typeof getEffectiveAtkSpd === 'function') ? getEffectiveAtkSpd() : 1;
+  const bonusMoveSpd = (hasPlayer && typeof getEffectiveSpdMul === 'function') ? Math.max(0, getEffectiveSpdMul() - 1) : 0;
+  const tierScale = (1 + (Math.max(1, tier) - 1) * 0.55) * (tier >= 5 ? 1.18 : 1);
+  const aspdBonus = tpl.aspdScale ? Math.max(0, effAspd - 1) * 9 : 0;
+  const rngBonus = tpl.rangeScale ? Math.max(0, totalRange) * tpl.rangeScale : 0;
+  const hpBonus = (tpl.hpScale && hasPlayer) ? Math.max(0, player.maxHp) * tpl.hpScale : 0;
+  const armBonus = (tpl.armorScale && hasPlayer && typeof getTotalArmor === 'function') ? Math.max(0, getTotalArmor()) * tpl.armorScale : 0;
+  const blastBonus = (tpl.blastScaleDmg && hasPlayer && typeof getBlastScale === 'function') ? Math.max(0, getBlastScale() - 1) * tpl.dmg * tpl.blastScaleDmg : 0;
+  const spdBonus = tpl.spdScale ? bonusMoveSpd * tpl.dmg * tpl.spdScale : 0;
+  const stickCnt = (wId === 'stick' && hasPlayer && typeof getSetBonuses === 'function') ? Math.max(0, getSetBonuses().sticks || 0) : 0;
+  const base = ((tpl.dmg + aspdBonus + rngBonus + hpBonus + armBonus + blastBonus + spdBonus) * tierScale + stickCnt * 4.8) * (evoObj && evoObj.dmgMul ? evoObj.dmgMul : 1);
+  const effDmg = (hasPlayer && typeof getEffectiveDmgMul === 'function') ? getEffectiveDmgMul() : 1;
+  const setB = (hasPlayer && typeof getSetBonuses === 'function') ? getSetBonuses() : { elem: 0, tech: 0 };
+  let finalMul;
+  if (tpl.isStaff) {
+    const staffElemAdd = tpl.elemScale ? (((hasPlayer ? player.elemBonus : 0) || 0) + (setB.elem || 0)) * tpl.elemScale : 0;
+    const staffTechAdd = tpl.techScale ? (((hasPlayer ? player.techBonus : 0) || 0) + (setB.tech || 0)) * tpl.techScale : 0;
+    const staffLeechAdd = tpl.lifestealScale ? Math.max(0, (hasPlayer ? player.lifesteal : 0) || 0) * tpl.lifestealScale : 0;
+    finalMul = effDmg * Math.max(0.25, 1 + staffElemAdd + staffTechAdd + staffLeechAdd);
+  } else {
+    const elemMul = (hasPlayer && typeof getElemMul === 'function') ? getElemMul() : 1;
+    const techMul = (hasPlayer && typeof getTechMul === 'function') ? getTechMul() : 1;
+    const archetypeScale = tpl.set === 'elemental' ? elemMul : (tpl.techScale ? (1 + (techMul - 1) * (typeof tpl.techScale === 'number' ? tpl.techScale : 1)) : 1);
+    const typeAdd = hasPlayer ? (tpl.melee ? (player.meleeBonus || 0) : (player.rangedBonus || 0)) : 0;
+    finalMul = (effDmg + typeAdd) * archetypeScale;
+  }
+  return Math.max(1, Math.round(base * finalMul));
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.getWeaponScalingTags = getWeaponScalingTags;
+  globalThis.renderWeaponScalingBadgesHtml = renderWeaponScalingBadgesHtml;
+  globalThis.renderWeaponSlotScaleHtml = renderWeaponSlotScaleHtml;
+  globalThis.getRelicScopeTags = getRelicScopeTags;
+  globalThis.renderRelicScopeBadgesHtml = renderRelicScopeBadgesHtml;
+  globalThis.calcWeaponPreviewDmg = calcWeaponPreviewDmg;
+}

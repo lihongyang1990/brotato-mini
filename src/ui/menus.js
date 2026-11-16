@@ -539,6 +539,11 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
+  if (k === 'escape' && typeof isWeaponSlotModalOpen === 'function' && isWeaponSlotModalOpen()) {
+    if (e.preventDefault) e.preventDefault();
+    closeWeaponSlotModal();
+    return;
+  }
   if (k === 'escape' && typeof isAudioModalOpen === 'function' && isAudioModalOpen()) {
     if (e.preventDefault) e.preventDefault();
     closeAudioModal();
@@ -1129,6 +1134,7 @@ function replayOpeningCutscene() {
 
 function showStart() {
   if (typeof resetWeaponEvolutionUI === 'function') resetWeaponEvolutionUI();
+  if (typeof closeWeaponSlotModal === 'function') closeWeaponSlotModal(true);
   if (typeof closeEndSummaryDetail === 'function') closeEndSummaryDetail();
   state = 'menu';
   resetJoy();

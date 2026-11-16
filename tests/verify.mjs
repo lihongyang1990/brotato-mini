@@ -2986,11 +2986,46 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     const allNewWpnsDealt = ['bone_boomerang', 'pulse_carbine', 'obsidian_flail', 'gale_twinbow', 'crimson_siphon_staff', 'singularity_scepter']
       .every(k => dealtMap[k] && dealtMap[k].dmg > 0);
 
+    // 5) v2.2.2 吃伤乘区标签校验：冰棱同时标【远程+元素】、法杖标【法杖+元素】且绝不标远程、钉铳标【远程+工程】、流星锤标【近战+护甲+爆破】
+    const icicleTags = renderWeaponScalingBadgesHtml(WEAPONS.icicle, 'icicle');
+    const staffTags = renderWeaponScalingBadgesHtml(WEAPONS.ember_staff, 'ember_staff');
+    const chronoTags = renderWeaponScalingBadgesHtml(WEAPONS.chrono_staff, 'chrono_staff');
+    const nailTags = renderWeaponScalingBadgesHtml(WEAPONS.nailgun, 'nailgun');
+    const flailTags = renderWeaponScalingBadgesHtml(WEAPONS.obsidian_flail, 'obsidian_flail');
+    const glassesTags = renderRelicScopeBadgesHtml(ITEMS.find(x => x.id === 'glasses'));
+    const scalingBadgesOk = (
+      icicleTags.includes('远程') && icicleTags.includes('元素') &&
+      staffTags.includes('法杖') && staffTags.includes('元素') && !staffTags.includes('🔫远程') &&
+      chronoTags.includes('法杖') && chronoTags.includes('元素') && chronoTags.includes('工程') && chronoTags.includes('产建筑') &&
+      nailTags.includes('远程') && nailTags.includes('工程') &&
+      flailTags.includes('近战') && flailTags.includes('护甲') && flailTags.includes('爆破') &&
+      glassesTags.includes('远程有效')
+    );
+    openShop(true);
+    // 6) Brotato 式随身兵装点击浮窗校验：点击槽位绝不直接卖掉武器，而是弹出合成/回收浮窗
+    player.weapons = [makeWeapon('icicle', 2), makeWeapon('icicle', 2), makeWeapon('katana', 3)];
+    renderShop();
+    const slot0 = document.getElementById('weaponSlots').children[0];
+    slot0.click();
+    const clickDidNotAutoSell = player.weapons.length === 3 && isWeaponSlotModalOpen();
+    combineWeaponSlotFromModal(0);
+    const modalMergedOk = player.weapons.length === 2 && player.weapons[0].tier === 3 && !isWeaponSlotModalOpen();
+    const matsBeforeRec = player.mats;
+    openWeaponSlotModal(1);
+    recycleWeaponSlotFromModal(1);
+    const modalRecycledOk = player.weapons.length === 1 && player.mats > matsBeforeRec && !isWeaponSlotModalOpen();
+    const lastWeaponProtectedOk = recycleWeaponSlotFromModal(0) === false && player.weapons.length === 1;
+    const brotatoSlotUxOk = clickDidNotAutoSell && modalMergedOk && modalRecycledOk && lastWeaponProtectedOk;
+
+    openCodex('weapons');
+    openCodex('items');
+    closeCodex();
+
     return {
       ok: spdDmg1 > baseDmg0 + 0.30 && dodgeAspd1 > baseAspd0 + 0.40 && lsDmg1 > spdDmg1 + 0.10
         && hpAfterPad >= hpBeforePad + 9 && slots1 === slots0 + 1
-        && pocketTurretOk && bloodShieldOk && phoenixSavedOk && allNewWpnsDealt,
-      detail: { spdDmg1, baseDmg0, dodgeAspd1, baseAspd0, lsDmg1, hpBeforePad, hpAfterPad, slots0, slots1, pocketTurretOk, bloodShieldOk, phoenixSavedOk, allNewWpnsDealt }
+        && pocketTurretOk && bloodShieldOk && phoenixSavedOk && allNewWpnsDealt && scalingBadgesOk && brotatoSlotUxOk,
+      detail: { spdDmg1, baseDmg0, dodgeAspd1, baseAspd0, lsDmg1, hpBeforePad, hpAfterPad, slots0, slots1, pocketTurretOk, bloodShieldOk, phoenixSavedOk, allNewWpnsDealt, scalingBadgesOk, brotatoSlotUxOk }
     };
   })()`, env220.sandbox);
   assert.strictEqual(v220Res.ok, true, "v2.2.0 full-archetype arsenal & relic suite failed: " + JSON.stringify(v220Res));
