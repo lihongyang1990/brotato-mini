@@ -16,18 +16,46 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.1.23';
+const APP_VERSION = 'v2.2.3';
 const APP_BUILD_DATE = '2026-11-16';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.1.23', date: '2026-11-16', tag: '当前版本 · 六大主宰二阶段五拍破屏演出 · 青羽执扇化弓重绘 · D0轻松模式减半与60FPS提速',
+    ver: 'v2.2.3', date: '2026-11-16', tag: '当前版本 · 六大主宰二阶段五拍破屏演出 · 青羽执扇化弓重绘 · D0轻松模式减半与60FPS提速',
     title: '🔥 六大主宰二阶段神装觉醒 & 五拍破屏分镜演出 + 🍃 青羽全新「执扇 ➔ 挽弓」形象重绘 + ⚡ D0 难度减半与 60FPS 渲染提速',
     items: [
       '💥 六大首领二阶段全新神装形象与五拍破屏演出：为烬羽、艾丝特莉亚、伽蓝、日蚀圣女、青羽试炼影与倒悬机神补齐二阶段专属无裁切立绘、Q 版四帧新小人与宽银幕三镜蜕变分镜；实装「一阶段破防双层冲击光圈 ➔ 三镜剧情演绎 ➔ 碎屏斜切名牌亮相 ➔ 二次碎裂切回战场」高燃演出与强震屏打击感（青羽试炼影设为 100% 必进二阶段）！',
       '🍃 青羽一、二阶段美术形象重塑：全面重绘青羽全套立绘、四帧小人与觉醒分镜为纤细清丽的少女风语魔女造型，确立「一阶段单手执翠玉羽扇 ➔ 二阶段化扇为苍岚神风羽弓（无风灯）」的武器蜕变呼应！',
       '⚡ D0「寻光」轻松模式减负 & 60FPS 性能优化：大幅下调 D0 怪物血量、伤害、移速与刷怪密度并提高金币补给，支持轻松通关体验完整剧情；引入相机视口子矩形地坪裁剪、高分屏像素预算优化与轻量碎屏图集预烘焙，全程零 shadowBlur 稳定满帧！'
+    ]
+  },
+  {
+    ver: 'v2.2.2', date: '2026-11-16', tag: '全兵装/遗物【吃伤乘区彩色标签】 + Brotato式随身兵装操作浮窗（点击检视/合成/回收，防误触秒卖）',
+    title: '🏷️ 全兵装与遗物【吃伤乘区彩色标签】全界面实装 + 🛡️ Brotato 式随身兵装详情检视与「合成 / 回收 / 取消」操作浮窗（彻底杜绝单击误触秒卖）',
+    items: [
+      '🛡️ 参照《土豆兄弟 (Brotato)》重做随身兵装槽交互：彻底取消桌面端单击兵装直接秒卖回收的高危设定！现在点击任意随身兵装槽将弹出专属【兵装详情与操作浮窗】，完整展示实时面板伤害/间隔/射程/暴击、本局累计输出与斩杀数、套装羁绊进度及五阶进化预览，并提供清晰的【◆ 共鸣合成】【♻️ 熔炼回收 (+◇XX)】【✕ 取消】独立按钮（仅剩 1 把兵装时也可随时点开查看详情，回收键自动锁止）！',
+      '🏷️ 42 把兵装全界面吃伤乘区彩色标签：在行商货架、底部随身兵装槽、兵装操作浮窗、秘匣开箱、五阶进化选择、圣典图鉴与赛后结算详情中，自动标出每把武器的全部真实吃伤属性（如碎冕寒冰棱标出【🔫远程】【🔥元素】，赤烬魂灯杖标出【🪄法杖】【🔥元素】，黄金发条扳手标出【⚔️近战】【⚙️工程】【🗼产建筑】，黑曜链枷流星锤标出【⚔️近战】【🛡️护甲】【💥爆破】），悬停还可查看具体加成比例！',
+      '🎯 遗物与升级刻印同步配对标注：为提供远程、近战、法杖、元素、工程/建筑加成的圣遗物与升级刻印同步附带同色生效范围角标（如【🔫远程有效】明确提示法杖与建筑不吃远程加成），买装备对标签一眼即懂！'
+    ]
+  },
+  {
+    ver: 'v2.2.1', date: '2026-11-16', tag: 'D0~D4 难度梯度平滑回调（D0 血/伤-50%·怪量-20% | D1 标准100%无额外加成 | D5 保持不变）',
+    title: '⚖️ 轮回厄度 D0~D4 难度梯度平滑回调（D5 保持不变，D1 回归标准 100% 血伤基准，D0 寻光序章血伤 -50% · 怪量 -20%）',
+    items: [
+      '🌱 D0 寻光序章大幅减负：怪物血量下调至 -50%（0.50x）、怪物伤害下调至 -50%（0.50x）、同屏上限与刷怪量同步减少 -20%（0.80x），剧情体验更轻松惬意！',
+      '⚖️ D1 守誓试炼回归纯净标准基准：移除此前额外附加的怪物血量与伤害加成，恢复为标准 100% 血量（1.00x）与 100% 伤害（1.00x）！',
+      '📈 D2~D4 阶梯等差同步重排、D5 蚀日神罚保持不变：D2 调整为 +18% 血 / +13% 伤、D3 调整为 +35% 血 / +25% 伤、D4 调整为 +53% 血 / +38% 伤，平滑衔接 D5（+70% 血 / +50% 伤，完全不变）！'
+    ]
+  },
+  {
+    ver: 'v2.2.0', date: '2026-11-16', tag: '全流派军械库补完(42兵装/84神话进化 + 138圣遗物) · 全遗物专属高清矢量贴图重绘 · 核心大模块架构瘦身',
+    title: '⚔️ 全流派军械库与遗物大补完（42把兵装×84种五阶进化 + 138件圣遗物） + 🎨 全装备专属高清矢量圣徽贴图重绘（彻底根除斗篷/砺剑石错用斧头贴图） + 📐 模块化架构瘦身',
+    items: [
+      '⚔️ 新增 6 把跨流派拼图守誓兵装（36 ➔ 42 把兵装 · 84 种五阶神话二选一进化）：新增古誓回旋近战【苍骨回旋战刃】（补齐 6/6 古誓羁绊，近身挥斩并掷出折返骨轮往返双段切割）、封魂铳【断界三连脉冲步铳】（补齐 6/6 封魂铳羁绊，三连点射终弹破甲易伤）、黑曜重装【黑曜链枷流星锤】（护甲+爆破范围双增幅大弧度旋锤）、星芒疾风【追风双弦猎弓】（移速同步转化为射速/伤害/暴击）、嗜血秘术【猩红渴血魔杖】（法杖×汲血×暴击跨界，张开猩红渴血阵抽血回春）与重装秘术【星蚀引力权杖】（法杖×护甲×爆破跨界，展开黑洞奇点聚怪并终结坍缩核爆）！',
+      '🎒 扩充 46 件全流派核心圣遗物（92 ➔ 138 件遗物，呈 T1:42 / T2:40 / T3:34 / T4:22 金字塔分布）：全面补齐经济运营（青羽行商布袋、金丝藏晶衬垫、贪婪黄金天平、苦修献祭荆棘冠、翠微灵果盆栽、赤椒炼金火油）、物理远程终极装（万铳神机·无限弹链、分裂幻影弹巢、贯星死神轨道镜）、星芒暴击（百步穿杨·星神之瞳、弑巨星芒重腰带、猎魔金羽战利品）、风语闪避跨界转化（疾风超导发条炉：移速转全伤、青羽的暗影连帽衫：闪避转攻速、幻影肾上腺针、幻步反击风刃）、猩红汲血终极装（绯红真祖圣爵：满血汲血转猩红血盾、鲜血契约圣印：吸血转全伤、不死鸟涅槃血羽：免死浴火重生）、秘术法杖与机巧跨界（万法归宗·禁忌法典：35%双重咏唱、随身发条母盒：碎器物产炮台、逆命双生沙漏：兵装槽+1）！',
+      '🎨 全量 138 件遗物与补给专属 192×192 高清矢量圣徽贴图重绘（relic_sprites.js）：彻底修复此前遗物沿用系统 Emoji 导致的贴图错位问题（如【守林人斗篷】【守桥砺剑石】误用斧头🪓、【永冻观星披风】误用老鹰🦅、【青岚风语披肩】误用火箭🚀、【凝滞钟摆锤】误用蜗牛🐌等）；复用单张离屏画布按需导出 DataURL（0 新增常驻 Canvas 上下文、0 实时径向渐变），在行商、开箱、圣典、驻留栏与赛后结算全面呈现高辨识度哥特鎏金装备原画！',
+      '📐 核心引擎模块化拆分与单文件离线制品同步：将超长核心文件拆分为职责清晰的独立模块（boss_ai.js 独立承载怪物与首领多维状态机、vfx_overlays.js 独立承载世界法阵预警与屏幕魂雾立绘层、relic_sprites.js 独立承载遗物原画烘焙），同步更新单文件离线版与自动化回归套件！'
     ]
   },
   {
@@ -730,19 +758,22 @@ const SpireBootGate = (function () {
       ['05/textures', () => typeof buildFloorTexture === 'function'],
       ['06/viewport', () => typeof resize === 'function' && typeof clampCam === 'function'],
       ['07/audio', () => typeof SpireAudio === 'object' && typeof beep === 'function'],
-      ['08/arsenal', () => typeof WEAPONS === 'object' && WEAPONS !== null && Object.keys(WEAPONS).length === 36 && Array.isArray(ITEMS) && ITEMS.length >= 90 && Array.isArray(CLASSES) && CLASSES.length >= 6],
-      ['09/monsters', () => typeof BOSS_DEFS === 'object' && BOSS_DEFS !== null && Object.keys(BOSS_DEFS).length >= 6],
-      ['10/codex', () => typeof openCodex === 'function'],
-      ['11/story-v2', () => typeof SpireStoryV2 === 'object' && SpireStoryV2 !== null && !!SpireStoryV2.opening],
-      ['12/director', () => typeof SpireDirector === 'object' && SpireDirector !== null && typeof SpireDirector.render === 'function'],
-      ['13/menus', () => typeof startGame === 'function' && typeof showStart === 'function' && typeof initMenuUI === 'function'],
-      ['14/presentation', () => typeof SpireSave === 'object' && typeof continueSpireStory === 'function'],
-      ['15/spawner', () => typeof beginWave === 'function' && typeof createEnemy === 'function' && typeof spawnArenaTerrains === 'function'],
-      ['16/combat', () => typeof hurtEnemy === 'function' && typeof hurtPlayer === 'function'],
-      ['17/update', () => typeof update === 'function' && typeof triggerSoulDash === 'function'],
-      ['18/shop', () => typeof openShop === 'function' && typeof finishWave === 'function'],
-      ['19/sprites', () => typeof getBakedWeaponSprite === 'function'],
-      ['20/renderer', () => typeof draw === 'function' && typeof loop === 'function']
+      ['08/arsenal', () => typeof WEAPONS === 'object' && WEAPONS !== null && Object.keys(WEAPONS).length === 42 && Array.isArray(ITEMS) && ITEMS.length >= 138 && Array.isArray(CLASSES) && CLASSES.length >= 6],
+      ['09/relic_sprites', () => typeof getItemArtDataUrl === 'function' && typeof renderItemEmblemHtml === 'function'],
+      ['10/monsters', () => typeof BOSS_DEFS === 'object' && BOSS_DEFS !== null && Object.keys(BOSS_DEFS).length >= 6],
+      ['11/codex', () => typeof openCodex === 'function'],
+      ['12/story-v2', () => typeof SpireStoryV2 === 'object' && SpireStoryV2 !== null && !!SpireStoryV2.opening],
+      ['13/director', () => typeof SpireDirector === 'object' && SpireDirector !== null && typeof SpireDirector.render === 'function'],
+      ['14/menus', () => typeof startGame === 'function' && typeof showStart === 'function' && typeof initMenuUI === 'function'],
+      ['15/presentation', () => typeof SpireSave === 'object' && typeof continueSpireStory === 'function'],
+      ['16/spawner', () => typeof beginWave === 'function' && typeof createEnemy === 'function' && typeof spawnArenaTerrains === 'function'],
+      ['17/combat', () => typeof hurtEnemy === 'function' && typeof hurtPlayer === 'function'],
+      ['18/boss_ai', () => typeof updateEnemiesAndBosses === 'function' && typeof tickBossArenaMechanic === 'function'],
+      ['19/update', () => typeof update === 'function' && typeof triggerSoulDash === 'function'],
+      ['20/shop', () => typeof openShop === 'function' && typeof finishWave === 'function'],
+      ['21/sprites', () => typeof getBakedWeaponSprite === 'function'],
+      ['22/vfx_overlays', () => typeof drawWorldZonesAndTelegraphs === 'function' && typeof drawBattleScreenOverlays === 'function'],
+      ['23/renderer', () => typeof draw === 'function' && typeof loop === 'function']
     ];
 
     let modulesReady = true;
@@ -787,9 +818,9 @@ const SpireBootGate = (function () {
     // 20/20 核心脚本与 4/4 样式表已 100% 就绪：首屏原画通过 SpireAssets 共享缓存渐进预热，
     // 最长仅柔和等待 900ms 即自动放行入殿，彻底根除手机蜂窝网络波动误弹“未加载完全/缓存冲突”拦截框！
     const criticalList = [
-      ['主殿背景原画', 'assets/spire/v2/title-clean.png', true],
+      ['主殿背景原画', 'assets/spire/v2/title-clean.jpg', true],
       ['主角立绘档案', 'assets/spire/port_zero.jpg', true],
-      ['序章石棺原画', 'assets/spire/v3/awakening-coffin.png', false],
+      ['序章石棺原画', 'assets/spire/v3/awakening-coffin.jpg', false],
       ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png', false],
       ['风语行商立绘', 'assets/spire/port_qingyu.jpg', false],
       ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg', false]

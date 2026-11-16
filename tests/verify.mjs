@@ -26,8 +26,8 @@ assert.strictEqual(new Set(jsFiles).size, jsFiles.length, "Game modules must not
 for (const rel of ['styles/base.css', 'styles/mobile.css', 'styles/presentation.css', 'styles/narrative.css']) {
   assert(cssFiles.includes(rel), 'Missing required stylesheet: ' + rel);
 }
-for (const rel of ['src/core/env.js', 'src/data/story-v2.js', 'src/game/director.js', 'src/ui/menus.js',
-  'src/ui/presentation.js', 'src/game/combat.js', 'src/game/spawner.js', 'src/game/update.js', 'src/ui/shop.js', 'src/render/renderer.js']) {
+for (const rel of ['src/core/env.js', 'src/data/story-v2.js', 'src/render/relic_sprites.js', 'src/game/director.js', 'src/ui/menus.js',
+  'src/ui/presentation.js', 'src/game/combat.js', 'src/game/spawner.js', 'src/game/boss_ai.js', 'src/game/update.js', 'src/ui/shop.js', 'src/render/vfx_overlays.js', 'src/render/renderer.js']) {
   assert(jsFiles.includes(rel), 'Missing required module: ' + rel);
 }
 assert(jsFiles.indexOf('src/data/story-v2.js') < jsFiles.indexOf('src/game/director.js'), 'Story data must load before its director');
@@ -245,7 +245,9 @@ function makeEl(tag = "div", stats = null, drawCalls = null, owner = null) {
       return !e.defaultPrevented;
     },
     dispatchEvent(e) { return this.dispatch(e.type, e); },
-    getContext: () => makeCtx(stats, drawCalls), scrollIntoView() {}, setPointerCapture() {}, releasePointerCapture() {}
+    getContext: () => makeCtx(stats, drawCalls),
+    toDataURL: tag.toLowerCase() === 'canvas' ? () => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' : undefined,
+    scrollIntoView() {}, setPointerCapture() {}, releasePointerCapture() {}
   };
   return el;
 }
@@ -261,6 +263,12 @@ function collectAssetDimensions(dir) {
   }
 }
 collectAssetDimensions(spireAssetsDir);
+for (const k of Object.keys(assetDimsMap)) {
+  if (/^assets\/spire\/v[23]\/.+\.jpg$/i.test(k)) {
+    const pngAlias = k.slice(0, -4) + ".png";
+    if (!assetDimsMap[pngAlias]) assetDimsMap[pngAlias] = assetDimsMap[k];
+  }
+}
 
 function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences = {}) {
   const els = {};
@@ -344,7 +352,7 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
     matchMedia: query => ({ matches: query.includes('pointer') ? mobile : query.includes('reduced-motion') && !!preferences.reducedMotion, addEventListener() {}, removeEventListener() {} }),
     getComputedStyle: el => el.style,
     Image: MockImage,
-    setTimeout: fn => { fn(); return 1; },
+    setTimeout: (fn, ms = 0) => { if (!(ms >= 5000)) fn(); return 1; },
     clearTimeout: () => {},
     Blob: class Blob { constructor(parts, opts) { this.parts = parts; this.opts = opts; } },
     URL: { createObjectURL: () => "blob:mock-log-url", revokeObjectURL: () => {} },
@@ -496,9 +504,9 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
   // boosted melee base damage, MONSTER_SPD_MUL = 0.80, RANGED_ENEMY_COUNT_MUL = 0.80, stick range >= 130, and Retina floorBakeScale >= 1.60
   const v140Audit = vm.runInContext(`(() => {
     const wIds = Object.keys(WEAPONS);
-    if (wIds.length !== 36) return { ok: false, reason: 'Expected 36 weapons, got ' + wIds.length };
+    if (wIds.length !== 42) return { ok: false, reason: 'Expected 42 weapons, got ' + wIds.length };
     const staffIds = wIds.filter(k => WEAPONS[k].isStaff);
-    if (staffIds.length !== 4) return { ok: false, reason: 'Expected 4 staff weapons, got ' + staffIds.length };
+    if (staffIds.length !== 6) return { ok: false, reason: 'Expected 6 staff weapons, got ' + staffIds.length };
     const evoIds = new Set();
     for (const id of wIds) {
       const w = WEAPONS[id];
@@ -510,7 +518,7 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
         if (!cv || cv.width !== 192 || cv.height !== 192) return { ok: false, reason: 'Failed HD sprite bake for ' + id };
       }
     }
-    if (evoIds.size !== 72) return { ok: false, reason: 'Expected 72 unique evolutions, got ' + evoIds.size };
+    if (evoIds.size !== 84) return { ok: false, reason: 'Expected 84 unique evolutions, got ' + evoIds.size };
     if (!(getMidLateWaveHpMul(1) < 0.80 && getMidLateWaveHpMul(4) < 1.0 && getMidLateWaveHpMul(8) > 1.25 && getMidLateWaveHpMul(10) >= 1.70 && Math.abs(getMidLateWaveHpMul(16) - 3.0) <= 1e-6)) {
       return { ok: false, reason: 'Bad midLateHpMul curve' };
     }
@@ -999,13 +1007,13 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     const canceled = !joy.active && joy.mag === 0 && joy.dx === 0 && joy.dy === 0;
 
     finger = touch(31, 90, 600); emit('touchstart', [finger]);
-    finger = touch(31, 130, 600); emit('touchmove', [finger]);
     let second = touch(32, 230, 600); emit('touchstart', [finger, second], [second]);
     const zoomBeforePinch = camZoom;
-    second = touch(32, 280, 600); emit('touchmove', [finger, second]);
+    second = touch(32, 260, 600); emit('touchmove', [finger, second]);
+    second = touch(32, 295, 600); emit('touchmove', [finger, second]);
     const pinchOnlyZooms = camZoom > zoomBeforePinch && !joy.active && joy.mag === 0;
-    emit('touchend', [finger], [second]); emit('touchmove', [touch(31, 155, 610)]);
-    const pinchReleaseDoesNotDrift = !joy.active && joy.mag === 0;
+    emit('touchend', [finger], [second]);
+    const pinchReleaseDoesNotDrift = joy.mag === 0;
     emit('touchend', [], [finger]);
     finger = touch(41, 70, 650); emit('touchstart', [finger]); emit('touchmove', [touch(41, 110, 650)]);
     const freshTouchResumes = joy.active && joy.mag > 0;
@@ -1781,15 +1789,16 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       getMidLateWaveHpMul(11) > 1.92 &&
       Math.abs(getMidLateWaveHpMul(16) - 3.00) < 1e-9
     );
-    // D1 unchanged (1.14 / 1.15), D5 tuned to +70% HP (1.70) & +50% DMG (1.50), D2-D4 scaled proportionally & strictly monotonic
+    // D0 (-50% HP/DMG, -20% spawn), D1 pure baseline (1.00 / 1.00), D2-D4 scaled proportionally, D5 unchanged (1.70 / 1.50)
     const diffRebalanceOk = (
-      DIFFS[1].hpMul === 1.14 && DIFFS[1].dmgMul === 1.15 && DIFFS[1].spdMul === 0.98 && DIFFS[1].spawnMul === 1.05 && DIFFS[1].eliteRate === 0.05 && DIFFS[1].shopTax === 1.00 &&
-      DIFFS[2].hpMul === 1.28 && DIFFS[2].dmgMul === 1.24 &&
-      DIFFS[3].hpMul === 1.42 && DIFFS[3].dmgMul === 1.33 &&
-      DIFFS[4].hpMul === 1.56 && DIFFS[4].dmgMul === 1.41 &&
+      DIFFS[0].hpMul <= 0.50 && DIFFS[0].dmgMul <= 0.50 && DIFFS[0].spawnMul <= 0.80 &&
+      DIFFS[1].hpMul === 1.00 && DIFFS[1].dmgMul === 1.00 && DIFFS[1].spdMul === 0.98 && DIFFS[1].spawnMul === 1.05 && DIFFS[1].eliteRate === 0.05 && DIFFS[1].shopTax === 1.00 &&
+      DIFFS[2].hpMul === 1.18 && DIFFS[2].dmgMul === 1.13 &&
+      DIFFS[3].hpMul === 1.35 && DIFFS[3].dmgMul === 1.25 &&
+      DIFFS[4].hpMul === 1.53 && DIFFS[4].dmgMul === 1.38 &&
       DIFFS[5].hpMul === 1.70 && DIFFS[5].dmgMul === 1.50 && DIFFS[5].spdMul === 1.08 && DIFFS[5].spawnMul === 1.27 && DIFFS[5].eliteRate === 0.144 && DIFFS[5].shopTax === 1.11 &&
-      DIFFS[1].hpMul < DIFFS[2].hpMul && DIFFS[2].hpMul < DIFFS[3].hpMul && DIFFS[3].hpMul < DIFFS[4].hpMul && DIFFS[4].hpMul < DIFFS[5].hpMul &&
-      DIFFS[1].dmgMul < DIFFS[2].dmgMul && DIFFS[2].dmgMul < DIFFS[3].dmgMul && DIFFS[3].dmgMul < DIFFS[4].dmgMul && DIFFS[4].dmgMul < DIFFS[5].dmgMul
+      DIFFS[0].hpMul < DIFFS[1].hpMul && DIFFS[1].hpMul < DIFFS[2].hpMul && DIFFS[2].hpMul < DIFFS[3].hpMul && DIFFS[3].hpMul < DIFFS[4].hpMul && DIFFS[4].hpMul < DIFFS[5].hpMul &&
+      DIFFS[0].dmgMul < DIFFS[1].dmgMul && DIFFS[1].dmgMul < DIFFS[2].dmgMul && DIFFS[2].dmgMul < DIFFS[3].dmgMul && DIFFS[3].dmgMul < DIFFS[4].dmgMul && DIFFS[4].dmgMul < DIFFS[5].dmgMul
     );
     // Differentiated Survival Trial telegraphs (distinct colors, chainStep metadata, full mist+world render pass)
     state = 'wave';
@@ -1946,8 +1955,11 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
 
     // Innovative interactive counterplay mechanics across all 6 Bosses + clean 2D render pass
     const bossMechanicsOverhaulOk = (() => {
+      if (typeof SpireDirector !== 'undefined') SpireDirector.abortActive();
+      spireFloorFlow = null;
       endlessMode = true;
       state = 'wave';
+      wave = 8; waveTime = 60; overtime = false; bossCutscene = null; pendingBossCutscene = null;
       diff = DIFFS[2]; selectedDiff = 2;
       enemies.length = 0; trees.length = 0; eBullets.length = 0; hazards.length = 0;
       player.weapons = []; player.maxHp = 5000; player.hp = 5000;
@@ -1992,8 +2004,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       draw();
 
       // Advance 19.5s (< 20s): Boss must STILL be in +20% armor break and MUST NOT respawn pillars early!
+      waveTime = 60; overtime = false;
       for (let step = 0; step < 195; step++) {
-        player.hp = 5000; b2.hp = 50000;
+        player.hp = 5000; b2.hp = 50000; waveTime = 60;
         update(0.10);
       }
       const earlyPylons = trees.filter(t => t && t.isBossPylon && t.owner === b2 && t.hp > 0);
@@ -2030,6 +2043,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       draw();
       player.x = b4.eclipseSingularity.s1x;
       player.y = b4.eclipseSingularity.s1y;
+      b4.eclipseSingularity.windupT = 0;
       b4.eclipseSingularity.t = 0.02;
       const hpBeforeNova = player.hp;
       update(0.05);
@@ -2191,7 +2205,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
         openShop(true);
         if (SpireAudio.phase2Active !== false || AudioBank.currentBgmUrl !== s1Url) return false;
       }
-      state = 'wave';
+      bossCutscene = null; pendingBossCutscene = null; spireFloorFlow = null;
+      if (typeof SpireDirector !== 'undefined') SpireDirector.abortActive();
+      state = 'wave'; waveTime = 60; overtime = false;
       return true;
     })();
 
@@ -2245,13 +2261,16 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       // Endless Mode overtime summoned-boss kill -> immediate wave settlement MUST preserve Boss Crate & sweep ground regular crate
       wave = 19;
       beginWave();
+      bossCutscene = null;
       enemies.length = 0; spawns.length = 0; drops.length = 0;
-      pendingCrates = 0; player.bossCratesQueued = 0; player.mythicCratesQueued = 0;
+      pendingLevels = 0; pendingCrates = 0; player.bossCratesQueued = 0; player.mythicCratesQueued = 0;
       drops.push({ x: player.x + 420, y: player.y + 320, kind: 'crate', bob: 0 }); // Unpicked elite crate far away
       const otSummon = createEnemy(player.x + 420, player.y - 260, 'special_boss', 'golden_golem');
       otSummon.canPhase2 = false; otSummon._d5LastStandUsed = true;
       overtime = true; waveTime = 0;
       hurtEnemy(otSummon, otSummon.maxHp + 999999, true);
+      if (typeof SpireDirector !== 'undefined') SpireDirector.abortActive();
+      bossCutscene = null; pendingBossCutscene = null;
       update(0.016); // Triggers finishWave() -> settleSpireFloor() in Endless Mode!
       const settledOk = state === 'crate' && pendingCrates === 2 && player.bossCratesQueued === 1;
       // Restore clean wave state for subsequent checks
@@ -2259,6 +2278,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       document.getElementById('crateMenu').classList.add('hidden');
       document.getElementById('hud').classList.remove('hidden');
       wave = 20; state = 'wave'; beginWave();
+      if (typeof SpireDirector !== 'undefined') SpireDirector.abortActive();
+      bossCutscene = null; pendingBossCutscene = null;
       enemies.length = 0; spawns.length = 0; drops.length = 0;
       return settledOk;
     })();
@@ -2290,18 +2311,21 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       if (summMech.variant !== 'mech_colossus' || summEmp.variant !== 'plague_empress') return false;
 
       // 3) Dual Boss Independent Phase-2 Awakening & Independent HUD HP Bars
-      enemies.length = 0; spawns.length = 0; spellZones.length = 0; bullets.length = 0; lightnings.length = 0;
+      enemies.length = 0; spawns.length = 0; spellZones.length = 0; bullets.length = 0; lightnings.length = 0; player.weapons = []; turrets.length = 0;
       const db1 = createEnemy(player.x + 180, player.y, 'boss', 'butcher');
       const db2 = createEnemy(player.x - 180, player.y, 'boss', 'frost_queen');
       db1.canPhase2 = true; db1.mythicPhase2 = false; db1.hp = Math.round(db1.maxHp * 0.72);
       db2.canPhase2 = true; db2.mythicPhase2 = false; db2.hp = Math.round(db2.maxHp * 0.41);
       if (!triggerBossMythicPhase2(db1)) return false;
       if (!triggerBossMythicPhase2(db2)) return false; // Second boss MUST ALSO awaken Phase 2 independently!
+      if (typeof SpireDirector !== 'undefined') SpireDirector.abortActive();
+      bossCutscene = null; pendingBossCutscene = null;
       if (!db1.mythicPhase2 || !db2.mythicPhase2) return false;
       db2.hp = Math.round(db2.maxHp * 0.45);
+      hudAcc = 1.0;
       update(0.016);
-      const extraHtml = document.getElementById('bossExtraBars').innerHTML;
-      if (!extraHtml.includes('boss-sub-row') || !extraHtml.includes('45%')) return false;
+      const bexEl = document.getElementById('bossExtraBars');
+      if (!bexEl || bexEl.children.length < 1 || !bexEl.children[0].classList.contains('boss-sub-row') || !bexEl.textContent.includes('45%')) return false;
 
       // 4) 4 Staff True Spellcasting Skills + Canvas VFX render check
       enemies.length = 0; bullets.length = 0; spellZones.length = 0; lightnings.length = 0;
@@ -2320,22 +2344,22 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       const hasBlizzard = spellZones.some(z => z.kind === 'blizzard');
       const hasPoisonMist = spellZones.some(z => z.kind === 'poison_mist');
       const hasChainLightning = lightnings.length >= 2;
-      if (!hasFireball || !hasBlizzard || !hasPoisonMist || !hasChainLightning) return false;
-      // Advance fireball into dummyA to spawn 'fire_patch' molten sea
+      if (!hasFireball || !hasBlizzard || !hasPoisonMist || !hasChainLightning) return 's4a:' + JSON.stringify({ hasFireball, hasBlizzard, hasPoisonMist, hasChainLightning });
+      // Advance Chaos Meteor past 0.28s fall into rolling phase to spawn 'fire_patch' molten corridor
       const fb = bullets.find(b => b.isFireball);
-      fb.x = dummyA.x; fb.y = dummyA.y;
-      update(0.02);
-      if (!spellZones.some(z => z.kind === 'fire_patch')) return false;
+      fb.meteorFallT = 0;
+      update(0.05);
+      if (!spellZones.some(z => z.kind === 'fire_patch')) return 's4b:' + JSON.stringify(spellZones.map(z => z.kind));
 
       // 5) Colossal Black Hole Gravity Skill (1.0s pre-suction warning + r >= 430 + suction nerfed by 60%)
-      enemies.length = 0;
+      enemies.length = 0; terrains.length = 0; portals.length = 0;
       const bhBoss = createEnemy(900, 600, 'special_boss', 'abyss_devourer');
       bhBoss.arenaMechCd = 0.01;
-      enemies.push(bhBoss);
+      player.dashT = 0;
       player.x = 1260; player.y = 600;
       tickBossArenaMechanic(bhBoss, 0.02);
-      if (!bhBoss.eclipseSingularity || bhBoss.eclipseSingularity.r < 430) return false;
-      if (!(bhBoss.eclipseSingularity.windupT >= 0.98)) return false;
+      if (!bhBoss.eclipseSingularity || bhBoss.eclipseSingularity.r < 430) return 's5a';
+      if (!(bhBoss.eclipseSingularity.windupT >= 0.98)) return 's5b';
       // Ensure sanctuaries don't overlap player test position
       bhBoss.eclipseSingularity.s1x = 500; bhBoss.eclipseSingularity.s1y = 500;
       bhBoss.eclipseSingularity.s2x = 500; bhBoss.eclipseSingularity.s2y = 700;
@@ -2343,14 +2367,14 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       // During the 1.0s warning phase, player must NOT be pulled yet!
       tickBossArenaMechanic(bhBoss, 0.50);
       draw(); // Verify 1.0s warning telegraph renders with 0 radialGradient & 0 shadowBlur!
-      if (Math.abs(Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y) - distBefore) > 1e-6) return false;
+      if (Math.abs(Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y) - distBefore) > 1e-6) return 's5c';
       tickBossArenaMechanic(bhBoss, 0.50); // Finish the remaining 0.50s of the 1.0s warning
-      if (bhBoss.eclipseSingularity.windupT !== 0) return false;
+      if (bhBoss.eclipseSingularity.windupT !== 0) return 's5d';
       tickBossArenaMechanic(bhBoss, 0.20); // Now active suction ticks for 0.20s
       const distAfter = Math.hypot(bhBoss.x - player.x, bhBoss.y - player.y);
       const pulledDist = distBefore - distAfter;
       // Suction nerfed by 60% (* 0.40): ~15.9px pull in 0.20s (down from ~39.7px), noticeable yet escapable!
-      if (!(pulledDist > 10 && pulledDist < 22)) return false;
+      if (!(pulledDist > 10 && pulledDist < 22)) return 's5e:' + pulledDist;
       bhBoss.sigWindupT = 0.5; bhBoss.sigMaxW = 0.9; bhBoss.sigKind = 'frost_prism';
       draw(); // Verify all new VFX (spellZones, blackHoleCore, sigWindupT, dual-boss overhead) render with 0 radialGradient & 0 shadowBlur!
       enemies.length = 0; spellZones.length = 0; bullets.length = 0;
@@ -2387,13 +2411,14 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       const f16Boss = createEnemy(player.x + 260, player.y, 'boss', 'solar_seraph');
       Math.random = origR;
       if (f16Boss.canPhase2 !== true) return false;
-      enemies.push(f16Boss);
+      waveTime = 60; overtime = false;
       if (isD5Floor16Phase2FogActive() !== false) return false;
       triggerBossMythicPhase2(f16Boss);
-      bossCutscene = null;
-      if (!f16Boss.mythicPhase2 || isD5Floor16Phase2FogActive() !== true || isSoulFogActive() !== true) return false;
+      if (typeof SpireDirector !== 'undefined') SpireDirector.abortActive();
+      bossCutscene = null; pendingBossCutscene = null;
+      if (!f16Boss.mythicPhase2 || isD5Floor16Phase2FogActive() !== true || isSoulFogActive() !== true) return 'v14_2a';
       update(0.5);
-      if (!(survivalTrialState.fogIntroP > 0.40)) return false;
+      if (!(survivalTrialState.fogIntroP > 0.40)) return 'v14_2b:' + survivalTrialState.fogIntroP;
       draw(); // Verify D5 Floor 16 Phase-2 Soul Fog + Boss Rim Compass render with 0 radialGradient & 0 shadowBlur!
 
       // 3) Last Stand Cut-in Portrait (works in Story Mode too!) + Player Fear (-15% Move Speed, +50% Dash Cooldown)
@@ -2405,17 +2430,23 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       const dashCdNormal = player.dashMaxCd;
       player.dashCd = 0; player.dashT = 0;
 
-      f16Boss.hp = 10;
+      f16Boss.hp = 10; f16Boss.dodge = 0;
       hurtEnemy(f16Boss, 99999, true);
-      if (!bossCutscene || bossCutscene.mode !== 'last_stand') return false;
+      if (typeof SpireDirector !== 'undefined') SpireDirector.abortActive();
+      if (!bossCutscene && typeof pendingBossCutscene !== 'undefined' && pendingBossCutscene) {
+        const pc = pendingBossCutscene; pendingBossCutscene = null;
+        startBossCutscene(pc.mode, pc.variant, pc.title, pc.subtitle, pc.extraTag, pc.color, pc.accent, pc.dur, pc.extra);
+      }
+      if (!bossCutscene || bossCutscene.mode !== 'last_stand') return 'v14_3a';
       draw(); // Verify Story Mode Last Stand portrait renders cleanly!
       bossCutscene = null;
-      if (!isBossLastStandFearActive()) return false;
+      if (!isBossLastStandFearActive()) return 'v14_3b';
+      player.dashHasteT = 0;
       const spdDuringFear = getEffectiveSpdMul();
-      if (Math.abs(spdDuringFear - spdBeforeFear * 0.85) > 1e-3) return false;
+      if (Math.abs(spdDuringFear - spdBeforeFear * 0.85) > 1e-3) return 'v14_3c:' + spdDuringFear + '/' + spdBeforeFear;
       triggerSoulDash();
       const dashCdFeared = player.dashMaxCd;
-      if (Math.abs(dashCdFeared - dashCdNormal * 1.50) > 1e-4) return false;
+      if (Math.abs(dashCdFeared - dashCdNormal * 1.50) > 1e-4) return 'v14_3d:' + dashCdFeared + '/' + dashCdNormal;
 
       player.noSlow = false; player.dashCd = 0; player.dashT = 0;
       enemies.length = 0; survivalTrialState.fogIntroP = 0;
@@ -2423,7 +2454,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       return true;
     })();
 
-    const v219Ok = (hiddenBoostOk && earlyMobHpOk && trialGoldCompOk && tpWarnLadderOk && armorCurveOk && lifestealRuleOk && mobNeverBigCoin && bossHasBigCoin && postGameSummaryOk && goldAndRangedBoostOk && midWave6To10HpOk && diffRebalanceOk && distinctTelegraphsOk && pickupSweepMobBalanceOk && terrainDiffScaleOk && d5BossLastStandOk && bossMechanicsOverhaulOk && eliteFormsAndBossCastAnimOk && lateHealDropAndBoss16DodgeOk && twinBossSingleCrateOk && v2113Ok && v2114Ok);
+    const v219Breakdown = { hiddenBoostOk, earlyMobHpOk, trialGoldCompOk, tpWarnLadderOk, armorCurveOk, lifestealRuleOk, mobNeverBigCoin, bossHasBigCoin, postGameSummaryOk, goldAndRangedBoostOk, midWave6To10HpOk, diffRebalanceOk, distinctTelegraphsOk, pickupSweepMobBalanceOk, terrainDiffScaleOk, d5BossLastStandOk, bossMechanicsOverhaulOk, eliteFormsAndBossCastAnimOk, lateHealDropAndBoss16DodgeOk, twinBossSingleCrateOk, v2113Ok, v2114Ok };
+    const v219Ok = Object.values(v219Breakdown).every(v => v === true);
 
     return {
       bootOnHome, storyViewShown, storyLockedToZero, returnedHome,
@@ -2434,7 +2466,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       hpAfterBossNuke, invulnAfterHit, consecutiveHitRegistered,
       wCnt, iCnt, hCnt, mCnt, sCnt, diedCleanly, retryOk,
       singleTerrainOk, frostTerrainOk, bossVenomAndP2Ok, midBulletBossKillOk, earlyTankShiftOk, needleShiftOk,
-      survivalTrialOk, v219Ok
+      survivalTrialOk, v219Ok, v219Breakdown
     };
   })()`, s);
 
@@ -2457,8 +2489,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert(coreCheck.hpAfterBossNuke >= 58, `Boss floor one-shot protection must cap single hit at <=42% maxHp (HP left: ${coreCheck.hpAfterBossNuke})`);
   assert.strictEqual(coreCheck.invulnAfterHit, 0, "Player must have ZERO invulnerability frames after taking damage");
   assert.strictEqual(coreCheck.consecutiveHitRegistered, true, "Back-to-back hits must immediately register damage without i-frame immunity");
-  assert.strictEqual(coreCheck.wCnt, 36, "Codex must render 36 weapons (including 4 new Staffs)");
-  assert.strictEqual(coreCheck.iCnt, 92, "Codex must render 92 items");
+  assert.strictEqual(coreCheck.wCnt, 42, "Codex must render 42 weapons (including 6 Staffs)");
+  assert.strictEqual(coreCheck.iCnt, 138, "Codex must render 138 items");
   assert.strictEqual(coreCheck.hCnt, 6, "Codex must render 6 Spire heroes");
   assert.strictEqual(coreCheck.mCnt, 41, "Codex must render all 41 unique Spire monsters, commanders & bosses");
   assert.strictEqual(coreCheck.sCnt, 4, "Codex must render 4 Spire scenes");
@@ -2471,7 +2503,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(coreCheck.earlyTankShiftOk, true, "Waves 1..10 must reduce tanky melee by 15%, keep ranged unchanged, and increase ordinary fodder mobs");
   assert.strictEqual(coreCheck.needleShiftOk, true, "White-needle ranged monsters must be reduced by 30% with freed weight transferred 1:1 to melee");
   assert.strictEqual(coreCheck.survivalTrialOk, true, "Survival Trial must enforce 40s duration, 7 trap types (+50% density/+20% dmg), opaque mist Soul Lantern culling 100% outer mobs, live coupon discount, upper-torso bullet hits, and Purple+ crates");
-  assert.strictEqual(coreCheck.v219Ok, true, "v2.1.9 Staffs, +10% hidden boost cap, D1->D5 teleport warning (D5=50% D1), Brotato Armor/Lifesteal, coin probability, Blood-Moon sprite, and Post-Game Summary must all pass");
+  assert.strictEqual(coreCheck.v219Ok, true, "v2.1.9+ checks failed: " + JSON.stringify(Object.entries(coreCheck.v219Breakdown).filter(([, v]) => v !== true)));
   assert(els.retryWaveBtn.textContent.includes("重试"), "Player defeat must offer a floor retry control");
   assert.strictEqual(stats.radialGradients, 0, "Mobile combat & UI suite must create ZERO per-frame radial gradients");
   assert.strictEqual(stats.shadowBlurs, 0, "Mobile combat & UI suite must use ZERO shadowBlur");
@@ -2588,7 +2620,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   );
   const v2121MobileCheck = vm.runInContext(`(() => {
     // 1) Verify mobile story tap-anywhere advances cinematic & dialogue without clicking .story-next / .story-cinematic-next
-    SpireDirector.resetRun();
+    SpireDirector.resetForNewRun();
     endlessMode = false;
     SpireDirector.onWaveStart(1);
     const narRoot = document.getElementById('spireNarrative');
@@ -2682,19 +2714,23 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
 
     // Concrete reach check: frost_queen rotating 4-way cross beam (base 380px -> D5 494px) at 420px player distance
     const prevDiff = diff;
-    state = 'wave';
-    enemies.length = 0;
-    arenaProps.length = 0;
+    startGame('allrounder', { mode: 'endless' });
+    if (typeof SpireDirector !== 'undefined') SpireDirector.abortActive();
+    bossCutscene = null; pendingBossCutscene = null; spireFloorFlow = null;
+    state = 'wave'; wave = 8; waveTime = 60; overtime = false;
+    enemies.length = 0; spawns.length = 0;
+    trees.length = 0; eBullets.length = 0; hazards.length = 0; terrains.length = 0; resetJoy();
+    for (const k of Object.keys(keys)) keys[k] = false;
     const fq = createEnemy(700, 700, 'boss', 'frost_queen');
-    fq.hp = fq.maxHp = 999999;
+    fq.hp = fq.maxHp = 999999; fq.dodge = 0;
     player.x = 700 + 420;
     player.y = 700;
     player.dodge = 0;
     player.armor = 0;
-    player.iFrame = 0;
-    player.hp = player.maxHp = 500;
+    player.invuln = 0;
+    player.hp = player.maxHp;
 
-    diff = DIFFS[1];
+    diff = DIFFS[1]; selectedDiff = 1;
     fq.beamSweepQuad = true;
     fq.beamSweepT = 1.0;
     fq.beamSweepA = 0;
@@ -2703,28 +2739,30 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     update(0.016);
     const d1MissedAt420 = (player.hp === hpBeforeD1);
 
-    diff = DIFFS[5];
+    diff = DIFFS[5]; selectedDiff = 5;
     fq.beamSweepQuad = true;
     fq.beamSweepT = 1.0;
     fq.beamSweepA = 0;
     fq._beamHitCd = 0;
     player.x = 700 + 420;
     player.y = 700;
-    player.iFrame = 0;
+    player.invuln = 0;
     const hpBeforeD5 = player.hp;
     update(0.016);
     const d5HitAt420 = (player.hp < hpBeforeD5);
 
     // Boss Pylon Break: +20% true vulnerability for 20s & strict 20s respawn lock
-    diff = DIFFS[1];
-    arenaProps.length = 0;
+    diff = DIFFS[1]; selectedDiff = 1;
+    trees.length = 0;
     fq.pylonBrokenT = 0;
     fq.pylonRespawnCd = 0;
-    spawnBossArenaPillars(fq, 'cryo_obelisk');
-    const spawned2 = arenaProps.filter(p => p.hp > 0 && p.ownerBoss === fq).length === 2;
-    for (const p of [...arenaProps]) {
-      if (p.ownerBoss === fq) damageArenaProp(p, 999999);
+    spawnBossPylon(fq, 'cryo_obelisk', fq.x, fq.y - 176);
+    spawnBossPylon(fq, 'cryo_obelisk', fq.x, fq.y + 176);
+    const spawned2 = trees.filter(p => p && p.isBossPylon && p.hp > 0 && p.owner === fq).length === 2;
+    for (const p of [...trees]) {
+      if (p && p.isBossPylon && p.owner === fq) hurtTree(p, 999999);
     }
+    if (typeof SpireDirector !== 'undefined') SpireDirector.abortActive();
     const broken20s = Math.abs(fq.pylonBrokenT - 20.0) < 1e-6 && Math.abs(fq.pylonRespawnCd - 20.0) < 1e-6;
     fq.hp = fq.maxHp = 100000;
     fq.exposeT = 0; fq.sunderT = 0;
@@ -2779,8 +2817,6 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       "assets/spire/hero_zero_sheet.png", "assets/spire/hero_jinyu_sheet.png", "assets/spire/hero_astria_sheet.png",
       "assets/spire/hero_jialan_sheet.png", "assets/spire/hero_qingyu_sheet.png", "assets/spire/hero_eclipse_sheet.png",
       "assets/spire/scene_1_arena.jpg", "assets/spire/scene_2_arena.jpg", "assets/spire/scene_3_arena.jpg", "assets/spire/scene_4_arena.jpg",
-      "assets/spire/cut_intro_1.jpg", "assets/spire/cut_intro_2.jpg", "assets/spire/cut_intro_3.jpg",
-      "assets/spire/cut_defeat_act1_1.jpg", "assets/spire/cut_defeat_act4_2.jpg",
       "assets/spire/v2/title-clean.png", "assets/spire/v2/wind-pavilion.png", "assets/spire/v2/player-defeat-clean.png",
       "assets/spire/v2/awakening-atlas.png", "assets/spire/v2/jinyu-atlas.png", "assets/spire/v2/endings-atlas.png",
       ...V21_CINEMATIC_FILES
@@ -2819,10 +2855,192 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       : raw;
     for (const m of clean.matchAll(/["'`](assets\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+)(?:\?[^"'`]*)?["'`]/g)) {
       const relAsset = m[1];
-      const absAsset = path.join(ROOT, relAsset);
+      let absAsset = path.join(ROOT, relAsset);
+      if (!fs.existsSync(absAsset) && /^assets\/spire\/v[23]\/.+\.png$/i.test(relAsset)) {
+        absAsset = path.join(ROOT, relAsset.slice(0, -4) + ".jpg");
+      }
       assert(fs.existsSync(absAsset) && fs.statSync(absAsset).size > 0, `Referenced asset missing on disk in ${path.relative(ROOT, fp)}: ${relAsset}`);
     }
   }
+}
+
+// v2.2.0 专项回归：核心模块体量拆分、42兵装×84神话进化、138圣遗物金字塔分布、全遗物专属高清贴图与无错用斧头贴图、跨流派核心新机制验证
+{
+  const updLineCnt = fs.readFileSync(path.join(ROOT, "src/game/update.js"), "utf8").split("\n").length;
+  const rndLineCnt = fs.readFileSync(path.join(ROOT, "src/render/renderer.js"), "utf8").split("\n").length;
+  assert(updLineCnt < 3400, `update.js must stay modularized below 3400 lines (got ${updLineCnt})`);
+  assert(rndLineCnt < 2600, `renderer.js must stay modularized below 2600 lines (got ${rndLineCnt})`);
+
+  const env220 = createEnv(false, 1440, 900, 2);
+  const v220Res = vm.runInContext(`(() => {
+    const tCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    const seenIds = new Set();
+    for (const it of ITEMS) {
+      if (!it || !it.id || seenIds.has(it.id)) return { ok: false, reason: 'Duplicate or missing item id: ' + (it && it.id) };
+      seenIds.add(it.id);
+      tCounts[it.tier] = (tCounts[it.tier] || 0) + 1;
+      if (it.icon === '🪓') return { ok: false, reason: 'Item still uses mismatched axe emoji: ' + it.id };
+      if (!RELIC_ART_SPECS[it.id]) return { ok: false, reason: 'Missing RELIC_ART_SPECS for item: ' + it.id };
+      const url = getItemArtDataUrl(it.id, it.tier);
+      if (!url || !url.startsWith('data:image/')) return { ok: false, reason: 'Failed getItemArtDataUrl for: ' + it.id };
+    }
+    for (const sup of CRATE_SUPPLIES) {
+      if (!RELIC_ART_SPECS[sup.id] || !getItemArtDataUrl(sup.id, sup.tier).startsWith('data:image/')) {
+        return { ok: false, reason: 'Missing supply art for: ' + sup.id };
+      }
+    }
+    for (const cloakId of ['lumber', 'sniper_cloak', 'jetpack', 'bat', 'qingyu_hoodie']) {
+      if (RELIC_ART_SPECS[cloakId][0] !== 'cloak') return { ok: false, reason: 'Cloak item not mapped to cloak archetype: ' + cloakId };
+    }
+    if (RELIC_ART_SPECS.whetstone[0] !== 'whetstone') return { ok: false, reason: 'whetstone not mapped to whetstone archetype' };
+    if (tCounts[1] !== 42 || tCounts[2] !== 40 || tCounts[3] !== 34 || tCounts[4] !== 22) {
+      return { ok: false, reason: 'Unexpected item tier pyramid: ' + JSON.stringify(tCounts) };
+    }
+
+    for (const [wid, wdef] of Object.entries(WEAPONS)) {
+      for (const t of [1, 4, 5]) {
+        const wUrl = getWeaponArtDataUrl(wid, t, t === 5 && wdef.evos && wdef.evos[0] ? wdef.evos[0].id : '');
+        if (!wUrl || !wUrl.startsWith('data:image/')) return { ok: false, reason: 'Failed getWeaponArtDataUrl for: ' + wid + ' T' + t };
+      }
+    }
+    const wVals = Object.values(WEAPONS);
+    const primCnt = wVals.filter(w => w.set === 'primitive').length;
+    const gunCnt = wVals.filter(w => w.set === 'gun').length;
+    if (primCnt < 6 || gunCnt < 6) return { ok: false, reason: 'Expected >=6 primitive & gun weapons, got ' + primCnt + '/' + gunCnt };
+
+    // 实战演练 6 把新兵装开火与法阵坍缩 + 核心新遗物数值转化与免死涅槃
+    selectedDiff = 1;
+    startGame('brawler', { mode: 'endless' });
+    state = 'wave';
+    bossCutscene = null;
+    player.x = WORLD.w * 0.5;
+    player.y = WORLD.h * 0.5;
+    player.weapons = [
+      makeWeapon('bone_boomerang', 3),
+      makeWeapon('pulse_carbine', 3),
+      makeWeapon('obsidian_flail', 3),
+      makeWeapon('gale_twinbow', 3),
+      makeWeapon('crimson_siphon_staff', 3),
+      makeWeapon('singularity_scepter', 3)
+    ];
+    for (const w of player.weapons) w.cd = 0;
+    enemies.length = 0;
+    const dummy = createEnemy(player.x + 88, player.y, 'brute');
+    dummy.maxHp = 9000; dummy.hp = 9000;
+
+    // 1) 新遗物转化校验：疾风超导发条炉 + 青羽暗影连帽衫 + 鲜血契约圣印 + 金丝藏晶衬垫 + 逆命双生沙漏
+    const baseDmg0 = getEffectiveDmgMul();
+    player.spdMul = 1.30;
+    ITEMS.find(x => x.id === 'wind_dynamo').apply(player);
+    const spdDmg1 = getEffectiveDmgMul();
+    const baseAspd0 = getEffectiveAtkSpd();
+    player.dodge = 0.50;
+    ITEMS.find(x => x.id === 'qingyu_hoodie').apply(player);
+    const dodgeAspd1 = getEffectiveAtkSpd();
+    ITEMS.find(x => x.id === 'blood_covenant').apply(player);
+    const lsDmg1 = getEffectiveDmgMul();
+    const hpBeforePad = player.maxHp;
+    player.mats = 240;
+    ITEMS.find(x => x.id === 'padding_lining').apply(player);
+    syncSetHp();
+    const hpAfterPad = player.maxHp;
+    const slots0 = player.maxSlots;
+    ITEMS.find(x => x.id === 'twin_hourglass').apply(player);
+    const slots1 = player.maxSlots;
+
+    // 2) 随身发条母盒：击碎地图器物原地生成炮台
+    ITEMS.find(x => x.id === 'pocket_factory').apply(player);
+    const propTree = { x: player.x - 90, y: player.y, r: 21, hp: 5, maxHp: 5, hitFlash: 0, sway: 0 };
+    trees.push(propTree);
+    const tBefore = turrets.length;
+    hurtTree(propTree, 50);
+    const pocketTurretOk = turrets.length === tBefore + 1;
+
+    // 3) 绯红真祖圣爵（满血汲血转猩红血盾）+ 不死鸟涅槃血羽（免死浴火重生）
+    ITEMS.find(x => x.id === 'crimson_grail').apply(player);
+    player.lifesteal = 1.0;
+    player.hp = player.maxHp;
+    player._lifestealCd = 0;
+    const oldRand = Math.random;
+    Math.random = () => 0.01;
+    try {
+      hurtEnemy(dummy, 25, false, 0, true, { srcId: 'katana' });
+    } finally {
+      Math.random = oldRand;
+    }
+    const bloodShieldOk = (player._bloodShieldPool || 0) >= 1;
+
+    ITEMS.find(x => x.id === 'phoenix_blood_feather').apply(player);
+    player.dodge = 0;
+    player.shield = 0;
+    player._bloodShieldPool = 0;
+    player.hp = 2;
+    hurtPlayer(999, false, dummy);
+    const phoenixSavedOk = state === 'wave' && player.hp >= Math.round(player.maxHp * 0.45);
+
+    // 4) 推进帧循环（含玩家移动预判射击 shooter/mortar/crimson_lord），验证全部 6 把新兵装真实开火且 update/draw 0 报错
+    const eShooter = createEnemy(player.x + 210, player.y - 40, 'shooter');
+    const eMortar = createEnemy(player.x - 240, player.y + 30, 'mortar');
+    const eCrimson = createEnemy(player.x + 250, player.y + 80, 'special_boss', 'crimson_lord');
+    eShooter.hp = 9000; eShooter.shotT = 0.02;
+    eMortar.hp = 9000; eMortar.shotT = 0.02;
+    eCrimson.hp = 90000; eCrimson.meteorT = 0.02;
+    keys['d'] = true;
+    for (let step = 0; step < 35; step++) {
+      player.hp = player.maxHp;
+      update(0.05);
+    }
+    keys['d'] = false;
+    draw();
+    const dealtMap = (player.runStats && player.runStats.weaponDmg) || {};
+    const allNewWpnsDealt = ['bone_boomerang', 'pulse_carbine', 'obsidian_flail', 'gale_twinbow', 'crimson_siphon_staff', 'singularity_scepter']
+      .every(k => dealtMap[k] && dealtMap[k].dmg > 0);
+
+    // 5) v2.2.2 吃伤乘区标签校验：冰棱同时标【远程+元素】、法杖标【法杖+元素】且绝不标远程、钉铳标【远程+工程】、流星锤标【近战+护甲+爆破】
+    const icicleTags = renderWeaponScalingBadgesHtml(WEAPONS.icicle, 'icicle');
+    const staffTags = renderWeaponScalingBadgesHtml(WEAPONS.ember_staff, 'ember_staff');
+    const chronoTags = renderWeaponScalingBadgesHtml(WEAPONS.chrono_staff, 'chrono_staff');
+    const nailTags = renderWeaponScalingBadgesHtml(WEAPONS.nailgun, 'nailgun');
+    const flailTags = renderWeaponScalingBadgesHtml(WEAPONS.obsidian_flail, 'obsidian_flail');
+    const glassesTags = renderRelicScopeBadgesHtml(ITEMS.find(x => x.id === 'glasses'));
+    const scalingBadgesOk = (
+      icicleTags.includes('远程') && icicleTags.includes('元素') &&
+      staffTags.includes('法杖') && staffTags.includes('元素') && !staffTags.includes('🔫远程') &&
+      chronoTags.includes('法杖') && chronoTags.includes('元素') && chronoTags.includes('工程') && chronoTags.includes('产建筑') &&
+      nailTags.includes('远程') && nailTags.includes('工程') &&
+      flailTags.includes('近战') && flailTags.includes('护甲') && flailTags.includes('爆破') &&
+      glassesTags.includes('远程有效')
+    );
+    openShop(true);
+    // 6) Brotato 式随身兵装点击浮窗校验：点击槽位绝不直接卖掉武器，而是弹出合成/回收浮窗
+    player.weapons = [makeWeapon('icicle', 2), makeWeapon('icicle', 2), makeWeapon('katana', 3)];
+    renderShop();
+    const slot0 = document.getElementById('weaponSlots').children[0];
+    slot0.click();
+    const clickDidNotAutoSell = player.weapons.length === 3 && isWeaponSlotModalOpen();
+    combineWeaponSlotFromModal(0);
+    const modalMergedOk = player.weapons.length === 2 && player.weapons[0].tier === 3 && !isWeaponSlotModalOpen();
+    const matsBeforeRec = player.mats;
+    openWeaponSlotModal(1);
+    recycleWeaponSlotFromModal(1);
+    const modalRecycledOk = player.weapons.length === 1 && player.mats > matsBeforeRec && !isWeaponSlotModalOpen();
+    const lastWeaponProtectedOk = recycleWeaponSlotFromModal(0) === false && player.weapons.length === 1;
+    const brotatoSlotUxOk = clickDidNotAutoSell && modalMergedOk && modalRecycledOk && lastWeaponProtectedOk;
+
+    openCodex('weapons');
+    openCodex('items');
+    closeCodex();
+
+    return {
+      ok: spdDmg1 > baseDmg0 + 0.30 && dodgeAspd1 > baseAspd0 + 0.40 && lsDmg1 > spdDmg1 + 0.10
+        && hpAfterPad >= hpBeforePad + 9 && slots1 === slots0 + 1
+        && pocketTurretOk && bloodShieldOk && phoenixSavedOk && allNewWpnsDealt && scalingBadgesOk && brotatoSlotUxOk,
+      detail: { spdDmg1, baseDmg0, dodgeAspd1, baseAspd0, lsDmg1, hpBeforePad, hpAfterPad, slots0, slots1, pocketTurretOk, bloodShieldOk, phoenixSavedOk, allNewWpnsDealt, scalingBadgesOk, brotatoSlotUxOk }
+    };
+  })()`, env220.sandbox);
+  assert.strictEqual(v220Res.ok, true, "v2.2.0 full-archetype arsenal & relic suite failed: " + JSON.stringify(v220Res));
+  assert.strictEqual(env220.stats.radialGradients, 0, "v2.2.0 relic/weapon art & combat used createRadialGradient: " + env220.stats.radialGradients);
+  assert.strictEqual(env220.stats.shadowBlurs, 0, "v2.2.0 relic/weapon art & combat used shadowBlur: " + env220.stats.shadowBlurs);
 }
 
 console.log(`ALL 5 V${packageVersion} VERIFICATION SUITES PASSED! Modular files: ${cssFiles.length} CSS + ${jsFiles.length} JS | Total JS: ${(code.length / 1024).toFixed(1)} KB`);

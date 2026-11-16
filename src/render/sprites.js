@@ -583,6 +583,97 @@ function _paintWeaponArt(g, id, tier, evoId) {
     g.strokeStyle = '#72efdd'; g.lineWidth = 2.0;
     g.beginPath(); g.moveTo(17, 0); g.lineTo(21, -2.5); g.moveTo(17, 0); g.lineTo(15, 3.5); g.stroke();
     _wpnSpark(g, 17, 0, 3.4, '#72efdd');
+  } else if (id === 'bone_boomerang') {
+    // 苍骨回旋战刃：弯折龙骨双翼刃 + 黑曜皮缠中心握把 + 骨刺铭文
+    const bnC = isMythic ? accent : '#f1f5f9';
+    g.fillStyle = _wpnGrad(g, -18, -18, 20, 18, '#ffffff', bnC, '#94a3b8');
+    g.beginPath();
+    g.moveTo(8, 0);
+    g.quadraticCurveTo(2, -12, -16, -18);
+    g.quadraticCurveTo(-8, -22, 6, -14);
+    g.quadraticCurveTo(20, -6, 22, 0);
+    g.quadraticCurveTo(20, 6, 6, 14);
+    g.quadraticCurveTo(-8, 22, -16, 18);
+    g.quadraticCurveTo(2, 12, 8, 0);
+    g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = _wpnGrad(g, 7, -6, 21, 6, trimGold, '#334155');
+    g.beginPath(); g.roundRect(9, -5.2, 9.5, 10.4, 2.5); g.fill(); g.stroke();
+    _wpnSpark(g, -10, -16, 3.2, isMythic ? accent : '#72efdd');
+  } else if (id === 'pulse_carbine') {
+    // 断界三连脉冲步铳：无托战术步铳枪身 + 三联青蓝脉冲电容槽 + 全息瞄具
+    _wpnWrapGrip(g, -15, 3, 7, 9.5, '#0f172a', '#334155', trimGold);
+    g.fillStyle = _wpnGrad(g, -22, -7, 22, 6, '#64748b', '#1e293b', '#090d16');
+    g.beginPath();
+    g.moveTo(-22, -5.5); g.lineTo(16, -6.5); g.lineTo(23, -3.2); g.lineTo(23, 3.5);
+    g.lineTo(8, 5.2); g.lineTo(-22, 4.8); g.closePath();
+    g.fill(); g.stroke();
+    g.fillStyle = trimGold;
+    g.beginPath(); g.roundRect(-8, -10.8, 12, 4.2, 1.5); g.fill(); g.stroke();
+    const pcC = isMythic ? accent : '#38bdf8';
+    g.fillStyle = pcC;
+    for (const cx of [-3, 3, 9]) {
+      g.fillRect(cx, -3.2, 3.4, 4.6);
+    }
+    g.fillStyle = '#cbd5e1';
+    g.fillRect(22, -2.4, 7.5, 4.4); g.strokeRect(22, -2.4, 7.5, 4.4);
+    _wpnSpark(g, 29, -0.2, 3.4, pcC);
+  } else if (id === 'obsidian_flail') {
+    // 黑曜链枷流星锤：金箍重铁柄 + 紧绷铁索环 + 多棱尖刺黑曜流星重球
+    _wpnWrapGrip(g, -26, -3.0, 18, 6.0, '#1e1b4b', '#6d28d9', trimGold);
+    g.strokeStyle = trimGold; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(-8, 0); g.quadraticCurveTo(1, -5, 8, -1); g.stroke();
+    g.strokeStyle = '#090710'; g.lineWidth = 1.6;
+    const flC = isMythic ? accent : '#a855f7';
+    g.fillStyle = _wpnGrad(g, 6, -13, 28, 13, '#e9d5ff', flC, '#1e1b4b');
+    g.beginPath();
+    for (let k = 0; k < 16; k++) {
+      const a = (k * Math.PI * 2) / 16;
+      const rad = k % 2 === 0 ? 13.5 : 8.2;
+      const px = 17 + Math.cos(a) * rad, py = Math.sin(a) * rad;
+      if (k === 0) g.moveTo(px, py); else g.lineTo(px, py);
+    }
+    g.closePath(); g.fill(); g.stroke();
+    _wpnSpark(g, 17, 0, 4.0, '#fef08a');
+  } else if (id === 'gale_twinbow') {
+    // 追风双弦猎弓：苍翠羽翼反曲长弓 + 双重发光风弦 + 并列双矢
+    const bwC = isMythic ? accent : '#2dd4bf';
+    g.strokeStyle = '#090710'; g.lineWidth = 5.2;
+    g.beginPath(); g.moveTo(-4, -19); g.quadraticCurveTo(13, -10, 9, 0); g.quadraticCurveTo(13, 10, -4, 19); g.stroke();
+    g.strokeStyle = bwC; g.lineWidth = 2.8;
+    g.beginPath(); g.moveTo(-4, -19); g.quadraticCurveTo(13, -10, 9, 0); g.quadraticCurveTo(13, 10, -4, 19); g.stroke();
+    g.strokeStyle = '#ecfeff'; g.lineWidth = 1.1;
+    g.beginPath(); g.moveTo(-4, -18.5); g.lineTo(-12, 0); g.lineTo(-4, 18.5); g.moveTo(-2, -16.5); g.lineTo(-9, 0); g.lineTo(-2, 16.5); g.stroke();
+    g.strokeStyle = '#090710'; g.lineWidth = 1.4;
+    for (const ay of [-3.2, 3.2]) {
+      g.fillStyle = trimGold;
+      g.fillRect(-10, ay - 1, 30, 2);
+      g.fillStyle = '#ffffff';
+      g.beginPath(); g.moveTo(20, ay - 3); g.lineTo(28, ay); g.lineTo(20, ay + 3); g.closePath(); g.fill(); g.stroke();
+    }
+  } else if (id === 'crimson_siphon_staff') {
+    // 猩红渴血魔杖：暗银荆棘杖杆 + 蝙蝠双翼圣爵托 + 璀璨鲜血红宝石核
+    _wpnWrapGrip(g, -25, -2.5, 34, 5.0, '#310a16', '#9f1239', trimGold);
+    const blC = isMythic ? accent : '#f43f5e';
+    g.fillStyle = _wpnGrad(g, 6, -13, 20, 13, '#fecdd3', '#be123c', '#4c0519');
+    for (const sy of [-1, 1]) {
+      g.beginPath();
+      g.moveTo(9, sy * 2); g.quadraticCurveTo(13, sy * 13, 23, sy * 11); g.quadraticCurveTo(17, sy * 5, 14, sy * 1.5);
+      g.closePath(); g.fill(); g.stroke();
+    }
+    g.fillStyle = _wpnGrad(g, 12, -7, 27, 7, '#ffffff', blC, '#881337');
+    g.beginPath(); g.moveTo(12, 0); g.lineTo(19.5, -7); g.lineTo(27.5, 0); g.lineTo(19.5, 7); g.closePath(); g.fill(); g.stroke();
+    _wpnSpark(g, 20, -1, 4.0, '#fff1f2');
+  } else if (id === 'singularity_scepter') {
+    // 星蚀引力权杖：黑曜鎏金帝杖 + 倾斜金色视界吸积盘 + 纯黑奇点日核
+    _wpnWrapGrip(g, -25, -2.7, 33, 5.4, '#0f172a', '#7e22ce', trimGold);
+    const sgC = isMythic ? accent : '#c084fc';
+    g.strokeStyle = trimGold; g.lineWidth = 2.4;
+    g.beginPath(); g.ellipse(18, 0, 11.5, 4.8, -0.45, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = sgC; g.lineWidth = 1.6;
+    g.beginPath(); g.ellipse(18, 0, 9.5, 10.5, 0.35, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#05020d'; g.strokeStyle = '#fde68a'; g.lineWidth = 1.8;
+    g.beginPath(); g.arc(18, 0, 6.2, 0, Math.PI * 2); g.fill(); g.stroke();
+    _wpnSpark(g, 23, -5, 3.6, '#fde68a');
   } else {
     g.fillStyle = _wpnGrad(g, -14, -5, 22, 5, bladeHi, bladeMid, '#1e293b');
     g.beginPath(); g.roundRect(-14, -4.5, 34, 9, 3); g.fill(); g.stroke();

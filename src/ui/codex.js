@@ -154,8 +154,8 @@ function renderCodex() {
           <div class="card-meta">
             <div class="codex-card-title">${w.name}</div>
             <div class="card-badges">
+              ${typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(w, id) : `<span class="tag">${w.melee ? '近战挥砍' : (w.isStaff ? '🪄秘术法杖' : '远程射击')}</span>`}
               <span class="tag">${SET_DEFS[w.set].label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')}</span>
-              <span class="tag">${w.melee ? '近战挥砍' : (w.isStaff ? '🪄秘术法杖' : '远程射击')}</span>
               <span class="tag t5">可升5阶</span>
               ${minT > 1 ? `<span class="tag t${minT}">最低${['','普通','精良','史诗','传说','神话'][minT]}</span>` : ''}
             </div>
@@ -185,13 +185,15 @@ function renderCodex() {
       const tNames = ['', 'T1 普通', 'T2 精良', 'T3 史诗', 'T4 传说'];
       const card = document.createElement('div');
       card.className = `codex-card t${it.tier}`;
+      const itemArt = typeof renderItemEmblemHtml === 'function' ? renderItemEmblemHtml(it) : it.icon;
       card.innerHTML = `
         <div class="codex-card-top">
-          <div class="item-emblem t${it.tier}">${it.icon}</div>
+          <div class="item-emblem t${it.tier}">${itemArt}</div>
           <div class="card-meta">
             <div class="codex-card-title">${it.name}</div>
             <div class="card-badges">
               <span class="tag t${it.tier}">${tNames[it.tier]}</span>
+              ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(it) : ''}
               ${it.maxCount ? `<span class="tag tag-merge">${it.maxCount === 1 ? '唯一' : '上限 ×' + it.maxCount}</span>` : ''}
               <span class="tag">基准 ◇${it.cost}</span>
             </div>

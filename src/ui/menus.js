@@ -315,7 +315,7 @@ function openMenuStage(stage) {
   if (ev) ev.classList.toggle('hidden', menuStage !== 'endless');
   const keyArtEl = document.getElementById('heroKeyArtBg');
   if (keyArtEl) {
-    const bgRel = menuStage === 'endless' ? 'assets/spire/scene_1_vista.jpg' : 'assets/spire/v2/title-clean.png';
+    const bgRel = menuStage === 'endless' ? 'assets/spire/scene_1_vista.jpg' : 'assets/spire/v2/title-clean.jpg';
     keyArtEl.style.backgroundImage = `url('${_menuAssetUrl(bgRel)}')`;
   }
   beep(menuStage === 'home' ? 420 : 520, 0.04, 'triangle', 0.035);
@@ -361,7 +361,7 @@ function initMenuUI() {
   if (appIconEl) appIconEl.src = _menuAssetUrl('assets/spire/app_icon.jpg');
   const keyArtEl = document.getElementById('heroKeyArtBg');
   if (keyArtEl) {
-    const bgRel = menuStage === 'endless' ? 'assets/spire/scene_1_vista.jpg' : 'assets/spire/v2/title-clean.png';
+    const bgRel = menuStage === 'endless' ? 'assets/spire/scene_1_vista.jpg' : 'assets/spire/v2/title-clean.jpg';
     keyArtEl.style.backgroundImage = `url('${_menuAssetUrl(bgRel)}')`;
   }
 
@@ -544,6 +544,11 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
+  if (k === 'escape' && typeof isWeaponSlotModalOpen === 'function' && isWeaponSlotModalOpen()) {
+    if (e.preventDefault) e.preventDefault();
+    closeWeaponSlotModal();
+    return;
+  }
   if (k === 'escape' && typeof isAudioModalOpen === 'function' && isAudioModalOpen()) {
     if (e.preventDefault) e.preventDefault();
     closeAudioModal();
@@ -658,7 +663,7 @@ if (cv.addEventListener) {
     const btn = typeof document !== 'undefined' && document.getElementById ? document.getElementById('dashTouchBtn') : null;
     if (!btn || typeof btn.getBoundingClientRect !== 'function') return false;
     const r = btn.getBoundingClientRect();
-    if (!r || r.width < 10 || r.height < 10) return false;
+    if (!r || r.width < 10 || r.height < 10 || r.width > 180 || r.height > 180) return false;
     const bx = r.left + r.width * 0.5, by = r.top + r.height * 0.5;
     return Math.hypot(cx - bx, cy - by) <= Math.max(88, r.width * 1.25);
   };
@@ -1032,7 +1037,9 @@ function getRockCount() {
 function syncSetHp() {
   if (!player) return;
   const sb = getSetBonuses();
-  const targetBonusHp = sb.hp + getRockCount() * 3;
+  const padCnt = player.paddingStacks || 0;
+  const padHp = padCnt > 0 ? Math.min(36 * padCnt, Math.floor(Math.max(0, player.mats || 0) / 60) * padCnt) : 0;
+  const targetBonusHp = sb.hp + getRockCount() * 3 + padHp;
   const delta = targetBonusHp - (player._setHp || 0);
   if (delta !== 0) {
     player.maxHp = Math.max(1, player.maxHp + delta);
@@ -1083,6 +1090,12 @@ function startGame(cls, opts) {
     interest: 0, teslaCount: 0, teslaCd: 1.0, healDropBonus: 0, chillSlowT: 0, inSpore: false,
     dashCdMul: 1, dashFreezeNova: false, dashSurge: false, dashSurgeT: 0, shieldPulseNova: false, executeLowHp: 0,
     invulnBonus: 0, fastShield: false, soulBolt: false, noSlow: false, bossCratesQueued: 0, mythicCratesQueued: 0,
+    mobSpawnBonus: 0, crateMatBonus: 0, matHealEvery25: 0, _matPickAcc: 0, paddingStacks: 0, standStillBuff: false, _stillTime: 0,
+    spicySauce: false, gardenPlots: 0, _gardenCd: 11, sacrificeCrown: false, _sacTick: 0, harvestToDmg: false, luckyRerollChance: 0, luckToCritDmg: false,
+    bossCritAmp: 0, critMatChance: 0, _waveCritMats: 0, giantBelt: false, critBounce: false, overflowCritConvert: false,
+    rangedPelletsBonus: 0, extraShotChance: 0, rangedKillDashRefund: 0, dodgeHealChance: 0, spdToDmg: false, dodgeWindBlades: false, _dodgeBladeCd: 0, dodgeToAspd: false,
+    lowHpFrenzy: false, lifestealToDmg: false, lifestealIcdMul: 1, bloodShield: false, _bloodShieldPool: 0, phoenixFeather: false, _phoenixUsedWave: -1,
+    staffZoneScale: 0, staffZoneDurBonus: 0, pocketFactory: false, _pocketTurretsSpawned: 0, blastPull: false, staffDoubleCastChance: 0,
     survivalActsCleared: {}, survivalCratesQueued: 0, survivalGoldCratesQueued: 0, survivalFlawlessCnt: 0,
     _fissureHitCd: 0, _fissureLeapHintCd: 0, recentCrateIds: [],
     rarePortraitShown: false, shownBossPortraits: {}, mythicAwakenedCount: 0, waveMythicAwakened: false, waveBossCrateDropped: false, retryCount: 0,
@@ -1136,6 +1149,7 @@ function replayOpeningCutscene() {
 
 function showStart() {
   if (typeof resetWeaponEvolutionUI === 'function') resetWeaponEvolutionUI();
+  if (typeof closeWeaponSlotModal === 'function') closeWeaponSlotModal(true);
   if (typeof closeEndSummaryDetail === 'function') closeEndSummaryDetail();
   state = 'menu';
   resetJoy();
@@ -1237,7 +1251,10 @@ function renderBuildSummary(statsId, setsId) {
       for (const [iid, cnt] of Object.entries(player.items)) {
         if (cnt > 0) {
           const meta = ITEMS.find(x => x.id === iid);
-          if (meta) setPills.push(`<span class="set-pill" title="${meta.desc}">${meta.icon} ${meta.name}${cnt > 1 ? ' ×' + cnt : ''}</span>`);
+          if (meta) {
+            const pillIco = typeof renderItemEmblemHtml === 'function' ? renderItemEmblemHtml(meta, meta.tier, meta.icon, 'pill-art-ico') : meta.icon;
+            setPills.push(`<span class="set-pill" title="${meta.desc}">${pillIco} ${meta.name}${cnt > 1 ? ' ×' + cnt : ''}</span>`);
+          }
         }
       }
     }

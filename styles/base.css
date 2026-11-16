@@ -1827,6 +1827,14 @@ body:not(.m-ui) #shopCards .card.sold-out {
   display: block;
   pointer-events: none;
 }
+.pill-art-ico {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+  vertical-align: -3px;
+  margin-right: 3px;
+  pointer-events: none;
+}
 .slot-icon {
   display: flex;
   align-items: center;
@@ -1866,6 +1874,32 @@ body:not(.m-ui) #shopCards .card.sold-out {
 .tag.t5 { background: rgba(255, 92, 138, 0.20); border-color: rgba(255, 133, 168, 0.62); color: #ffd4e3; }
 .tag-merge { background: rgba(223, 192, 132, 0.14); border-color: rgba(223, 192, 132, 0.44); color: var(--gold-bright); }
 .tag-owned { background: rgba(137, 196, 212, 0.12); border-color: rgba(137, 196, 212, 0.28); color: var(--astral); }
+.tag-scale { font-weight: 700; letter-spacing: 0.01em; }
+.tag-scale.ts-melee  { background: rgba(225, 29, 72, 0.18);  border-color: rgba(251, 113, 133, 0.48); color: #fda4af; }
+.tag-scale.ts-ranged { background: rgba(14, 116, 144, 0.24); border-color: rgba(56, 189, 248, 0.48);  color: #7dd3fc; }
+.tag-scale.ts-staff  { background: rgba(126, 34, 206, 0.24); border-color: rgba(192, 132, 252, 0.52); color: #e9d5ff; }
+.tag-scale.ts-elem   { background: rgba(194, 65, 12, 0.24);  border-color: rgba(251, 146, 60, 0.52);  color: #fdba74; }
+.tag-scale.ts-tech   { background: rgba(161, 98, 7, 0.24);   border-color: rgba(250, 204, 21, 0.48);  color: #fde047; }
+.tag-scale.ts-summon { background: rgba(113, 63, 18, 0.24);  border-color: rgba(245, 158, 11, 0.44);  color: #fcd34d; }
+.tag-scale.ts-hp     { background: rgba(21, 128, 61, 0.22);  border-color: rgba(74, 222, 128, 0.46);  color: #86efac; }
+.tag-scale.ts-armor  { background: rgba(71, 85, 105, 0.28);  border-color: rgba(148, 163, 184, 0.48); color: #e2e8f0; }
+.tag-scale.ts-leech  { background: rgba(159, 18, 57, 0.26);  border-color: rgba(244, 63, 94, 0.50);   color: #fda4af; }
+.tag-scale.ts-blast  { background: rgba(185, 28, 28, 0.24);  border-color: rgba(248, 113, 113, 0.48); color: #fca5a5; }
+.tag-scale.ts-spd    { background: rgba(13, 148, 136, 0.22); border-color: rgba(45, 212, 191, 0.48);  color: #5eead4; }
+.tag-scale.ts-aspd   { background: rgba(180, 83, 9, 0.22);   border-color: rgba(251, 191, 36, 0.48);  color: #fde68a; }
+.tag-scale.ts-range  { background: rgba(30, 64, 175, 0.24);  border-color: rgba(96, 165, 250, 0.48);  color: #93c5fd; }
+.tag-scale.ts-all    { background: rgba(223, 192, 132, 0.18); border-color: rgba(223, 192, 132, 0.48); color: var(--gold-bright); }
+.slot-scale {
+  font-size: 10px;
+  font-weight: 700;
+  color: #a5b4fc;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  opacity: 0.92;
+}
 
 .card-body { display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: space-between; }
 .card-desc { font-size: 13.5px; color: #c7d2e0; line-height: 1.54; }
@@ -2081,17 +2115,112 @@ body:not(.m-ui) #shopCards .card.sold-out {
 .sell-tip {
   position: absolute;
   inset: 0;
-  background: rgba(124, 24, 46, 0.95);
+  background: rgba(14, 20, 34, 0.92);
   border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 11.5px;
-  color: var(--ivory);
+  color: var(--gold-bright);
   opacity: 0;
   transition: opacity 0.12s;
   padding: 4px;
+}
+.slot.is-selected {
+  border-color: var(--gold-bright) !important;
+  box-shadow: 0 0 0 2px rgba(223, 192, 132, 0.42), 0 8px 20px rgba(0, 0, 0, 0.55);
+  transform: translateY(-2px);
+}
+
+/* Brotato 式随身兵装检视与「合成 / 回收 / 取消」操作浮窗 */
+.wpn-action-modal {
+  z-index: 95;
+  background: rgba(6, 9, 16, 0.72);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.wpn-action-card {
+  width: 100%;
+  max-width: 440px;
+  background: linear-gradient(180deg, rgba(18, 24, 38, 0.98), rgba(10, 14, 24, 0.99));
+  border: 1.5px solid rgba(223, 192, 132, 0.48);
+  border-radius: 12px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.82), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wpn-action-card.t2 { border-color: rgba(137, 196, 212, 0.62); }
+.wpn-action-card.t3 { border-color: rgba(176, 124, 232, 0.68); }
+.wpn-action-card.t4 { border-color: var(--gold); }
+.wpn-action-card.t5 { border-color: #ff5c8a; box-shadow: 0 24px 56px rgba(0, 0, 0, 0.85), inset 0 0 24px rgba(255, 92, 138, 0.16); }
+.wpn-act-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.wpn-act-head .item-emblem {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+.wpn-act-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ivory);
+  line-height: 1.24;
+}
+.wpn-act-desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #cbd5e1;
+  background: rgba(7, 10, 18, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+.wpn-act-evo-hint {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #e2e8f0;
+  background: rgba(255, 92, 138, 0.08);
+  border: 1px solid rgba(255, 92, 138, 0.28);
+  border-radius: 7px;
+  padding: 7px 10px;
+}
+.wpn-act-set-line {
+  font-size: 12px;
+  color: var(--gold-bright);
+  opacity: 0.92;
+}
+.wpn-act-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+.wpn-act-btns-row {
+  display: flex;
+  gap: 8px;
+}
+.wpn-act-btns-row .btn {
+  flex: 1;
+  justify-content: center;
+}
+.btn-recycle-danger {
+  background: linear-gradient(180deg, rgba(136, 19, 55, 0.85), rgba(76, 5, 25, 0.94));
+  border: 1px solid rgba(251, 113, 133, 0.52);
+  color: #ffe4e6;
+}
+.btn-recycle-danger:hover:not(:disabled) {
+  border-color: #fda4af;
+  background: linear-gradient(180deg, rgba(159, 18, 57, 0.95), rgba(96, 10, 34, 0.98));
 }
 
 .stats-row {

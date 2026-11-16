@@ -18,68 +18,7 @@ const SPIRE_STORY_PACK = {
     wasteland: 'assets/spire/scene_3_vista.jpg',
     desert:    'assets/spire/scene_4_vista.jpg'
   },
-  cutscenes: {
-    act1: {
-      actKey: 'act1',
-      chapter: '第一幕 · 雨夜长桥 · 断刃狐面之约',
-      speaker: '绯红断刃剑姬 · 烬羽',
-      frames: [
-        'assets/spire/cut_act1_1.jpg',
-        'assets/spire/cut_act1_2.jpg',
-        'assets/spire/cut_act1_3.jpg'
-      ],
-      lines: [
-        '「九百九十八次雨夜，你每次提着这盏青灯走上孤桥，都会忘记我的名字。」',
-        '「既然立下守桥死誓——想踏过第一幕长桥，就先斩断我这柄残红太刀吧！」',
-        '「狐面碎裂之时，愿这一缕余烬，能替你照亮通往永冻冰窟的路……」'
-      ]
-    },
-    act2: {
-      actKey: 'act2',
-      chapter: '第二幕 · 永冻冰窟 · 碎冕星使的叹息',
-      speaker: '永冻星使 · 艾丝特莉亚',
-      frames: [
-        'assets/spire/cut_act2_1.jpg',
-        'assets/spire/cut_act2_2.jpg',
-        'assets/spire/cut_act2_3.jpg'
-      ],
-      lines: [
-        '「千年前黑日降临之夜，是你亲口求我冰封整座王城，连同你的罪与记忆。」',
-        '「时间早已冻停在银怀表里……若你执意唤醒真相，便承受碎冕星霜的审判！」',
-        '「原来冰泪融化时是温热的……去吧，伽蓝还在倒悬钟楼等你。」'
-      ]
-    },
-    act3: {
-      actKey: 'act3',
-      chapter: '第三幕 · 倒悬钟楼 · 逆转黄金发条',
-      speaker: '紫电弦月人偶 · 伽蓝',
-      frames: [
-        'assets/spire/cut_act3_1.jpg',
-        'assets/spire/cut_act3_2.jpg',
-        'assets/spire/cut_act3_3.jpg'
-      ],
-      lines: [
-        '「嘀嗒、嘀嗒——第 999 号提灯容器，你比上一世早到了整整三秒钟。」',
-        '「我把灵魂锻进这具发条躯壳，就是为了在钟摆停摆前，替你校准弑神的枪口！」',
-        '「黄金发条拧断了……往上走吧，黑水巨镜里坐着的，正是你自己！」'
-      ]
-    },
-    act4: {
-      actKey: 'act4',
-      chapter: '终幕 · 日蚀镜界 · 第999次救赎',
-      speaker: '第999号 · 日蚀圣女（镜中真我）',
-      frames: [
-        'assets/spire/cut_act4_1.jpg',
-        'assets/spire/cut_act4_2.jpg',
-        'assets/spire/cut_act4_3.jpg'
-      ],
-      lines: [
-        '「欢迎归来，我的第 999 具白衣分身。你一路收集的魂火，终于足够点燃黑日。」',
-        '「九百九十八次轮回皆归灰烬——唯有斩碎镜中的我，第一千道破晓才会降临！」',
-        '「黑纱坠落，宿命闭环……这一次，换你带着挚友们的残响活下去！」'
-      ]
-    }
-  },
+  cutscenes: {},
   // 适配 16 层四幕攀登的 15 段青羽行商层间私语（第 1→2 层 至 第 15→16 层逐层推进伏笔）
   witchWhispers: [
     '青羽轻拂帽檐风翎：「提灯少女，欢迎来到风语行商……哪怕失去了记忆，你的手指依然记得握铳的姿势呢。」',
@@ -914,8 +853,8 @@ const SpireAssets = (function () {
 
     // 第二优先级：序章首屏背景图与竞技场底图在空闲帧平缓预热，绝不抢占小怪并发槽位
     const jobs = [
-      () => loadImage('assets/spire/v3/awakening-coffin.png', null, null, false),
-      () => loadImage('assets/spire/v3/awakening-lantern.png', null, null, false),
+      () => loadImage('assets/spire/v3/awakening-coffin.jpg', null, null, false),
+      () => loadImage('assets/spire/v3/awakening-lantern.jpg', null, null, false),
       () => loadImage('assets/spire/scene_1_vista.jpg', null, null, false),
       () => getArenaBg('foundry')
     ];
