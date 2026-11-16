@@ -385,7 +385,7 @@ body.m-ui .slots::-webkit-scrollbar { display: none; }
 body.m-ui .slot, body.m-ui .slot-empty { width: 100%; height: 42px; padding: 2px 2px; font-size: 9.5px; gap: 1px; }
 body.m-ui .slot-icon { font-size: 15px; }
 body.m-ui .slot-name { font-size: 9px; }
-body.m-ui .slot-sub { display: none !important; }
+body.m-ui .slot-sub, body.m-ui .slot-scale { display: none !important; }
 
 body.m-ui .mob-shop-bar {
   width: 100%;
