@@ -3,21 +3,37 @@ const SpireDirector = (function () {
   'use strict';
   const D = SpireStoryV2, A = 'assets/spire/v2/', V3 = 'assets/spire/v3/', VERSION = D.version;
   const CAST = {
-    zero: { name: '零', roleTag: '提灯的少女', accent: '#a9d9dc' },
+    zero: { name: '零', roleTag: '第九百九十九夜的提灯人', accent: '#a9d9dc' },
     qingyu: { name: '青羽', roleTag: '风亭行商', accent: '#9dc7b6' },
-    jinyu: { name: '烬羽', roleTag: '长桥守誓者', accent: '#dba5ae' },
-    astria: { name: '艾丝特莉亚', roleTag: '永冻星使', accent: '#aed3e9' },
-    jialan: { name: '伽蓝', roleTag: '钟楼的守望者', accent: '#c1b2dc' },
-    eclipse: { name: '日蚀圣女', roleTag: '镜中的另一面', accent: '#dcc79f' }
+    jinyu: { name: '烬羽', roleTag: '雨桥守誓剑姬', accent: '#dba5ae' },
+    astria: { name: '艾丝特莉亚', roleTag: '永冻护城星使', accent: '#aed3e9' },
+    jialan: { name: '伽蓝', roleTag: '倒悬钟楼守望者', accent: '#c1b2dc' },
+    eclipse: { name: '日蚀圣女', roleTag: '镜中的黑日半身', accent: '#dcc79f' }
   };
   Object.keys(CAST).forEach(k => { CAST[k].id = k; CAST[k].portrait = 'assets/spire/port_' + k + '.jpg'; });
   const BOSS = ['jinyu', 'astria', 'jialan', 'eclipse'];
   const ACTS = ['雨夜长桥', '永冻冰窟', '倒悬钟楼', '日蚀镜界'];
   const MEMORY = {
-    jinyu: ['褪色守誓剑穗', '你蹲在风亭的石阶上，替烬羽系剑穗。她嫌结太丑，你便又勒紧一点：“丑就丑，掉不了。”后来她的刀换过，剑穗没有。'],
-    astria: ['冻停银怀表', '表盖里，你和烬羽挤在艾丝特莉亚身旁。你想起自己攥着她的袖口，求她先冻住城里的人。那时灯已伸向人群，她答应你，一个也不放弃。'],
-    jialan: ['逆转黄金发条', '你扶着伽蓝的肩，把发条拧到熟悉的位置。“如果我又提灯回来，阻止我。哪怕我求你。”伽蓝迟迟没有回答。你又说了一遍：“答应我。”'],
-    qingyu: ['苍翠记忆风翎', '青羽把风翎夹进你的手心。你答应过回来，把那杯茶喝完。后来她收起凉透的杯子，把你们的旧物一件件留好；直到这一次，你终于认出她。']
+    jinyu: [
+      '褪色守誓剑穗',
+      '那是一个还没有落下冷雨的傍晚。你蹲在风亭的青石阶上，笨拙地替烬羽系上这条绯红剑穗。系到第三回仍是个歪歪扭扭的死结，她偏过头嫌你手慢，你却笑着又勒紧了一分：“丑一点才好，刀挥得再快也甩不掉。”',
+      '后来灾厄降临，她的佩刀在九百九十八次守桥之战里崩断过无数回，鬓侧的白狐半面也添了裂痕，唯有刀柄末端那个歪斜的死结，穿过漫天夜雨始终未曾拆动半分。'
+    ],
+    astria: [
+      '冻停银怀表',
+      '掀开的银怀表内侧，嵌着一幅泛暖的旧日小像——尚未知晓灾厄的你正依偎在艾丝特莉亚肩畔微笑。而表针永远冻停的那一夜，黑日裂空，失控的魂灯化作吞噬生灵魂魄的灾厄，整座王城都在哀鸣。',
+      '是你死死攥住艾丝特莉亚的衣袖，哭着求她降下永冻之咒，将全城百姓封入静止的时间。她含泪应下了这份孤寂的托付：“我会替你护住他们的呼吸，一个也不放弃——直到你找到终结长夜的那一天。”'
+    ],
+    jialan: [
+      '逆转黄金发条',
+      '封塔前的最后一夜，你站在倒悬钟楼的工作台旁，替左颊添上小小补丁的少年人偶调校好机芯，将这卷黄金发条装入他的心核，录下了近乎残忍的死令：“如果有一天我忘了所有事，又提着灯回来……请拦住我。哪怕我求你，也别替我开门。”',
+      '向来沉默守序的伽蓝怔了很久，才轻轻握了一下你的指尖。你忍着泪水又重复了一遍：“答应我。”从此九百九十八个长夜，他一面拧紧脑后的发条钥锁死上行铁门，一面在每一处悬空险境默默护住你的性命。'
+    ],
+    qingyu: [
+      '苍翠记忆风翎',
+      '走入塔底石棺之前，你将所有的真相与后路托付给青羽，指着铜壶里尚未饮尽的甜茶轻声许诺：“等我醒来，一定回来把这杯茶喝完。”她摘下尖顶帽间最珍爱的苍翠风翎放进你掌心，笑着说风亭的黄铜风灯会一直为你亮着。',
+      '这一等便是九百九十八次轮回。她一次次看着陌生的你淋雨走过桥头，一次次将粗陶杯没有缺口的一侧转到你手边，却从不强行替你做决定——直到第九百九十九夜，你终于重新唤出了她的名字。'
+    ]
   };
   let queue = [], cur = null, ui = null, seen = {}, read = {}, history = [];
   let preview = false, replayDone = null, previousFocus = null;
@@ -93,15 +109,45 @@ const SpireDirector = (function () {
     return { path: A + file, cols, rows, panel: panel || 0, safe: cols === 3 ? [.015, .006, .970, .875] : rows === 1 ? [.012, .065, .976, .923] : [.012, .110, .976, .878] };
   }
   const cg = (file, fallback, mood) => ({ path: V3 + file + '.png', fallback, mood: mood || 'still', standalone: true });
+  const cgJpg = (file, fallback, mood) => ({ path: V3 + file + '.jpg', fallback, mood: mood || 'still', standalone: true });
+  const PHASE2_FORMS = {
+    jinyu:   { over: '誓约解封 · 绯夜燃魂', title: '烬羽 · 双刀烬羽织',       sub: '第二阶段 · 封鞘胁差出鞘 & 燃烬羽织展开' },
+    astria:  { over: '誓约解封 · 碎冕极光', title: '艾丝特莉亚 · 六翼凛冬礼装', sub: '第二阶段 · 八音盒化翼 & 护心怀表苏醒' },
+    jialan:  { over: '第十三响 · 逆时神枢', title: '伽蓝 · 星晷超载少主装',   sub: '第二阶段 · 赤金发条过载 & 时针分针双剑' },
+    eclipse: { over: '破镜真我 · 宿命同源', title: '日蚀圣女 · 黑曜金纹镜像礼装', sub: '第二阶段 · 半幅焚纱露瞳 & 黑金双生神装' }
+  };
+  function phase2ShotArts(key) {
+    const fb = atlas(key + '-atlas.png', 2);
+    if (key === 'jinyu') return [
+      cg('jinyu-clash', fb, 'tension'),
+      cgJpg('jinyu-p2-unsheathe', fb, 'rupture'),
+      cgJpg('jinyu-p2-awaken', fb, 'rupture')
+    ];
+    if (key === 'astria') return [
+      cgJpg('astria-p2-tear', fb, 'frozen'),
+      cgJpg('astria-p2-prism', fb, 'rupture'),
+      cg('astria-wings', fb, 'frozen')
+    ];
+    if (key === 'jialan') return [
+      Object.assign(fb, { mood: 'time' }),
+      cgJpg('jialan-p2-windkey', fb, 'rupture'),
+      cgJpg('jialan-p2-awaken', fb, 'time')
+    ];
+    return [
+      cg('eclipse-mirror', fb, 'mirror'),
+      cgJpg('eclipse-p2-unveil', fb, 'rupture'),
+      cgJpg('eclipse-p2-awaken', fb, 'mirror')
+    ];
+  }
   function bossArt(key, stage) {
     const panel = { first_meeting: 0, pre_battle: 1, phase2: 2, boss_defeated: 3 }[stage];
     const fallback = atlas(key + '-atlas.png', panel);
-    if (key === 'jinyu' && (stage === 'pre_battle' || stage === 'phase2')) return cg('jinyu-clash', fallback, stage === 'phase2' ? 'rupture' : 'tension');
+    if (stage === 'phase2') return phase2ShotArts(key)[2];
+    if (key === 'jinyu' && stage === 'pre_battle') return cg('jinyu-clash', fallback, 'tension');
     if (key === 'jinyu' && stage === 'boss_defeated') return cg('jinyu-farewell', fallback, 'grief');
-    if (key === 'astria' && stage === 'phase2') return cg('astria-wings', fallback, 'frozen');
     if (key === 'jialan' && stage === 'boss_defeated') return cg('jialan-clock', fallback, 'time');
     if (key === 'eclipse' && (stage === 'first_meeting' || stage === 'pre_battle')) return cg('eclipse-mirror', fallback, 'mirror');
-    return Object.assign(fallback, { mood: stage === 'boss_defeated' ? 'grief' : stage === 'phase2' ? 'rupture' : 'still' });
+    return Object.assign(fallback, { mood: stage === 'boss_defeated' ? 'grief' : 'still' });
   }
   function memoryArt(key) {
     if (key === 'qingyu') return cg('qingyu-rain', atlas('qingyu-atlas.png', 2), 'reunion');
@@ -115,6 +161,9 @@ const SpireDirector = (function () {
     if (key === 'zero' && typeof getActiveZeroOutfit === 'function') {
       const o = getActiveZeroOutfit();
       if (o && o.portrait) return o.portrait;
+    }
+    if (key && key !== 'zero' && cur && cur.id && /\.phase2\b/.test(cur.id)) {
+      return 'assets/spire/port_' + key + '_p2.jpg';
     }
     return CAST[key].portrait;
   }
@@ -207,6 +256,14 @@ const SpireDirector = (function () {
   }
   function handleKey(ev) {
     if (!isActive()) return;
+    if (isRuptureHold()) {
+      const rk = (ev.key || '').toLowerCase();
+      if ([' ', 'enter', 'escape', 'a', 'h', 'l'].includes(rk)) {
+        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        if (ev.preventDefault) ev.preventDefault();
+      }
+      return;
+    }
     const k = (ev.key || '').toLowerCase();
     if (k === 'tab') {
       if (hidden) { if (ev.preventDefault) ev.preventDefault(); focus(ui.restore); return; }
@@ -407,25 +464,56 @@ const SpireDirector = (function () {
     warmArtPath(vista(n).path, n > 1);
     const fb = floorBefore(n);
     for (let i = 0; i < fb.length; i++) warmSceneItem(fb[i], n > 1);
+    if (n % 4 === 0) {
+      const p2s = bossScenes(bossKey(n), 'phase2');
+      for (let j = 0; j < p2s.length; j++) warmSceneItem(p2s[j], false);
+    }
   }
   function enqueue(items, done) {
     if (typeof done === 'function') items = items.concat([{ kind: 'callback', callback: once(done) }]);
     queue.push.apply(queue, items); preloadUpcoming(); if (!cur) next();
   }
+  function isRuptureHold() {
+    return !preview && typeof phase2ShatterFx !== 'undefined' && !!(phase2ShatterFx && phase2ShatterFx.stage === 'rupture');
+  }
+  function syncRuptureHoldDom() {
+    if (!ui || !ui.root) return;
+    if (isRuptureHold()) {
+      ui.root.style.opacity = '0';
+      ui.root.style.pointerEvents = 'none';
+    } else {
+      if (ui.root.style.opacity === '0') ui.root.style.opacity = '';
+      if (ui.root.style.pointerEvents === 'none') ui.root.style.pointerEvents = '';
+    }
+  }
+  function releaseRuptureHold() {
+    syncRuptureHoldDom();
+    if (cur && ui) {
+      syncMotionState();
+      focusAdvanceTarget();
+    }
+  }
   function next() {
     if (cur) return;
     while (queue.length && queue[0].kind === 'callback') { queue.shift().callback(); if (cur) return; }
     if (!queue.length) { hideStage(); return; }
-    cur = queue.shift(); Object.assign(cur, { idx: 0, elapsed: 0, lineElapsed: 0, wait: 0, readHold: 0, awaitingScroll: false, revealed: false, logged: false });
+    cur = queue.shift(); lastPortraitSpeaker = null;
+    Object.assign(cur, { idx: 0, elapsed: 0, lineElapsed: 0, wait: 0, readHold: 0, awaitingScroll: false, revealed: false, logged: false });
     preloadUpcoming();
     ensureUi(); resetInput(); if (ui.root.classList.contains('hidden')) previousFocus = document.activeElement;
     ui.root.classList.remove('hidden'); document.body.classList.add('story-presenting');
+    syncRuptureHoldDom();
     hidden = logOpen = false; ui.log.classList.add('hidden'); ui.root.classList.remove('story-ui-hidden');
     if (cur.kind === 'choice') auto = skipRead = false;
-    syncScene(); focusAdvanceTarget();
+    syncScene(); if (!isRuptureHold()) focusAdvanceTarget();
   }
   function hideStage() {
-    if (ui) { ui.root.classList.add('hidden'); document.body.classList.remove('story-presenting'); }
+    if (ui) {
+      ui.root.style.opacity = '';
+      ui.root.style.pointerEvents = '';
+      ui.root.classList.add('hidden');
+      document.body.classList.remove('story-presenting');
+    }
     stopMotion(); lastPortraitSpeaker = null; pointerTrack = null; suppressDragClick = false;
     hidden = logOpen = skipRead = false; if (!preview) persistRead(); resetInput();
     const afterReplay = preview ? replayDone : null;
@@ -449,7 +537,14 @@ const SpireDirector = (function () {
     else finish();
   }
   function advanceOrSkip(force) {
-    if (!cur) return false; if (hidden) { setHidden(false); return true; }
+    if (!cur) return false;
+    if (!force && isRuptureHold()) return false;
+    if (force && isRuptureHold()) {
+      if (phase2ShatterFx.boss) phase2ShatterFx.boss._ruptureHoldP1 = false;
+      phase2ShatterFx = null;
+      syncRuptureHoldDom();
+    }
+    if (hidden) { setHidden(false); return true; }
     if (logOpen || cur.kind === 'choice') return false;
     // Force is a programmatic replay/test transport. No UI button is bound to it.
     if (force || cur.kind === 'title') { finish(); return true; }
@@ -457,6 +552,8 @@ const SpireDirector = (function () {
   }
   function update(dt) {
     if (!Number.isFinite(dt) || dt <= 0) return; hitstop = Math.max(0, hitstop - dt);
+    if (isRuptureHold()) { syncRuptureHoldDom(); return; }
+    syncRuptureHoldDom();
     if (!cur || !focused || document.hidden || logOpen || hidden) return; cur.elapsed += dt; cur.readHold = Math.max(0, (cur.readHold || 0) - dt);
     if (cur.kind === 'choice') return;
     if (cur.kind === 'title') { if (cur.elapsed >= (cur.duration || 2)) finish(); return; }
@@ -487,32 +584,40 @@ const SpireDirector = (function () {
   function syncLine() {
     const ln = line(); if (!ln || !ui) return; lastText = '';
     cur.awaitingScroll = false; cur.readHold = 0; ui.text.scrollTop = ui.cinText.scrollTop = 0;
-    const id = speakerId(ln.speaker), cast = id && CAST[id];
+    const id = speakerId(ln.speaker), cast = id && CAST[id], isNarration = !ln.speaker || ln.speaker === '旁白';
     ui.accessible.textContent = (ln.speaker ? ln.speaker + '：' : '') + ln.text;
-    ui.name.textContent = ln.speaker === '旁白' ? '' : (ln.speaker || ''); ui.cinName.textContent = ui.name.textContent;
+    ui.name.textContent = isNarration ? '' : (ln.speaker || ''); ui.cinName.textContent = ui.name.textContent;
     ui.cinematic.classList.toggle('story-silent', !ln.text.trim());
     ui.role.textContent = cast ? (id === 'qingyu' && (cur.floor || 1) >= 15 ? '旧日同伴 · 记忆的保管者' : cast.roleTag) : '';
-    ui.nameRow.classList.toggle('story-narration', !ln.speaker || ln.speaker === '旁白');
+    ui.nameRow.classList.toggle('story-narration', isNarration);
+    ui.dialog.classList.toggle('story-is-narration', isNarration);
     ui.progress.textContent = (cur.idx + 1) + ' / ' + cur.lines.length; css(ui.root, '--story-accent', cast ? cast.accent : '#c9d2d3');
-    if (cur.kind === 'dialogue' && cur.portraits !== false && cast) {
-      const other = cur.lines.map(row => speakerId(row.speaker)).find(k => k && k !== 'zero');
-      const rightId = id === 'zero' ? other : id;
+    const sceneSpeakers = cur.kind === 'dialogue' && cur.portraits !== false ? cur.lines.map(row => speakerId(row.speaker)).filter(Boolean) : [];
+    if (cur.kind === 'dialogue' && cur.portraits !== false && (cast || (isNarration && sceneSpeakers.length))) {
+      const other = sceneSpeakers.find(k => k !== 'zero') || null;
+      const rightId = id === 'zero' ? other : (cast ? id : other);
       for (const pair of [[ui.left, 'zero'], [ui.right, rightId]]) {
         const el = pair[0], key = pair[1], entering = el.classList.contains('hidden') || el.getAttribute('data-character') !== key;
-        el.classList.toggle('hidden', !key); el.classList.toggle('speaking', key === id);
+        const active = !!cast && key === id;
+        el.classList.toggle('hidden', !key); el.classList.toggle('speaking', active);
         if (key) {
           const path = castPortraitPath(key), role = el === ui.left ? 'portrait-left' : 'portrait-right';
           if (el.getAttribute('data-portrait') !== path) { el.setAttribute('data-portrait', path); el.src = source(path); } el.alt = CAST[key].name; el.setAttribute('data-character', key);
-          if (entering || lastPortraitSpeaker !== id) {
+          const targetOpacity = active ? 1 : .42;
+          if (entering || lastPortraitSpeaker !== (id || 'narration')) {
             stopRole(role);
-            animate(el, entering ? [{ opacity: 0, transform: 'translate3d(' + (el === ui.left ? '-12' : '12') + 'px,5px,0)' }, { opacity: key === id ? 1 : .42, transform: 'translate3d(0,0,0)' }] : [{ opacity: key === id ? .42 : 1 }, { opacity: key === id ? 1 : .42 }], { duration: entering ? 720 : 360, easing: 'ease-out', fill: 'both' }, role);
+            animate(el, entering ? [{ opacity: 0, transform: 'translate3d(' + (el === ui.left ? '-12' : '12') + 'px,5px,0)' }, { opacity: targetOpacity, transform: 'translate3d(0,0,0)' }] : [{ opacity: active ? .42 : 1 }, { opacity: targetOpacity }], { duration: entering ? 720 : 360, easing: 'ease-out', fill: 'both' }, role);
           }
         }
       }
-      const listenerId = id === 'zero' ? other : 'zero'; ui.listener.classList.toggle('hidden', !listenerId);
+      const listenerId = !cast ? null : id === 'zero' ? other : 'zero'; ui.listener.classList.toggle('hidden', !listenerId);
       if (listenerId) { const path = castPortraitPath(listenerId); if (ui.listener.getAttribute('data-portrait') !== path) { ui.listener.setAttribute('data-portrait', path); ui.listener.src = source(path); } ui.listener.alt = CAST[listenerId].name + '在听'; }
-    } else { ui.left.classList.add('hidden'); ui.right.classList.add('hidden'); ui.listener.classList.add('hidden'); }
-    lastPortraitSpeaker = id; syncMotionState();
+      lastPortraitSpeaker = id || 'narration';
+    } else {
+      ui.left.classList.add('hidden'); ui.right.classList.add('hidden'); ui.listener.classList.add('hidden');
+      lastPortraitSpeaker = null;
+    }
+    syncMotionState();
     if (prefs.instantText) reveal(); else syncText();
   }
   function syncText() {
@@ -563,9 +668,15 @@ const SpireDirector = (function () {
     if (stageKey === 'first_meeting') return [cin(s.stageId + '.establish', name, [], art, 2.1, f), dlg(s.stageId, '第 ' + f + ' 层 · ' + floorData(f).title, s.dialogue, key === 'eclipse' ? art : vista(f), f, key !== 'eclipse')];
     if (stageKey === 'pre_battle') return [dlg(s.stageId + '.dialogue', name, s.dialogue.slice(0, -1), key === 'eclipse' ? art : vista(f), f, key !== 'eclipse'), cin(s.stageId, name, s.dialogue.slice(-1), art, 4.2, f), titleCard(s.stageId + '.phase', name, art, 1.4, '第一阶段', '守誓之战')];
     if (stageKey === 'phase2') {
-      const shots = [cin(s.stageId, name, s.dialogue, art, Math.max(6, s.dialogue.length * 2.8), f), titleCard(s.stageId + '.phase', name, art, 1.15, '第二阶段', '誓约未止')];
-      if (key === 'jinyu') shots.unshift(cin(s.stageId + '.wound', name, [], Object.assign(atlas('jinyu-atlas.png', 2), { mood: 'still' }), 1.8, f));
-      return shots;
+      const p2Arts = phase2ShotArts(key), p2Meta = PHASE2_FORMS[key];
+      const shotItems = (s.shots || []).map((sh, idx) => {
+        const ln = s.dialogue[idx] || sh.line;
+        return cin(sh.shotId || (s.stageId + '.shot.0' + (idx + 1)), name + ' · ' + s.title, ln ? [ln] : [], p2Arts[Math.min(p2Arts.length - 1, idx)], sh.seconds || 3.4, f);
+      });
+      if (preview) {
+        shotItems.push(titleCard(s.stageId + '.phase', p2Meta ? p2Meta.title : name, p2Arts[2] || art, 1.45, p2Meta ? p2Meta.sub : '第二阶段', p2Meta ? p2Meta.over : '誓约解封'));
+      }
+      return shotItems;
     }
     return [cin(s.stageId + '.silence', name, [], art, 2.8, f), dlg(s.stageId, name, s.dialogue, art, f, false)];
   }
@@ -582,40 +693,41 @@ const SpireDirector = (function () {
   }
   function memoryReader(key, returnScene) {
     const mem = MEMORY[key], art = memoryArt(key);
-    return [dlg('memory.' + key, mem[0], [{ speaker: '记忆', text: mem[1], lineId: 'memory.' + key + '.description' }], art, 15, false),
-      { id: 'memory.' + key + '.confirm', kind: 'choice', title: mem[0], text: '这是你亲自核对过的证据。', art,
-        options: [{ id: 'remember', label: '记住这段约定' }, { id: 'back', label: '暂时收好' }],
+    const pages = mem.slice(1).map((txt, idx) => ({ speaker: '旧日记忆', text: txt, lineId: 'memory.' + key + '.description.' + (idx + 1) }));
+    return [dlg('memory.' + key, mem[0], pages, art, 15, false),
+      { id: 'memory.' + key + '.confirm', kind: 'choice', title: mem[0], text: '旧物的温度与亲眼所见的证据彼此印证，尘封的誓约正在掌心苏醒。', art,
+        options: [{ id: 'remember', label: '铭记这段守誓之约', detail: '将这份托付镌刻于心，不再遗忘' }, { id: 'back', label: '先贴身收好', detail: '稍后仍可在风亭或镜前回想' }],
         onChoose: id => { if (id === 'remember' && !preview && typeof rememberSpireMemento === 'function') rememberSpireMemento(key); queue.unshift(returnScene()); }
       }];
   }
   function memoryMenu(returnScene) {
     const p = progress();
-    return { id: 'memory.review', kind: 'choice', chapter: '同伴的约定', title: '把记忆拼在一起', text: '一件旧物，一段由你确认的过去。', art: pavilion(),
-      options: ['jinyu', 'astria', 'jialan', 'qingyu'].map(k => ({ id: k, label: MEMORY[k][0], detail: !p.mementos[k] ? '尚未获得' : p.memories[k] ? '已记起 · 可再次回看' : '触碰旧物，确认记忆', disabled: !p.mementos[k] })).concat([{ id: 'back', label: '返回' }]),
+    return { id: 'memory.review', kind: 'choice', chapter: '守誓者的信物', title: '拼合四段失落的约定', text: '每一件旧物背后，都藏着他们宁肯拦住你、也要护你周全的理由。', art: pavilion(),
+      options: ['jinyu', 'astria', 'jialan', 'qingyu'].map(k => ({ id: k, label: MEMORY[k][0], detail: !p.mementos[k] ? '尚未寻获此信物' : p.memories[k] ? '已铭记于心 · 可再次翻阅' : '轻触旧物，唤醒尘封记忆', disabled: !p.mementos[k] })).concat([{ id: 'back', label: '返回当前场景' }]),
       onChoose: id => { if (id === 'back') queue.unshift(returnScene()); else queue.unshift.apply(queue, memoryReader(id, () => memoryMenu(returnScene))); }
     };
   }
   function prepareChoice() {
-    return { id: 'floor.15.prepare', kind: 'choice', chapter: '第 15 层 · 终门前的风亭', title: '去之前，把约定想完整', text: '青羽替你添满了茶，却没有催你。', art: pavilion(),
-      options: [{ id: 'memories', label: '回想同伴的约定', detail: '整理四件信物与记忆' }, { id: 'ready', label: '准备好了，走向终门', detail: '完成本层整备后，进入第十六层' }],
+    return { id: 'floor.15.prepare', kind: 'choice', chapter: '第 15 层 · 终门前的风亭', title: '推开终门之前，把约定想完整', text: '青羽替你温满了最后一盏甜茶。檐外便是零号圣所的黑曜石巨镜，她安静地等你自己做出决定。', art: pavilion(),
+      options: [{ id: 'memories', label: '翻阅四件信物与约定', detail: '逐一唤醒并铭记烬羽、星使、伽蓝与青羽的记忆' }, { id: 'ready', label: '已经记牢了，走向终门', detail: '完成第十五层整备后，踏入零号圣所' }],
       onChoose: id => { if (id === 'memories') queue.unshift(memoryMenu(prepareChoice)); }
     };
   }
   function rewardChoice(key, n) {
-    const make = () => ({ id: 'memento.' + key, kind: 'choice', chapter: '第 ' + n + ' 层 · 誓约留下的东西', title: '获得 · ' + MEMORY[key][0], text: '先听完她的话，再决定是否触碰这段记忆。', art: memoryArt(key),
-      options: [{ id: 'memory', label: '查看信物里的记忆' }, { id: 'continue', label: '收好信物，继续前行' }],
+    const make = () => ({ id: 'memento.' + key, kind: 'choice', chapter: '第 ' + n + ' 层 · 守誓者的托付', title: '收下 · ' + MEMORY[key][0], text: '微凉的旧物静静躺在掌心，似乎只要闭上眼触碰它，就能听见灾厄降临前那晚的声音。', art: memoryArt(key),
+      options: [{ id: 'memory', label: '触碰信物，唤醒旧日记忆', detail: '倾听这件信物背后的真实往事' }, { id: 'continue', label: '贴身收好，继续登塔', detail: '稍后仍可在终门前翻阅回想' }],
       onChoose: id => { if (id === 'memory') queue.unshift.apply(queue, memoryReader(key, make)); }
     }); return make();
   }
   function finalChoiceScene(onChoice) {
     const p = progress(), complete = preview || (typeof hasSpireTrueEnding === 'function' ? hasSpireTrueEnding() : ['jinyu', 'astria', 'jialan', 'qingyu'].every(k => p.mementos[k] && p.memories[k]));
     const make = () => finalChoiceScene(onChoice);
-    return { id: 'final.choice', kind: 'choice', chapter: '第 16 层 · 镜前', title: '把灯拿好', text: '镜中的她伸出手，等你回应。', art: bossArt('eclipse', 'first_meeting'),
-      options: [{ id: 'accept', label: '回应镜中的呼唤', detail: '先走近她，再确认是否交出魂灯' }, { id: 'memories', label: '回想同伴的约定', detail: '在决定前，仍可补全记忆' }, { id: 'refuse', label: '拒绝交灯 · 由我走到天亮', detail: complete ? '握紧四件信物，直面镜中的自己' : '需要确认四件信物中的记忆', disabled: !complete }],
+    return { id: 'final.choice', kind: 'choice', chapter: '第 16 层 · 黑曜石巨镜前', title: '第九百九十九夜的抉择', text: '裂镜中的日蚀圣女隔着覆眼黑纱向你伸出手，静静等待你交出魂灯；而灯环上的旧物正传来微弱却坚定的暖意。', art: bossArt('eclipse', 'first_meeting'),
+      options: [{ id: 'accept', label: '顺从镜中的呼唤 · 交出魂灯', detail: '走近镜面，与被封印的另一半真身合掌' }, { id: 'memories', label: '低头回想同伴的约定', detail: '在最终抉择前，再次确认四件信物中的记忆' }, { id: 'refuse', label: '拒绝交灯 · 携四人之约斩碎黑日', detail: complete ? '握紧剑穗、怀表、发条与风翎，亲手终结这场轮回' : '需集齐四件信物并铭记全部四段约定方可开启', disabled: !complete }],
       onChoose: id => {
         if (id === 'memories') queue.unshift(memoryMenu(make));
-        else if (id === 'accept') queue.unshift({ id: 'final.accept.confirm', kind: 'choice', chapter: '镜前 · 伸出的手', title: '把魂灯交给她？', text: '一旦交出提灯，你将与镜中的圣女合一。', art: bossArt('eclipse', 'first_meeting'),
-          options: [{ id: 'back', label: '收回手 · 再想一想' }, { id: 'confirm', label: '确认交出魂灯' }], onChoose: choice => { if (choice === 'back') queue.unshift(make()); else onChoice('accept'); } });
+        else if (id === 'accept') queue.unshift({ id: 'final.accept.confirm', kind: 'choice', chapter: '镜前 · 伸出的手', title: '真的要把魂灯交给镜中的她吗？', text: '魂灯是自内部解开烬塔封印的唯一钥匙。一旦交出，被锁在塔顶的黑日灾厄将瞬间重临世间。', art: bossArt('eclipse', 'first_meeting'),
+          options: [{ id: 'back', label: '收回手 · 我还要再想一想' }, { id: 'confirm', label: '确认交出魂灯' }], onChoose: choice => { if (choice === 'back') queue.unshift(make()); else onChoice('accept'); } });
         else onChoice('refuse');
       }
     };
@@ -641,10 +753,57 @@ const SpireDirector = (function () {
     }));
     enqueue(items, () => { seen['floor.' + n + '.complete'] = true; }); return true;
   }
-  function onBossPhase2(n) {
-    if (!isStory() || n > 16) return false; const key = 'phase2.' + n;
-    if (seen[key]) enqueue([titleCard(key, CAST[bossKey(n)].name, bossArt(bossKey(n), 'phase2'), 1.1, '第二阶段')]);
-    else { seen[key] = true; enqueue(bossScenes(bossKey(n), 'phase2')); } return true;
+  function specialBossPhase2Scenes(kind) {
+    if (kind === 'colossus' || kind === 'mech_colossus') {
+      const fb = vista(9), chap = '倒悬机神 · 熔核超载';
+      const items = [
+        cin('boss.colossus.phase2.shot.01', chap, [{ lineId: 'boss.colossus.phase2.01', speaker: '倒悬机神', text: '【神枢警报：外层黑铁铆钉甲损毁逾半……正在解除第三重发条限速锁——】' }], fb, 3.1, 9),
+        cin('boss.colossus.phase2.shot.02', chap, [{ lineId: 'boss.colossus.phase2.02', speaker: '倒悬机神', text: '【警告：主发条进入赤热超载——黑铁胸甲开炉，背部双巨锯齿轮解锁！】' }], cgJpg('colossus-p2-furnace', fb, 'rupture'), 3.2, 9),
+        cin('boss.colossus.phase2.shot.03', chap, [{ lineId: 'boss.colossus.phase2.03', speaker: '倒悬机神', text: '【歼灭协议已激活：凡踏入倒悬神枢禁区者——皆归炉心余烬！】' }], cgJpg('colossus-p2-awaken', fb, 'rupture'), 3.4, 9)
+      ];
+      if (preview) items.push(titleCard('boss.colossus.phase2.phase', '倒悬机神 · 裂胸双锯巨像', cgJpg('colossus-p2-awaken', fb, 'rupture'), 1.45, '第二阶段 · 赤金炉心 & 四门火神炮全开', '熔核超载 · 歼灭协议'));
+      return items;
+    }
+    const fb = atlas('qingyu-atlas.png', 2), chap = '青羽试炼影 · 千夜苍岚';
+    const items = [
+      cin('boss.qingyu.phase2.shot.01', chap, [{ lineId: 'boss.qingyu.phase2.01', speaker: '青羽', text: '步法不再犹豫，连我的翠玉羽扇也逼不出你的破绽……看来寻常微风，已经考不住你了呢。' }], cg('qingyu-rain', fb, 'reunion'), 3.2, 5),
+      cin('boss.qingyu.phase2.shot.02', chap, [{ lineId: 'boss.qingyu.phase2.02', speaker: '青羽', text: '那便合扇为弓吧，小零——且看这柄曾射落千夜风雪的「苍岚神风羽弓」！' }], cgJpg('qingyu-p2-fan', fb, 'rupture'), 3.3, 5),
+      cin('boss.qingyu.phase2.shot.03', chap, [{ lineId: 'boss.qingyu.phase2.03', speaker: '青羽', text: '弦满风起！穿过我这一箭「千夜苍岚」，去推开属于你自己的最后一扇门吧！' }], cgJpg('qingyu-p2-awaken', fb, 'reunion'), 3.5, 5)
+    ];
+    if (preview) items.push(titleCard('boss.qingyu.phase2.phase', '青羽试炼影 · 神风羽弓魔女装', cgJpg('qingyu-p2-awaken', fb, 'reunion'), 1.45, '第二阶段 · 化扇为弓 & 苍岚风矢解封', '试炼解封 · 千夜苍岚'));
+    return items;
+  }
+  function onBossPhase2(n, bossEntity) {
+    if (!isStory() || n > 16) return false; const key = 'phase2.' + n, bk = bossKey(n);
+    const launchShatter = () => {
+      if (!preview && typeof startPhase2ShatterSequence === 'function') {
+        startPhase2ShatterSequence(bossEntity || bk, 'story');
+      }
+    };
+    if (seen[key]) {
+      if (!isRuptureHold()) launchShatter();
+    } else {
+      seen[key] = true;
+      enqueue(bossScenes(bk, 'phase2'), launchShatter);
+    }
+    return true;
+  }
+  function onSpecialBossPhase2(variantOrKey, bossEntity) {
+    const isColossus = variantOrKey === 'mech_colossus' || variantOrKey === 'colossus';
+    const sk = isColossus ? 'colossus' : 'qingyu';
+    const seenKey = 'phase2.special.' + sk;
+    const launchShatter = () => {
+      if (!preview && typeof startPhase2ShatterSequence === 'function') {
+        startPhase2ShatterSequence(bossEntity || (isColossus ? 'mech_colossus' : 'plague_empress'), 'story');
+      }
+    };
+    if (seen[seenKey]) {
+      if (!isRuptureHold()) launchShatter();
+    } else {
+      seen[seenKey] = true;
+      enqueue(specialBossPhase2Scenes(sk), launchShatter);
+    }
+    return true;
   }
   function onBossDefeated(n, variant, done) {
     if (!isStory() || n > 16) { if (done) done(); return false; }
@@ -666,6 +825,10 @@ const SpireDirector = (function () {
     for (const q of D.qingyu_arc.stages) result.push({ id: q.stageId, title: q.title, section: '苏醒与青羽', thumbnail: V3 + 'qingyu-rain.png' });
     for (const f of D.floors) for (const moment of ['before', 'after']) result.push({ id: 'floor.' + f.floor + '.' + moment, title: String(f.floor).padStart(2, '0') + ' · ' + f.title + (moment === 'before' ? ' / 入场' : ' / 战后'), section: '十六层对白' });
     for (const key of BOSS) for (const sk of ['first_meeting', 'pre_battle', 'phase2', 'boss_defeated']) { const s = D.boss_stages[key][sk]; result.push({ id: s.stageId, title: CAST[key].name + ' / ' + s.title, section: '四位首领', thumbnail: bossArt(key, sk).path }); }
+    result.push(
+      { id: 'boss.qingyu.phase2', title: '青羽试炼影 / 第二阶段 · 千夜翠岚', section: '四位首领', thumbnail: V3 + 'qingyu-p2-awaken.jpg' },
+      { id: 'boss.colossus.phase2', title: '倒悬机神 / 第二阶段 · 熔核超载', section: '四位首领', thumbnail: V3 + 'colossus-p2-awaken.jpg' }
+    );
     result.push({ id: 'final.choice', title: '镜前的选择（预览）', section: '败北与结局' }, { id: 'player.defeat', title: '玩家败北 · 魂灯未熄', section: '败北与结局', thumbnail: A + 'player-defeat-clean.png' });
     for (const key of ['A', 'B']) result.push({ id: 'ending.' + key, title: D.endings[key].title, section: '败北与结局' }); return result;
   }
@@ -674,6 +837,8 @@ const SpireDirector = (function () {
     // Set preview before constructing choices; a preview must never inspect or gate on a live save.
     preview = true;
     if (id === 'opening.awakening') items = openingScenes();
+    else if (id === 'boss.qingyu.phase2') items = specialBossPhase2Scenes('qingyu');
+    else if (id === 'boss.colossus.phase2') items = specialBossPhase2Scenes('colossus');
     else if (id === 'final.choice') items = [finalChoiceScene(choice => enqueue(endingScenes(choice === 'accept' ? 'A' : 'B')))];
     else if (id === 'player.defeat') items = [cin(id, '第 4 层 · 魂灯未熄', D.player_defeat.dialogue, { path: A + 'player-defeat-clean.png' }, 5.2, 4)];
     else if (/^ending\.[AB]$/.test(id)) items = endingScenes(id.slice(-1));
@@ -681,14 +846,19 @@ const SpireDirector = (function () {
       const q = D.qingyu_arc.stages.find(s => s.stageId === id); if (q) items = qingyuScenes(q);
       const bm = /^boss\.(jinyu|astria|jialan|eclipse)\.(first_meeting|pre_battle|phase2|boss_defeated)$/.exec(id); if (bm) items = bossScenes(bm[1], bm[2]);
       const fm = /^floor\.(\d+)\.(before|after)$/.exec(id);
-      if (fm) { const n = Number(fm[1]), f = floorData(n); items = fm[2] === 'before' ? floorBefore(n) : [dlg(id, '第 ' + n + ' 层 · ' + f.title, f.after, vista(n), n, true)]; }
+      if (fm) { const n = Number(fm[1]), f = floorData(n); items = fm[2] === 'before' ? floorBefore(n) : n % 4 === 0 ? bossScenes(bossKey(n), 'boss_defeated') : [dlg(id, '第 ' + n + ' 层 · ' + f.title, f.after, f.after.some(r => r.speaker === '青羽') ? pavilion() : vista(n), n, true)]; }
     }
     if (!items.length) { preview = false; return false; } replayDone = once(done); auto = skipRead = false; enqueue(items); return true;
   }
   function closeReplay() { if (!preview) return false; queue = []; cur = null; hideStage(); return true; }
   // Abort transport without completing queued callbacks or changing run progress.
   // Retry/menu callers from the combat layer use this compatibility interface.
-  function abortActive() { queue = []; cur = null; auto = skipRead = false; hitstop = 0; hideStage(); }
+  function abortActive() {
+    if (typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && phase2ShatterFx.boss) {
+      phase2ShatterFx.boss._ruptureHoldP1 = false;
+    }
+    queue = []; cur = null; auto = skipRead = false; hitstop = 0; hideStage();
+  }
   function resetForNewRun() { seen = {}; history = []; abortActive(); }
   function getState() {
     const ln = line(); return { active: isActive(), kind: cur && cur.kind, eventId: cur && cur.id, lineIndex: cur && cur.idx, text: ln ? ln.text : '', speaker: ln ? ln.speaker : '', portraitId: ln ? speakerId(ln.speaker) : null,
@@ -702,7 +872,7 @@ const SpireDirector = (function () {
   function getRunState() { return { seen: Object.assign({}, seen) }; }
   function restoreRunState(value) { seen = Object.assign({}, value && value.seen || {}); }
   return { CHAR_CAST: CAST, onResize: fitArt, abortActive, resetForNewRun, triggerHitstop, toggleAutoPlay, setAutoPlay, isAutoPlay: () => auto,
-    playOpeningSequence, preloadStoryEntry, onWaveStart, onBossPhase2, onBossDefeated, onFloorCleared, onPlayerDefeated, onFinalChoice, playEnding,
+    playOpeningSequence, preloadStoryEntry, onWaveStart, onBossPhase2, onSpecialBossPhase2, releaseRuptureHold, onBossDefeated, onFloorCleared, onPlayerDefeated, onFinalChoice, playEnding,
     advanceOrSkip, update, render: function () {}, isBlockingGameplay: isActive, isActive, getTimeScale: () => hitstop > 0 ? .04 : 1,
     replayEvent, getReplayEvents, closeReplay, getPreferences, setPreferences, getState, choose, getRunState, restoreRunState,
     toggleLog, setHidden, setSkipRead: value => { skipRead = !!value; syncControls(); } };

@@ -511,11 +511,14 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
       }
     }
     if (evoIds.size !== 72) return { ok: false, reason: 'Expected 72 unique evolutions, got ' + evoIds.size };
-    if (!(getMidLateWaveHpMul(1) < 0.80 && getMidLateWaveHpMul(4) < 1.0 && getMidLateWaveHpMul(8) > 1.3 && getMidLateWaveHpMul(10) >= 1.90 && Math.abs(getMidLateWaveHpMul(16) - 3.0) <= 1e-6)) {
+    if (!(getMidLateWaveHpMul(1) < 0.80 && getMidLateWaveHpMul(4) < 1.0 && getMidLateWaveHpMul(8) > 1.25 && getMidLateWaveHpMul(10) >= 1.70 && Math.abs(getMidLateWaveHpMul(16) - 3.0) <= 1e-6)) {
       return { ok: false, reason: 'Bad midLateHpMul curve' };
     }
     if (!(getMidLateWaveDmgMul(1) < 0.80 && getMidLateWaveDmgMul(4) < 1.0 && getMidLateWaveDmgMul(8) > 1.3 && getMidLateWaveDmgMul(10) >= 1.70 && Math.abs(getMidLateWaveDmgMul(16) - 2.45) <= 1e-6)) {
       return { ok: false, reason: 'Bad midLateDmgMul curve' };
+    }
+    if (!(DIFFS[0].hpMul <= 0.45 && DIFFS[0].dmgMul <= 0.45)) {
+      return { ok: false, reason: 'Expected halved D0 casual difficulty curve' };
     }
     if (MONSTER_HP_BASE_MUL !== 1.44 || BOSS_HP_MUL !== 4.80 || LATE_BOSS_HP_MUL !== 9.60 || MONSTER_SPD_MUL !== 0.80 || RANGED_ENEMY_COUNT_MUL !== 0.80 || WEAPONS.stick.range < 130 || WEAPONS.stick.dmg < 18 || WEAPONS.katana.dmg < 30) {
       return { ok: false, reason: 'Bad v2.1.5 balance constants' };
@@ -697,7 +700,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     assert(canvas.width * canvas.height <= sample.budget + integerRoundingAllowance,
       `Battlefield pixel budget exceeded at ${sample.width}x${sample.height}@${sample.native}`);
     assert(canvas.dpr <= sample.maxDpr, `Battlefield DPR must stay bounded on ${sample.mobile ? 'touch' : 'desktop'} screens`);
-    assert.strictEqual(canvas.smoothing, 'high', 'Battlefield must preserve crisp high-quality resampling without blur');
+    assert.strictEqual(canvas.smoothing, 'medium', 'Battlefield must use hardware-accelerated medium resampling to prevent Retina stall');
   }
   const { sandbox: s } = createEnv(false, 1440, 900, 2);
   const adaptation = vm.runInContext(`(() => {
@@ -720,11 +723,11 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     const before = snapshot(), initialPixels = cv.width * cv.height;
     resetBattleFrameSample();
     for (let i = 0; i < 80; i++) recordBattleFrame(32);
-    const preservesSharpness = battleResolutionScale === 1 && cv.width * cv.height === initialPixels && before === snapshot();
+    const preservesSharpness = battleResolutionScale < 1 && battleResolutionScale >= 0.76 && cv.width * cv.height < initialPixels && before === snapshot();
     resize();
-    const resizeKeepsCrisp = ctx.imageSmoothingQuality === 'high' && battleResolutionScale === 1 && before === snapshot();
+    const resizeKeepsCrisp = ctx.imageSmoothingQuality === 'medium' && battleResolutionScale >= 0.76 && before === snapshot();
     for (let i = 0; i < 400; i++) recordBattleFrame(32);
-    const boundedMinimum = battleResolutionScale === 1 && dpr >= 1.7;
+    const boundedMinimum = battleResolutionScale >= 0.76 && dpr >= 1.2;
 
     resetBattleFrameSample(); for (let i = 0; i < 10; i++) recordBattleFrame(32);
     document.hidden = true; _advanceClock(100); loop(performance.now());

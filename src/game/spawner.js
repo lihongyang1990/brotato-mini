@@ -1310,7 +1310,7 @@ function beginWave(retryMeta = null) {
   player.shieldRegenT = 7;
   player.mineCd = 1.25;
   enemies = []; bullets = []; eBullets = []; hazards = []; drops = []; spawns = []; turrets = []; mines = []; rings = []; trees = [];
-  relics = []; sporeZones = []; spellZones = []; banners = []; bossCutscene = null; pendingBossCutscene = null; sandGustT = 0;
+  relics = []; sporeZones = []; spellZones = []; banners = []; bossCutscene = null; pendingBossCutscene = null; phase2ShatterFx = null; sandGustT = 0;
   texts = []; particles = []; sparks = []; lightnings = []; slashes = []; beams = []; stains = []; shells = [];
 
   // 保存本回合开战前快照（供阵亡后「重新开始本回合」无损回溯使用）
@@ -1842,7 +1842,8 @@ function getSurvivalHazardBaseDmg() {
   const midLateDmgMul = typeof getMidLateWaveDmgMul === 'function' ? getMidLateWaveDmgMul(wave) : 1.0;
   const wIdx = Math.max(0, Math.min(15, wave - 1));
   const endlessScale = wave > MAX_WAVE ? Math.pow(1.09, wave - MAX_WAVE) : 1;
-  return Math.max(5, Math.round((5.2 + wIdx * 0.72) * midLateDmgMul * endlessScale * (diff.dmgMul || 1) * monsterDmgMul * SURVIVAL_TRAP_DMG_MUL));
+  const minTrap = (typeof diff !== 'undefined' && diff && diff.id === 0) ? 2 : 5;
+  return Math.max(minTrap, Math.round((5.2 + wIdx * 0.72) * midLateDmgMul * endlessScale * (diff.dmgMul || 1) * monsterDmgMul * SURVIVAL_TRAP_DMG_MUL));
 }
 
 function spawnSurvivalCelestialVolley(phase) {
@@ -2144,9 +2145,9 @@ function createEnemy(x, y, type, variant = '') {
     else baseBossHp = 14800 + Math.max(0, wave - MAX_WAVE) * 3600;
     const bhp = Math.round(baseBossHp * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinScale);
     const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.6 : (wave <= 12 ? 11.2 : 12.6));
-    // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；D5 第 16 层（主线与无尽）首领 100% 必定进入二阶段！
+    // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；青羽试炼影与 D5 第 16 层首领 100% 必定进入二阶段！
     const isD5Floor16Boss = (wave === 16 && typeof diff !== 'undefined' && diff && diff.id === 5);
-    const forcePhase2 = isStoryBoss || isD5Floor16Boss;
+    const forcePhase2 = isStoryBoss || isD5Floor16Boss || bKey === 'plague_empress';
     const phase2Chance = forcePhase2 ? 1 : mythicRate;
     const bossDodge = (wave === 16 || bKey === 'solar_seraph')
       ? (typeof getFloor16BossDodge === 'function' ? getFloor16BossDodge(diff) : 0)
@@ -2191,7 +2192,7 @@ function createEnemy(x, y, type, variant = '') {
       dashT: 2.1, skillT: 1.9, sigSkillT: 3.8, meteorT: 3.9, sumT: 5.8, terrainCd: 6.2, ringCd: 4.8,
       venomCd: 4.2, p2SkillT: 2.6, arenaMechCd: (relDef.bossId === 'abyss_devourer' ? 2.4 : 4.0),
       burstLeft: 0, burstCd: 0, _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
-      goldStage: 4, canPhase2: Math.random() < mythicRate, mythicPhase2: false,
+      goldStage: 4, canPhase2: (relDef.bossId === 'plague_empress' || (!endlessMode && relDef.bossId === 'mech_colossus')) ? true : (Math.random() < mythicRate), mythicPhase2: false,
       mat: sMat
     };
   } else if (type === 'stalker') {
@@ -2235,7 +2236,8 @@ function createEnemy(x, y, type, variant = '') {
     // 宽大弹性软泥（r=34，蓄蹲停顿—猛然蛙跃逼近，纯近战不射子弹）
     ent = { ...base, r: 34, hp: 58 * s, maxHp: 58 * s, spd: 68 * sm, dmg: Math.round(5.0 * mobDm), color: '#52b788', type, hopT: 0.9 + Math.random() * 0.5, mat: 3 };
   } else if (type === 'mini_slime') {
-    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 140 * sm, dmg: Math.max(2, Math.round(2.6 * mobDm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
+    const minSlimeDmg = (typeof diff !== 'undefined' && diff && diff.id === 0) ? 1 : 2;
+    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 140 * sm, dmg: Math.max(minSlimeDmg, Math.round(2.6 * mobDm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
   } else if (type === 'shielder') {
     // 紧凑高甲塔盾卫（r=28，稳健 spd=54，近身发动重盾猛击震波）
     ent = { ...base, r: 28, hp: 94 * s, maxHp: 94 * s, spd: 54 * sm, dmg: Math.round(6.2 * mobDm), color: '#5c677d', type, bashCd: 2.1 + Math.random() * 0.5, bashWindup: 0, mat: 4 };
@@ -2247,7 +2249,8 @@ function createEnemy(x, y, type, variant = '') {
     // 高大狂暴重锤卫（r=39，残血 <65% 狂暴提速 + 前向 90° 扇形锥区裂地重锤）
     ent = { ...base, r: 39, hp: 190 * s, maxHp: 190 * s, spd: 64 * sm, dmg: Math.round(9.4 * mobDm), color: '#9d4edd', type, slamCd: 2.5, slamWindup: 0, bargeCd: 2.1 + Math.random() * 0.7, bargeT: 0, mat: 5 };
   } else {
-    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(3.8 * mobDm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
+    const minChaserDmg = (typeof diff !== 'undefined' && diff && diff.id === 0) ? 1 : 2;
+    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(minChaserDmg, Math.round(3.8 * mobDm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
   }
 
   // 中后期普通与特异小怪晶石产出下调约 20%（手机端为适配 -20% 怪物数量相应提升 +20% 金币/晶石产出，平衡手机端经济曲线）
@@ -2259,10 +2262,11 @@ function createEnemy(x, y, type, variant = '') {
   // 1) frenzy（血怒狂化 · 隐隐发红）：相对基础精英形态额外获得 血量+20%、移速+20%、攻速+20%（无亡语弹）；
   // 2) deathrattle（金梭亡语 · 隐隐泛黄）：标准移速与攻速，阵亡时向四周迸射 4 枚黄色亡语金梭小箭头。
   const canElite = !survivalTrialWave && wave >= 3 && !isBossLike && type !== 'mini_slime' && type !== 'bomber' && (type !== 'juggernaut' || wave >= 8);
-  const rawEChance = (diff.eliteRate || 0.05) + Math.min(0.12, (wave - 3) * 0.011);
+  const rawEChance = (Number.isFinite(diff.eliteRate) ? diff.eliteRate : 0.05) + Math.min(0.12, (wave - 3) * 0.011);
   const lateEliteAdd = wave >= 10 ? (0.045 + Math.min(0.085, (wave - 10) * 0.013)) : 0;
   const baseEChance = wave === 3 ? rawEChance * 0.40 : (wave === 4 ? rawEChance * 0.55 : (wave === 5 ? rawEChance * 0.72 : (rawEChance + lateEliteAdd)));
-  const eChance = baseEChance * ELITE_MOB_COUNT_MUL;
+  const d0EliteScale = (typeof diff !== 'undefined' && diff && diff.id === 0) ? 0.45 : 1.0;
+  const eChance = baseEChance * ELITE_MOB_COUNT_MUL * d0EliteScale;
   if (canElite && Math.random() < eChance) {
     applyEliteAffix(ent);
   }

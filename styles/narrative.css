@@ -43,6 +43,8 @@
 .story-speaker{font-weight:550;font-size:16px;letter-spacing:.18em}.story-speaker-role{font-size:10px;color:#a9b9c0;letter-spacing:.1em;border-left:1px solid #64798599;padding-left:12px}
 .story-line-count{margin-left:auto;color:#82959f;font-size:10px;letter-spacing:.15em}
 .story-narration .story-speaker,.story-narration .story-speaker-role{display:none}
+.story-narration::before{content:"叙事 · 残响手记";font-size:11px;letter-spacing:.22em;color:#93aeb9}
+.story-is-narration .story-dialogue-text{color:#dce5e8}
 .story-dialogue-text{margin:0!important;font:400 calc(clamp(20px,1.5vw,28px)*var(--story-text-scale))/1.8 "Songti SC","Noto Serif SC","STSong",serif;letter-spacing:.045em;color:#eef0e9;min-height:3.6em;overflow-wrap:anywhere;text-wrap:pretty;text-align:left!important}
 .story-dialogue-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;min-height:36px}
 .story-read-hint{font-size:10px;color:#91a4b0;letter-spacing:.1em}.story-next{font-size:12px!important;letter-spacing:.15em;padding:6px 14px!important}

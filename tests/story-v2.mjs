@@ -16,7 +16,7 @@ export function runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap }) {
   // test self-contained; the design book lives outside this repository.
   const dialogueContract = story.floors.map(f => [f.floor, f.before.map(r => [r.speaker, r.text]), f.after.map(r => [r.speaker, r.text])]);
   const fingerprint = createHash('sha256').update(JSON.stringify(dialogueContract)).digest('hex');
-  assert.strictEqual(fingerprint, '16d8b5273d6e654f2a074f931b52a5e889004e8ba7f8fe2abc36573312096674',
+  assert.strictEqual(fingerprint, 'f3958dfbe2fecfa6e22274867a27c4f79098822c1e113cb9ad706a91895a9b88',
     'Every versioned sixteen-floor dialogue line must reach the runtime data unchanged');
   for (let n = 1; n <= 16; n++) {
     const floor = story.floors.find(f => f.floor === n);
@@ -36,8 +36,8 @@ export function runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap }) {
     section.dialogue.map(row => [row.lineId, row.speaker, row.text]),
     section.shots.map(shot => [shot.shotId, shot.seconds, shot.line && [shot.line.speaker, shot.line.text]]), section.final_text || null]);
   assert.strictEqual(createHash('sha256').update(JSON.stringify(cinematicContract)).digest('hex'),
-    'a7a3039460a59a6b76695b939fd2f2814d90c0ce693d82f8b7b57f144a128983',
-    'The opening, Qingyu arc, boss stages, defeat and endings must preserve the V2.1 script/timing contract');
+    'fb970397405a8c71145293b56ee3b81e1b861f209e06a35a34b2fa6b18681b07',
+    'The opening, Qingyu arc, boss stages, defeat and endings must preserve the V2.3 script/timing contract');
   const authoredIds = new Set();
   for (const section of cinematicSections) {
     for (const row of section.dialogue) {
@@ -322,13 +322,26 @@ export function runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap }) {
         drops.length === before.drops && (!key || !getSpireStoryProgress().mementos[key]);
       const phaseCinematic = SpireDirector.isBlockingGameplay();
       const noLegacyPhaseBanner = bossCutscene === null;
-      const jialanSelfDamagePanel = floor !== 12 || document.querySelector('.story-scene-image')._storyArt.panel === 2;
       const phaseEvents = __drainDirector();
-      const phaseVisuals = floor !== 4 || (phaseEvents[0].eventId === 'boss.jinyu.phase2.wound' &&
-        !phaseEvents[0].text.trim() && phaseEvents[0].artPath === 'assets/spire/v2/jinyu-atlas.png' &&
-        phaseEvents.some(event => event.artPath === 'assets/spire/v3/jinyu-clash.png'));
-      const jialanPhasePreserved = floor !== 12 || (jialanSelfDamagePanel && phaseEvents.every(event =>
-        event.artPath === 'assets/spire/v2/jialan-atlas.png'));
+      const p1Sheet = SpireAssets.getBossSheet(boss.variant, false, true, false);
+      const p2Sheet = SpireAssets.getBossSheet(boss.variant, false, true, true);
+      const distinctP2SpriteSheet = !!(p1Sheet && p2Sheet && p1Sheet.canvas !== p2Sheet.canvas && p2Sheet.cellW === 256 && p2Sheet.frames === 4);
+      const shatterNameplateStarted = !!(phase2ShatterFx && phase2ShatterFx.stage === 'nameplate' && phase2ShatterFx.shards && phase2ShatterFx.shards.length === 18);
+      draw();
+      advancePhase2ShatterToArena();
+      const shatterArenaStarted = !!(phase2ShatterFx && phase2ShatterFx.stage === 'arena_shatter' && phase2ShatterFx.shards && phase2ShatterFx.shards.length === 18);
+      draw();
+      phase2ShatterFx = null;
+      const phaseVisuals = phaseEvents.length === 3 && distinctP2SpriteSheet && shatterNameplateStarted && shatterArenaStarted && (
+        floor !== 4 || (phaseEvents[0].artPath === 'assets/spire/v3/jinyu-clash.png' &&
+          phaseEvents[1].artPath === 'assets/spire/v3/jinyu-p2-unsheathe.jpg' &&
+          phaseEvents[2].artPath === 'assets/spire/v3/jinyu-p2-awaken.jpg')
+      );
+      const jialanPhasePreserved = floor !== 12 || (
+        phaseEvents[0].artPath === 'assets/spire/v2/jialan-atlas.png' &&
+        phaseEvents[1].artPath === 'assets/spire/v3/jialan-p2-windkey.jpg' &&
+        phaseEvents[2].artPath === 'assets/spire/v3/jialan-p2-awaken.jpg'
+      );
       hurtEnemy(boss, boss.maxHp + 99999, true);
       let finalCinematic, rewardHandledCleanly;
       if (floor < 16) {

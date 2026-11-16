@@ -74,6 +74,7 @@ function stopSpireCombat(flow, result) {
   if (typeof survivalFissures !== 'undefined') survivalFissures.length = 0;
   if (typeof survivalSkyVolleys !== 'undefined') survivalSkyVolleys.length = 0;
   bossCutscene = null;
+  if (typeof phase2ShatterFx !== 'undefined') phase2ShatterFx = null;
   if (typeof pendingBossCutscene !== 'undefined') pendingBossCutscene = null;
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('pauseMenu').classList.add('hidden');
@@ -97,6 +98,7 @@ function resolveSpireBossDefeat(enemy) {
     eBullets.length = 0;
     hazards.length = 0;
     bossCutscene = null;
+  if (typeof phase2ShatterFx !== 'undefined') phase2ShatterFx = null;
     if (typeof pendingBossCutscene !== 'undefined') pendingBossCutscene = null;
     player.invuln = 0;
     awardEnemyRewards(enemy);
@@ -1615,6 +1617,7 @@ function showSpireEndMenu(win, ending = '') {
   resetWeaponEvolutionUI();
   if (!win) {
     bossCutscene = null;
+  if (typeof phase2ShatterFx !== 'undefined') phase2ShatterFx = null;
     if (typeof pendingBossCutscene !== 'undefined') pendingBossCutscene = null;
     if (typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.abortActive === 'function') {
       SpireDirector.abortActive();

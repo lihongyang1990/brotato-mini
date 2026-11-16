@@ -147,6 +147,20 @@ const SpireAssets = (function () {
     solar_seraph:  'assets/spire/hero_eclipse_sheet.png'
   };
 
+  // 二阶段觉醒形态 1024×256 四帧横版透明精灵表（原版二头身 Q 版画风 1:1 呼应一阶段，半血实时切换）
+  const HERO_P2_SHEET_MAP = {
+    jinyu:          'assets/spire/hero_jinyu_p2_sheet.png',
+    butcher:        'assets/spire/hero_jinyu_p2_sheet.png',
+    astria:         'assets/spire/hero_astria_p2_sheet.png',
+    frost_queen:    'assets/spire/hero_astria_p2_sheet.png',
+    jialan:         'assets/spire/hero_jialan_p2_sheet.png',
+    void_weaver:    'assets/spire/hero_jialan_p2_sheet.png',
+    qingyu:         'assets/spire/hero_qingyu_p2_sheet.png',
+    plague_empress: 'assets/spire/hero_qingyu_p2_sheet.png',
+    eclipse:        'assets/spire/hero_eclipse_p2_sheet.png',
+    solar_seraph:   'assets/spire/hero_eclipse_p2_sheet.png'
+  };
+
   // 设定集【左栏二次元半身立绘】高清映射（兼容角色 ID 与首领 variant ID）
   const PORTRAIT_MAP = {
     zero:             'assets/spire/port_zero.jpg',
@@ -167,7 +181,7 @@ const SpireAssets = (function () {
     jialan:           'assets/spire/port_jialan.jpg',
     engineer:         'assets/spire/port_jialan.jpg',
     void_weaver:      'assets/spire/port_jialan.jpg',
-    mech_colossus:    'assets/spire/port_jialan.jpg',
+    mech_colossus:    'assets/spire/port_colossus.jpg',
     shadow_stalker:   'assets/spire/port_jialan.jpg',
     storm_siren:      'assets/spire/port_jialan.jpg',
     golden_golem:     'assets/spire/port_jialan.jpg',
@@ -180,6 +194,21 @@ const SpireAssets = (function () {
     solar_seraph:     'assets/spire/port_eclipse.jpg',
     iron_warden:      'assets/spire/port_eclipse.jpg',
     abyss_devourer:   'assets/spire/port_eclipse.jpg'
+  };
+
+  // 二阶段觉醒形态高清半身立绘映射（#161c26 暗石板金框原版画风统一）
+  const PORTRAIT_P2_MAP = {
+    jinyu:          'assets/spire/port_jinyu_p2.jpg',
+    butcher:        'assets/spire/port_jinyu_p2.jpg',
+    astria:         'assets/spire/port_astria_p2.jpg',
+    frost_queen:    'assets/spire/port_astria_p2.jpg',
+    jialan:         'assets/spire/port_jialan_p2.jpg',
+    void_weaver:    'assets/spire/port_jialan_p2.jpg',
+    mech_colossus:  'assets/spire/port_colossus_p2.jpg',
+    qingyu:         'assets/spire/port_qingyu_p2.jpg',
+    plague_empress: 'assets/spire/port_qingyu_p2.jpg',
+    eclipse:        'assets/spire/port_eclipse_p2.jpg',
+    solar_seraph:   'assets/spire/port_eclipse_p2.jpg'
   };
 
   const PROP_MAP = {
@@ -236,6 +265,16 @@ const SpireAssets = (function () {
     storm_siren:      'assets/spire/mb_storm_siren.png',
     venom_matriarch:  'assets/spire/mb_venom_matriarch.png',
     iron_warden:      'assets/spire/mb_iron_warden.png'
+  };
+
+  // 六大主宰二阶段觉醒单帧高清贴图映射（含倒悬机神裂胸双锯超载态）
+  const BOSS_P2_SPRITE_MAP = {
+    butcher:        'assets/spire/hero_jinyu_p2.png',
+    frost_queen:    'assets/spire/hero_astria_p2.png',
+    void_weaver:    'assets/spire/hero_jialan_p2.png',
+    mech_colossus:  'assets/spire/boss_mech_colossus_p2.png',
+    plague_empress: 'assets/spire/hero_qingyu_p2.png',
+    solar_seraph:   'assets/spire/hero_eclipse_p2.png'
   };
 
   function _isCompactDevice() {
@@ -426,7 +465,20 @@ const SpireAssets = (function () {
         }
       };
 
-      if (!isDataUri && typeof setTimeout === 'function') {
+      if (!isDataUri) {
+        if (slotIsHi) _inflightHi++;
+        else _inflightLo++;
+      }
+      // 前两次尝试保持标准版本化 URL 以充分利用浏览器与 SW 缓存；第 3 次起附带确定性重试序号破除坏缓存
+      if (attempt <= 1 || isDataUri) {
+        img.src = baseUrl;
+      } else {
+        const clean = fastStoryPath(relPath).split('?')[0];
+        const verTag = (typeof APP_VERSION === 'string' && APP_VERSION) ? APP_VERSION : '1';
+        img.src = clean + '?v=' + encodeURIComponent(verTag) + '&_retry=' + attempt;
+      }
+
+      if (!settled && !isDataUri && typeof setTimeout === 'function') {
         const timeoutMs = slotIsHi ? 14000 : 20000;
         watchdog = setTimeout(function () {
           if (settled) return;
@@ -441,19 +493,6 @@ const SpireAssets = (function () {
             _handleFinalFailure();
           }
         }, timeoutMs);
-      }
-
-      if (!isDataUri) {
-        if (slotIsHi) _inflightHi++;
-        else _inflightLo++;
-      }
-      // 前两次尝试保持标准版本化 URL 以充分利用浏览器与 SW 缓存；第 3 次起附带确定性重试序号破除坏缓存
-      if (attempt <= 1 || isDataUri) {
-        img.src = baseUrl;
-      } else {
-        const clean = fastStoryPath(relPath).split('?')[0];
-        const verTag = (typeof APP_VERSION === 'string' && APP_VERSION) ? APP_VERSION : '1';
-        img.src = clean + '?v=' + encodeURIComponent(verTag) + '&_retry=' + attempt;
       }
     };
 
@@ -666,11 +705,18 @@ const SpireAssets = (function () {
     return flash ? _getSheetFlashView(ent) : ent.normalView;
   }
 
-  function getBossSheet(variant, flash, urgent) {
+  function getBossSheet(variant, flash, urgent, isPhase2) {
     if (!variant) return null;
     const isUrgent = urgent !== false;
-    if (BOSS_SPRITE_MAP[variant]) {
-      ensureSpriteEntry(BOSS_SPRITE_MAP[variant], 300, isUrgent);
+    const sprMap = (isPhase2 && BOSS_P2_SPRITE_MAP[variant]) ? BOSS_P2_SPRITE_MAP : BOSS_SPRITE_MAP;
+    if (sprMap[variant]) {
+      ensureSpriteEntry(sprMap[variant], 300, isUrgent);
+    }
+    if (isPhase2 && HERO_P2_SHEET_MAP[variant]) {
+      const p2Ent = ensureSheetEntry(HERO_P2_SHEET_MAP[variant], isUrgent);
+      if (p2Ent) {
+        return flash ? _getSheetFlashView(p2Ent) : p2Ent.normalView;
+      }
     }
     if (HERO_SHEET_MAP[variant]) {
       return getHeroSheet(variant, flash, isUrgent);
@@ -707,8 +753,13 @@ const SpireAssets = (function () {
 
   function pickMonsterPath(e) {
     if (!e) return MONSTER_SPRITE_MAP.chaser;
-    if ((e.type === 'boss' || e.type === 'mini_boss' || e.type === 'special_boss') && e.variant && BOSS_SPRITE_MAP[e.variant]) {
-      return BOSS_SPRITE_MAP[e.variant];
+    if ((e.type === 'boss' || e.type === 'mini_boss' || e.type === 'special_boss') && e.variant) {
+      if (e.mythicPhase2 && !e._ruptureHoldP1 && BOSS_P2_SPRITE_MAP[e.variant]) {
+        return BOSS_P2_SPRITE_MAP[e.variant];
+      }
+      if (BOSS_SPRITE_MAP[e.variant]) {
+        return BOSS_SPRITE_MAP[e.variant];
+      }
     }
     if (e.type && MONSTER_SPRITE_MAP[e.type]) {
       return MONSTER_SPRITE_MAP[e.type];
@@ -776,13 +827,13 @@ const SpireAssets = (function () {
     }, true);
   }
 
-  function getPortrait(keyOrVariant) {
-    const rel = PORTRAIT_MAP[keyOrVariant] || 'assets/spire/port_zero.jpg';
+  function getPortrait(keyOrVariant, isPhase2) {
+    const rel = (isPhase2 && PORTRAIT_P2_MAP[keyOrVariant]) ? PORTRAIT_P2_MAP[keyOrVariant] : (PORTRAIT_MAP[keyOrVariant] || 'assets/spire/port_zero.jpg');
     return loadImage(rel);
   }
 
-  function getPortraitSrc(keyOrVariant) {
-    const rel = PORTRAIT_MAP[keyOrVariant] || 'assets/spire/port_zero.jpg';
+  function getPortraitSrc(keyOrVariant, isPhase2) {
+    const rel = (isPhase2 && PORTRAIT_P2_MAP[keyOrVariant]) ? PORTRAIT_P2_MAP[keyOrVariant] : (PORTRAIT_MAP[keyOrVariant] || 'assets/spire/port_zero.jpg');
     return resolve(rel);
   }
 
@@ -833,7 +884,17 @@ const SpireAssets = (function () {
     }
     if (w === 3 || w === 4 || w === 7 || w === 8 || w === 11 || w === 12 || w === 15 || w >= 16) {
       const actBoss = w <= 4 ? 'butcher' : (w <= 8 ? 'frost_queen' : (w <= 12 ? 'void_weaver' : 'solar_seraph'));
-      getBossSheet(actBoss, false, false);
+      getBossSheet(actBoss, false, false, false);
+      getBossSheet(actBoss, false, false, true);
+      getPortrait(actBoss, true);
+      if (w > 16) {
+        getBossSheet('mech_colossus', false, false, false);
+        getBossSheet('mech_colossus', false, false, true);
+        getPortrait('mech_colossus', true);
+        getBossSheet('plague_empress', false, false, false);
+        getBossSheet('plague_empress', false, false, true);
+        getPortrait('plague_empress', true);
+      }
     }
   }
 
@@ -900,38 +961,38 @@ const BOSS_PORTRAIT_DATA = {
   butcher: {
     w: 440, h: 516,
     personaName: '烬羽 · 绯红断刃剑姬',
-    summerTitle: '绯红魔角夏装',
-    mythicTitle: '真红魅魔纱裙泳装'
+    summerTitle: '绯雨守桥 · 单刀试剑常服',
+    mythicTitle: '绯夜燃魂 · 双刀烬羽织'
   },
   frost_queen: {
     w: 440, h: 516,
     personaName: '艾丝特莉亚 · 永冻星使',
-    summerTitle: '冰晶碎冕夏装',
-    mythicTitle: '凛冬冰晶轻纱泳装'
+    summerTitle: '捧盒孤王 · 午夜蓝宫廷裙',
+    mythicTitle: '碎冕极光 · 六翼凛冬礼装'
   },
   mech_colossus: {
     w: 440, h: 516,
-    personaName: '泰娅 · 倒悬重装机神',
-    summerTitle: '炽橙机能夏装',
-    mythicTitle: '超载炽金度假泳装'
+    personaName: '倒悬机神 · 神枢重装巨像',
+    summerTitle: '黑铁铆钉 · 封闭守卫态',
+    mythicTitle: '熔核超载 · 裂胸双锯巨像'
   },
   void_weaver: {
     w: 440, h: 516,
     personaName: '伽蓝 · 紫电弦月少主',
-    summerTitle: '紫晶蝶翼夏装',
-    mythicTitle: '星渊蝶纱魅影泳装'
+    summerTitle: '守礼发条 · 紫金燕尾常服',
+    mythicTitle: '逆时神枢 · 星晷超载少主装'
   },
   plague_empress: {
     w: 440, h: 516,
     personaName: '青羽 · 残羽风语魔女',
-    summerTitle: '翠蝶流金夏装',
-    mythicTitle: '万蛊翠纱魅影泳装'
+    summerTitle: '提灯引路 · 墨绿短披肩',
+    mythicTitle: '千夜苍岚 · 神风羽弓魔女装'
   },
   solar_seraph: {
     w: 440, h: 516,
     personaName: '日蚀圣女 · 镜中真我',
-    summerTitle: '圣羽绯阳夏装',
-    mythicTitle: '破晓流金绯纱泳装'
+    summerTitle: '盲眼纯白 · 隔镜司祭长裙',
+    mythicTitle: '破镜真我 · 黑曜金纹镜像礼装'
   },
   crimson_lord: {
     w: 440, h: 516,

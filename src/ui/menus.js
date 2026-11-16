@@ -532,6 +532,11 @@ window.addEventListener('keydown', e => {
       }
     }
   }
+  if ((k === 'enter' || k === ' ') && typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && phase2ShatterFx.stage === 'nameplate') {
+    if (e.preventDefault) e.preventDefault();
+    if (typeof advancePhase2ShatterToArena === 'function') advancePhase2ShatterToArena();
+    return;
+  }
   if (k === 'enter' && bossCutscene) {
     const fadeDur = bossCutscene.fadeDur || 0.85;
     if ((bossCutscene.maxT - bossCutscene.t) > 0.60 && bossCutscene.t > fadeDur) {
@@ -609,6 +614,7 @@ if (window.addEventListener) {
 if (cv.addEventListener) {
   const canvasTouches = list => Array.from(list || []).filter(t => !t.target || t.target === cv);
   const canTouchBattle = () => state === 'wave' && !bossCutscene &&
+    !(typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && (phase2ShatterFx.stage === 'nameplate' || phase2ShatterFx.stage === 'rupture')) &&
     !(typeof SpireDirector !== 'undefined' && SpireDirector.isBlockingGameplay());
   const nowMs = () => (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 
@@ -723,6 +729,10 @@ if (cv.addEventListener) {
   }
 
   cv.addEventListener('mousedown', e => {
+    if (typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && phase2ShatterFx.stage === 'nameplate') {
+      if (typeof advancePhase2ShatterToArena === 'function') advancePhase2ShatterToArena();
+      return;
+    }
     if (bossCutscene && bossCutscene._skipRect) {
       const fadeDur = bossCutscene.fadeDur || 0.85;
       const r = bossCutscene._skipRect;
@@ -743,6 +753,11 @@ if (cv.addEventListener) {
   });
   cv.addEventListener('touchstart', e => {
     isTouch = true;
+    if (typeof phase2ShatterFx !== 'undefined' && phase2ShatterFx && phase2ShatterFx.stage === 'nameplate') {
+      if (e.preventDefault) e.preventDefault();
+      if (typeof advancePhase2ShatterToArena === 'function') advancePhase2ShatterToArena();
+      return;
+    }
     if (bossCutscene && bossCutscene._skipRect && e.changedTouches && e.changedTouches.length > 0) {
       const fadeDur = bossCutscene.fadeDur || 0.85;
       const r = bossCutscene._skipRect;
@@ -884,7 +899,7 @@ let survivalTrialState = {
 };
 let cam = { x: WORLD.w / 2, y: WORLD.h / 2 };
 let player, enemies = [], bullets = [], eBullets = [], hazards = [], drops = [], spawns = [], turrets = [], mines = [], rings = [], trees = [];
-let relics = [], sporeZones = [], spellZones = [], terrains = [], portals = [], portalPairCd = 0, banners = [], bossCutscene = null;
+let relics = [], sporeZones = [], spellZones = [], terrains = [], portals = [], portalPairCd = 0, banners = [], bossCutscene = null, phase2ShatterFx = null;
 let relicSpawnT = -1, activeSceneEvent = null, sceneEventT = 0, sandGustT = 0, sceneMobEnabled = false;
 let lastBossVariant = '', lastMiniBossVariant = '';
 let texts = [], particles = [], sparks = [], lightnings = [], slashes = [], beams = [], stains = [], shells = [];
@@ -1147,6 +1162,7 @@ function showStart() {
     }
   }
   bossCutscene = null;
+  phase2ShatterFx = null;
   if (typeof pendingBossCutscene !== 'undefined') pendingBossCutscene = null;
   survivalTrialQueued = false;
   survivalTrialWave = false;
