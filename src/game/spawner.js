@@ -1379,9 +1379,23 @@ function beginWave(retryMeta = null) {
     }
   }
 
-  // 主线剧情与无尽模式的非首领常规层均恢复随机奇遇召唤祭坛（包含无尽双主宰入池；仅蚀界生存试炼与固定首领层禁用）
-  const relicChance = (!survivalTrialWave && wave >= 2 && !isBossWave) ? Math.min(0.55, 0.36 + (player.luck || 0) * 0.003) : 0;
-  relicSpawnT = Math.random() < relicChance ? (3.0 + Math.random() * 2.8) : -1;
+  // 主线每幕（每4层）最多自然刷出 1 座奇遇召唤祭坛，防止单幕连刷祭坛导致永久属性与神话秘匣滚雪球（蚀界生存试炼与固定首领层禁用）
+  const altarActSlot = Math.floor((wave - 1) / 4);
+  if (player && (!player._altarActsSpawned || typeof player._altarActsSpawned !== 'object')) {
+    player._altarActsSpawned = {};
+  }
+  const actAlreadyHadAltar = !endlessMode && wave <= MAX_WAVE && !!(player && player._altarActsSpawned && player._altarActsSpawned[altarActSlot]);
+  const relicChance = (!survivalTrialWave && wave >= 2 && !isBossWave && !actAlreadyHadAltar)
+    ? Math.min(0.32, 0.24 + (player.luck || 0) * 0.002)
+    : 0;
+  if (Math.random() < relicChance) {
+    relicSpawnT = 3.0 + Math.random() * 2.8;
+    if (!endlessMode && wave <= MAX_WAVE && player && player._altarActsSpawned) {
+      player._altarActsSpawned[altarActSlot] = true;
+    }
+  } else {
+    relicSpawnT = -1;
+  }
 
   if (survivalTrialWave) {
     const sTheme = getSurvivalTrialTheme();
@@ -1396,7 +1410,7 @@ function beginWave(retryMeta = null) {
 
   // 部署自动防御炮台、浮游激光塔、紫电震波塔与秘法共鸣图腾塔（机械师天赋 + 构筑遗物 + 扳手/无人机/共鸣法杖 + 5阶进化额外塔）
   const turretSpecs = [];
-  for (let i = 0; i < (player.bonusTurrets || 0); i++) turretSpecs.push({ kind: 'bullet', tier: 2 });
+  for (let i = 0; i < (player.bonusTurrets || 0); i++) turretSpecs.push({ kind: 'bullet', tier: wave >= 4 ? 2 : 1 });
   for (let i = 0; i < (player.laserTurrets || 0); i++) turretSpecs.push({ kind: 'laser', tier: 2 });
   for (let i = 0; i < (player.shockTurrets || 0); i++) turretSpecs.push({ kind: 'shock', tier: 3 });
   for (let i = 0; i < (player.totemTurrets || 0); i++) turretSpecs.push({ kind: 'totem', tier: 3 });
@@ -2092,18 +2106,19 @@ function createEnemy(x, y, type, variant = '') {
   const hpLinearSlope = typeof MONSTER_HP_LINEAR_SLOPE === 'number' ? MONSTER_HP_LINEAR_SLOPE : 0.72;
   const bossHpMul = typeof BOSS_HP_MUL === 'number' ? BOSS_HP_MUL : 4.80;
   const lateBossMaxMul = typeof LATE_BOSS_HP_MUL === 'number' ? LATE_BOSS_HP_MUL : 9.60;
-  // 后期首领血量阶梯：第 10 层及以后首领血量整体回调 -20%（6.72 / 8.96 / 9.60），前 8 层保持不变
-  const lateBossScale = wave <= 4 ? 1.00 : (wave <= 6 ? 1.90 : (wave <= 8 ? 3.80 : (wave === 9 ? 5.60 : (wave === 10 ? 6.72 : (wave <= 12 ? 8.96 : lateBossMaxMul)))));
+  // 1~16 层平滑防膨胀首领/统领同级一阶段血量阶梯：以【单阶段独立击杀耗时 ~20s-33s】为基准标定（W4 一阶约 1.8万、W6 统领约 3.7万、W8 一阶约 7.8万、W10 统领约 13.6万、W12 一阶约 25万、W14 统领约 37.4万、W16 一阶约 52.3万）
+  const lateBossScale = wave <= 4 ? 1.00 : (wave <= 6 ? 1.42 : (wave <= 8 ? 2.04 : (wave <= 10 ? 2.40 : (wave <= 12 ? 2.95 : (wave <= 14 ? 3.55 : Math.min(lateBossMaxMul, 4.10))))));
   const monsterDmgMul = typeof MONSTER_DMG_MUL === 'number' ? MONSTER_DMG_MUL : 1.20;
   const midLateHpMul = typeof getMidLateWaveHpMul === 'function' ? getMidLateWaveHpMul(wave) : 1.0;
   const midLateDmgMul = typeof getMidLateWaveDmgMul === 'function' ? getMidLateWaveDmgMul(wave) : 1.0;
   const earlyMobHpMul = getEarlyMobHpMul(wave);
+  const lateMobFirmMul = wave >= 10 ? (1 + Math.min(0.44, (wave - 9) * 0.062)) : 1.0;
   const endlessMul = wave > MAX_WAVE ? Math.pow(1.20, wave - MAX_WAVE) : 1;
   const wIdx = Math.max(0, wave - 1);
-  // 常规魔物与首领生命值、攻击力随波数进一步成长：中后期血量再翻一倍（2.0x）、攻击力再翻一倍（2.0x），1~5层小怪血量降低 15%！
   const clampedStoryIdx = Math.min(15, wIdx);
-  const s = hpBaseMul * (1 + wIdx * hpLinearSlope) * midLateHpMul * earlyMobHpMul * endlessMul * diff.hpMul;
-  const dm = (1 + clampedStoryIdx * 0.105 + Math.max(0, Math.min(16, wave) - 7) * 0.048) * midLateDmgMul * (wave > MAX_WAVE ? Math.pow(1.10, wave - MAX_WAVE) : 1) * diff.dmgMul * monsterDmgMul;
+  const s = hpBaseMul * (1 + wIdx * hpLinearSlope) * midLateHpMul * earlyMobHpMul * lateMobFirmMul * endlessMul * diff.hpMul;
+  const lateDmgCalmMul = wave <= 7 ? 1.0 : Math.max(0.62, 1.0 - (Math.min(16, wave) - 7) * 0.042);
+  const dm = (1 + clampedStoryIdx * 0.105 + Math.max(0, Math.min(16, wave) - 7) * 0.048) * midLateDmgMul * lateDmgCalmMul * (wave > MAX_WAVE ? Math.pow(1.10, wave - MAX_WAVE) : 1) * diff.dmgMul * monsterDmgMul;
   // 普通与特异小怪（非 Boss / 非统领 / 非奇遇首领）攻击力整体下调 10%（MOB_DMG_MUL = 0.90）
   const mobDmgMul = typeof MOB_DMG_MUL === 'number' ? MOB_DMG_MUL : 0.90;
   const mobDm = dm * mobDmgMul;
@@ -2142,20 +2157,21 @@ function createEnemy(x, y, type, variant = '') {
   const miniBossDefs = getMiniBossDefs();
   const specialRelics = getSpecialRelics();
   const bossSizeMul = typeof BOSS_SIZE_MUL === 'number' ? BOSS_SIZE_MUL : 1.20;
+  let unifiedBaseBossHp = 8850;
+  if (wave <= 4) unifiedBaseBossHp = wave === 1 ? 1650 : (wave === 2 ? 2250 : (wave === 3 ? 3100 : 4420));
+  else if (wave <= 8) unifiedBaseBossHp = 4050 + (wave - 4) * 520;
+  else if (wave <= 12) unifiedBaseBossHp = 6130 + (wave - 8) * 360;
+  else if (wave <= 16) unifiedBaseBossHp = 7570 + (wave - 12) * 320;
+  else unifiedBaseBossHp = 8850 + Math.max(0, wave - MAX_WAVE) * 1850;
+  const unifiedBossCoreHp = unifiedBaseBossHp * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul;
+  const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.4 : (wave <= 12 ? 8.8 : 9.6));
+  const bossMatVal = wave <= 4 ? 26 : (wave <= 8 ? 34 : (wave <= 12 ? 42 : 52));
   if (type === 'boss') {
     const bKey = (variant && bossDefs[variant]) ? variant : getFixedActBossForWave(wave);
     const bDef = bossDefs[bKey] || FALLBACK_BOSS_DEFS.butcher;
     const isStoryBoss = (!endlessMode && wave <= MAX_WAVE);
     const twinScale = (!isStoryBoss && (diff.doubleBoss || (endlessMode && wave >= 20))) ? 0.68 : 1;
-    // 四幕固定首领血量提高 300%，且中后期首领血量再额外提升最高 +200%（第 12~16 层及无尽轮回达 3.0x 终局强度）
-    let baseBossHp = 13600;
-    if (wave <= 4) baseBossHp = 800;
-    else if (wave <= 8) baseBossHp = 3400;
-    else if (wave <= 12) baseBossHp = 7600;
-    else if (wave <= 16) baseBossHp = 12600;
-    else baseBossHp = 14800 + Math.max(0, wave - MAX_WAVE) * 3600;
-    const bhp = Math.round(baseBossHp * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinScale);
-    const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.6 : (wave <= 12 ? 11.2 : 12.6));
+    const bhp = Math.round(unifiedBossCoreHp * twinScale);
     // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；青羽试炼影与 D5 第 16 层首领 100% 必定进入二阶段！
     const isD5Floor16Boss = (wave === 16 && typeof diff !== 'undefined' && diff && diff.id === 5);
     const forcePhase2 = isStoryBoss || isD5Floor16Boss || bKey === 'plague_empress';
@@ -2173,22 +2189,22 @@ function createEnemy(x, y, type, variant = '') {
       venomCd: 4.4, p2SkillT: 2.8, arenaMechCd: (bKey === 'solar_seraph' ? 2.5 : 4.2),
       burstLeft: 0, burstCd: 0, canPhase2: forcePhase2 ? true : (Math.random() < phase2Chance), mythicPhase2: false,
       _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
-      mat: wave <= 4 ? 26 : (wave <= 8 ? 34 : (wave <= 12 ? 42 : 52))
+      mat: bossMatVal
     };
   } else if (type === 'mini_boss') {
     const mKey = (variant && miniBossDefs[variant]) ? variant : getFixedMiniBossForWave(wave, false);
     const mDef = miniBossDefs[mKey] || FALLBACK_MINI_BOSS_DEFS.vanguard;
     const twinMiniScale = (diff.dualElite && wave >= 10) ? 0.70 : 1;
-    const mhp = Math.round((460 + wave * 95 + Math.pow(Math.max(0, Math.min(16, wave) - 3), 2.05) * 32) * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinMiniScale);
+    const mhp = Math.round(unifiedBossCoreHp * twinMiniScale);
     ent = {
-      ...base, r: Math.round(45 * bossSizeMul), hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(8.4 * dm),
+      ...base, r: Math.round(50 * bossSizeMul), hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
       color: mDef.color, type: 'mini_boss', variant: mKey, bossTitle: `${mDef.icon} ${mDef.name}`,
       dashT: 2.3, meteorT: 4.4, skillT: 1.9, ringCd: 5.0, venomCd: 4.0, p2SkillT: 2.6,
-      canPhase2: Math.random() < mythicRate, mythicPhase2: false, mat: 24
+      canPhase2: Math.random() < mythicRate, mythicPhase2: false, mat: bossMatVal
     };
   } else if (type === 'special_boss') {
     const relDef = specialRelics.find(r => r.bossId === variant) || specialRelics[0];
-    const shp = Math.round((960 + wave * 240 + Math.pow(wave, 1.92) * 14) * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul);
+    const shp = Math.round(unifiedBossCoreHp * 0.90);
     const sSpd = relDef.bossId === 'crimson_lord' ? 98
       : (relDef.bossId === 'golden_golem' ? 74
         : (relDef.bossId === 'mech_colossus' ? 78
@@ -2198,12 +2214,12 @@ function createEnemy(x, y, type, variant = '') {
         : (relDef.bossId === 'plague_empress' ? 32
           : (relDef.bossId === 'crimson_lord' ? 30 : 26)));
     ent = {
-      ...base, r: Math.round(52 * bossSizeMul), hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(9.0 * dm),
+      ...base, r: Math.round(52 * bossSizeMul), hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(8.6 * dm),
       color: relDef.bossColor, type: 'special_boss', variant: relDef.bossId, bossTitle: `${relDef.bossIcon} ${relDef.bossName}`,
       dashT: 2.1, skillT: 1.9, sigSkillT: 3.8, meteorT: 3.9, sumT: 5.8, terrainCd: 6.2, ringCd: 4.8,
       venomCd: 4.2, p2SkillT: 2.6, arenaMechCd: (relDef.bossId === 'abyss_devourer' ? 2.4 : 4.0),
       burstLeft: 0, burstCd: 0, _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
-      goldStage: 4, canPhase2: (relDef.bossId === 'plague_empress' || (!endlessMode && relDef.bossId === 'mech_colossus')) ? true : (Math.random() < mythicRate), mythicPhase2: false,
+      goldStage: 4, canPhase2: relDef.bossId === 'plague_empress' ? true : (Math.random() < mythicRate), mythicPhase2: false,
       mat: sMat
     };
   } else if (type === 'stalker') {
