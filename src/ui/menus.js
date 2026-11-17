@@ -945,7 +945,7 @@ const _EMPTY_SET_BONUSES = {
 const _PRIM_STEPS = [2, 4, 6], _PREC_STEPS = [2, 3, 5], _GUN_STEPS = [2, 4, 6];
 const _HVY_STEPS = [2, 3, 5], _ELEM_STEPS = [2, 3, 5], _TECH_STEPS = [2, 3, 5];
 const _HP_TIERS = [0, 8, 18, 30], _CRIT_TIERS = [0, 0.06, 0.12, 0.20], _RNG_TIERS = [0, 45, 95, 155];
-const _ASPD_TIERS = [0, 0.08, 0.16, 0.25], _ARM_TIERS = [0, 2, 5, 8], _ELEM_TIERS = [0, 0.18, 0.38, 0.62], _TECH_TIERS = [0, 0.25, 0.52, 0.85], _TECH_ASPD_TIERS = [0, 0.08, 0.16, 0.25];
+const _ASPD_TIERS = [0, 0.08, 0.16, 0.25], _ARM_TIERS = [0, 2, 5, 8], _ELEM_TIERS = [0, 0.12, 0.24, 0.38], _TECH_TIERS = [0, 0.14, 0.28, 0.44], _TECH_ASPD_TIERS = [0, 0.05, 0.10, 0.16];
 
 function _tierOfSet(c, steps) {
   return c >= steps[2] ? 3 : (c >= steps[1] ? 2 : (c >= steps[0] ? 1 : 0));
@@ -1083,17 +1083,17 @@ function startGame(cls, opts) {
     turretCrit: false, turretElem: false, turretSalvo: false, _salvoCd: 0, bullCd: 0,
     staffHaste: 0, staffPierce: 0, staffRange: 0, dotHaste: 0, staffVolley: 0, elemCrit: false, archmageMeteor: false, _reactionCount: 0,
     magnet: typeof BASE_PICKUP_MAGNET === 'number' ? BASE_PICKUP_MAGNET : 143, harvest: 1, harvestFlat: 0, luck: 0, rangeBonus: 0, _displayRange: 140,
-    pierceBonus: 0, bounceBonus: 0, bounceAmpDmg: 0, farShotBonus: 0, shopDiscount: 0, freeRerolls: 0, shopVisits: 0, shopRerollRaw: 1, bonusTrees: 0,
+    pierceBonus: 0, bounceBonus: 0, bounceAmpDmg: 0, farShotBonus: 0, closeShotBonus: 0, rangedBossAmp: 0, shopDiscount: 0, freeRerolls: 0, shopVisits: 0, shopRerollRaw: 1, bonusTrees: 0,
     enemySlow: 0, thorns: 0, cyberball: 0, critHeal: 0, critMeleeHeal: false, ailmentLeech: 0, rangeToDmg: false, hpToDmg: 0, armorToDmg: 0, regenToDmg: false, hasAnvil: false, healBonus: 0,
     burnChance: 0, chillChance: 0, chillDmgBonus: 0, freezeChance: 0, freezeDeathNova: false, poisonChance: 0, maxPoisonStacks: 8, plagueSpread: false, elemSynergy: false, reactionBlast: false,
-    meleeBossGuard: 0, meleeSweepBonus: 0, meleeKnockBonus: 0, meleeShockwave: false, meleeBulletCutChance: 0, meleeSunder: false, strideQuake: false, _strideDist: 0, blastChance: 0, explosionScale: 1, napalmBlast: false, bloodNova: false,
+    meleeBossGuard: 0, meleeSweepBonus: 0, meleeKnockBonus: 0, meleeShockwave: false, meleeBulletCutChance: 0, meleeSunder: false, meleeShieldEvery12: 0, _meleeHitAcc: 0, meleeHitSpd: false, meleeHitSpdT: 0, kenshinFourthSlash: false, _meleeSwingSeq: 0, strideQuake: false, _strideDist: 0, blastChance: 0, explosionScale: 1, napalmBlast: false, bloodNova: false,
     interest: 0, teslaCount: 0, teslaCd: 1.0, healDropBonus: 0, chillSlowT: 0, inSpore: false,
     dashCdMul: 1, dashFreezeNova: false, dashSurge: false, dashSurgeT: 0, shieldPulseNova: false, executeLowHp: 0,
     invulnBonus: 0, fastShield: false, soulBolt: false, noSlow: false, bossCratesQueued: 0, mythicCratesQueued: 0,
     mobSpawnBonus: 0, crateMatBonus: 0, matHealEvery25: 0, _matPickAcc: 0, paddingStacks: 0, standStillBuff: false, _stillTime: 0,
     spicySauce: false, gardenPlots: 0, _gardenCd: 11, sacrificeCrown: false, _sacTick: 0, harvestToDmg: false, luckyRerollChance: 0, luckToCritDmg: false,
     bossCritAmp: 0, critMatChance: 0, _waveCritMats: 0, giantBelt: false, critBounce: false, overflowCritConvert: false,
-    rangedPelletsBonus: 0, extraShotChance: 0, rangedKillDashRefund: 0, dodgeHealChance: 0, spdToDmg: false, dodgeWindBlades: false, _dodgeBladeCd: 0, dodgeToAspd: false,
+    rangedPelletsBonus: 0, extraShotChance: 0, rangedKillDashRefund: 0, celestialRailEvery14: false, _rangedShotsAcc: 0, dodgeHealChance: 0, spdToDmg: false, dodgeWindBlades: false, _dodgeBladeCd: 0, dodgeToAspd: false,
     lowHpFrenzy: false, lifestealToDmg: false, lifestealIcdMul: 1, bloodShield: false, _bloodShieldPool: 0, phoenixFeather: false, _phoenixUsedWave: -1,
     staffZoneScale: 0, staffZoneDurBonus: 0, pocketFactory: false, _pocketTurretsSpawned: 0, blastPull: false, staffDoubleCastChance: 0,
     survivalActsCleared: {}, survivalCratesQueued: 0, survivalGoldCratesQueued: 0, survivalFlawlessCnt: 0,
@@ -1114,7 +1114,7 @@ function startGame(cls, opts) {
     player.maxHp += 8; player.hp += 8; player.armor += 1; player.regen += 1.1; player.meleeBonus = 0.16; player.rangeBonus -= 10;
     player.weapons.push(makeWeapon('katana', 1), makeWeapon('stick', 1));
   } else if (cls === 'engineer') {
-    player.armor += 2; player.regen += 1.8; player.techBonus = 0.15; player.bonusTurrets = 2;
+    player.armor += 2; player.regen += 1.5; player.techBonus = 0.12; player.bonusTurrets = 1;
     player.weapons.push(makeWeapon('wrench', 1), makeWeapon('pistol', 1));
   } else if (cls === 'multitasker') {
     player.maxSlots = 12;

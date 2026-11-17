@@ -500,6 +500,7 @@ function update(dt) {
   if (player.dashCd > 0) player.dashCd = Math.max(0, player.dashCd - dt);
   if (player.dashHasteT > 0) player.dashHasteT = Math.max(0, player.dashHasteT - dt);
   if (player.dashSurgeT > 0) player.dashSurgeT = Math.max(0, player.dashSurgeT - dt);
+  if (player.meleeHitSpdT > 0) player.meleeHitSpdT = Math.max(0, player.meleeHitSpdT - dt);
   if (player._salvoCd > 0) player._salvoCd = Math.max(0, player._salvoCd - dt);
   if (player._lifestealCd > 0) player._lifestealCd = Math.max(0, player._lifestealCd - dt);
   if (player.turretOverclockT > 0) player.turretOverclockT = Math.max(0, player.turretOverclockT - dt);
@@ -1372,6 +1373,7 @@ function update(dt) {
   const setB = getSetBonuses();
   const stickCount = setB.sticks || 0;
   const effDmg = getEffectiveDmgMul(), effAspd = getEffectiveAtkSpd(), baseCrit = getEffectiveCrit(), elemMul = getElemMul(), techMul = getTechMul();
+  const bldDmgMul = (1 + (effDmg - 1) * 0.68) * techMul * (wave >= 9 ? (1 + Math.min(0.20, (wave - 8) * 0.025)) : 1);
   const nW = player.weapons.length;
   let maxEquipRange = player.cls === 'bull' ? Math.round(165 * getBlastScale()) : 0;
 
@@ -1381,7 +1383,7 @@ function update(dt) {
     player.mineCd = (player.mineCd === undefined ? 1.2 : player.mineCd) - dt;
     if (player.mineCd <= 0) {
       const mineHasteMul = 1 + (player.mineHaste || 0);
-      player.mineCd = Math.max(0.36, 2.30 / ((1 + (totalMineLayers - 1) * 0.50) * mineHasteMul * Math.sqrt(techMul)));
+      player.mineCd = Math.max(0.45, 3.10 / ((1 + (totalMineLayers - 1) * 0.45) * mineHasteMul));
       let maxMineTier = setB.maxMineTier || 1;
       if ((player.mineLayers || 0) >= 2 && maxMineTier < 3) maxMineTier = 3;
       const layCount = (setB.doubleMines || 0) > 0 ? 2 : 1;
@@ -1398,7 +1400,7 @@ function update(dt) {
         mines.push({
           x: dummy.x, y: dummy.y, r: 15, triggerR: Math.round(56 * radBonus),
           blastR: (86 + (maxMineTier - 1) * 14) * getBlastScale() * radBonus,
-          dmg: (21 + wave * 3.8) * (1 + (maxMineTier - 1) * 0.48) * effDmg * techMul,
+          dmg: (15 + wave * 2.5) * (1 + (maxMineTier - 1) * 0.42) * bldDmgMul,
           srcId: mineSrcId,
           armT: 0.24, pulse: Math.random() * 6.28, life: 22
         });
@@ -1561,7 +1563,7 @@ function update(dt) {
 
     if (best && w.cd <= 0) {
       w.angle = Math.atan2(best.y - baseWy, best.x - baseWx);
-      const tierScale = (1 + (w.tier - 1) * 0.55) * (w.tier >= 5 ? 1.18 : 1);
+      const tierScale = (1 + (w.tier - 1) * 0.55) * (w.tier >= 5 ? 1.04 : 1);
       const bonusMoveSpd = Math.max(0, getEffectiveSpdMul() - 1);
       const aspdBonusDmg = tpl.aspdScale ? Math.max(0, effAspd - 1) * 9 : 0;
       const rangeBonusDmg = tpl.rangeScale ? Math.max(0, totalRange) * tpl.rangeScale : 0;
@@ -1570,17 +1572,9 @@ function update(dt) {
       const blastBonusDmg = tpl.blastScaleDmg ? Math.max(0, getBlastScale() - 1) * tpl.dmg * tpl.blastScaleDmg : 0;
       const spdBonusDmg = tpl.spdScale ? bonusMoveSpd * tpl.dmg * tpl.spdScale : 0;
       const base = ((tpl.dmg + aspdBonusDmg + rangeBonusDmg + hpBonusDmg + armBonusDmg + blastBonusDmg + spdBonusDmg) * tierScale + (w.id === 'stick' ? Math.max(0, stickCount - 1) * 4.8 : 0)) * (evo && evo.dmgMul ? evo.dmgMul : 1);
-      let finalMul;
-      if (tpl.isStaff) {
-        const staffElemAdd = tpl.elemScale ? ((player.elemBonus || 0) + (setB.elem || 0)) * tpl.elemScale : 0;
-        const staffTechAdd = tpl.techScale ? ((player.techBonus || 0) + (setB.tech || 0)) * tpl.techScale : 0;
-        const staffLeechAdd = tpl.lifestealScale ? Math.max(0, player.lifesteal || 0) * tpl.lifestealScale : 0;
-        finalMul = effDmg * Math.max(0.25, 1 + staffElemAdd + staffTechAdd + staffLeechAdd);
-      } else {
-        const archetypeScale = tpl.set === 'elemental' ? elemMul : (tpl.techScale ? (1 + (techMul - 1) * (typeof tpl.techScale === 'number' ? tpl.techScale : 1)) : 1);
-        finalMul = (effDmg + (tpl.melee ? player.meleeBonus : (player.rangedBonus || 0))) * archetypeScale;
-      }
-      const critChance = baseCrit + (tpl.critBonus || 0) + (tpl.spdScale ? bonusMoveSpd * 0.15 : 0) + (w.tier - 1) * 0.03 + (evo && evo.critAdd ? evo.critAdd : 0);
+      const finalMul = calcWeaponFinalMul(tpl, effDmg, setB);
+      const forceKenshin = !!(tpl.melee && player.kenshinFourthSlash && ((player._meleeSwingSeq = (player._meleeSwingSeq || 0) + 1) % 4 === 0));
+      const critChance = forceKenshin ? 1.0 : (baseCrit + (tpl.critBonus || 0) + (tpl.spdScale ? bonusMoveSpd * 0.15 : 0) + (w.tier - 1) * 0.03 + (evo && evo.critAdd ? evo.critAdd : 0));
       const critMult = getEffectiveCritMult((tpl.critMult || 1.95) + (evo && evo.critMultAdd ? evo.critMultAdd : 0));
       const evoCdMul = (evo && evo.cdMul) ? evo.cdMul : 1;
       const staffCdHaste = tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1;
@@ -1849,20 +1843,21 @@ function update(dt) {
         }
         // 近战剑气波（【绯红九百九十九斩】遗物 或 5 阶兵装进化 waveCount 多道扇形月轮剑波，同步享受先弹射后穿透！）
         const evoWaves = (evo && evo.waveCount) ? evo.waveCount : 0;
-        const totalWaves = evoWaves > 0 ? evoWaves : (player.meleeShockwave ? 1 : 0);
+        const totalWaves = evoWaves > 0 ? evoWaves : ((player.meleeShockwave || forceKenshin) ? 1 : 0);
         if (totalWaves > 0 && bullets.length < (isTouch ? 180 : 250)) {
           const wSpd = 565;
-          const waveCol = (evo && evo.color) ? evo.color : '#ffd166';
+          const waveCol = (evo && evo.color) ? evo.color : (forceKenshin ? '#fb7185' : '#ffd166');
+          const sharedWaveHit = totalWaves > 1 ? new Set() : null;
           for (let wk = 0; wk < totalWaves && bullets.length < (isTouch ? 180 : 250); wk++) {
             const wAng = w.angle + (totalWaves > 1 ? (wk - (totalWaves - 1) * 0.5) * 0.22 : 0);
             bullets.push({
               x: baseWx + Math.cos(wAng) * 20, y: baseWy + Math.sin(wAng) * 20,
               px: baseWx, py: baseWy, ox: baseWx, oy: baseWy, srcId: w.id,
               vx: Math.cos(wAng) * wSpd, vy: Math.sin(wAng) * wSpd,
-              dmg: base * finalMul * (evoWaves > 0 ? 0.58 : 0.48), isCrit: false, angle: wAng,
-              pierce: (evoWaves > 0 ? 3 : 2) + player.pierceBonus, bounces: player.bounceBonus || 0, isWaveArc: true,
+              dmg: base * finalMul * (evoWaves > 0 ? 0.52 : 0.48), isCrit: forceKenshin, angle: wAng,
+              pierce: Math.max(0, (evoWaves > 0 ? 3 : 2) + player.pierceBonus), bounces: player.bounceBonus || 0, isWaveArc: true,
               isFlame: evoBurn,
-              life: 0.48, maxLife: 0.48, color: waveCol, r: evoWaves > 0 ? 11 : 9.5, hit: null, lastHit: null
+              life: 0.48, maxLife: 0.48, color: waveCol, r: evoWaves > 0 ? 11 : 9.5, hit: sharedWaveHit, lastHit: null
             });
           }
         }
@@ -1896,7 +1891,7 @@ function update(dt) {
           const sa = w.angle - Math.PI * 0.5;
           shells.push({ x: baseWx, y: baseWy, vx: Math.cos(sa) * 110, vy: Math.sin(sa) * 110 - 35, rot: 0, t: 0.5 });
         }
-        const maxPierceHits = (tpl.pierce || 3) + player.pierceBonus + ((evo && evo.pierceAdd) ? evo.pierceAdd : 0);
+        const maxPierceHits = Math.max(1, (tpl.pierce || 3) + player.pierceBonus + ((evo && evo.pierceAdd) ? evo.pierceAdd : 0));
         const rayBounces = (tpl.bounce || 0) + (player.bounceBonus || 0) + ((evo && evo.bounceAdd) ? evo.bounceAdd : 0);
         const hitPad = (tpl.isEmpBeam ? 15 : 9) + (evo ? 3 : 0);
         for (let bIdx = 0; bIdx < beamCount; bIdx++) {
@@ -2365,6 +2360,7 @@ function update(dt) {
         const extraRangedPellets = (!tpl.isFlame ? (player.rangedPelletsBonus || 0) : 0)
           + ((!tpl.isFlame && (player.extraShotChance || 0) > 0 && Math.random() < player.extraShotChance) ? 1 : 0);
         const effPellets = pellets + extraRangedPellets;
+        const pelletSplitDamp = extraRangedPellets > 0 ? ((pellets + extraRangedPellets * 0.40) / effPellets) : 1.0;
         const burstLen = tpl.burstShots ? (tpl.burstShots + ((evo && evo.burstAdd) || 0)) : 1;
         for (let bStep = 0; bStep < burstLen; bStep++) {
         const isFinalBurst = tpl.burstShots && (bStep === burstLen - 1);
@@ -2391,8 +2387,8 @@ function update(dt) {
           bullets.push({
             x: sxB, y: syB, px: sxB, py: syB, ox: mx, oy: my, srcId: w.id,
             vx: Math.cos(a) * bSpd, vy: Math.sin(a) * bSpd,
-            dmg: base * finalMul * burstAmp * (isCrit ? critMult : 1), isCrit, angle: a,
-            pierce: (tpl.pierce || 0) + evoPierce + extraCritPierce + (tpl.isRocket || tpl.isGrenade ? 0 : player.pierceBonus),
+            dmg: base * finalMul * pelletSplitDamp * burstAmp * (isCrit ? critMult : 1), isCrit, angle: a,
+            pierce: Math.max(0, (tpl.pierce || 0) + evoPierce + extraCritPierce + (tpl.isRocket || tpl.isGrenade ? 0 : player.pierceBonus)),
             bounces: (tpl.bounce || 0) + evoBounce + (tpl.isRocket || tpl.isFlame ? 0 : player.bounceBonus) + (tpl.isStar && isCrit ? 1 : 0) + (player.critBounce && isCrit && !tpl.isRocket && !tpl.isFlame ? 1 : 0),
             isStar: !!tpl.isStar, isFlame: !!tpl.isFlame, isRocket: !!tpl.isRocket, isGrenade: !!tpl.isGrenade,
             isPebble: !!tpl.isPebble, isIce: !!tpl.isIce, isPlasma: !!tpl.isPlasma, isBolt: !!(tpl.isBolt || w.id === 'crossbow'),
@@ -2412,6 +2408,18 @@ function update(dt) {
             hit: null, lastHit: null
           });
         }
+        }
+        if (player.celestialRailEvery14 && !tpl.isFlame && bullets.length < (isTouch ? 185 : 275)) {
+          player._rangedShotsAcc = (player._rangedShotsAcc || 0) + 1;
+          while (player._rangedShotsAcc >= 14 && bullets.length < (isTouch ? 185 : 275)) {
+            player._rangedShotsAcc -= 14;
+            bullets.push({
+              x: mx, y: my, px: mx, py: my, ox: mx, oy: my, srcId: w.id,
+              vx: Math.cos(w.angle) * 860, vy: Math.sin(w.angle) * 860,
+              dmg: Math.max(22, base * finalMul * 1.65), isCrit: true, angle: w.angle,
+              pierce: 2, bounces: 0, isNail: true, life: 0.55, maxLife: 0.55, color: '#fde047', r: 6.4, hit: null, lastHit: null
+            });
+          }
         }
         }
       }
@@ -2461,10 +2469,10 @@ function update(dt) {
           : (1.20 * (1 + (player.turretAspdBonus || 0)) * totemHaste * ((player.turretOverclockT || 0) > 0 ? 1.55 : 1));
         const tSrc = t.kind === 'laser' ? 'turret_laser' : (t.kind === 'shock' ? 'turret_shock' : (t.kind === 'totem' ? 'turret_totem' : 'turret_gun'));
         if (t.kind === 'shock') {
-          t.cd = Math.max(0.52, 1.55 / tAspd);
+          t.cd = Math.max(0.58, 1.68 / tAspd);
           t.recoil = 1;
           const shockR = Math.round(162 * getBlastScale());
-          const sdmg = (18.0 + wave * 2.6) * (1 + (t.tier - 1) * 0.42) * effDmg * techMul * cMul;
+          const sdmg = (13.5 + wave * 1.85) * (1 + (t.tier - 1) * 0.42) * bldDmgMul * cMul;
           if (rings.length < 34) rings.push({ x: t.x, y: t.y, r: shockR, color: '#c084fc', t: 0.24, maxT: 0.24, kind: 'hex' });
           beep(390, 0.05, 'triangle', 0.028);
           for (let ei = enemies.length - 1; ei >= 0; ei--) {
@@ -2481,9 +2489,9 @@ function update(dt) {
           }
         } else if (t.kind === 'laser') {
           const tierAspd = 1 + (t.tier - 1) * 0.12;
-          t.cd = Math.max(0.26, 0.81 / (tAspd * tierAspd));
+          t.cd = Math.max(0.30, 0.90 / (tAspd * tierAspd));
           t.recoil = 1;
-          const ldmg = (14.5 + wave * 1.75) * (1 + (t.tier - 1) * 0.45) * effDmg * techMul * cMul;
+          const ldmg = (10.5 + wave * 1.50) * (1 + (t.tier - 1) * 0.45) * bldDmgMul * cMul;
           if ((player.bounceBonus || 0) > 0) {
             if (beams.length < 30) {
               beams.push({ x1: t.x + Math.cos(t.angle) * 14, y1: t.y + Math.sin(t.angle) * 14, x2: best.x, y2: best.y, color: isCrit ? '#ffd166' : '#c77dff', thin: true, t: 0.14, maxT: 0.14 });
@@ -2527,9 +2535,9 @@ function update(dt) {
         } else if (bullets.length < (isTouch ? 180 : 260)) {
           const isTotem = t.kind === 'totem';
           const tierAspd = 1 + (t.tier - 1) * 0.12;
-          t.cd = Math.max(isTotem ? 0.24 : 0.18, (isTotem ? 0.62 : 0.465) / (tAspd * tierAspd));
+          t.cd = Math.max(isTotem ? 0.28 : 0.22, (isTotem ? 0.68 : 0.54) / (tAspd * tierAspd));
           t.recoil = 1;
-          const tdmg = (isTotem ? (13.5 + wave * 1.65) : (9.5 + wave * 1.15)) * (1 + (t.tier - 1) * 0.5) * effDmg * techMul * (isTotem ? Math.sqrt(elemMul) : 1) * cMul;
+          const tdmg = (isTotem ? (10.4 + wave * 1.45) : (6.6 + wave * 1.02)) * (1 + (t.tier - 1) * 0.45) * bldDmgMul * cMul;
           const tSpd = isTotem ? 640 : 690;
           const bLife = turretMaxR / tSpd;
           bullets.push({
@@ -2544,10 +2552,10 @@ function update(dt) {
             life: bLife, maxLife: bLife, color: isCrit ? '#ffd166' : (isTotem ? '#fbbf24' : '#72efdd'), r: isTotem ? 5.6 : 4.2, hit: null, lastHit: null
           });
         }
-        // 【构筑师灵枢·万械星核】机关开火 28% 概率协同发射制导星能飞弹
-        if (player.turretMissile && bullets.length < (isTouch ? 180 : 260) && Math.random() < 0.28) {
+        // 【构筑师灵枢·万械星核】机关开火 24% 概率协同发射制导星能飞弹
+        if (player.turretMissile && bullets.length < (isTouch ? 180 : 260) && Math.random() < 0.24) {
           const mAng = t.angle + (Math.random() - 0.5) * 0.24;
-          const mDmg = (14.0 + wave * 2.1) * effDmg * techMul;
+          const mDmg = (11.0 + wave * 1.6) * bldDmgMul;
           bullets.push({
             x: t.x, y: t.y, px: t.x, py: t.y, ox: t.x, oy: t.y, srcId: tSrc,
             vx: Math.cos(mAng) * 740, vy: Math.sin(mAng) * 740,
@@ -2713,7 +2721,7 @@ function update(dt) {
           _activeWeaponId = b.srcId || '';
           try {
             if (b.isRocket) {
-              triggerExplosion(b.x, b.y, b.blastR, b.dmg * elemMul, false, 0, b.color || '#ff9f1c', true);
+              triggerExplosion(b.x, b.y, b.blastR, b.dmg, false, 0, b.color || '#ff9f1c', true);
               if (state !== 'wave') return;
               if (b.evoChain > 0 && e.hp > 0) {
                 castChainLightning(b.x, b.y, e, b.evoChain, b.dmg * 0.55, 0.25);
@@ -2722,11 +2730,12 @@ function update(dt) {
               b.life = -1; break;
             }
             let hitDmg = b.dmg;
-            if (!b.turretShot && (player.farShotBonus || 0) > 0) {
+            if (!b.turretShot && ((player.farShotBonus || 0) > 0 || (player.closeShotBonus || 0) > 0)) {
               const ox = b.ox !== undefined ? b.ox : player.x;
               const oy = b.oy !== undefined ? b.oy : player.y;
-              const fdx = e.x - ox, fdy = e.y - oy;
-              if (fdx * fdx + fdy * fdy > 180 * 180) hitDmg *= (1 + player.farShotBonus);
+              const fdx = e.x - ox, fdy = e.y - oy, dSqShot = fdx * fdx + fdy * fdy;
+              if ((player.farShotBonus || 0) > 0 && dSqShot > 180 * 180) hitDmg *= (1 + player.farShotBonus);
+              else if ((player.closeShotBonus || 0) > 0 && dSqShot < 180 * 180) hitDmg *= (1 + player.closeShotBonus);
             }
             hurtEnemy(e, hitDmg, b.isCrit, b.angle, b.isFlame || b.isPlasma || b.isWaveArc || b.forceEvoBurn || !!b.isStaffOrb, {
               isMelee: !!b.isWaveArc,
@@ -3064,7 +3073,7 @@ function update(dt) {
         while (player.xp >= player.xpNeed && lvGuard++ < 25) {
           player.xp -= player.xpNeed; player.lv++;
           player.xpNeed = Math.max(10, Math.round(player.xpNeed * 1.36 + 6));
-          player.maxHp += 1; player.hp += 1;
+          player.maxHp += 2; player.hp += 2;
           pendingLevels++;
           addText(player.x, player.y - 36, 'LEVEL UP!', '#ffd166', 22, 1.9, true);
           beep(920, 0.12, 'triangle', 0.06);

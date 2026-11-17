@@ -1242,10 +1242,11 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     openShop(true);
     const endlessShopTitle = document.getElementById('shopTitle').textContent;
 
-    // 1) Boss Floor One-Shot Protection (<= 42% maxHp single-hit cap on Boss floors 4/8/12/16) & Zero Player Invuln
+    // 1) Real Uncapped Damage (No Anti-Oneshot Lock) & Zero Player Invuln
     wave = 4; beginWave();
     player.maxHp = 100; player.hp = 100; player.armor = 0; player.dodge = 0; player.shield = 0; player.invuln = 0;
-    hurtPlayer(500);
+    enemies.length = 0; // ensure no closeGuard triggers during pure hit test
+    hurtPlayer(65);
     const hpAfterBossNuke = player.hp;
     const invulnAfterHit = player.invuln;
     hurtPlayer(10);
@@ -1599,10 +1600,13 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     update(0.06);
     const upperTorsoBulletHitOk = (player.hp < 100 && !eBullets.includes(testUpperBullet) && testUpperBullet._ebScaled === true && testUpperBullet.hitR > 5.7);
 
+    player.maxHp = 100;
     player.hp = 100;
+    player.armor = 0;
+    player.shield = 0;
     player.dashT = 0;
-    hurtPlayer(999, true);
-    const antiOneshotTrialOk = (player.hp >= 69 && survivalTrialHits >= 1);
+    hurtPlayer(65, true);
+    const antiOneshotTrialOk = (player.hp <= 40 && player.hp > 0 && survivalTrialHits >= 1);
 
     // 结算生存试炼并验证同幕锁定 1 次 + 试炼秘匣 100% 必出紫色(T3)/金色(T4)遗物与武器
     const matsBeforeComplete = player.mats;
@@ -1621,9 +1625,12 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     );
 
     let crateGuaranteeOk = true;
+    const savedCrateWave = wave;
     for (let rollIdx = 0; rollIdx < 20; rollIdx++) {
-      if (rollIdx === 10) {
-        // 后 10 次测试满 6 把 1 阶白板武器槽位时的保底紫/金武器替换升级逻辑
+      if (rollIdx < 10) {
+        wave = 2; // 第1幕(W1~4)品质锁校验：生存秘匣保底 T2~T3、神话二阶段匣保底 T3，且 100% 禁出 T4 橙装！
+      } else if (rollIdx === 10) {
+        wave = 10; // 第3幕(W9~12)品质锁 + 满 6 把 1 阶白板武器槽位时的保底紫/金武器替换升级逻辑
         player.weapons = [
           { id: 'pistol', tier: 1, cd: 0, angle: 0, recoil: 0, thrust: 0 },
           { id: 'smg', tier: 1, cd: 0, angle: 0, recoil: 0, thrust: 0 },
@@ -1634,9 +1641,9 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
         ];
       }
       pendingCrates = 1;
-      player.mythicCratesQueued = 0;
-      player.survivalGoldCratesQueued = (rollIdx % 2 === 0) ? 1 : 0;
-      player.survivalCratesQueued = (rollIdx % 2 === 1) ? 1 : 0;
+      player.mythicCratesQueued = (rollIdx === 8 || rollIdx === 9) ? 1 : 0;
+      player.survivalGoldCratesQueued = (!player.mythicCratesQueued && rollIdx % 2 === 0) ? 1 : 0;
+      player.survivalCratesQueued = (!player.mythicCratesQueued && rollIdx % 2 === 1) ? 1 : 0;
       showCrateMenu();
       const cards = document.getElementById('crateBox').children;
       if (cards.length < 2) { crateGuaranteeOk = false; break; }
@@ -1644,15 +1651,26 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       const c2Cls = cards[1].className || '';
       const c1Html = cards[0].innerHTML || '';
       const c2Html = cards[1].innerHTML || '';
-      const c1PurplePlusItem = (/\\bt[34]\\b/.test(c1Cls) && c1Html.includes('遗物'));
-      const c2PurplePlusWpn = (/\\bt[34]\\b/.test(c2Cls) && c2Html.includes('兵装'));
-      if (!c1PurplePlusItem || !c2PurplePlusWpn) { crateGuaranteeOk = false; break; }
-      if (rollIdx === 19) {
-        const takeWpnBtn = cards[1].querySelector('.take-btn');
-        if (takeWpnBtn) takeWpnBtn.click();
-        if (!player.weapons.some(w => w && w.tier >= 3)) { crateGuaranteeOk = false; break; }
+      if (rollIdx < 8) {
+        const act1NoOrange = !/\\bt4\\b/.test(c1Cls) && !/\\bt4\\b/.test(c2Cls);
+        const c1BluePlusItem = (/\\bt[23]\\b/.test(c1Cls) && c1Html.includes('遗物'));
+        const c2BluePlusWpn = (/\\bt[23]\\b/.test(c2Cls) && c2Html.includes('兵装'));
+        if (!act1NoOrange || !c1BluePlusItem || !c2BluePlusWpn) { crateGuaranteeOk = false; break; }
+      } else if (rollIdx < 10) {
+        const act1MythicPurePurple = /\\bt3\\b/.test(c1Cls) && /\\bt3\\b/.test(c2Cls) && !/\\bt4\\b/.test(c1Cls) && !/\\bt4\\b/.test(c2Cls);
+        if (!act1MythicPurePurple) { crateGuaranteeOk = false; break; }
+      } else {
+        const c1PurplePlusItem = (/\\bt[34]\\b/.test(c1Cls) && c1Html.includes('遗物'));
+        const c2PurplePlusWpn = (/\\bt[34]\\b/.test(c2Cls) && c2Html.includes('兵装'));
+        if (!c1PurplePlusItem || !c2PurplePlusWpn) { crateGuaranteeOk = false; break; }
+        if (rollIdx === 19) {
+          const takeWpnBtn = cards[1].querySelector('.take-btn');
+          if (takeWpnBtn) takeWpnBtn.click();
+          if (!player.weapons.some(w => w && w.tier >= 3)) { crateGuaranteeOk = false; break; }
+        }
       }
     }
+    wave = savedCrateWave;
     // 验证行商木牌 (coupon) 购买后立即实时重算当轮剩余商店卡与刷新花费，以及近战高等级射程显著短于远程武器
     player.shopDiscount = 0;
     player.mats = 9999;
@@ -1710,10 +1728,10 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       Math.abs(getEarlyMobHpMul(12) - 1.00) < 1e-9
     );
 
-    // 验证蚀界生存试炼金币补偿大幅上调且受击 >=3 次仍有保底赏金
+    // 验证蚀界生存试炼金币补偿适度平滑且受击 >=3 次仍有保底赏金
     const trialCompLow = typeof calcSurvivalTrialGoldComp === 'function' ? calcSurvivalTrialGoldComp(3, 4, { harvest: 1 }) : { total: 0 };
     const trialCompFlawless = typeof calcSurvivalTrialGoldComp === 'function' ? calcSurvivalTrialGoldComp(3, 0, { harvest: 1 }) : { total: 0 };
-    const trialGoldCompOk = (trialCompLow.total >= 50 && trialCompFlawless.total > trialCompLow.total);
+    const trialGoldCompOk = (trialCompLow.total >= 42 && trialCompFlawless.total > trialCompLow.total);
 
     const wD1 = getBossTeleportWarnSec(1), wD2 = getBossTeleportWarnSec(2), wD3 = getBossTeleportWarnSec(3), wD4 = getBossTeleportWarnSec(4), wD5 = getBossTeleportWarnSec(5);
     const tpWarnLadderOk = (wD1 > wD2 && wD2 > wD3 && wD3 > wD4 && wD4 > wD5 && Math.abs(wD5 - wD1 * 0.50) < 1e-6);
@@ -1779,7 +1797,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       Math.abs(WEAPONS.rocket.dmg - 46.2) < 1e-9 &&
       Math.abs(WEAPONS.emp_cannon.dmg - 41.8) < 1e-9 &&
       Math.abs(WEAPONS.stick.dmg - 18.0) < 1e-9 &&
-      Math.abs(WEAPONS.ember_staff.dmg - 23.0) < 1e-9
+      Math.abs(WEAPONS.ember_staff.dmg - 16.8) < 1e-9
     );
     // Floor 6-10 monster HP -10% overall (W5 & W11..16 unchanged)
     const midWave6To10HpOk = (
@@ -2486,11 +2504,11 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(coreCheck.endlessRangerOk, true, "Endless Mode must launch selected non-protagonist directly into endless run without story blocking");
   assert(coreCheck.endlessShopTitle.includes("无尽第 1 层"), `Endless Mode shop header must display endless floor label (got ${coreCheck.endlessShopTitle})`);
   assert(cssCombined.includes("@media") && cssCombined.includes("narrative"), "Narrative UI must include responsive styling; real viewport layout is reviewed separately in browser");
-  assert(coreCheck.hpAfterBossNuke >= 58, `Boss floor one-shot protection must cap single hit at <=42% maxHp (HP left: ${coreCheck.hpAfterBossNuke})`);
+  assert.strictEqual(coreCheck.hpAfterBossNuke, 35, `Uncapped hit of 65 on 100 HP must leave 35 HP with no anti-oneshot lock (HP left: ${coreCheck.hpAfterBossNuke})`);
   assert.strictEqual(coreCheck.invulnAfterHit, 0, "Player must have ZERO invulnerability frames after taking damage");
   assert.strictEqual(coreCheck.consecutiveHitRegistered, true, "Back-to-back hits must immediately register damage without i-frame immunity");
   assert.strictEqual(coreCheck.wCnt, 42, "Codex must render 42 weapons (including 6 Staffs)");
-  assert.strictEqual(coreCheck.iCnt, 138, "Codex must render 138 items");
+  assert.strictEqual(coreCheck.iCnt, 148, "Codex must render 148 items");
   assert.strictEqual(coreCheck.hCnt, 6, "Codex must render 6 Spire heroes");
   assert.strictEqual(coreCheck.mCnt, 41, "Codex must render all 41 unique Spire monsters, commanders & bosses");
   assert.strictEqual(coreCheck.sCnt, 4, "Codex must render 4 Spire scenes");
@@ -2893,8 +2911,12 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       if (RELIC_ART_SPECS[cloakId][0] !== 'cloak') return { ok: false, reason: 'Cloak item not mapped to cloak archetype: ' + cloakId };
     }
     if (RELIC_ART_SPECS.whetstone[0] !== 'whetstone') return { ok: false, reason: 'whetstone not mapped to whetstone archetype' };
-    if (tCounts[1] !== 42 || tCounts[2] !== 40 || tCounts[3] !== 34 || tCounts[4] !== 22) {
+    if (tCounts[1] !== 44 || tCounts[2] !== 44 || tCounts[3] !== 36 || tCounts[4] !== 24) {
       return { ok: false, reason: 'Unexpected item tier pyramid: ' + JSON.stringify(tCounts) };
+    }
+    const newRelicIds = ['blade_gaiters', 'brass_recoil_spring', 'buckshot_bandolier', 'twin_feeder', 'azure_kote', 'crescent_tassel', 'dragon_piercer_ammo', 'asura_wardrum', 'kenshin_scroll', 'celestial_arsenal_box'];
+    for (const nrId of newRelicIds) {
+      if (!ITEMS.some(x => x.id === nrId)) return { ok: false, reason: 'Missing new balance relic: ' + nrId };
     }
 
     for (const [wid, wdef] of Object.entries(WEAPONS)) {
@@ -3031,11 +3053,41 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     openCodex('items');
     closeCodex();
 
+    // 7) 1~16层全维平衡专项校验：升级三阶刻印+晶石重铸、移除防秒杀锁真实伤害结算、统领与首领同级一阶段血量、远程武器最低安全射程保底
+    player.lv = 12;
+    player.mats = 200;
+    pendingLevels = 1;
+    showLevelUp();
+    const lvlRerollBtn = document.getElementById('lvlRerollBtn');
+    const matsBeforeLvlReroll = player.mats;
+    if (lvlRerollBtn) lvlRerollBtn.click();
+    const lvlCardsEls = Array.from(document.getElementById('lvlCards').children);
+    const tieredLvlOk = Boolean(
+      lvlRerollBtn &&
+      player.mats < matsBeforeLvlReroll &&
+      lvlCardsEls.length === 4 &&
+      lvlCardsEls.every(c => /\\bt[23]\\b/.test(c.className || ''))
+    );
+    const rangedFloorOk = calcWeaponEffectiveRange(WEAPONS.shotgun, 1, null, -500) >= Math.round(WEAPONS.shotgun.range * 0.88);
+    const savedWave7 = wave, savedState7 = state, savedDiff7 = diff;
+    wave = 10; diff = DIFFS[1]; state = 'wave'; endlessMode = false; survivalTrialWave = false;
+    enemies.length = 0; player.weapons = [];
+    const testBoss10 = createEnemy(400, 400, 'boss', 'butcher');
+    const testMini10 = createEnemy(600, 400, 'mini_boss', 'vanguard');
+    const miniSameTierAsBossOk = (testMini10.maxHp === testBoss10.maxHp && testBoss10.maxHp >= 120000);
+    enemies.length = 0;
+    wave = 14;
+    player.maxHp = 100; player.hp = 100; player.armor = 0; player.dodge = 0; player.shield = 0; player._bloodShieldPool = 0; player.phoenixFeather = 0;
+    hurtPlayer(80, false, dummy);
+    const noAntiOneshotCapOk = (player.hp === 20 && player.invuln === 0);
+    wave = savedWave7; state = savedState7; diff = savedDiff7;
+
     return {
       ok: spdDmg1 > baseDmg0 + 0.30 && dodgeAspd1 > baseAspd0 + 0.40 && lsDmg1 > spdDmg1 + 0.10
         && hpAfterPad >= hpBeforePad + 9 && slots1 === slots0 + 1
-        && pocketTurretOk && bloodShieldOk && phoenixSavedOk && allNewWpnsDealt && scalingBadgesOk && brotatoSlotUxOk,
-      detail: { spdDmg1, baseDmg0, dodgeAspd1, baseAspd0, lsDmg1, hpBeforePad, hpAfterPad, slots0, slots1, pocketTurretOk, bloodShieldOk, phoenixSavedOk, allNewWpnsDealt, scalingBadgesOk, brotatoSlotUxOk }
+        && pocketTurretOk && bloodShieldOk && phoenixSavedOk && allNewWpnsDealt && scalingBadgesOk && brotatoSlotUxOk
+        && tieredLvlOk && rangedFloorOk && miniSameTierAsBossOk && noAntiOneshotCapOk,
+      detail: { spdDmg1, baseDmg0, dodgeAspd1, baseAspd0, lsDmg1, hpBeforePad, hpAfterPad, slots0, slots1, pocketTurretOk, bloodShieldOk, phoenixSavedOk, allNewWpnsDealt, scalingBadgesOk, brotatoSlotUxOk, tieredLvlOk, rangedFloorOk, miniSameTierAsBossOk, noAntiOneshotCapOk }
     };
   })()`, env220.sandbox);
   assert.strictEqual(v220Res.ok, true, "v2.2.0 full-archetype arsenal & relic suite failed: " + JSON.stringify(v220Res));
