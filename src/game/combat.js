@@ -1668,7 +1668,7 @@ function dropCrystals(x, y, totalMat, allowBigChunks = false) {
 
   if (!allowBigChunks) {
     const isLate = (typeof wave === 'number' && wave >= 5);
-    const mobYieldComp = (typeof wave === 'number' && wave >= 6) ? 1.14 : ((typeof wave === 'number' && wave >= 2) ? 1.06 : 1.0);
+    const mobYieldComp = (typeof wave === 'number' && wave >= 6) ? 1.14 : (wave === 5 ? 0.92 : (wave >= 2 ? 0.78 : 0.72));
     const effMobTotal = rawTotal * mobYieldComp;
     const unitVal = isLate ? 3.2 : 1.85;
     const xpComp = (typeof wave === 'number' && wave >= 6) ? 1.12 : 1.0;

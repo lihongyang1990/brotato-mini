@@ -1046,8 +1046,8 @@ function update(dt) {
     enemies.some(e => (e.type === 'boss' || e.type === 'special_boss') && e.hp > 0) ||
     spawns.some(s => s.type === 'boss' || s.type === 'special_boss')
   );
-  const hordeBoost = hordeWave ? (wave <= 4 ? 1.12 : 1.18) : 1;
-  const earlySpawnMul = wave <= 2 ? 0.68 : (wave <= 4 ? 0.76 : (wave === 5 ? 0.86 : 1.0));
+  const hordeBoost = hordeWave ? (wave <= 4 ? 1.14 : 1.18) : 1;
+  const earlySpawnMul = wave === 1 ? 0.92 : (wave <= 3 ? 0.96 : 1.0);
   const mobCountMul = (typeof isMobileCombatBalance === 'function' && isMobileCombatBalance())
     ? (typeof MOBILE_MOB_COUNT_MUL === 'number' ? MOBILE_MOB_COUNT_MUL : 0.80)
     : 1.0;
@@ -1059,23 +1059,24 @@ function update(dt) {
   const rawMaxActive = Math.max(4, Math.round((mobCountMul < 1 ? Math.max(4, Math.round(baseMaxActive * mobCountMul)) : baseMaxActive) * diffCapMul * lureMul));
   const maxActiveEnemies = survivalTrialWave ? Math.max(3, Math.round(rawMaxActive * 0.30)) : rawMaxActive;
   if (!overtime && spawnAcc <= 0 && waveTime > 1.5) {
-    const minInterval = bossDuelActive ? 1.95 : (wave <= 4 ? 1.55 : (wave <= 9 ? 1.38 : 1.22));
-    spawnAcc = Math.max(minInterval, (1.68 - Math.min(wave, 12) * 0.032) / Math.pow(diff.spawnMul * hordeBoost, 0.35));
+    const minInterval = bossDuelActive ? 1.95 : (wave <= 4 ? 1.28 : (wave <= 9 ? 1.24 : 1.18));
+    spawnAcc = Math.max(minInterval, (1.44 - Math.min(wave, 12) * 0.022) / Math.pow(diff.spawnMul * hordeBoost, 0.35));
     const room = Math.max(0, maxActiveEnemies - (enemies.length + spawns.length));
     if (room > 0) {
-      const baseCount = bossDuelActive ? (wave >= 12 ? 2.3 : 1.8) : (2.6 + Math.min(16, wave) * 0.24);
+      const baseCount = bossDuelActive ? (wave >= 12 ? 2.3 : 1.8) : ((wave <= 4 ? 3.1 : 2.6) + Math.min(16, wave) * 0.24);
       const fullExactCnt = baseCount * (bossDuelActive ? 1.0 : earlySpawnMul) * diff.spawnMul * hordeBoost * mobCountMul * lureMul;
       const exactCnt = survivalTrialWave ? (fullExactCnt * 0.30) : fullExactCnt;
       const bernoulliCnt = Math.floor(exactCnt) + (Math.random() < (exactCnt - Math.floor(exactCnt)) ? 1 : 0);
       const rawCnt = (survivalTrialWave || mobCountMul < 1) ? bernoulliCnt : Math.max(1, bernoulliCnt);
       const count = Math.min(rawCnt, room);
       const early = selectedDiff >= 3 ? 1 : 0;
+      let sqA = 0, sqD = 220, sqT = 'chaser';
       for (let i = 0; i < count; i++) {
-        const ang = Math.random() * Math.PI * 2;
-        const dist = 265 + Math.random() * 340;
-        const x = Math.max(60, Math.min(WORLD.w - 60, player.x + Math.cos(ang) * dist));
-        const y = Math.max(60, Math.min(WORLD.h - 60, player.y + Math.sin(ang) * dist));
-        spawnWarning(x, y, pickWaveEnemyType(wave + early));
+        if (i % 3 === 0) { sqA = Math.random() * Math.PI * 2; sqD = wave <= 5 ? (188 + Math.random() * 165) : (220 + Math.random() * 255); sqT = pickWaveEnemyType(wave + early); }
+        const jx = (i % 3 === 0) ? 0 : (Math.random() - 0.5) * 90, jy = (i % 3 === 0) ? 0 : (Math.random() - 0.5) * 90;
+        const x = Math.max(60, Math.min(WORLD.w - 60, player.x + Math.cos(sqA) * sqD + jx));
+        const y = Math.max(60, Math.min(WORLD.h - 60, player.y + Math.sin(sqA) * sqD + jy));
+        spawnWarning(x, y, (i % 3 === 2 && wave >= 3) ? pickWaveEnemyType(wave + early) : sqT);
       }
     }
   }

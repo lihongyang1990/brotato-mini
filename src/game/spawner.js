@@ -1366,18 +1366,22 @@ function beginWave(retryMeta = null) {
     const mobCountMul = (typeof isMobileCombatBalance === 'function' && isMobileCombatBalance())
       ? (typeof MOBILE_MOB_COUNT_MUL === 'number' ? MOBILE_MOB_COUNT_MUL : 0.80)
       : 1.0;
-    const earlyOpenMul = wave <= 2 ? 0.62 : (wave <= 4 ? 0.70 : (wave === 5 ? 0.80 : (wave === 6 ? 0.94 : 1.0)));
-    const baseOpen = Math.max(2, Math.round((wave === 1 ? 5 : 4) * earlyOpenMul * diff.spawnMul));
+    const earlyOpenMul = wave <= 2 ? 0.95 : 1.0;
+    const baseOpen = Math.max(4, Math.round((wave === 1 ? 6 : 5) * earlyOpenMul * diff.spawnMul));
     const rawOpen = baseOpen * mobCountMul * (survivalTrialWave ? 0.30 : 1.0);
     const openCnt = (survivalTrialWave || mobCountMul < 1)
-      ? Math.max(survivalTrialWave ? 0 : 1, Math.floor(rawOpen) + (Math.random() < (rawOpen - Math.floor(rawOpen)) ? 1 : 0))
+      ? Math.max(survivalTrialWave ? 0 : 2, Math.floor(rawOpen) + (Math.random() < (rawOpen - Math.floor(rawOpen)) ? 1 : 0))
       : baseOpen;
+    let sqAng = Math.random() * Math.PI * 2, sqDist = 225, sqType = 'chaser';
     for (let oi = 0; oi < openCnt; oi++) {
-      const oa = (oi / Math.max(1, openCnt)) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
-      const od = (wave <= 5 ? 325 : 265) + Math.random() * 125;
-      const ox = Math.max(60, Math.min(WORLD.w - 60, player.x + Math.cos(oa) * od));
-      const oy = Math.max(60, Math.min(WORLD.h - 60, player.y + Math.sin(oa) * od));
-      spawnWarning(ox, oy, pickWaveEnemyType(wave));
+      if (oi % 3 === 0) {
+        sqAng = (Math.floor(oi / 3) / Math.max(1, Math.ceil(openCnt / 3))) * Math.PI * 2 + (Math.random() - 0.5) * 0.55;
+        sqDist = (wave <= 5 ? 195 : 220) + Math.random() * 95;
+        sqType = pickWaveEnemyType(wave);
+      }
+      const ax = player.x + Math.cos(sqAng) * sqDist + (oi % 3 === 0 ? 0 : (Math.random() - 0.5) * 86);
+      const ay = player.y + Math.sin(sqAng) * sqDist + (oi % 3 === 0 ? 0 : (Math.random() - 0.5) * 86);
+      spawnWarning(Math.max(60, Math.min(WORLD.w - 60, ax)), Math.max(60, Math.min(WORLD.h - 60, ay)), sqType);
     }
   }
 
@@ -1577,7 +1581,7 @@ function spawnWarning(x, y, type, variant = '') {
       getBossAnimePortrait(variant, true);
     }
   }
-  const warnDur = (type === 'boss' || type === 'mini_boss' || type === 'special_boss') ? 0.95 : 1.12;
+  const warnDur = (type === 'boss' || type === 'mini_boss' || type === 'special_boss') ? 0.95 : 0.92;
   spawns.push({ x: sx, y: sy, type, variant, t: warnDur, maxT: warnDur });
 }
 
@@ -2129,6 +2133,10 @@ function createEnemy(x, y, type, variant = '') {
   const mobDm = dm * mobDmgMul;
   const monsterSpdMul = typeof MONSTER_SPD_MUL === 'number' ? MONSTER_SPD_MUL : 0.80;
   const sm = (1 + Math.min(0.18, wIdx * 0.012)) * diff.spdMul * monsterSpdMul;
+  const lateMeleePush = (type !== 'boss' && type !== 'mini_boss' && type !== 'special_boss' && type !== 'stalker' && type !== 'swarmer' && wave >= 9)
+    ? (1 + Math.min(0.08, (wave - 8) * 0.01))
+    : 1.0;
+  const smMelee = sm * lateMeleePush;
   const base = {
     x, y, hitFlash: 0, phase: Math.random() * 6.28, vx: 0, vy: 0, faceA: 0,
     burnT: 0, burnTick: 0, burnDmg: 0, chillT: 0, freezeT: 0, sunderT: 0, _touchCd: 0,
@@ -2150,7 +2158,7 @@ function createEnemy(x, y, type, variant = '') {
     for (let k = 0; k < swCnt; k++) {
       const ox = x + (Math.random() - 0.5) * 54, oy = y + (Math.random() - 0.5) * 54;
       const swMat = +((k === 0 ? 0.90 : 0.45) * lateCoinMul * trialCoinMul * mobileCoinMul).toFixed(2);
-      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * mobDm)), color: '#ffbe0b', type, mat: swMat });
+      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (168 + wave * 1.8) * sm, dmg: Math.max(2, Math.round(2.2 * mobDm)), color: '#ffbe0b', type, mat: swMat });
     }
     addBurst(x, y, '#ff4d6d', 5, 85);
     return;
@@ -2228,61 +2236,61 @@ function createEnemy(x, y, type, variant = '') {
       mat: sMat
     };
   } else if (type === 'stalker') {
-    ent = { ...base, r: 21, hp: 20.0 * s, maxHp: 20.0 * s, spd: 138 * sm, dmg: Math.round(5.0 * mobDm), color: '#06d6a0', type, slashCd: 0.7, stepCd: 2.0 + Math.random(), zigT: 0.35 + Math.random() * 0.25, zigDir: Math.random() < 0.5 ? 1 : -1, mat: 2 };
+    ent = { ...base, r: 21, hp: 20.0 * s, maxHp: 20.0 * s, spd: 154 * sm, dmg: Math.round(5.0 * mobDm), color: '#06d6a0', type, slashCd: 0.7, stepCd: 2.0 + Math.random(), zigT: 0.35 + Math.random() * 0.25, zigDir: Math.random() < 0.5 ? 1 : -1, mat: 2 };
   } else if (type === 'iron_guard') {
-    ent = { ...base, r: 29, hp: 60 * s, maxHp: 60 * s, spd: 66 * sm, dmg: Math.round(6.6 * mobDm), color: '#e11d48', type, cleaveCd: 2.0 + Math.random() * 0.6, cleaveWindup: 0, mat: 3 };
+    ent = { ...base, r: 29, hp: 60 * s, maxHp: 60 * s, spd: 86 * smMelee, dmg: Math.round(6.6 * mobDm), color: '#e11d48', type, cleaveCd: 2.0 + Math.random() * 0.6, cleaveWindup: 0, mat: 3 };
   } else if (type === 'frost_knight') {
-    ent = { ...base, r: 26, hp: 46 * s, maxHp: 46 * s, spd: 106 * sm, dmg: Math.round(6.2 * mobDm), color: '#38bdf8', type, thrustCd: 1.85 + Math.random() * 0.6, thrustWindup: 0, mat: 3 };
+    ent = { ...base, r: 26, hp: 46 * s, maxHp: 46 * s, spd: 106 * smMelee, dmg: Math.round(6.2 * mobDm), color: '#38bdf8', type, thrustCd: 1.85 + Math.random() * 0.6, thrustWindup: 0, mat: 3 };
   } else if (type === 'blade_duelist') {
     ent = { ...base, r: 20, hp: 24 * s, maxHp: 24 * s, spd: 132 * sm, dmg: Math.round(5.4 * mobDm), color: '#f59e0b', type, whirlCd: 2.1 + Math.random() * 0.6, whirlT: 0, whirlSpin: 0, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'shadow_reaper') {
-    ent = { ...base, r: 25, hp: 38 * s, maxHp: 38 * s, spd: 94 * sm, dmg: Math.round(6.8 * mobDm), color: '#a855f7', type, blinkCd: 2.6 + Math.random() * 0.8, reapWindup: 0, mat: 4 };
+    ent = { ...base, r: 25, hp: 38 * s, maxHp: 38 * s, spd: 94 * smMelee, dmg: Math.round(6.8 * mobDm), color: '#a855f7', type, blinkCd: 2.6 + Math.random() * 0.8, reapWindup: 0, mat: 4 };
   } else if (type === 'sniper_bug') {
     ent = { ...base, r: 22, hp: 13.0 * s, maxHp: 13.0 * s, spd: 54 * sm, dmg: Math.round(6.8 * mobDm), color: '#ef233c', type, shotT: 2.1 + Math.random() * 0.8, aimA: undefined, aimMaxT: 0.72, recoilT: 0, mat: 3 };
   } else if (type === 'spinner') {
     ent = { ...base, r: 26, hp: 28 * s, maxHp: 28 * s, spd: 74 * sm, dmg: Math.round(5.0 * mobDm), color: '#f59e0b', type, shotT: 2.1 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'juggernaut') {
-    // 泰坦超巨型血牛（r=54 山岳体型，极沉缓霸体推进 spd=34，十字四向地裂震波）
-    ent = { ...base, r: 54, hp: 340 * s, maxHp: 340 * s, spd: 34 * sm, dmg: Math.round(11.6 * mobDm), color: '#475569', type, slamCd: 3.1, slamWindup: 0, mat: 7 };
+    // 泰坦超巨型血牛（r=54 山岳体型，稳沉霸体推进 spd=50，十字四向地裂震波）
+    ent = { ...base, r: 54, hp: 340 * s, maxHp: 340 * s, spd: 50 * smMelee, dmg: Math.round(11.6 * mobDm), color: '#475569', type, slamCd: 3.1, slamWindup: 0, mat: 7 };
   } else if (type === 'rad_scorpion') {
     ent = { ...base, r: 28, hp: 36 * s, maxHp: 36 * s, spd: 70 * sm, dmg: Math.round(5.5 * mobDm), color: '#a3e635', type, shotT: 2.0 + Math.random() * 0.8, mat: 3 };
   } else if (type === 'sand_worm') {
     // 潜渊遁地奇袭怪（钻入地底化作高速黑水潜影突进，破土震爆并迸射斜十字骨刺）
-    ent = { ...base, r: 26, hp: 48 * s, maxHp: 48 * s, spd: 104 * sm, dmg: Math.round(6.0 * mobDm), color: '#f4a261', type, burrowCd: 2.0 + Math.random() * 0.7, burrowWindup: 0, burrowT: 0, mat: 3 };
+    ent = { ...base, r: 26, hp: 48 * s, maxHp: 48 * s, spd: 104 * smMelee, dmg: Math.round(6.0 * mobDm), color: '#f4a261', type, burrowCd: 2.0 + Math.random() * 0.7, burrowWindup: 0, burrowT: 0, mat: 3 };
   } else if (type === 'frost_wisp') {
     ent = { ...base, r: 22, hp: 17 * s, maxHp: 17 * s, spd: 82 * sm, dmg: Math.round(4.6 * mobDm), color: '#48cae4', type, shotT: 1.8 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'magma_imp') {
-    ent = { ...base, r: 21, hp: 20 * s, maxHp: 20 * s, spd: 118 * sm, dmg: Math.round(5.8 * mobDm), color: '#fb5607', type, mat: 3 };
+    ent = { ...base, r: 21, hp: 20 * s, maxHp: 20 * s, spd: 134 * smMelee, dmg: Math.round(5.8 * mobDm), color: '#fb5607', type, mat: 3 };
   } else if (type === 'spore_mother') {
     ent = { ...base, r: 35, hp: 56 * s, maxHp: 56 * s, spd: 48 * sm, dmg: Math.round(5.8 * mobDm), color: '#c77dff', type, shotT: 2.4 + Math.random() * 0.9, mat: 4 };
   } else if (type === 'charger') {
     // 健硕重骑（r=31，快步 spd=92，尖角楔阵冲锋 + 收招前挑弧斩）
-    ent = { ...base, r: 31, hp: 68 * s, maxHp: 68 * s, spd: 92 * sm, dmg: Math.round(6.8 * mobDm), color: '#f77f00', type, dashT: 1.85 + Math.random() * 0.75, mat: 3 };
+    ent = { ...base, r: 31, hp: 68 * s, maxHp: 68 * s, spd: 92 * smMelee, dmg: Math.round(6.8 * mobDm), color: '#f77f00', type, dashT: 1.85 + Math.random() * 0.75, mat: 3 };
   } else if (type === 'shooter') {
     ent = { ...base, r: 23, hp: 13.5 * s, maxHp: 13.5 * s, spd: 62 * sm, dmg: Math.round(4.2 * mobDm), color: '#00b4d8', type, shotT: 1.6 + Math.random() * 0.9, mat: 2 };
   } else if (type === 'mortar') {
     ent = { ...base, r: 27, hp: 24 * s, maxHp: 24 * s, spd: 52 * sm, dmg: Math.round(7.8 * mobDm), color: '#ff9f1c', type, shotT: 2.0 + Math.random() * 1.0, mat: 3 };
   } else if (type === 'bomber') {
-    ent = { ...base, r: 22, hp: 18 * s, maxHp: 18 * s, spd: 114 * sm, dmg: Math.round(8.8 * mobDm), color: '#ff4d6d', type, primed: false, fuseT: 1.25, maxFuseT: 1.25, blastR: 86, mat: 2 };
+    ent = { ...base, r: 22, hp: 18 * s, maxHp: 18 * s, spd: (126 + Math.min(16, wave) * 1.1) * smMelee, dmg: Math.round(8.8 * mobDm), color: '#ff4d6d', type, primed: false, fuseT: 1.25, maxFuseT: 1.25, blastR: 86, mat: 2 };
   } else if (type === 'splitter') {
     // 宽大弹性软泥（r=34，蓄蹲停顿—猛然蛙跃逼近，纯近战不射子弹）
-    ent = { ...base, r: 34, hp: 58 * s, maxHp: 58 * s, spd: 68 * sm, dmg: Math.round(5.0 * mobDm), color: '#52b788', type, hopT: 0.9 + Math.random() * 0.5, mat: 3 };
+    ent = { ...base, r: 34, hp: 58 * s, maxHp: 58 * s, spd: 84 * smMelee, dmg: Math.round(5.0 * mobDm), color: '#52b788', type, hopT: 0.9 + Math.random() * 0.5, mat: 3 };
   } else if (type === 'mini_slime') {
     const minSlimeDmg = (typeof diff !== 'undefined' && diff && diff.id === 0) ? 1 : 2;
-    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 140 * sm, dmg: Math.max(minSlimeDmg, Math.round(2.6 * mobDm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
+    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 152 * sm, dmg: Math.max(minSlimeDmg, Math.round(2.6 * mobDm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
   } else if (type === 'shielder') {
-    // 紧凑高甲塔盾卫（r=28，稳健 spd=54，近身发动重盾猛击震波）
-    ent = { ...base, r: 28, hp: 94 * s, maxHp: 94 * s, spd: 54 * sm, dmg: Math.round(6.2 * mobDm), color: '#5c677d', type, bashCd: 2.1 + Math.random() * 0.5, bashWindup: 0, mat: 4 };
+    // 紧凑高甲塔盾卫（r=28，稳健 spd=76，近身发动重盾猛击震波）
+    ent = { ...base, r: 28, hp: 94 * s, maxHp: 94 * s, spd: 76 * smMelee, dmg: Math.round(6.2 * mobDm), color: '#5c677d', type, bashCd: 2.1 + Math.random() * 0.5, bashWindup: 0, mat: 4 };
   } else if (type === 'summoner') {
     ent = { ...base, r: 25, hp: 22 * s, maxHp: 22 * s, spd: 54 * sm, dmg: Math.round(3.5 * mobDm), color: '#7209b7', type, sumT: 3.1 + Math.random(), boltT: 2.4, mat: 4 };
   } else if (type === 'healer') {
     ent = { ...base, r: 24, hp: 28 * s, maxHp: 28 * s, spd: 62 * sm, dmg: Math.round(3.0 * mobDm), color: '#2ec4b6', type, healT: 2.5, mat: 4 };
   } else if (type === 'brute') {
-    // 高大狂暴重锤卫（r=39，残血 <65% 狂暴提速 + 前向 90° 扇形锥区裂地重锤）
-    ent = { ...base, r: 39, hp: 190 * s, maxHp: 190 * s, spd: 64 * sm, dmg: Math.round(9.4 * mobDm), color: '#9d4edd', type, slamCd: 2.5, slamWindup: 0, bargeCd: 2.1 + Math.random() * 0.7, bargeT: 0, mat: 5 };
+    // 高大狂暴重锤卫（r=39，稳步压迫 spd=84，残血 <65% 狂暴提速 + 前向 90° 扇形锥区裂地重锤）
+    ent = { ...base, r: 39, hp: 190 * s, maxHp: 190 * s, spd: 84 * smMelee, dmg: Math.round(9.4 * mobDm), color: '#9d4edd', type, slamCd: 2.5, slamWindup: 0, bargeCd: 2.1 + Math.random() * 0.7, bargeT: 0, mat: 5 };
   } else {
     const minChaserDmg = (typeof diff !== 'undefined' && diff && diff.id === 0) ? 1 : 2;
-    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(minChaserDmg, Math.round(3.8 * mobDm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
+    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (114 + wave * 1.8) * smMelee, dmg: Math.max(minChaserDmg, Math.round(3.8 * mobDm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
   }
 
   // 中后期普通与特异小怪晶石产出下调约 20%（手机端为适配 -20% 怪物数量相应提升 +20% 金币/晶石产出，平衡手机端经济曲线）
