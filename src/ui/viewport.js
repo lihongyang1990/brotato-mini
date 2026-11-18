@@ -67,13 +67,35 @@ function refreshUIPrefControls() {
 }
 
 function syncUIMode() {
+  const prevMode = uiMode;
   uiMode = detectUIMode();
   if (document.body && document.body.classList) {
     document.body.classList.toggle('m-ui', uiMode !== 'desktop');
     document.body.classList.toggle('m-portrait', uiMode === 'mobile-portrait');
     document.body.classList.toggle('m-landscape', uiMode === 'mobile-landscape');
   }
+  if (typeof document !== 'undefined' && document.documentElement && document.documentElement.style) {
+    let p5Scale = 1;
+    const w = viewW || window.innerWidth || 1280;
+    const h = viewH || window.innerHeight || 800;
+    if (uiMode === 'mobile-portrait') {
+      // 严格对齐 ui_p5_final.html .vp.portrait (390×844 => 1.000)
+      p5Scale = Math.max(0.90, Math.min(1.06, Math.min(w / 390, h / 780)));
+    } else if (uiMode === 'mobile-landscape') {
+      // 严格对齐 ui_p5_final.html .vp.landscape (844×390 => 1.000)
+      p5Scale = Math.max(0.88, Math.min(1.05, Math.min(w / 844, h / 390)));
+    } else {
+      // 全分辨率桌面端锁定统一等比视界基准（h = 780 * --u，与 Mac Retina 1440×820 黄金 6 条/页比例 1:1 恒定对齐，兼容 1080p / 2K / 带鱼屏 / 4K！）
+      p5Scale = Math.max(0.85, Math.min(3.00, Math.min(w / 1240, h / 780)));
+    }
+    document.documentElement.style.setProperty('--p5-scale', p5Scale.toFixed(3));
+  }
   refreshUIPrefControls();
+  if (prevMode !== uiMode && typeof bootReady !== 'undefined' && bootReady) {
+    if (typeof state !== 'undefined' && state === 'shop' && typeof renderShop === 'function') {
+      renderShop();
+    }
+  }
 }
 
 function setUIPref(pref) {
@@ -162,7 +184,8 @@ function syncArenaAndZoom(forceBake = false) {
     } else if (landscapePhone) {
       camZoom = Math.max(0.58, Math.min(0.74, viewH / 590));
     } else {
-      camZoom = Math.min(viewW, viewH) < 820 ? 1.14 : 1.24;
+      const deskRatio = Math.max(0.90, Math.min(2.60, Math.min(viewW / 1440, viewH / 820)));
+      camZoom = +(1.18 * deskRatio).toFixed(3);
     }
   }
 }
@@ -270,3 +293,5 @@ window.addEventListener('wheel', e => {
   camZoom = Math.max(0.38, Math.min(1.95, camZoom - e.deltaY * 0.0005));
   if (bootReady) clampCam();
 }, { passive: true });
+// __INIT_P5_SCALE__
+syncUIMode();

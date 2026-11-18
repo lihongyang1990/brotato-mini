@@ -12,13 +12,14 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>烬塔残响：第999次救赎 · ECHOES OF THE ASHEN SPIRE</title>
-  <link rel="icon" type="image/jpeg" href="assets/spire/app_icon.jpg?v=2.2.3">
-  <link rel="apple-touch-icon" href="assets/spire/app_icon.jpg?v=2.2.3">
-  <link rel="manifest" href="manifest.json?v=2.2.3">
-  <link rel="stylesheet" href="styles/base.css?v=2.2.3">
-  <link rel="stylesheet" href="styles/mobile.css?v=2.2.3">
-  <link rel="stylesheet" href="styles/presentation.css?v=2.2.3">
-  <link rel="stylesheet" href="styles/narrative.css?v=2.2.3">
+  <link rel="icon" type="image/jpeg" href="assets/spire/app_icon.jpg?v=2.2.4">
+  <link rel="apple-touch-icon" href="assets/spire/app_icon.jpg?v=2.2.4">
+  <link rel="manifest" href="manifest.json?v=2.2.4">
+  <link rel="stylesheet" href="styles/base.css?v=2.2.4">
+  <link rel="stylesheet" href="styles/mobile.css?v=2.2.4">
+  <link rel="stylesheet" href="styles/presentation.css?v=2.2.4">
+  <link rel="stylesheet" href="styles/narrative.css?v=2.2.4">
+  <link rel="stylesheet" href="styles/p5-ui.css?v=2.2.4">
 </head>
 <body>
 
@@ -26,104 +27,124 @@
   <canvas id="cv"></canvas>
   <canvas id="spireDirectorCv" class="director-cv hidden"></canvas>
 
-  <!-- 首屏全链路资源完整性校验门禁（内联关键样式保证 0ms 遮挡未就绪界面，防止脚本/样式/贴图未下载全时提前操作触发 Bug） -->
-  <div id="bootGate" class="boot-gate" data-html-version="v2.2.3" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 36%,rgba(223,192,132,0.10),transparent 60%),#070a12;color:#efe8d8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;">
-    <div class="boot-gate-card" style="width:100%;max-width:460px;padding:28px 26px 24px;border:1px solid rgba(223,192,132,0.34);border-radius:12px;background:linear-gradient(180deg,rgba(15,20,32,0.96),rgba(8,11,19,0.98));box-shadow:0 24px 60px rgba(0,0,0,0.78);text-align:center;">
-      <div style="font-size:11px;letter-spacing:0.22em;color:#dfc084;opacity:0.88;margin-bottom:8px;">ASHEN SPIRE · INTEGRITY CHECK</div>
+  <!-- 首屏全链路资源完整性校验门禁 -->
+  <div id="bootGate" class="boot-gate" data-html-version="v2.2.4" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 36%,rgba(223,192,132,0.10),transparent 60%),#070a12;color:#efe8d8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;">
+    <div class="boot-gate-card" style="width:100%;max-width:460px;padding:28px 26px 24px;border:2px solid #f2ede6;background:linear-gradient(180deg,rgba(14,16,24,0.97),rgba(8,10,16,0.99));box-shadow:8px 10px 0 rgba(132,23,40,0.85);text-align:center;">
+      <div style="font-size:11px;letter-spacing:0.22em;color:#dfc084;opacity:0.90;margin-bottom:8px;">ASHEN SPIRE · INTEGRITY CHECK</div>
       <h2 id="bootGateTitle" style="margin:0 0 8px;font-size:21px;font-weight:800;color:#fff6dc;letter-spacing:0.04em;">🕯️ 魂灯引渡 · 校验资源完整性</h2>
       <p id="bootGateSub" style="margin:0 0 18px;font-size:13px;line-height:1.6;color:#9aa5b8;">正在同步并核验全部 23 项核心模块、样式表与首屏原画，校验通过后自动开启主殿</p>
-      <div id="bootGateBarWrap" style="width:100%;height:7px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden;border:1px solid rgba(223,192,132,0.22);">
-        <div id="bootGateFill" style="width:8%;height:100%;background:linear-gradient(90deg,#72efdd,#dfc084);transition:width 0.18s ease;"></div>
+      <div id="bootGateBarWrap" style="width:100%;height:7px;background:rgba(255,255,255,0.08);overflow:hidden;border:1px solid rgba(242,237,230,0.35);">
+        <div id="bootGateFill" style="width:8%;height:100%;background:linear-gradient(90deg,#8c192b,#dfc084);transition:width 0.18s ease;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-size:12px;color:#b8c2d4;">
         <span id="bootGateStep">正在拉取核心脚本与样式模块…</span>
         <b id="bootGatePct" style="color:#dfc084;font-variant-numeric:tabular-nums;">8%</b>
       </div>
-      <div id="bootGateErrBox" style="display:none;margin-top:16px;padding:12px 14px;border-radius:8px;border:1px solid rgba(255,77,109,0.48);background:rgba(48,12,24,0.62);text-align:left;">
+      <div id="bootGateErrBox" style="display:none;margin-top:16px;padding:12px 14px;border:1px solid rgba(255,77,109,0.55);background:rgba(48,12,24,0.72);text-align:left;">
         <div id="bootGateErrTitle" style="font-size:13px;font-weight:700;color:#ff8fa3;margin-bottom:6px;">⚠️ 检测到部分资源未下载完整或缓存版本不一致</div>
         <div id="bootGateErrList" style="font-size:12px;line-height:1.55;color:#f1d4dc;max-height:110px;overflow-y:auto;word-break:break-all;"></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
-          <button type="button" id="bootGateReloadBtn" onclick="window.__spireForceReload ? window.__spireForceReload() : location.replace(location.pathname + '?_reload=' + Date.now() + location.hash)" style="flex:1;min-width:160px;padding:9px 14px;border-radius:7px;border:1px solid #dfc084;background:linear-gradient(180deg,#dfc084,#b58d47);color:#110e08;font-size:13px;font-weight:800;cursor:pointer;">🔄 清理残缺缓存并重拉</button>
-          <button type="button" id="bootGateBypassBtn" onclick="window.__spireAllowBypass && window.__spireAllowBypass()" style="display:none;flex:1;min-width:160px;padding:9px 12px;border-radius:7px;border:1px solid rgba(137,196,212,0.45);background:rgba(18,28,42,0.9);color:#d8eef5;font-size:12px;font-weight:700;cursor:pointer;">⚡ 代码已完整 · 先行入殿</button>
+          <button type="button" id="bootGateReloadBtn" onclick="window.__spireForceReload ? window.__spireForceReload() : location.replace(location.pathname + '?_reload=' + Date.now() + location.hash)" style="flex:1;min-width:160px;padding:9px 14px;border:1.5px solid #f2ede6;background:linear-gradient(92deg,#8c192b,#580e1a);color:#f2ede6;font-size:13px;font-weight:800;cursor:pointer;">🔄 清理残缺缓存并重拉</button>
+          <button type="button" id="bootGateBypassBtn" onclick="window.__spireAllowBypass && window.__spireAllowBypass()" style="display:none;flex:1;min-width:160px;padding:9px 12px;border:1px solid rgba(242,237,230,0.45);background:rgba(18,22,34,0.92);color:#d8eef5;font-size:12px;font-weight:700;cursor:pointer;">⚡ 代码已完整 · 先行入殿</button>
         </div>
       </div>
       <div id="bootGateSlowWrap" class="boot-slow-wrap">
-        <button type="button" onclick="window.__spireForceReload ? window.__spireForceReload() : location.replace(location.pathname + '?_reload=' + Date.now() + location.hash)" style="margin-top:14px;padding:6px 12px;border-radius:999px;border:1px solid rgba(223,192,132,0.32);background:rgba(15,23,42,0.75);color:#dfc084;font-size:12px;cursor:pointer;">网络响应较慢？点此强制刷新重新拉取 →</button>
+        <button type="button" onclick="window.__spireForceReload ? window.__spireForceReload() : location.replace(location.pathname + '?_reload=' + Date.now() + location.hash)" style="margin-top:14px;padding:6px 12px;border:1px solid rgba(223,192,132,0.38);background:rgba(15,18,28,0.85);color:#dfc084;font-size:12px;cursor:pointer;">网络响应较慢？点此强制刷新重新拉取 →</button>
       </div>
     </div>
   </div>
 
-  <!-- 异常自动捕获胶囊（仅发生错误时显示） -->
+  <!-- 异常自动捕获胶囊 -->
   <div id="errToast" class="err-toast hidden" onclick="openLogModal()">捕获到运行异常 · 点此查阅诊断日志</div>
 
-  <!-- 战斗 HUD（黑曜镌金暗黑战术栏） -->
-  <div id="hud" class="hud hidden">
-    <div class="hud-left">
-      <div class="bar">
-        <div id="hpFill" class="bar-fill hp-fill" style="width:100%"></div>
-        <div id="shFill" class="sh-fill" style="width:0%"></div>
-        <div id="hpText" class="bar-text">30 / 30</div>
-      </div>
-      <div class="bar bar-xp">
-        <div id="xpFill" class="bar-fill xp-fill" style="width:0%"></div>
-        <div id="xpText" class="bar-text xp-text">Lv.1</div>
-      </div>
-      <div class="hud-mini-stats">
-        <span id="hudKills">净化 0</span>
-        <span id="hudWeapons">兵装 2/6</span>
-      </div>
-      <div id="hudDashWrap" class="hud-dash-wrap d-only" onclick="triggerSoulDash()" title="按 Space / Shift / 鼠标右键 发动角色专属青焰瞬步">
-        <div id="hudDashFill" class="hud-dash-fill" style="width:100%"></div>
-        <span id="hudDashText" class="hud-dash-text">◆ 瞬步就绪 [Space]</span>
-      </div>
-    </div>
-
-    <div class="hud-center">
-      <div id="waveTitle" class="wave-badge">第 1 / 16 层</div>
-      <div id="timerCapsule" class="timer-capsule">
-        <div class="timer-row">
-          <div id="waveTimer" class="wave-timer">30</div>
-        </div>
-        <div class="timer-track">
-          <div id="timerFill" class="timer-fill" style="width:100%"></div>
-        </div>
-      </div>
-      <div id="bossBarWrap" class="boss-bar-wrap hidden">
-        <div id="bossPrimaryRow" class="boss-row">
-          <div class="boss-name">绯红断刃剑姬 · 烬羽</div>
-          <div class="bar bar-boss">
-            <div id="bossFill" class="bar-fill hp-fill" style="width:100%"></div>
-            <div id="bossHpText" class="bar-text boss-hp-text"></div>
+  <!-- 04 战斗 HUD（1:1 复刻 ui_p5_final.html #s-hud 不规则黑底白边战术栏） -->
+  <div id="hud" class="hud p5-hud-layer hidden">
+    <div class="hud-p5-top">
+      <div class="hud-p5-left">
+        <div class="hp-poly-edge">
+          <div class="hp-poly-inner">
+            <div id="hpFill" class="hp-poly-fill" style="width:100%"></div>
+            <div id="shFill" class="sh-poly-fill" style="width:0%"></div>
+            <span id="hpText" class="hp-poly-txt">30 / 30</span>
           </div>
         </div>
-        <div id="bossExtraBars" class="boss-extra-bars"></div>
-        <div id="bossCastSub" class="boss-cast-sub hidden"></div>
+        <div class="xp-poly-track">
+          <div id="xpFill" class="xp-poly-fill" style="width:0%"></div>
+        </div>
+        <div class="hud-p5-subline">
+          <b id="xpText">Lv.1</b>
+          <span class="hud-dot">·</span>
+          <span id="hudWeapons">兵装 2/6</span>
+          <span class="hud-dot">·</span>
+          <span id="hudKills">净化 0</span>
+        </div>
+      </div>
+
+      <div class="hud-p5-center">
+        <div class="p5-chip-wrap hud-wave-tag-wrap">
+          <div class="p5-chip hud-wave-tag-chip">
+            <span id="waveTitle">第 1 / 16 层</span>
+          </div>
+        </div>
+        <div id="timerCapsule" class="hud-p5-timer" aria-label="本层剩余倒计时">
+          <div class="hud-p5-timer-plate">
+            <span class="hud-p5-timer-tag" aria-hidden="true">TIME</span>
+            <span class="hud-p5-timer-main">
+              <b id="waveTimer">30</b><small class="hud-sec-unit">s</small>
+            </span>
+            <i id="timerFill" class="hud-timer-under" style="width:100%"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-p5-right">
+        <div id="matText" class="top-gem-pill">◇ 0</div>
+        <button id="hudAudioBtn" type="button" tabindex="-1" class="sys-mini-btn js-audio-vol-btn d-only" onclick="this.blur();openAudioModal()" title="调节背景音乐与音效音量">🔊 28%</button>
+        <button id="hudBgmBtn" type="button" tabindex="-1" class="sr-contract-hidden" onclick="this.blur();toggleSpireAudio()" title="一键静音 / 恢复音景">音景</button>
+        <button id="pauseBtn" type="button" tabindex="-1" class="sys-mini-btn" onclick="this.blur();togglePause()">⚙ 驻留</button>
       </div>
     </div>
 
-    <div class="hud-right">
-      <div class="hud-right-top">
-        <div id="matText" class="mat-num">◇ 0</div>
-        <button id="hudAudioBtn" type="button" tabindex="-1" class="icon-pill-btn" onclick="this.blur();openAudioModal()" title="调节背景音乐与音效音量">🔊 28%</button>
-        <button id="hudBgmBtn" type="button" tabindex="-1" class="icon-pill-btn d-only" onclick="this.blur();toggleSpireAudio()" title="一键静音 / 恢复音景">音景</button>
-        <button id="pauseBtn" type="button" tabindex="-1" class="pause-btn" onclick="this.blur();togglePause()">驻留</button>
+    <div id="bossBarWrap" class="hud-boss-p5 hidden">
+      <div class="p5-bar-edge">
+        <div class="p5-bar-fill">
+          <div id="bossPrimaryRow" class="boss-p5-row">
+            <div class="boss-p5-head">
+              <span class="boss-name">👑 绯红断刃剑姬 · 烬羽</span>
+              <span id="bossHpText" class="boss-hp-text"></span>
+            </div>
+            <div class="boss-p5-track">
+              <div id="bossFill" class="boss-p5-fill" style="width:100%"></div>
+            </div>
+          </div>
+          <div id="bossExtraBars" class="boss-extra-bars"></div>
+        </div>
       </div>
-      <small>WASD 走位  ·  Space / 右键 瞬步  ·  Esc 驻留</small>
+      <div id="bossCastSub" class="boss-cast-sub hidden"></div>
+    </div>
+
+    <div id="hudDashWrap" class="p5-chip-wrap hud-dash-p5 d-only" onclick="triggerSoulDash()" title="按 Space / Shift / 鼠标右键 发动角色专属青焰瞬步">
+      <div class="p5-chip on">
+        <div id="hudDashFill" class="hud-dash-fill-p5" style="width:100%"></div>
+        <span id="hudDashText" class="hud-dash-txt-p5">◆ 瞬步 [Space]</span>
+      </div>
     </div>
   </div>
 
-  <!-- 触屏端右下角拇指瞬步战技按钮（随 HUD 显隐联动） -->
+  <!-- 触屏端右下角拇指瞬步战技按钮 -->
   <button id="dashTouchBtn" type="button" tabindex="-1" class="dash-touch-btn" onclick="handleDashTouchClick(this)" aria-label="发动青焰瞬步">
     <span class="dash-touch-icon">◆</span>
     <span id="dashTouchLabel" class="dash-touch-lbl">瞬步</span>
   </button>
 
-  <!-- 暂停界面 -->
-  <div id="pauseMenu" class="overlay hidden">
-    <div class="modal-plaque">
-      <span class="kicker-pill">INTERMISSION  ·  魂灯驻留</span>
-      <h1>魂灯驻留</h1>
-      <p id="pauseInfo" class="sub"></p>
+  <!-- 暂停驻留弹窗（P5 黑底白边不规则战术面板） -->
+  <div id="pauseMenu" class="overlay p5-modal-backdrop hidden">
+    <div class="modal-plaque p5-modal-card">
+      <div class="p5-ransom-head" style="margin-bottom:8px">
+        <span class="p5-ransom-en">INTERMISSION</span>
+        <span class="p5-ransom-cn">魂灯驻留 · 战局整备</span>
+      </div>
+      <p id="pauseInfo" class="sub" style="margin:0 0 8px;text-align:left"></p>
       <div id="pauseStats" class="stats-row"></div>
       <div id="pauseSets" class="set-row"></div>
       <div class="pause-audio-strip" aria-label="快速音量调节">
@@ -143,295 +164,639 @@
       </div>
       <div class="pause-actions">
         <button class="btn btn-go" onclick="resumeGame()">◆ 继续登塔</button>
-        <button class="btn btn-sec" onclick="openCodex('weapons')">烬塔圣典</button>
-        <button class="btn btn-sec" onclick="restartRun()">重启本局</button>
-        <button class="btn btn-sec" onclick="openAudioModal()">音量调节</button>
-        <button id="pauseUiBtn" class="btn btn-sec" onclick="cycleUIPref()">视界模式 · 自动</button>
-        <button class="btn btn-sec" onclick="openLogModal()">诊断日志</button>
-        <button class="btn btn-sec" onclick="quitToMenu()">返回主殿</button>
+        <button class="btn btn-sec" onclick="openCodex('weapons')">📖 烬塔圣典</button>
+        <button class="btn btn-sec" onclick="restartRun()">↻ 重启本局</button>
+        <button class="btn btn-sec" onclick="openAudioModal()">🔊 音量调节</button>
+        <button class="btn btn-sec" onclick="openLogModal()">📜 诊断日志</button>
+        <button class="btn btn-sec" onclick="quitToMenu()">← 返回主殿</button>
       </div>
     </div>
   </div>
 
-  <!-- 《烬塔残响》黑曜镌金主界面 + 剧情模式(唯一主角) / 无尽模式(高定人物选项卡) -->
-  <div id="startMenu" class="overlay start-hub" data-stage="home">
-    <div id="heroKeyArtBg" class="start-bg-art"></div>
-    <div class="start-bg-vignette"></div>
-    <div class="start-frame-ornament" aria-hidden="true"></div>
+  <!-- 01 原画登录主殿 + 02 剧情/无尽选角启程整备（1:1 复刻 ui_p5_final.html #s-home / #s-select） -->
+  <div id="startMenu" class="overlay start-hub p5-stage" data-stage="home">
+    <div class="vista-layered-bg" aria-hidden="true">
+      <div id="heroKeyArtBg" class="vista-art-layer start-bg-art"></div>
+      <div class="vista-mist-layer"></div>
+      <div class="vista-p5-halftone start-substage-only"></div>
+      <div class="vista-slash-line start-substage-only"></div>
+      <div class="home-rain-fx start-home-only"></div>
+    </div>
 
-    <!-- 视图 A：极简书卷原画主界面 -->
-    <section id="menuHomeView" class="menu-stage">
-      <header class="home-topbar">
-        <button type="button" id="startVersionPill" class="home-ver-pill" onclick="openChangelogModal()" title="点击查阅烬塔纪元志版本记录" aria-label="当前版本 v2.2.3，点击查看版本更新记录"><span class="ver-prefix">ECHOES OF THE ASHEN SPIRE  ·  </span><span class="ver-dot" aria-hidden="true">✦</span><span class="ver-num">v2.2.3</span><span class="ver-log-tag"> · 纪元志</span></button>
-        <nav class="home-top-actions" aria-label="声音设置">
-          <button id="menuAudioBtn" class="ghost-pill-btn" onclick="openAudioModal()">🔊 音量 · 28%</button>
-          <button id="menuBgmBtn" class="ghost-pill-btn" onclick="toggleSpireAudio()">音景 · 开启</button>
-        </nav>
+    <!-- 01 视图 A：原画登录主殿（1:1 复刻 ui_p5_final.html #s-home：顶栏纪元与静音/设置，居中标题与三门扉，辅助入口置底） -->
+    <section id="menuHomeView" class="menu-stage home-stage-p5">
+      <header class="home-top-bar">
+        <button type="button" id="startVersionPill" class="home-ver-btn" onclick="openChangelogModal()">✦ <span class="ver-num">v2.2.4</span></button>
+        <div class="top-sys-icons">
+          <button id="menuAudioBtn" type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
+          <button type="button" class="sys-mini-btn" onclick="openSpireSettings()">⚙ 设置</button>
+        </div>
       </header>
-      <div class="home-centerpiece">
-        <p class="brand-en-sub">ECHOES OF THE ASHEN SPIRE</p>
-        <h1 class="home-main-title">烬塔残响</h1>
-        <p class="home-subtitle">第 999 次救赎</p>
-        <nav id="modePortalGrid" class="title-menu" aria-label="开始游戏">
-          <button id="continueStoryBtn" class="title-link primary hidden" onclick="continueSpireStory()"><span class="title-diamond" aria-hidden="true">◇</span><span>继续登塔<small id="continueStoryHint"></small></span></button>
-          <button id="portalStoryBtn" class="title-link primary" onclick="handleStoryPortalClick()"><span class="title-diamond" aria-hidden="true">◇</span><span id="newStoryLabel">提灯启程</span></button>
-          <button id="portalEndlessBtn" class="title-link" onclick="openMenuStage('endless')"><span class="title-diamond" aria-hidden="true">◇</span><span>无尽试炼</span></button>
-        </nav>
-        <p class="home-poem">雨还没有停。灯在等你。</p>
+      <div class="sr-contract-hidden" aria-hidden="true">
+        <button id="menuBgmBtn" type="button" onclick="toggleSpireAudio()">音景 · 开启</button>
       </div>
+
+      <div class="home-mid">
+        <div class="home-brand-block">
+          <p class="brand-en-sub">ECHOES OF THE ASHEN SPIRE</p>
+          <h1 class="home-main-title home-h1-nowrap">烬塔残响</h1>
+          <p class="home-subtitle-p5">第 999 次救赎</p>
+        </div>
+
+        <nav id="modePortalGrid" class="p5-vstack home-portal-stack" aria-label="开始游戏">
+          <button id="continueStoryBtn" type="button" class="p5-row p5-home-portal hidden" style="--poly-bar:var(--poly-bar-0)" onclick="continueSpireStory()">
+            <span class="p5-bar-edge">
+              <span class="p5-bar-fill">
+                <span class="p5-home-bar-main">
+                  <span class="p5-bar-title">◇ 继续登塔</span>
+                  <span id="continueStoryHint" class="p5-home-bar-sub"></span>
+                </span>
+              </span>
+            </span>
+          </button>
+
+          <button id="portalStoryBtn" type="button" class="p5-row p5-home-portal is-sel" style="--poly-bar:var(--poly-bar-1)" onclick="handleStoryPortalClick()">
+            <span class="p5-bar-edge">
+              <span class="p5-bar-fill">
+                <span class="p5-home-bar-main">
+                  <span class="p5-bar-title">◇ <span id="newStoryLabel">提灯启程</span></span>
+                  <span class="p5-home-bar-sub">剧情模式</span>
+                </span>
+              </span>
+            </span>
+          </button>
+
+          <button id="portalEndlessBtn" type="button" class="p5-row p5-home-portal" style="--poly-bar:var(--poly-bar-2)" onclick="openMenuStage('endless')">
+            <span class="p5-bar-edge">
+              <span class="p5-bar-fill">
+                <span class="p5-home-bar-main">
+                  <span class="p5-bar-title">◇ 无尽试炼</span>
+                  <span class="p5-home-bar-sub">六角色选角</span>
+                </span>
+              </span>
+            </span>
+          </button>
+        </nav>
+      </div>
+
       <footer class="home-footer">
-        <button id="homeOutfitBtn" class="footer-link-btn" onclick="openZeroOutfitModal()"><span aria-hidden="true">✦</span> 寻光战装</button>
-        <button class="footer-link-btn" onclick="openSpireGallery()"><span aria-hidden="true">▧</span> 演出预览</button>
-        <button class="footer-link-btn" onclick="openCodex('weapons')">烬塔圣典</button>
-        <button class="footer-link-btn home-settings" onclick="openSpireSettings()"><span aria-hidden="true">⚙</span> 设置</button>
+        <button type="button" class="footer-link-btn" onclick="openCodex('weapons')">📖 烬塔圣典</button>
+        <button type="button" class="footer-link-btn" onclick="openSpireGallery()"><span aria-hidden="true">▧</span> 演出回响</button>
+        <button type="button" class="footer-link-btn" onclick="openChangelogModal()">📜 纪元志</button>
         <span id="saveStatus" class="save-status" role="status"></span>
         <div id="uiModeTabs" class="hidden" aria-hidden="true"></div>
       </footer>
     </section>
 
-    <!-- 视图 B：剧情模式整备台（顶部模式选项卡 + 唯一主角档案选项卡 + 3×2对称厄度选项卡） -->
-    <section id="menuStoryView" class="menu-stage sub-stage hidden">
-      <header class="sub-topbar">
-        <button class="ghost-pill-btn back-pill" onclick="openMenuStage('home')">← 主界面</button>
-        <nav class="stage-mode-tabs" aria-label="模式切换选项卡">
-          <button type="button" class="stage-mode-tab active" onclick="openMenuStage('story')">
-            <span class="smt-roman">I</span><span>剧情模式</span>
-          </button>
-          <button type="button" class="stage-mode-tab" onclick="openMenuStage('endless')">
-            <span class="smt-roman">II</span><span>无尽模式</span>
-          </button>
-        </nav>
-        <button class="ghost-pill-btn gold" onclick="openCodex('heroes')">烬塔圣典</button>
+    <!-- 02 视图 B：剧情模式整备台（纯建筑空镜 + 左无框立绘 + 右 P5 不规则横条） -->
+    <section id="menuStoryView" class="menu-stage p5-sub-stage hidden">
+      <header class="top-status-bar">
+        <div class="tsb-left">
+          <span>🕯️ 登塔启程整备 · 剧情主线</span>
+        </div>
+        <div class="top-sys-icons">
+          <button type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
+          <button type="button" class="sys-mini-btn" onclick="openCodex('heroes')">📖 圣典</button>
+          <button type="button" class="sys-mini-btn" onclick="openSpireSettings()">⚙ 设置</button>
+        </div>
       </header>
 
-      <div class="story-stage-body">
-        <div id="storyHeroShowcase" class="hero-spotlight-card story-locked"></div>
+      <div class="split-stage">
+        <div id="storyHeroShowcase" class="portrait-showcase story-locked"></div>
 
-        <div class="depart-panel story-depart">
-          <div class="depart-block">
-            <p class="prep-overline">THE FIRST STEP</p>
-            <h2 class="prep-title">剧情模式</h2>
-            <p class="prep-location">第一幕 · 雨夜长桥</p>
-            <div class="prep-act-dots" aria-label="共四幕，当前第一幕"><span class="active">Ⅰ</span><i></i><span>Ⅱ</span><i></i><span>Ⅲ</span><i></i><span>Ⅳ</span></div>
-            <div class="section-overline-row"><span class="depart-label">试炼难度</span></div>
+        <div class="prep-right-col">
+          <div class="prep-head-line">
+            <div class="p5-ransom-head">
+              <span class="p5-ransom-en">NO.00 ZERO</span>
+              <span id="storyHeroHeadCn" class="p5-ransom-cn">零 · 提灯人</span>
+            </div>
+            <div class="prep-mode-chips">
+              <div class="p5-chip-wrap"><button type="button" class="p5-chip on" onclick="openMenuStage('story')"><span>剧情模式</span></button></div>
+              <div class="p5-chip-wrap"><button type="button" class="p5-chip" onclick="openMenuStage('endless')"><span>无尽试炼</span></button></div>
+            </div>
+          </div>
+          <div class="prep-trait-line">✦ 全属性均衡成长 · 初始收获 +4 · 主动瞬步【青焰折光】无敌穿弹</div>
+
+          <div id="storyPrepBars" class="p5-vstack"></div>
+
+          <!-- 保持自动化校验契约节点同步 -->
+          <div class="sr-contract-hidden" aria-hidden="true">
             <div id="storyDiffTabs" class="diff-tabs"></div>
-            <button id="moreDifficultyBtn" class="text-action" onclick="toggleMoreStoryDifficulties()" aria-expanded="false">更多难度 ＋</button>
+            <button id="moreDifficultyBtn" type="button" onclick="toggleMoreStoryDifficulties()" aria-expanded="false">更多难度 ＋</button>
             <div id="storyDiffDesc" class="diff-desc"></div>
           </div>
-          <p class="prep-controls">自动攻击 <span>·</span> 移动躲避 <span>·</span> 瞬步穿越</p>
-          <button id="startStoryBtn" class="btn btn-story-go" onclick="startStoryMode()">提灯启程 <span aria-hidden="true">→</span></button>
-          <p class="prep-save-note">抵达新层时自动记录，可从本层起点继续。</p>
+
+          <div class="bottom-action-row">
+            <div class="p5-big-sec-wrap">
+              <button type="button" onclick="openMenuStage('home')">← 返回主殿</button>
+            </div>
+            <div class="p5-cta-wrap">
+              <button id="startStoryBtn" type="button" onclick="startStoryMode()">◆ 提灯启程 →</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- 视图 C：无尽模式选角与整备台（六角色高定选项卡 + 角色档案选项卡 + 厄度/层域双栏选项卡） -->
-    <section id="menuEndlessView" class="menu-stage sub-stage endless-stage hidden">
-      <header class="sub-topbar">
-        <button class="ghost-pill-btn back-pill" onclick="openMenuStage('home')">← 主界面</button>
-        <nav class="stage-mode-tabs" aria-label="模式切换选项卡">
-          <button type="button" class="stage-mode-tab" onclick="openMenuStage('story')">
-            <span class="smt-roman">I</span><span>剧情模式</span>
-          </button>
-          <button type="button" class="stage-mode-tab active" onclick="openMenuStage('endless')">
-            <span class="smt-roman">II</span><span>无尽模式</span>
-          </button>
-        </nav>
-        <button class="ghost-pill-btn gold" onclick="openCodex('heroes')">烬塔圣典</button>
+    <!-- 02 视图 C：无尽试炼选角与整备台（1:1 复刻 ui_p5_final.html #s-select） -->
+    <section id="menuEndlessView" class="menu-stage p5-sub-stage endless-stage hidden">
+      <header class="top-status-bar">
+        <div class="tsb-left">
+          <span>⚔️ 登塔启程整备 · 无尽试炼</span>
+        </div>
+        <div class="top-sys-icons">
+          <button type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
+          <button type="button" class="sys-mini-btn" onclick="openCodex('heroes')">📖 圣典</button>
+          <button type="button" class="sys-mini-btn" onclick="openSpireSettings()">⚙ 设置</button>
+        </div>
       </header>
 
-      <!-- 六位誓约者高定人物选择选项卡 -->
-      <div class="char-roster-dock">
-        <div id="classGrid" class="roster-strip" role="tablist" aria-label="选择出战角色选项卡"></div>
-      </div>
+      <div class="split-stage">
+        <div class="portrait-showcase">
+          <div id="endlessPortraitFrame" class="portrait-card-frame"></div>
+          <div id="classGrid" class="hero-mini-strip roster-strip" role="tablist" aria-label="选择出战角色选项卡"></div>
+        </div>
 
-      <div class="endless-stage-body">
-        <div id="endlessHeroShowcase" class="hero-spotlight-card endless-spotlight"></div>
+        <div class="prep-right-col">
+          <div class="prep-head-line">
+            <div class="p5-ransom-head">
+              <span id="endlessHeroEn" class="p5-ransom-en">NO.01 JINYU</span>
+              <span id="endlessHeroCn" class="p5-ransom-cn">烬羽 · 绯红断刃</span>
+            </div>
+            <div class="prep-mode-chips">
+              <div class="p5-chip-wrap"><button type="button" class="p5-chip" onclick="openMenuStage('story')"><span>剧情模式</span></button></div>
+              <div class="p5-chip-wrap"><button type="button" class="p5-chip on" onclick="openMenuStage('endless')"><span>无尽试炼</span></button></div>
+            </div>
+          </div>
+          <div id="endlessTraitLine" class="prep-trait-line"></div>
 
-        <div class="depart-panel endless-depart">
-          <div class="prep-tabs" role="tablist" aria-label="试炼整备选项卡">
-            <button type="button" id="prepTabDiffBtn" class="prep-tab active" onclick="setEndlessPrepTab('diff')">
-              <span class="pt-top">STEP 01 · 试炼强度</span>
-              <span class="pt-row"><span class="pt-title">轮回厄度</span><span id="prepDiffSummaryTag" class="pt-badge">D1 · 守誓</span></span>
-            </button>
-            <button type="button" id="prepTabSceneBtn" class="prep-tab" onclick="setEndlessPrepTab('scene')">
-              <span class="pt-top">STEP 02 · 战场生态</span>
-              <span class="pt-row"><span class="pt-title">起始层域</span><span id="prepSceneSummaryTag" class="pt-badge">四幕轮转</span></span>
-            </button>
+          <div id="endlessPrepBars" class="p5-vstack"></div>
+
+          <!-- 保持自动化契约节点完整同步 -->
+          <div class="sr-contract-hidden" aria-hidden="true">
+            <div id="endlessHeroShowcase"></div>
+            <button type="button" id="prepTabDiffBtn" class="prep-tab active" onclick="setEndlessPrepTab('diff')"><span id="prepDiffSummaryTag">D1 · 守誓</span></button>
+            <button type="button" id="prepTabSceneBtn" class="prep-tab" onclick="setEndlessPrepTab('scene')"><span id="prepSceneSummaryTag">四幕轮转</span></button>
+            <div id="endlessDiffPane" class="prep-pane"><div id="diffTabs"></div><div id="diffDesc"></div></div>
+            <div id="endlessScenePane" class="prep-pane hidden"><div id="sceneTabs"></div><div id="sceneDesc"></div></div>
+            <div id="endlessSummaryLine"></div>
           </div>
 
-          <div id="endlessDiffPane" class="prep-pane">
-            <div id="diffTabs" class="diff-tabs"></div>
-            <div id="diffDesc" class="diff-desc"></div>
-          </div>
-
-          <div id="endlessScenePane" class="prep-pane hidden">
-            <div id="sceneTabs" class="scene-tabs"></div>
-            <div id="sceneDesc" class="diff-desc scene-desc-bar"></div>
-          </div>
-
-          <div class="depart-footer">
-            <div id="endlessSummaryLine" class="depart-summary-line">出击契约：烬羽  ·  D1 守誓  ·  四幕轮转</div>
-            <button id="startEndlessBtn" class="btn btn-go endless-go-btn" onclick="startEndlessMode()">◆  以「烬羽」开启无尽试炼  →</button>
+          <div class="bottom-action-row">
+            <div class="p5-big-sec-wrap">
+              <button type="button" onclick="openMenuStage('home')">← 返回主殿</button>
+            </div>
+            <div class="p5-cta-wrap">
+              <button id="startEndlessBtn" type="button" onclick="startEndlessMode()">◆ 以「烬羽」开启无尽试炼 →</button>
+            </div>
           </div>
         </div>
       </div>
     </section>
   </div>
 
-  <div id="presentationModal" class="overlay presentation-modal hidden" role="dialog" aria-modal="true" aria-labelledby="presentationTitle">
-    <section class="presentation-panel">
-      <header class="presentation-head"><div><p id="presentationOverline" class="prep-overline"></p><h2 id="presentationTitle"></h2></div><button id="presentationClose" class="quiet-button" onclick="closePresentationModal()" aria-label="关闭">关闭 ×</button></header>
+  <!-- 剧情回响放映室与阅读设置弹窗 -->
+  <div id="presentationModal" class="overlay presentation-modal p5-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="presentationTitle">
+    <section class="presentation-panel p5-modal-card">
+      <header class="presentation-head"><div><p id="presentationOverline" class="prep-overline"></p><h2 id="presentationTitle"></h2></div><button id="presentationClose" class="sys-mini-btn" onclick="closePresentationModal()" aria-label="关闭">✕ 关闭</button></header>
       <div id="presentationBody" class="presentation-body"></div>
     </section>
   </div>
 
-  <!-- 首次进游戏 / 主殿换装：主角「零」三套专属战装形象选择弹窗 -->
-  <div id="outfitModal" class="overlay log-modal outfit-modal hidden" role="dialog" aria-modal="true" aria-labelledby="outfitModalTitle" onclick="if(event.target===this)closeZeroOutfitModal()">
-    <div class="log-box outfit-modal-box">
-      <div class="log-head outfit-modal-head">
-        <div>
-          <span class="codex-kicker">ATTIRE SELECTION · 寻光战装择定</span>
-          <h2 id="outfitModalTitle">择定提灯形象 · 三套专属战装</h2>
-        </div>
-        <button type="button" class="icon-pill-btn" onclick="closeZeroOutfitModal()">✕ 关闭</button>
-      </div>
-      <p class="outfit-modal-sub">择定主角「零」的登塔形象，半身立绘、实机四帧动作精灵表与剧情对白将同步焕新（后续随时可在主界面或启程台一键换装）</p>
-      <div id="outfitModalGrid" class="outfit-modal-grid" role="radiogroup" aria-label="主角三套战装选择"></div>
-      <div class="outfit-modal-foot">
-        <button id="outfitDefaultToggle" type="button" class="ghost-pill-btn outfit-default-btn" onclick="selectZeroOutfitFromUI('default')">切换为初始守誓白衣</button>
-        <button id="outfitConfirmBtn" type="button" class="btn btn-go outfit-confirm-btn" onclick="confirmZeroOutfitModal()">◆ 身披此装 · 提灯启程 →</button>
-      </div>
+  <!-- 03 寻光战装衣橱（1:1 复刻 ui_p5_final.html #s-outfit） -->
+  <div id="outfitModal" class="overlay p5-stage outfit-stage hidden" role="dialog" aria-modal="true" aria-labelledby="outfitModalTitle">
+    <div class="vista-layered-bg" aria-hidden="true">
+      <div id="outfitVistaBg" class="vista-art-layer"></div>
+      <div class="vista-mist-layer"></div>
+      <div class="vista-p5-halftone"></div>
+      <div class="vista-slash-line"></div>
     </div>
-  </div>
 
-  <!-- 守誓遗物匣结算 -->
-  <div id="crateMenu" class="overlay hidden">
-    <span class="kicker-pill">RELIC COFFER  ·  守誓遗物匣</span>
-    <h2 id="crateTitle">开启守誓遗物匣</h2>
-    <p class="sub" style="margin-top:-4px">择定一件记忆遗物或守誓兵装收入行囊，亦可熔炼提纯为封魂晶石</p>
-    <div id="crateBox" class="crate-card-wrap"></div>
-  </div>
+    <header class="top-status-bar">
+      <div class="tsb-left">
+        <span>✦ ATTIRE · 寻光战装衣橱</span>
+      </div>
+      <div class="top-sys-icons">
+        <button type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
+        <button type="button" class="sys-mini-btn" onclick="closeZeroOutfitModal()">✕ 关闭</button>
+      </div>
+    </header>
 
-  <!-- 升级强化 -->
-  <div id="levelMenu" class="overlay hidden">
-    <span class="kicker-pill">SOUL RESONANCE  ·  魂灯共鸣</span>
-    <h2 id="lvlTitle">魂灯共鸣 · 择定记忆刻印</h2>
-    <div id="lvlCards" class="cards"></div>
-  </div>
-
-  <!-- 商店界面（残羽魔女·青羽的风语行商 · 设定集左侧半身立绘常驻对话） -->
-  <div id="shopMenu" class="overlay hidden">
-    <div class="shop-head">
-      <div class="shop-merchant-wrap">
-        <img id="shopMerchantPortrait" src="assets/spire/port_qingyu.jpg" alt="残羽魔女·青羽" class="shop-witch-portrait">
-        <div class="shop-title-group">
-          <h2 id="shopTitle">第 1 / 16 层 · 青羽的风语行商</h2>
-          <div id="shopSub" class="shop-sub">残羽魔女·青羽为你整备遗物 · 同名同阶兵装可共鸣升阶</div>
+    <div class="split-stage">
+      <div class="portrait-showcase">
+        <div class="portrait-card-frame">
+          <div class="pcf-back-slash" aria-hidden="true"></div>
+          <img id="outfitBigPort" src="" alt="主角战装立绘" class="bust-full outfit-pick-portrait" decoding="async">
+          <div class="pcf-chibi-badge" title="实机四帧动作形态">
+            <img id="outfitBigChibi" src="" alt="实机精灵" decoding="async">
+            <span>实机</span>
+          </div>
         </div>
       </div>
-      <div class="shop-wallet-group">
-        <span id="shopMat" class="wallet-pill">◇ 0</span>
-        <button id="rerollBtn" class="btn btn-sec d-only" onclick="rerollShop()">刷新陈列 (1)</button>
-        <button id="shopAudioBtn" class="icon-pill-btn" title="音量调节" onclick="openAudioModal()">🔊 28%</button>
-        <button class="icon-pill-btn" title="烬塔圣典" onclick="openCodex('weapons')">圣典</button>
-        <button class="icon-pill-btn" title="运行日志" onclick="openLogModal()">日志</button>
-      </div>
-    </div>
-    <button id="mobDrawerBtn" class="mob-drawer-btn m-only" onclick="toggleMobDrawer()">
-      <span id="mobQuickStats" class="mob-quick-stats">查看角色属性与兵装羁绊</span>
-      <span id="mobDrawerArrow" class="mob-drawer-pill">详情 ▾</span>
-    </button>
-    <div id="statsRow" class="stats-row"></div>
-    <div id="setRow" class="set-row"></div>
-    <div id="shopCards" class="cards"></div>
-    <div id="shopTrialBar" class="shop-trial-bar hidden" role="region" aria-label="蚀界生存试炼契约"></div>
-    <div class="shop-bottom">
-      <div style="flex:1;min-width:0">
-        <div class="arsenal-head">
-          <div id="slotHint" class="slot-hint">随身守誓兵装 (<span id="slotCount">0</span>/<span id="slotMax">6</span>)</div>
+
+      <div class="prep-right-col">
+        <div class="p5-ransom-head">
+          <span class="p5-ransom-en">ZERO ATTIRE</span>
+          <span id="outfitModalTitle" class="p5-ransom-cn">择定提灯形象 · 三套专属战装</span>
         </div>
-        <div id="weaponSlots" class="slots"></div>
+        <p class="prep-trait-line">半身立绘、实机四帧精灵与剧情对白同步焕新 · 随时可一键换装</p>
+
+        <div id="outfitModalGrid" class="p5-vstack" role="radiogroup" aria-label="主角三套战装选择"></div>
+
+        <button id="outfitDefaultToggle" type="button" class="p5-row outfit-default-row" style="--poly-ico:var(--poly-ico-1);--poly-bar:var(--poly-bar-3)" onclick="selectZeroOutfitFromUI('default')">
+          <span class="p5-ico-edge"><span class="p5-ico-inner">🕯️</span></span>
+          <span class="p5-notch" aria-hidden="true"></span>
+          <span class="p5-bar-edge">
+            <span class="p5-bar-fill">
+              <span class="p5-bar-top">
+                <span class="p5-bar-title">零号素衣 · 初始守誓白衣</span>
+                <span id="outfitDefaultState" class="bar-prog-badge">点击切换</span>
+              </span>
+              <span class="p5-bar-cat">塔底石棺苏醒时的守誓白袍与青焰提灯经典形象</span>
+            </span>
+          </span>
+        </button>
+
+        <div class="bottom-action-row">
+          <div class="p5-big-sec-wrap">
+            <button type="button" onclick="closeZeroOutfitModal()">← 返回</button>
+          </div>
+          <div class="p5-cta-wrap">
+            <button id="outfitConfirmBtn" type="button" onclick="confirmZeroOutfitModal()">◆ 身披此装 · 提灯启程 →</button>
+          </div>
+        </div>
       </div>
-      <button id="deskNextBtn" class="btn btn-go d-only" onclick="nextWave()">◆ 登往下一层 →</button>
-    </div>
-    <div class="mob-shop-bar m-only">
-      <button id="mobRerollBtn" class="btn btn-sec" onclick="rerollShop()">刷新 (1)</button>
-      <button id="mobNextBtn" class="btn btn-go" onclick="nextWave()">◆ 登往下一层 →</button>
     </div>
   </div>
 
-  <!-- 随身兵装详情检视与「合成 / 回收 / 取消」操作浮窗（Brotato 式防误触交互） -->
-  <div id="weaponActionModal" class="overlay wpn-action-modal hidden" role="dialog" aria-modal="true" aria-label="随身兵装操作" onclick="if(event.target===this)closeWeaponSlotModal()">
-    <div id="weaponActionCard" class="wpn-action-card"></div>
+  <!-- 06 守誓遗物匣结算（1:1 复刻 ui_p5_final.html #s-crate） -->
+  <div id="crateMenu" class="overlay p5-stage hidden">
+    <div class="vista-layered-bg" aria-hidden="true">
+      <div id="crateVistaBg" class="vista-art-layer"></div>
+      <div class="vista-mist-layer"></div>
+      <div class="vista-p5-halftone"></div>
+      <div class="vista-slash-line"></div>
+    </div>
+
+    <header class="top-status-bar">
+      <div class="tsb-left">
+        <span>🎁 战利品秘匣开启</span>
+        <span id="crateMat" class="top-gem-pill">◇ 0</span>
+      </div>
+      <div class="top-sys-icons">
+        <button type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
+        <button type="button" class="sys-mini-btn" onclick="openCodex('items')">📖 圣典</button>
+      </div>
+    </header>
+
+    <div class="desk-enriched-stage">
+      <div id="crateHeroStandee" class="desk-hero-standee"></div>
+      <div class="center-bars-stage">
+        <div class="p5-ransom-head">
+          <span class="p5-ransom-en">TREASURE</span>
+          <span id="crateTitle" class="p5-ransom-cn">守誓遗物匣</span>
+        </div>
+        <div id="crateBox" class="p5-vstack"></div>
+        <div id="crateBottomActions" class="bottom-action-row">
+          <div id="crateMeltWrap" class="p5-big-sec-wrap">
+            <button id="crateMeltBtn" type="button" onclick="recycleSelectedCrateChoice()">♻️ 熔炼折现 +◇0</button>
+          </div>
+          <div class="p5-cta-wrap">
+            <button id="crateTakeMainBtn" type="button" onclick="takeSelectedCrateChoice()">◆ 收入行囊 →</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- 五阶神话兵装二选一进化祭坛弹窗 -->
-  <div id="evoModal" class="overlay evo-modal hidden">
-    <span class="kicker-pill">MYTHIC AWAKENING  ·  五阶神话二选一进化</span>
-    <h2 id="evoTitle">守誓兵装晋升五阶神话 · 择定进化形态</h2>
-    <p id="evoSub" class="sub" style="margin-top:-4px">择定唯一神话觉醒方向，永久重塑兵装圣徽外观与专属战斗机制</p>
-    <div id="evoChoices" class="crate-card-wrap evo-card-wrap"></div>
+  <!-- 05 升级强化 4选1（1:1 复刻 ui_p5_final.html #s-lvl：点选暗红高亮 + 底部重铸与确认双按钮） -->
+  <div id="levelMenu" class="overlay p5-stage hidden">
+    <div class="vista-layered-bg" aria-hidden="true">
+      <div id="lvlVistaBg" class="vista-art-layer"></div>
+      <div class="vista-mist-layer"></div>
+      <div class="vista-p5-halftone"></div>
+      <div class="vista-slash-line"></div>
+    </div>
+
+    <header class="top-status-bar">
+      <div class="tsb-left">
+        <span id="lvlTopLabel">✦ 魂灯晋升</span>
+        <span id="lvlMat" class="top-gem-pill">◇ 0</span>
+      </div>
+      <div class="top-sys-icons">
+        <button type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
+        <button type="button" class="sys-mini-btn" onclick="openCodex('supplies')">📖 圣典</button>
+      </div>
+    </header>
+
+    <div class="desk-enriched-stage">
+      <div id="lvlHeroStandee" class="desk-hero-standee"></div>
+      <div class="center-bars-stage">
+        <div class="p5-ransom-head p5-ransom-center">
+          <span class="p5-ransom-en">LEVEL UP!</span>
+          <span id="lvlTitle" class="p5-ransom-cn">择一铭刻共鸣</span>
+        </div>
+        <div id="lvlCards" class="p5-vstack"></div>
+        <div id="lvlBottomActions" class="bottom-action-row">
+          <div class="p5-big-sec-wrap">
+            <button id="lvlRerollBtn" type="button" onclick="rerollLevelUpChoices()">↻ 重铸刻印 · ◇8</button>
+          </div>
+          <div class="p5-cta-wrap">
+            <button id="lvlConfirmBtn" type="button" onclick="confirmSelectedLevelUp()">◆ 确认刻印 →</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- 结算界面 -->
-  <div id="endMenu" class="overlay hidden">
-    <div class="modal-plaque">
-      <span class="kicker-pill">CYCLE RECORD  ·  轮回终章</span>
-      <h1 id="endTitle">青焰魂灯黯然熄灭</h1>
-      <p id="endDesc" class="sub"></p>
-      <div id="endSummaryPanel" class="end-summary-panel"></div>
-      <div class="end-actions">
-        <button id="endlessBtn" class="btn btn-go hidden" onclick="continueEndless()">◆ 步入无尽深渊轮回 →</button>
-        <button id="retryWaveBtn" class="btn btn-go hidden" onclick="retryFailedWave()">重新挑战本层</button>
-        <button id="abandonRestartBtn" class="btn btn-danger hidden" onclick="abandonAndRestart()">放弃并从头开始</button>
-        <button id="endMainMenuBtn" class="btn btn-go" onclick="showStart()">返回主殿</button>
-        <button class="btn btn-sec" onclick="openCodex('monsters')">查阅圣典</button>
-        <button class="btn btn-sec" onclick="openLogModal()">导出本局日志</button>
+  <!-- 07 风亭行商 & 08 角色行囊总览（1:1 复刻 ui_p5_final.html #s-shop / #s-overview） -->
+  <div id="shopMenu" class="overlay p5-stage hidden" data-hub-tab="shop">
+    <div class="vista-layered-bg" aria-hidden="true">
+      <div id="shopBgScene" class="vista-art-layer"></div>
+      <div id="shopQingyuAtmo" class="shop-qingyu-atmo"></div>
+      <div class="vista-mist-layer"></div>
+      <div class="vista-p5-halftone"></div>
+      <div class="vista-slash-line"></div>
+    </div>
+
+    <!-- 顶部极简状态栏 -->
+    <header class="top-status-bar">
+      <div class="tsb-left">
+        <img id="shopMerchantPortrait" src="assets/spire/port_qingyu.jpg" alt="青羽 · 风亭行商" class="hidden">
+        <span id="shopTitle">🕯️ 第 1 / 16 层 · 青羽风亭</span>
+        <span id="shopMat" class="top-gem-pill">◇ 0</span>
+      </div>
+      <div class="top-sys-icons">
+        <button id="shopAudioBtn" type="button" class="sys-mini-btn js-audio-vol-btn" title="音量调节" onclick="openAudioModal()">🔊 28%</button>
+        <button type="button" class="sys-mini-btn" title="烬塔圣典" onclick="openCodex('weapons')">📖 圣典</button>
+        <button type="button" class="sys-mini-btn" title="运行日志" onclick="openLogModal()">📜 日志</button>
+      </div>
+    </header>
+
+    <!-- 兼容后台属性同步节点 -->
+    <div class="sr-contract-hidden" aria-hidden="true">
+      <button id="mobDrawerBtn" type="button" onclick="toggleMobDrawer()"><span id="mobQuickStats"></span><span id="mobDrawerArrow"></span></button>
+      <div id="statsRow"></div>
+      <div id="setRow"></div>
+    </div>
+
+    <!-- 页签一：🛒 行商购物主舞台（桌面左青羽立绘+6槽纵列 / 右货架4条+出发；竖屏上货架 / 中6槽3x2 / 下出发） -->
+    <div id="shopPaneMain" class="hub-pane shop-main-grid is-active">
+      <div class="shop-left-stage">
+        <div class="desk-shop-standee">
+          <div class="dss-art-frame">
+            <div id="shopQingyuPlaque" class="dss-quote" title="点击与青羽交谈">
+              <b><span>青羽 · 风语行商</span><small style="font-size:10px;opacity:0.82">💬 点此交谈</small></b>
+              <div id="shopSub">残羽魔女·青羽为你整备遗物 · 同名同阶兵装可共鸣升阶</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shop-wpn-box">
+          <div class="arsenal-head-row">
+            <div class="p5-ransom-head arsenal-desk-ransom">
+              <span class="p5-ransom-en">ARSENAL</span>
+              <span class="p5-ransom-cn">随身主武器 · 点槽合成/回收</span>
+            </div>
+            <div id="slotHint" class="arsenal-mob-title">⚔️ 随身主武器 (<span id="slotCount">0</span>/<span id="slotMax">6</span>) · 点槽合成/回收</div>
+            <button id="shopQuickMergeBtn" type="button" class="quick-merge-btn hidden" onclick="quickMergeAllWeapons()">✦ 一键合阶</button>
+          </div>
+          <div id="weaponSlots" class="named-wpn-grid6"></div>
+        </div>
+      </div>
+
+      <div class="shop-right-stage">
+        <div class="p5-ransom-head shop-logo-head">
+          <span class="p5-ransom-en">PAVILION SHOP</span>
+          <span class="p5-ransom-cn">风亭行商 · 青羽整备</span>
+        </div>
+        <div id="shopBriefStats" class="shop-brief-stats" onclick="setShopHubTab('overview')" role="button" tabindex="0" aria-label="查看角色与行囊完整属性"></div>
+        <div id="shopTrialBar" class="shop-p5-trial hidden" role="region" aria-label="蚀界生存试炼契约"></div>
+        <div id="shopCards" class="p5-vstack shop-shelf-list"></div>
+        <div class="bottom-action-row shop-act-row">
+          <div class="p5-big-sec-wrap">
+            <button id="rerollBtn" type="button" onclick="rerollShop()">↻ 刷新 (1)</button>
+          </div>
+          <div id="shopInlineTrialWrap" class="p5-big-sec-wrap shop-inline-trial-wrap hidden">
+            <button id="shopInlineTrialBtn" type="button" onclick="toggleSurvivalTrial()">🕯️ 开启试炼</button>
+          </div>
+          <div class="p5-cta-wrap">
+            <button id="deskNextBtn" type="button" onclick="nextWave()">◆ 登往下一层 →</button>
+          </div>
+        </div>
+        <div class="sr-contract-hidden" aria-hidden="true">
+          <button id="mobRerollBtn" type="button" onclick="rerollShop()">↻ 刷新 (1)</button>
+          <button id="mobNextBtn" type="button" onclick="nextWave()">◆ 登往下一层 →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 页签二：🎒 角色与行囊三合一总览（左英雄立绘+羁绊+6主武器 | 右12项属性+已购圣遗物） -->
+    <div id="shopPaneOverview" class="hub-pane overview-stage">
+      <div class="ov-left-col">
+        <div id="ovHeroCard" class="ov-hero-card"></div>
+        <div class="ov-section-card ov-wpn-under-hero">
+          <div class="ov-sec-head">
+            <span id="ovWpnTitle">⚔️ 随身主武器 (0/6) · 点槽直接合成/回收</span>
+            <button id="ovQuickMergeBtn" type="button" class="quick-merge-btn hidden" onclick="quickMergeAllWeapons()">✦ 一键合阶</button>
+          </div>
+          <div id="ovWeaponSlots" class="ov-wpn-6grid"></div>
+        </div>
+      </div>
+
+      <div class="ov-right-col">
+        <div class="ov-section-card ov-stats-panel">
+          <div class="ov-sec-head">
+            <span>📊 12 项核心战力属性面板</span>
+            <span style="font-size:10.5px;color:var(--p5-gold);font-weight:700">实时计入羁绊与遗物</span>
+          </div>
+          <div id="ovStats12Grid" class="ov-stats-12"></div>
+        </div>
+
+        <div class="ov-section-card ov-relics-panel">
+          <div class="ov-sec-head">
+            <span id="ovRelicTitle">🎒 已购记忆遗物 (0 件)</span>
+            <div class="ov-col-switch">
+              <button id="ovColBtn2" type="button" class="ov-col-btn on" onclick="setOverviewRelicCols(2)">双列 2/行</button>
+              <button id="ovColBtn1" type="button" class="ov-col-btn" onclick="setOverviewRelicCols(1)">单列 1/行</button>
+            </div>
+          </div>
+          <div id="ovRelicGrid" class="ov-relic-grid cols-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部页签切换坞（桌面双页签 / 手机端「购物 · 行囊 · 前往下一层」三键同排） -->
+    <div id="shopHubDock" class="hub-bottom-dock">
+      <button id="hubTabShopBtn" type="button" class="hub-tab-btn on" onclick="setShopHubTab('shop')">
+        <span class="hub-lbl-desk">🛒 行商购物</span><span class="hub-lbl-mob">🛒 购物</span>
+      </button>
+      <button id="hubTabOverviewBtn" type="button" class="hub-tab-btn" onclick="setShopHubTab('overview')">
+        <span id="hubTabOverviewLabel"><span class="hub-lbl-desk">🎒 角色与行囊</span><span class="hub-lbl-mob">🎒 行囊</span></span>
+      </button>
+      <button id="dockNextBtn" type="button" class="hub-tab-btn hub-dock-next-btn" onclick="nextWave()">
+        <span id="dockNextLabel">◆ 前往下一层</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 随身兵装 / 羁绊 / 遗物 / 圣典词条详情浮窗（P5 黑底白边弹窗） -->
+  <div id="weaponActionModal" class="overlay p5-modal-backdrop wpn-action-modal hidden" role="dialog" aria-modal="true" aria-label="随身兵装操作" onclick="if(event.target===this)closeWeaponSlotModal()">
+    <div id="weaponActionCard" class="wpn-action-card p5-modal-card"></div>
+  </div>
+
+  <!-- 06 五阶神话兵装二选一进化祭坛 -->
+  <div id="evoModal" class="overlay p5-stage evo-modal hidden">
+    <div class="vista-layered-bg" aria-hidden="true">
+      <div id="evoVistaBg" class="vista-art-layer"></div>
+      <div class="vista-mist-layer"></div>
+      <div class="vista-p5-halftone"></div>
+      <div class="vista-slash-line"></div>
+    </div>
+
+    <header class="top-status-bar">
+      <div class="tsb-left">
+        <span>★ 五阶神话超限觉醒</span>
+        <span id="evoMat" class="top-gem-pill">◇ 0</span>
+      </div>
+      <div class="top-sys-icons">
+        <button type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
+      </div>
+    </header>
+
+    <div class="desk-enriched-stage">
+      <div id="evoHeroStandee" class="desk-hero-standee"></div>
+      <div class="center-bars-stage">
+        <div class="p5-ransom-head">
+          <span class="p5-ransom-en">AWAKENING</span>
+          <span id="evoTitle" class="p5-ransom-cn">五阶神话二选一</span>
+        </div>
+        <p id="evoSub" class="prep-trait-line" style="margin:0">择定唯一神话觉醒方向，永久重塑兵装圣徽外观与专属战斗机制</p>
+        <div id="evoChoices" class="p5-vstack"></div>
+        <div id="evoBottomActions" class="bottom-action-row single-cta">
+          <div class="p5-cta-wrap">
+            <button id="evoConfirmMainBtn" type="button" onclick="confirmSelectedEvolution()">◆ 确认神话觉醒 →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 战绩结算（1:1 复刻 ui_p5_final.html #s-end） -->
+  <div id="endMenu" class="overlay p5-stage end-stage-p5 hidden">
+    <div class="vista-layered-bg" aria-hidden="true">
+      <div id="endVistaBg" class="vista-art-layer end-vista-bg"></div>
+      <div class="vista-mist-layer"></div>
+      <div class="vista-p5-halftone"></div>
+      <div class="vista-slash-line"></div>
+    </div>
+
+    <header class="top-status-bar">
+      <div class="tsb-left">
+        <span>🏁 轮回终章 · 战绩结算</span>
+      </div>
+      <div class="top-sys-icons">
+        <button type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
+        <button type="button" class="sys-mini-btn" onclick="openCodex('monsters')">📖 查阅圣典</button>
+        <button type="button" class="sys-mini-btn" onclick="openLogModal()">📜 导出日志</button>
+      </div>
+    </header>
+
+    <div class="desk-enriched-stage end-enriched-stage">
+      <div id="endHeroStandee" class="desk-hero-standee"></div>
+      <div class="center-bars-stage end-main-stage">
+        <div class="p5-ransom-head">
+          <span id="endRansomEn" class="p5-ransom-en">CYCLE RECORD</span>
+          <h1 id="endTitle" class="p5-ransom-cn" style="margin:0">青焰魂灯黯然熄灭</h1>
+        </div>
+        <p id="endDesc" class="end-p5-desc"></p>
+        <div id="endSummaryPanel" class="end-summary-panel"></div>
+        <div class="bottom-action-row end-act-row">
+          <div id="endMainMenuWrap" class="p5-big-sec-wrap">
+            <button id="endMainMenuBtn" type="button" onclick="showStart()">← 返回主殿</button>
+          </div>
+          <div id="endRetryWrap" class="p5-cta-wrap hidden">
+            <button id="retryWaveBtn" type="button" class="hidden" onclick="retryFailedWave()">↻ 重试本层 →</button>
+          </div>
+          <div id="endEndlessWrap" class="p5-cta-wrap hidden">
+            <button id="endlessBtn" type="button" class="hidden" onclick="continueEndless()">◆ 步入无尽深渊轮回 →</button>
+          </div>
+          <button id="abandonRestartBtn" type="button" class="hidden" onclick="abandonAndRestart()">放弃并从头开始</button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- 赛后结算：兵装 / 魔物 / 遗物战绩与档案详情弹窗 -->
-  <div id="endDetailModal" class="overlay log-modal end-detail-modal hidden" role="dialog" aria-modal="true" aria-labelledby="endDetailTitle" onclick="if(event.target===this)closeEndSummaryDetail()">
-    <div class="log-box end-detail-box">
+  <div id="endDetailModal" class="overlay p5-modal-backdrop log-modal end-detail-modal hidden" role="dialog" aria-modal="true" aria-labelledby="endDetailTitle" onclick="if(event.target===this)closeEndSummaryDetail()">
+    <div class="log-box end-detail-box p5-modal-card">
       <div class="log-head end-detail-head">
         <div class="end-detail-head-meta">
           <span id="endDetailKicker" class="codex-kicker">CYCLE COMBAT DOSSIER</span>
           <h2 id="endDetailTitle">实战详情</h2>
         </div>
-        <button type="button" class="icon-pill-btn" onclick="closeEndSummaryDetail()">✕ 关闭</button>
+        <button type="button" class="sys-mini-btn" onclick="closeEndSummaryDetail()">✕ 关闭</button>
       </div>
       <div id="endDetailBody" class="end-detail-body"></div>
       <div id="endDetailFoot" class="log-actions end-detail-foot"></div>
     </div>
   </div>
 
-  <!-- 烬塔圣典全息图鉴百科弹窗 -->
-  <div id="codexModal" class="overlay codex-modal hidden">
-    <div class="codex-box">
-      <div class="codex-head">
-        <div class="codex-head-titles">
-          <span class="codex-kicker">ASHEN SPIRE COMPENDIUM</span>
-          <h2>《烬塔残响》圣典原画全图鉴</h2>
+  <!-- 09 烬塔圣典全图鉴（1:1 复刻 ui_p5_final.html #s-codex · 手机端与电脑桌面端常驻左右翻页箭头） -->
+  <div id="codexModal" class="overlay p5-stage codex-modal hidden">
+    <div class="vista-layered-bg" aria-hidden="true">
+      <div id="codexVistaBg" class="vista-art-layer codex-vista-bg"></div>
+      <div class="vista-mist-layer"></div>
+      <div class="vista-p5-halftone"></div>
+      <div class="vista-slash-line"></div>
+    </div>
+
+    <header class="top-status-bar">
+      <div class="tsb-left">
+        <span>📖 烬塔圣典 · 全图鉴检索</span>
+      </div>
+      <div class="top-sys-icons">
+        <button type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
+        <button type="button" class="sys-mini-btn" onclick="closeCodex()">✕ 关闭</button>
+      </div>
+    </header>
+
+    <div class="desk-enriched-stage codex-enriched-stage">
+      <div class="desk-hero-standee codex-standee">
+        <div id="codexStandeeFrame" class="dhs-frame">
+          <img id="codexStandeeImg" src="assets/spire/ui_art/ui_bust_qingyu.png" alt="青羽 · 烬塔守卷人" class="dhs-bust-img" decoding="async">
+          <div class="dss-quote">
+            <b>青羽 · 烬塔守卷人</b>
+            “塔中每一刃兵装、每一枚圣遗物，皆刻着过往轮回的真名。点击任意词条可调阅完整档案与五阶神话觉醒分支。”
+          </div>
         </div>
-        <button class="icon-pill-btn" onclick="closeCodex()">✕ 关闭</button>
       </div>
-      <div id="codexTabs" class="codex-tabs" role="tablist"></div>
-      <div id="codexFilters" class="codex-filters"></div>
-      <div id="codexBanner" class="codex-banner"></div>
-      <div id="codexScroll" class="codex-scroll">
-        <div id="codexGrid" class="codex-grid"></div>
+
+      <div class="center-bars-stage codex-main-stage">
+        <div id="codexFilterBar" class="codex-cat-bar">
+          <button id="codexPrevBtn" type="button" class="p5-tri-btn prev codex-cat-arrow" onclick="scrollCodexFilters(-1)" title="向左翻阅分类" aria-label="向左翻阅分类"><i></i></button>
+          <div id="codexFilters" class="codex-cat-track codex-filters"></div>
+          <button id="codexNextBtn" type="button" class="p5-tri-btn next codex-cat-arrow" onclick="scrollCodexFilters(1)" title="向右翻阅分类" aria-label="向右翻阅分类"><i></i></button>
+        </div>
+        <div id="codexBanner" class="codex-banner"></div>
+        <div id="codexScroll" class="codex-scroll">
+          <div id="codexGrid" class="codex-grid p5-vstack"></div>
+        </div>
       </div>
+    </div>
+
+    <div class="hub-bottom-dock codex-bottom-dock">
+      <div id="codexTabs" class="codex-dock-tabs" role="tablist"></div>
+      <button type="button" class="hub-tab-btn codex-back-btn" onclick="closeCodex()"><span>← 返回</span></button>
     </div>
   </div>
 
   <!-- 版本纪元志弹窗 -->
-  <div id="changelogModal" class="overlay log-modal hidden">
-    <div class="log-box changelog-box">
+  <div id="changelogModal" class="overlay p5-modal-backdrop log-modal hidden">
+    <div class="log-box changelog-box p5-modal-card">
       <div class="log-head">
-        <h2 id="changelogTitle">烬塔纪元志 · v2.2.3</h2>
-        <button class="icon-pill-btn" onclick="closeChangelogModal()">✕ 关闭</button>
+        <h2 id="changelogTitle">烬塔纪元志 · v2.3.0</h2>
+        <button class="sys-mini-btn" onclick="closeChangelogModal()">✕ 关闭</button>
       </div>
       <div id="changelogList" class="changelog-list"></div>
       <div class="log-actions">
@@ -441,11 +806,11 @@
   </div>
 
   <!-- 诊断与运行日志导出弹窗 -->
-  <div id="logModal" class="overlay log-modal hidden">
-    <div class="log-box">
+  <div id="logModal" class="overlay p5-modal-backdrop log-modal hidden">
+    <div class="log-box p5-modal-card">
       <div class="log-head">
         <h2>运行与帧率诊断日志</h2>
-        <button class="icon-pill-btn" onclick="closeLogModal()">✕ 关闭</button>
+        <button class="sys-mini-btn" onclick="closeLogModal()">✕ 关闭</button>
       </div>
       <div id="logSummary" class="log-summary"></div>
       <pre id="logView" class="log-view"></pre>
@@ -459,11 +824,11 @@
   </div>
 
   <!-- 音景与音效独立音量调节弹窗 -->
-  <div id="audioModal" class="overlay log-modal audio-modal hidden">
-    <div class="log-box audio-box">
+  <div id="audioModal" class="overlay p5-modal-backdrop log-modal audio-modal hidden">
+    <div class="log-box audio-box p5-modal-card">
       <div class="log-head">
         <h2>音景与音效调节</h2>
-        <button class="icon-pill-btn" onclick="closeAudioModal()">✕ 关闭</button>
+        <button class="sys-mini-btn" onclick="closeAudioModal()">✕ 关闭</button>
       </div>
       <div class="audio-ctrl-list">
         <div class="audio-ctrl-row">
@@ -498,29 +863,30 @@
   </div>
 </div>
 
-  <!-- 模块化脚本按依赖拓扑顺序统一 defer 加载（v2.2.3） -->
-  <script defer src="src/core/env.js?v=2.2.3"></script>
-  <script defer src="src/core/logger.js?v=2.2.3"></script>
-  <script defer src="src/data/scenes.js?v=2.2.3"></script>
-  <script defer src="src/data/boss_portraits.js?v=2.2.3"></script>
-  <script defer src="src/world/textures.js?v=2.2.3"></script>
-  <script defer src="src/ui/viewport.js?v=2.2.3"></script>
-  <script defer src="src/core/audio.js?v=2.2.3"></script>
-  <script defer src="src/data/arsenal.js?v=2.2.3"></script>
-  <script defer src="src/render/relic_sprites.js?v=2.2.3"></script>
-  <script defer src="src/data/monsters.js?v=2.2.3"></script>
-  <script defer src="src/ui/codex.js?v=2.2.3"></script>
-  <script defer src="src/data/story-v2.js?v=2.2.3"></script>
-  <script defer src="src/game/director.js?v=2.2.3"></script>
-  <script defer src="src/ui/menus.js?v=2.2.3"></script>
-  <script defer src="src/ui/presentation.js?v=2.2.3"></script>
-  <script defer src="src/game/spawner.js?v=2.2.3"></script>
-  <script defer src="src/game/combat.js?v=2.2.3"></script>
-  <script defer src="src/game/boss_ai.js?v=2.2.3"></script>
-  <script defer src="src/game/update.js?v=2.2.3"></script>
-  <script defer src="src/ui/shop.js?v=2.2.3"></script>
-  <script defer src="src/render/sprites.js?v=2.2.3"></script>
-  <script defer src="src/render/vfx_overlays.js?v=2.2.3"></script>
-  <script defer src="src/render/renderer.js?v=2.2.3"></script>
+  <!-- 模块化脚本按依赖拓扑顺序统一 defer 加载（v2.2.4） -->
+  <script defer src="src/core/env.js?v=2.2.4"></script>
+  <script defer src="src/core/perf.js?v=2.2.4"></script>
+  <script defer src="src/core/logger.js?v=2.2.4"></script>
+  <script defer src="src/data/scenes.js?v=2.2.4"></script>
+  <script defer src="src/data/boss_portraits.js?v=2.2.4"></script>
+  <script defer src="src/world/textures.js?v=2.2.4"></script>
+  <script defer src="src/ui/viewport.js?v=2.2.4"></script>
+  <script defer src="src/core/audio.js?v=2.2.4"></script>
+  <script defer src="src/data/arsenal.js?v=2.2.4"></script>
+  <script defer src="src/render/relic_sprites.js?v=2.2.4"></script>
+  <script defer src="src/data/monsters.js?v=2.2.4"></script>
+  <script defer src="src/ui/codex.js?v=2.2.4"></script>
+  <script defer src="src/data/story-v2.js?v=2.2.4"></script>
+  <script defer src="src/game/director.js?v=2.2.4"></script>
+  <script defer src="src/ui/menus.js?v=2.2.4"></script>
+  <script defer src="src/ui/presentation.js?v=2.2.4"></script>
+  <script defer src="src/game/spawner.js?v=2.2.4"></script>
+  <script defer src="src/game/combat.js?v=2.2.4"></script>
+  <script defer src="src/game/boss_ai.js?v=2.2.4"></script>
+  <script defer src="src/game/update.js?v=2.2.4"></script>
+  <script defer src="src/ui/shop.js?v=2.2.4"></script>
+  <script defer src="src/render/sprites.js?v=2.2.4"></script>
+  <script defer src="src/render/vfx_overlays.js?v=2.2.4"></script>
+  <script defer src="src/render/renderer.js?v=2.2.4"></script>
 </body>
 </html>

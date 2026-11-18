@@ -53,8 +53,14 @@ function refreshSpireHome() {
   const fresh = document.getElementById('portalStoryBtn');
   const label = document.getElementById('newStoryLabel');
   const hint = document.getElementById('continueStoryHint');
-  if (btn) btn.classList.toggle('hidden', !saved);
-  if (fresh) fresh.classList.toggle('primary', !saved);
+  if (btn) {
+    btn.classList.toggle('hidden', !saved);
+    btn.classList.toggle('is-sel', !!saved);
+  }
+  if (fresh) {
+    fresh.classList.remove('primary');
+    fresh.classList.toggle('is-sel', !saved);
+  }
   if (label) label.textContent = saved ? '新的轮回' : '提灯启程';
   if (hint && saved) {
     const n = saved.checkpoint.wave;
@@ -148,7 +154,6 @@ function openSpireSettings() {
   const actions = document.createElement('div'); actions.className = 'settings-links';
   [
     ['切换环境音景', () => toggleSpireAudio()],
-    ['视界模式', () => { cycleUIPref(); openSpireSettings(); }],
     [typeof APP_VERSION !== 'undefined' ? `版本记录 · ${APP_VERSION}` : '版本记录', () => { closePresentationModal(); openChangelogModal(); }],
     ['运行诊断', () => { closePresentationModal(); openLogModal(); }]
   ].forEach(([text, fn]) => { const b = document.createElement('button'); b.className = 'quiet-button'; b.textContent = text; b.onclick = fn; actions.appendChild(b); });

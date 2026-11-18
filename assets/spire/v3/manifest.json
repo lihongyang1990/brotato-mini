@@ -84,6 +84,36 @@
       "height": 941,
       "bytes": 3050575,
       "sha256": "ddbae094d757dc556c73282d5b9f09dc13d52e0230bb872024657a95f2fca331"
+    },
+    {
+      "id": "colossus-p2-furnace",
+      "file": "assets/spire/v3/colossus-p2-furnace.jpg",
+      "size": "1672x941",
+      "role": "倒悬机神·伽蓝重装态 二阶段觉醒分镜1（胸甲爆裂·暗日熔炉轰鸣）"
+    },
+    {
+      "id": "colossus-p2-awaken",
+      "file": "assets/spire/v3/colossus-p2-awaken.jpg",
+      "size": "1672x941",
+      "role": "歼灭神枢·裂胸巨锯魔神态 二阶段高燃立绘主视觉"
+    },
+    {
+      "id": "crimson-p2-lantern",
+      "file": "assets/spire/v3/crimson-p2-lantern.jpg",
+      "size": "1672x941",
+      "role": "荒祠古祟·绯狱妖主 二阶段分镜1（水底荒祠地下石殿·玄铁封魔龛爆裂）"
+    },
+    {
+      "id": "crimson-p2-unsheathe",
+      "file": "assets/spire/v3/crimson-p2-unsheathe.jpg",
+      "size": "1672x941",
+      "role": "荒祠古祟·绯狱妖主 二阶段分镜2（破龛裂面·黑曜鬼角与五勾玉神环觉醒）"
+    },
+    {
+      "id": "crimson-p2-awaken",
+      "file": "assets/spire/v3/crimson-p2-awaken.jpg",
+      "size": "1672x941",
+      "role": "荒祠古祟·绯狱妖主 二阶段高燃主视觉（血月万冢妖刀·黑角夜叉王临世）"
     }
   ]
 }

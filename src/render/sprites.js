@@ -1146,8 +1146,49 @@ function _drawBossCastPhenomena(e, r, now, drawX, drawY, power) {
     ctx.strokeStyle = '#fde68a';
     ctx.lineWidth = 2.4;
     ctx.beginPath(); ctx.arc(0, sunY, 12 + power * 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  } else if (v === 'mech_colossus' || v === 'pyro_lord' || v === 'golden_golem' || v === 'iron_warden') {
-    // 欧米茄 / 重装统领：超载旋转熔核齿轮光环 + 双肩高压等离子喷焰翼
+  } else if (v === 'mech_colossus') {
+    // 倒悬机神·裂胸巨锯魔神态：背后双翼逆向飞旋熔岩巨锯齿盘 + 高压炉心紫雷重炮焰翼（高迫力巨像背光）
+    const sawR = r * (0.76 + power * 0.20);
+    const spin = now * 0.014;
+    for (let side = -1; side <= 1; side += 2) {
+      const sx = side * r * 0.92, sy = -r * 0.34;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(side * spin);
+      ctx.fillStyle = 'rgba(24, 18, 22, 0.88)';
+      ctx.strokeStyle = '#ff6b1a';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      const teeth = 10;
+      for (let ti = 0; ti < teeth; ti++) {
+        const a0 = (ti / teeth) * Math.PI * 2;
+        const aTip = a0 + side * (Math.PI * 2 / teeth) * 0.58;
+        const aIn = ((ti + 1) / teeth) * Math.PI * 2;
+        const p0x = Math.cos(a0) * sawR * 0.72, p0y = Math.sin(a0) * sawR * 0.72;
+        if (ti === 0) ctx.moveTo(p0x, p0y); else ctx.lineTo(p0x, p0y);
+        ctx.lineTo(Math.cos(aTip) * sawR, Math.sin(aTip) * sawR);
+        ctx.lineTo(Math.cos(aIn) * sawR * 0.72, Math.sin(aIn) * sawR * 0.72);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(0, 0, sawR * 0.34, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+    const jetH = r * (1.02 + power * 0.62) + Math.sin(now * 0.045) * 7;
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.fillStyle = 'rgba(255, 84, 0, 0.84)';
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.52, -r * 0.36);
+      ctx.lineTo(side * (r * 0.98 + jetH * 0.45), -r * 0.88 - jetH * 0.58);
+      ctx.lineTo(side * r * 0.30, -r * 0.62);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (v === 'pyro_lord' || v === 'golden_golem' || v === 'iron_warden') {
+    // 重装统领：超载旋转熔核齿轮光环 + 双肩高压等离子喷焰翼
     const gearR = r * (1.12 + power * 0.28);
     const gRot = now * 0.007;
     ctx.strokeStyle = v === 'golden_golem' || v === 'iron_warden' ? '#ffd166' : '#fb923c';
@@ -1198,8 +1239,25 @@ function _drawBossCastPhenomena(e, r, now, drawX, drawY, power) {
         ctx.stroke();
       }
     }
+  } else if (v === 'crimson_lord') {
+    // 荒祠古祟·绯狱妖主（破龛真身·血月黑角夜叉王）：头顶血月勾玉神环 + 环身悬浮古冢妖刀阵
+    const orbitR = r * (1.38 + power * 0.26);
+    ctx.strokeStyle = 'rgba(225, 29, 72, 0.86)';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.ellipse(0, -r * 0.92, r * 0.72, r * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
+    for (let bi = 0; bi < 6; bi++) {
+      const ba = -Math.PI * 0.92 + (bi / 5) * Math.PI * 0.84 + Math.sin(now * 0.004 + bi) * 0.06;
+      const bx = Math.cos(ba) * orbitR, by = Math.sin(ba) * orbitR * 0.86 - r * 0.12;
+      const tx = Math.cos(ba) * (orbitR + 26 + power * 8), ty = Math.sin(ba) * (orbitR + 26 + power * 8) * 0.86 - r * 0.12;
+      ctx.strokeStyle = '#ff2a55';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(ba) * 6, by + Math.sin(ba) * 6); ctx.stroke();
+    }
   } else {
-    // 断刃守誓者·烬羽 / 猩红伯爵 / 裂地统领：背后交叉出鞘的绯金幻影双剑与冲天剑气弧
+    // 断刃守誓者·烬羽 / 裂地统领：背后交叉出鞘的绯金幻影双剑与冲天剑气弧
     const bLen = r * (1.34 + power * 0.46);
     const tilt = 0.58 + Math.sin(now * 0.02) * 0.06;
     for (let side = -1; side <= 1; side += 2) {
@@ -1252,9 +1310,10 @@ function drawEnemySprite(e) {
   if (isBoss && showP2Visual) {
     const p2SigilCols = {
       butcher: ['#e8563f', '#f0b865'],
+      crimson_lord: ['#e11d48', '#ffd166'],
       frost_queen: ['#5cc8ff', '#ffd88a'],
       void_weaver: ['#9d6bff', '#f2c15a'],
-      mech_colossus: ['#f08c2b', '#ffd470'],
+      mech_colossus: ['#ff5400', '#ffd470'],
       plague_empress: ['#38d9a9', '#a3f7d8'],
       solar_seraph: ['#eab354', '#ffe29a']
     }[e.variant] || ['#fb7185', '#fde68a'];
@@ -1633,14 +1692,11 @@ function drawEnemySprite(e) {
     ctx.font = '900 12px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     const lsTxt = `🩸 临死挣扎·无敌 ${e.d5LastStandT.toFixed(1)}s`;
-    const lw = 166;
-    const ly = -r - 56;
-    ctx.fillStyle = 'rgba(42, 6, 18, 0.50)';
-    ctx.strokeStyle = 'rgba(255, 77, 109, 0.70)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.roundRect(-lw * 0.5, ly - 12, lw, 20, 6); ctx.fill(); ctx.stroke();
+    const lw = Math.max(174, SpirePerf.measureText(ctx, lsTxt) + 26);
+    const ly = -r - 58;
+    drawP5TagFast(ctx, -lw * 0.5, ly - 13, lw, 22, '#ff2a55', Math.max(0, Math.min(1, e.d5LastStandT / 10)), 0.85);
     ctx.fillStyle = '#ffd166';
-    ctx.fillText(lsTxt, 0, ly + 2);
+    ctx.fillText(lsTxt, 2, ly + 2);
     ctx.restore();
   }
 
@@ -1652,16 +1708,11 @@ function drawEnemySprite(e) {
     ctx.save();
     ctx.font = '900 12px -apple-system, sans-serif';
     ctx.textAlign = 'center';
-    const cw = Math.max(132, Math.min(238, activeBadgeTxt.length * 13 + 24));
-    const cy = e.y - r - 34;
-    ctx.fillStyle = (e.p2WindupT || 0) > 0 ? 'rgba(34, 8, 20, 0.50)' : 'rgba(12, 9, 22, 0.48)';
-    ctx.strokeStyle = (e.p2WindupT || 0) > 0 ? 'rgba(255, 209, 102, 0.72)' : 'rgba(253, 230, 138, 0.68)';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.roundRect(e.x - cw * 0.5, cy - 12, cw, 20, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(251, 113, 133, 0.44)';
-    ctx.fillRect(e.x - cw * 0.5 + 3, cy + 4, Math.max(2, (cw - 6) * wProg), 2.5);
+    const cw = Math.max(142, Math.min(268, SpirePerf.measureText(ctx, activeBadgeTxt) + 32));
+    const cy = e.y - r - 36;
+    drawP5TagFast(ctx, e.x - cw * 0.5, cy - 13, cw, 22, (e.p2WindupT || 0) > 0 ? '#ffd166' : '#e11d48', wProg, 0.84);
     ctx.fillStyle = '#fef08a';
-    ctx.fillText(activeBadgeTxt, e.x, cy + 2);
+    ctx.fillText(activeBadgeTxt, e.x + 2, cy + 2);
     ctx.restore();
   } else if ((e.pylonBrokenT || 0) > 0 && (isBoss || e.type === 'special_boss')) {
     ctx.font = '800 11px -apple-system, sans-serif';
@@ -1694,18 +1745,30 @@ function drawEnemySprite(e) {
       }
     }
     if (multiBossAlive >= 2) {
-      const bw = Math.max(76, r * 1.95);
+      const bw = Math.max(80, r * 1.95);
       const barY = e.y - Math.max(r + 18, r * 1.85);
       const hpRatio = Math.max(0, Math.min(1, e.hp / Math.max(1, e.maxHp)));
+      const bx0 = e.x - bw * 0.5;
       ctx.save();
-      ctx.fillStyle = 'rgba(8, 10, 18, 0.84)';
-      ctx.strokeStyle = e.mythicPhase2 ? '#ffd166' : 'rgba(251, 113, 133, 0.78)';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.roundRect(e.x - bw * 0.5, barY, bw, 7, 3.5); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = e.mythicPhase2 ? '#ffd166' : (e.type === 'special_boss' ? '#c77dff' : '#ff3b6b');
+      ctx.fillStyle = '#08090f';
+      ctx.beginPath();
+      ctx.moveTo(bx0 + 3, barY); ctx.lineTo(bx0 + bw, barY + 0.8);
+      ctx.lineTo(bx0 + bw - 3, barY + 8); ctx.lineTo(bx0, barY + 7.2);
+      ctx.closePath(); ctx.fill();
       if (hpRatio > 0.005) {
-        ctx.fillRect(e.x - bw * 0.5 + 1.5, barY + 1.5, Math.max(2, (bw - 3) * hpRatio), 4);
+        const fw = Math.max(2, (bw - 4) * hpRatio);
+        ctx.fillStyle = e.mythicPhase2 ? '#ffd166' : (e.type === 'special_boss' ? '#c77dff' : '#e11d48');
+        ctx.beginPath();
+        ctx.moveTo(bx0 + 3.5, barY + 1.4); ctx.lineTo(bx0 + 3.5 + fw, barY + 1.8);
+        ctx.lineTo(bx0 + 1.2 + fw, barY + 6.5); ctx.lineTo(bx0 + 1.2, barY + 6.1);
+        ctx.closePath(); ctx.fill();
       }
+      ctx.strokeStyle = e.mythicPhase2 ? '#ffd166' : '#f2ede6';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(bx0 + 3, barY); ctx.lineTo(bx0 + bw, barY + 0.8);
+      ctx.lineTo(bx0 + bw - 3, barY + 8); ctx.lineTo(bx0, barY + 7.2);
+      ctx.closePath(); ctx.stroke();
       ctx.restore();
     }
   } else if (e.type === 'brute' || e.type === 'juggernaut' || e.type === 'iron_guard' || e.elite || e.hp < e.maxHp) {
@@ -1904,14 +1967,11 @@ function drawPotatoHero() {
     const sec = Math.ceil(waveTime);
     ctx.save();
     ctx.translate(p.x, p.y - 68);
-    ctx.fillStyle = 'rgba(28, 10, 20, 0.88)';
-    ctx.strokeStyle = '#fb7185';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(-26, -13, 52, 24, 12); ctx.fill(); ctx.stroke();
+    drawP5TagFast(ctx, -30, -13, 60, 24, '#e11d48', 0, 0.85);
     ctx.fillStyle = '#fde68a';
     ctx.font = '900 15px -apple-system, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${sec}s`, 0, 4.5);
+    ctx.fillText(`${sec}s`, 2, 4.5);
     ctx.restore();
   }
 }

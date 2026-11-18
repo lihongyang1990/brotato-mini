@@ -2562,10 +2562,11 @@ function drawBattleScreenOverlays(now, sx, sy) {
 
   // 屏幕顶部战术事件持久播报横幅（停留 3~4 秒，带剩余时间条，确保玩家不错过任何奇遇/环境异象）
   if (state === 'wave' && typeof banners !== 'undefined' && banners.length > 0) {
-    const baseY = uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 118);
-    const fSize = uiMode === 'desktop' ? 16.5 : 12.5;
+    const _bossBannerOff = SpirePerf.isBossBarVisible() ? (uiMode === 'desktop' ? 54 : 42) : 0;
+    const baseY = (uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 114)) + _bossBannerOff;
+    const fSize = uiMode === 'desktop' ? 15.5 : 12.5;
     ctx.save();
-    ctx.font = `800 ${fSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.font = `900 ${fSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (let i = 0; i < banners.length; i++) {
@@ -2578,39 +2579,23 @@ function drawBattleScreenOverlays(now, sx, sy) {
       if (alpha <= 0.02) continue;
       const maxW = Math.max(200, viewW - 28);
       if (!b._tw || b._fSize !== fSize) {
-        b._tw = ctx.measureText(b.txt).width;
+        b._tw = SpirePerf.measureText(ctx, b.txt);
         b._fSize = fSize;
       }
-      const tw = Math.min(maxW, Math.max(220, b._tw + 40));
-      const bh = uiMode === 'desktop' ? 37 : 28;
-      const bx = viewW * 0.5 - tw * 0.5;
-      const by = baseY + i * (bh + 7) - (1 - enterP) * 8;
+      const tw = Math.min(maxW, Math.max(226, b._tw + 46));
+      const bh = uiMode === 'desktop' ? 35 : 28;
+      const bx = viewW * 0.5 - tw * 0.5 - (1 - enterP) * 14;
+      const by = baseY + i * (bh + 8) - (1 - enterP) * 4;
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = 'rgba(17, 13, 29, 0.48)';
-      ctx.strokeStyle = b.color || '#ffd166';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.roundRect(bx, by, tw, bh, 9);
-      ctx.fill();
-      ctx.globalAlpha = alpha * 0.66;
-      ctx.stroke();
-      const progW = Math.max(0, (tw - 14) * Math.max(0, Math.min(1, b.t / maxT)));
-      if (progW > 1) {
-        ctx.globalAlpha = alpha * 0.56;
-        ctx.fillStyle = b.color || '#ffd166';
-        ctx.fillRect(bx + 7, by + bh - 3.5, progW, 2);
-      }
-      ctx.globalAlpha = alpha * 0.94;
-      ctx.strokeStyle = 'rgba(5, 7, 15, 0.85)';
-      ctx.lineWidth = 3.2;
-      ctx.strokeText(b.txt, viewW * 0.5, by + bh * 0.5 - 0.5, tw - 18);
-      ctx.fillStyle = '#f8f5ff';
-      ctx.fillText(b.txt, viewW * 0.5, by + bh * 0.5 - 0.5, tw - 18);
+      drawP5TagFast(ctx, bx, by, tw, bh, b.color || '#e11d48', Math.max(0, Math.min(1, b.t / maxT)), 1.0);
+      ctx.globalAlpha = alpha * 0.98;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(b.txt, bx + tw * 0.5 + 3, by + bh * 0.5, tw - 26);
     }
     ctx.restore();
   }
 
-  // 地图隐藏首领召唤祭坛现世期间：顶部半透明常驻雷达提示胶囊 + 屏幕边缘高辨识度方向指引信标（浓雾下同样穿透可见！）
+  // 地图隐藏首领召唤祭坛现世期间：顶部 P5 斜切雷达提示签 + 屏幕边缘高辨识度方向指引信标（浓雾下同样穿透可见！）
   if (state === 'wave' && relics.length > 0) {
     const rel = relics[0];
     const rNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now());
@@ -2622,33 +2607,27 @@ function drawBattleScreenOverlays(now, sx, sy) {
     const distWorld = player ? Math.hypot(rel.x - player.x, rel.y - player.y) : 0;
     const stepsM = Math.max(0, Math.round(Math.max(0, distWorld - (rel.r || 88)) / 28));
 
-    // 1) 顶部常驻半透明雷达胶囊（自动避让临时播报 banners，绝不遮挡走位）
+    // 1) 顶部常驻 P5 斜切雷达签（自动避让首领血条与临时播报 banners，绝不遮挡走位）
     const bannerCnt = (typeof banners !== 'undefined' && banners) ? banners.length : 0;
-    const bannerBaseY = uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 118);
-    const bannerStepH = (uiMode === 'desktop' ? 37 : 28) + 7;
+    const _bossOff2 = SpirePerf.isBossBarVisible() ? (uiMode === 'desktop' ? 54 : 42) : 0;
+    const bannerBaseY = (uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 114)) + _bossOff2;
+    const bannerStepH = (uiMode === 'desktop' ? 35 : 28) + 8;
     const pillY = bannerBaseY + bannerCnt * bannerStepH;
-    const pillFont = uiMode === 'desktop' ? 13.5 : 11.5;
+    const pillFont = uiMode === 'desktop' ? 13 : 11.5;
     const pillH = uiMode === 'desktop' ? 30 : 25;
     const pillTxt = rProg > 0.02
       ? `⚡ 正在共鸣召唤隐藏Boss【${bIcon}${bName}】 ${Math.round(rProg * 100)}% · 请保持在阵内`
       : `⛩️ 隐藏Boss可召唤：【${bIcon}${bName}】(${stepsM}m) · 沿脚下金箭头踏阵必掉首领秘宝`;
     ctx.save();
-    ctx.font = `800 ${pillFont}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.font = `900 ${pillFont}px -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const maxPillW = Math.max(190, viewW - 24);
-    const pillW = Math.min(maxPillW, Math.max(210, ctx.measureText(pillTxt).width + 30));
+    const pillW = Math.min(maxPillW, Math.max(220, SpirePerf.measureText(ctx, pillTxt) + 36));
     const pillX = viewW * 0.5 - pillW * 0.5;
-    ctx.fillStyle = 'rgba(18, 13, 32, 0.56)';
-    ctx.strokeStyle = rProg > 0.02 ? '#ffd166' : `rgba(255, 209, 102, ${(0.58 + rPulse * 0.36).toFixed(2)})`;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, pillH * 0.5); ctx.fill(); ctx.stroke();
-    if (rProg > 0.02) {
-      ctx.fillStyle = 'rgba(255, 209, 102, 0.78)';
-      ctx.fillRect(pillX + 10, pillY + pillH - 3.5, Math.max(2, (pillW - 20) * rProg), 2.2);
-    }
+    drawP5TagFast(ctx, pillX, pillY, pillW, pillH, rProg > 0.02 ? '#ffd166' : rCol, rProg, 0.92);
     ctx.fillStyle = '#fef3c7';
-    ctx.fillText(pillTxt, viewW * 0.5, pillY + pillH * 0.5, pillW - 18);
+    ctx.fillText(pillTxt, viewW * 0.5 + 3, pillY + pillH * 0.5, pillW - 26);
     ctx.restore();
 
     // 2) 视野外（或浓雾遮蔽外）屏幕边缘高辨识度脉冲方向信标 + 距离铭牌
@@ -2687,51 +2666,102 @@ function drawBattleScreenOverlays(now, sx, sy) {
       // 信标下方距离提示小签
       ctx.font = '800 11px -apple-system, sans-serif';
       const edgeLbl = `隐藏Boss ${stepsM}m`;
-      const ew = Math.max(68, ctx.measureText(edgeLbl).width + 12);
+      const ew = Math.max(78, SpirePerf.measureText(ctx, edgeLbl) + 20);
       const ey = py > viewH - 105 ? -34 : 33;
-      ctx.fillStyle = 'rgba(15, 11, 26, 0.88)';
-      ctx.strokeStyle = '#ffd166';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.roundRect(-ew * 0.5, ey - 8.5, ew, 17, 8.5); ctx.fill(); ctx.stroke();
+      drawP5TagFast(ctx, -ew * 0.5, ey - 9.5, ew, 19, '#ffd166', 0, 0.72);
       ctx.fillStyle = '#fde68a';
-      ctx.fillText(edgeLbl, 0, ey + 0.5);
+      ctx.fillText(edgeLbl, 2, ey + 0.5);
       ctx.restore();
     }
   }
 
-  // 触屏设备：全屏动态悬浮虚拟摇杆（竖屏常驻拇指托盘锚点 + 拖动跟随 + 清晰大字引导）
+  // 触屏设备：P5 黑白猩红同风格圆形虚拟摇杆（顺滑 360° 拇指转向 + 猩红朝向高亮弧）
   if (state === 'wave' && (isTouch || uiMode !== 'desktop')) {
     ctx.save();
-    if (joy.active) {
-      ctx.fillStyle = 'rgba(18, 15, 26, 0.36)';
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(joy.ox, joy.oy, joy.maxR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-
-      ctx.strokeStyle = 'rgba(255, 209, 102, 0.45)';
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(joy.ox, joy.oy); ctx.lineTo(joy.cx, joy.cy); ctx.stroke();
-
-      ctx.fillStyle = 'rgba(255, 209, 102, 0.82)';
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.90)';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath(); ctx.arc(joy.cx, joy.cy, 23, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    } else if (uiMode === 'mobile-portrait') {
-      const gx = viewW * 0.5, gy = viewH - Math.min(135, viewH * 0.18);
-      ctx.globalAlpha = wave === 1 && waveTime > 18 ? 0.65 : 0.24;
-      ctx.fillStyle = 'rgba(18, 15, 26, 0.35)';
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(gx, gy, 44, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(255, 209, 102, 0.72)';
-      ctx.beginPath(); ctx.arc(gx, gy, 15, 0, Math.PI * 2); ctx.fill();
-      if (wave === 1 && waveTime > 18) {
-        ctx.fillStyle = '#f5f2eb';
-        ctx.font = '800 14.5px -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('按住屏幕任意位置滑动走位 · 双指缩放', gx, gy + 68);
-        ctx.textAlign = 'left';
+    const drawP5Circle = (cx, cy, rad, fillCol, edgeCol, lineW) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      if (fillCol) {
+        ctx.fillStyle = fillCol;
+        ctx.fill();
       }
+      if (lineW > 0 && edgeCol) {
+        ctx.lineWidth = lineW;
+        ctx.strokeStyle = edgeCol;
+        ctx.stroke();
+      }
+    };
+    const drawCompassTicks = (cx, cy, rIn, rOut, strokeCol) => {
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - rIn); ctx.lineTo(cx, cy - rOut);
+      ctx.moveTo(cx, cy + rIn); ctx.lineTo(cx, cy + rOut);
+      ctx.moveTo(cx - rIn, cy); ctx.lineTo(cx - rOut, cy);
+      ctx.moveTo(cx + rIn, cy); ctx.lineTo(cx + rOut, cy);
+      ctx.stroke();
+    };
+    if (joy.active) {
+      const baseR = joy.maxR * 0.92;
+      const dx = joy.cx - joy.ox, dy = joy.cy - joy.oy;
+      const dist = Math.hypot(dx, dy);
+
+      // 硬黑错位圆影 + 半透明黑曜双环底座
+      drawP5Circle(joy.ox + 3, joy.oy + 4, baseR, 'rgba(0, 0, 0, 0.54)', null, 0);
+      drawP5Circle(joy.ox, joy.oy, baseR, 'rgba(10, 11, 16, 0.44)', 'rgba(242, 237, 230, 0.62)', 2.0);
+      drawP5Circle(joy.ox, joy.oy, baseR * 0.74, null, 'rgba(186, 28, 52, 0.44)', 1.3);
+      drawCompassTicks(joy.ox, joy.oy, baseR * 0.80, baseR - 2, 'rgba(242, 237, 230, 0.55)');
+
+      // P5 猩红推杆朝向扇弧 + 牵引线
+      if (dist > 4) {
+        const ang = Math.atan2(dy, dx);
+        ctx.beginPath();
+        ctx.arc(joy.ox, joy.oy, baseR + 0.5, ang - 0.52, ang + 0.52);
+        ctx.strokeStyle = '#e02444';
+        ctx.lineWidth = 3.6;
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(212, 35, 63, 0.85)';
+        ctx.lineWidth = 3.0;
+        ctx.beginPath();
+        ctx.moveTo(joy.ox, joy.oy);
+        ctx.lineTo(joy.cx, joy.cy);
+        ctx.stroke();
+      }
+      drawP5Circle(joy.ox, joy.oy, 4.2, '#f2ede6', null, 0);
+
+      // 跟随拇指的 P5 丝绒暗红白边圆形摇杆帽
+      drawP5Circle(joy.cx + 2.5, joy.cy + 3.5, 21, 'rgba(0, 0, 0, 0.72)', null, 0);
+      drawP5Circle(joy.cx, joy.cy, 21, '#8c192b', '#f2ede6', 2.2);
+      drawP5Circle(joy.cx, joy.cy, 13.5, 'rgba(10, 11, 16, 0.36)', 'rgba(242, 237, 230, 0.38)', 1.1);
+      ctx.fillStyle = '#f2ede6';
+      ctx.font = '900 14px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✦', joy.cx, joy.cy + 0.5);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    } else {
+      // 左下常驻轻透 P5 双环圆形摇杆锚点
+      const gx = uiMode === 'mobile-portrait' ? 54 : 60;
+      const gy = viewH - (uiMode === 'mobile-portrait' ? 54 : 46);
+      ctx.globalAlpha = (wave === 1 && waveTime > 18) ? 0.86 : 0.52;
+      drawP5Circle(gx + 2.5, gy + 3.5, 29, 'rgba(0, 0, 0, 0.68)', null, 0);
+      drawP5Circle(gx, gy, 29, 'rgba(10, 11, 16, 0.56)', '#f2ede6', 1.9);
+      drawCompassTicks(gx, gy, 21, 27, 'rgba(242, 237, 230, 0.52)');
+      drawP5Circle(gx, gy, 15.5, '#8c192b', '#f2ede6', 1.7);
+      ctx.fillStyle = '#f4f0ea';
+      ctx.font = '900 13px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✦', gx, gy + 0.5);
+      if (wave === 1 && waveTime > 18 && uiMode === 'mobile-portrait') {
+        ctx.fillStyle = 'rgba(244, 240, 234, 0.88)';
+        ctx.font = '800 12px -apple-system, sans-serif';
+        ctx.fillText('滑动走位', gx + 48, gy);
+      }
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
     }
     ctx.restore();
   }
@@ -2920,16 +2950,10 @@ function drawBattleScreenOverlays(now, sx, sy) {
         ctx.textAlign = 'center';
         const pillW = Math.min(viewW - 36, 248);
         const pillY = cy + 36;
-        ctx.fillStyle = isMythic ? 'rgba(225, 29, 72, 0.28)' : 'rgba(15, 23, 42, 0.48)';
-        ctx.strokeStyle = accCol;
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.roundRect(viewW * 0.5 - pillW * 0.5, pillY, pillW, 21, 10.5);
-        ctx.fill();
-        ctx.stroke();
-        ctx.font = '800 11px -apple-system, sans-serif';
+        drawP5TagFast(ctx, viewW * 0.5 - pillW * 0.5, pillY, pillW, 22, accCol, 0, 0.85);
+        ctx.font = '900 11px -apple-system, sans-serif';
         ctx.fillStyle = '#fde68a';
-        ctx.fillText(phaseBadgeTxt, viewW * 0.5, pillY + 14.5, pillW - 16);
+        ctx.fillText(phaseBadgeTxt, viewW * 0.5 + 2, pillY + 15, pillW - 22);
 
         ctx.font = '800 12px -apple-system, sans-serif';
         ctx.fillStyle = isMythic ? '#fda4af' : '#72efdd';
@@ -2960,17 +2984,11 @@ function drawBattleScreenOverlays(now, sx, sy) {
         const badgeW = isMythic ? 206 : 184;
         const badgeH = isShortLand ? 21 : 24;
         const badgeY = cy - (isShortLand ? 54 : 66);
-        ctx.fillStyle = isMythic ? 'rgba(225, 29, 72, 0.36)' : 'rgba(114, 239, 221, 0.14)';
-        ctx.strokeStyle = accCol;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(textX, badgeY, badgeW, badgeH, badgeH * 0.5);
-        ctx.fill();
-        ctx.stroke();
-        ctx.font = `800 ${isShortLand ? 11 : 12}px -apple-system, sans-serif`;
+        drawP5TagFast(ctx, textX, badgeY, badgeW, badgeH, accCol, 0, 0.9);
+        ctx.font = `900 ${isShortLand ? 11 : 12}px -apple-system, sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillStyle = isMythic ? '#ffd166' : '#72efdd';
-        ctx.fillText(phaseBadgeTxt, textX + badgeW * 0.5, badgeY + badgeH * 0.68);
+        ctx.fillStyle = isMythic ? '#ffd166' : '#f8fafc';
+        ctx.fillText(phaseBadgeTxt, textX + badgeW * 0.5 + 2, badgeY + badgeH * 0.68);
 
         ctx.textAlign = 'left';
         ctx.font = `800 ${isShortLand ? 12.5 : 14.5}px -apple-system, sans-serif`;
@@ -3014,41 +3032,29 @@ function drawBattleScreenOverlays(now, sx, sy) {
         if (bc.extraTag) {
           const tipH = isShortLand ? 24 : 29;
           const tipY = cy + (isShortLand ? 34 : 44);
-          const tipW = Math.min(maxTxtW, Math.max(240, bc.extraTag.length * (isShortLand ? 12.5 : 14) + 28));
-          ctx.fillStyle = isMythic ? 'rgba(217, 4, 41, 0.28)' : 'rgba(15, 23, 42, 0.46)';
-          ctx.strokeStyle = isMythic ? '#ffd166' : 'rgba(246, 211, 121, 0.55)';
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.roundRect(textX, tipY, tipW, tipH, 7);
-          ctx.fill();
-          ctx.stroke();
-          ctx.font = `800 ${isShortLand ? 11.5 : 13}px -apple-system, sans-serif`;
+          const tipW = Math.min(maxTxtW, Math.max(246, bc.extraTag.length * (isShortLand ? 12.5 : 14) + 34));
+          drawP5TagFast(ctx, textX, tipY, tipW, tipH, isMythic ? '#ffd166' : '#e11d48', 0, 0.88);
+          ctx.font = `900 ${isShortLand ? 11.5 : 13}px -apple-system, sans-serif`;
           ctx.fillStyle = isMythic ? '#ffd166' : '#f8fafc';
-          ctx.fillText(bc.extraTag, textX + 12, tipY + tipH * 0.68, tipW - 22);
+          ctx.fillText(bc.extraTag, textX + 16, tipY + tipH * 0.68, tipW - 28);
         }
       }
 
-      // 5. 右下角防误触手动跳过胶囊（避免走位摇杆或空格闪避误关 4 秒立绘演出）
+      // 5. 右下角防误触手动跳过 P5 斜切签（避免走位摇杆或空格闪避误关 4 秒立绘演出）
       if (elapsed > 0.60 && bc.t > fadeDur + 0.05) {
-        const skW = portraitPortrait ? 132 : 164;
+        const skW = portraitPortrait ? 138 : 174;
         const skH = 26;
         const skX = viewW - skW - 18;
         const skY = Math.max(viewH - Math.max(barH, 36) + (Math.max(barH, 36) - skH) * 0.5, viewH - 36);
         bc._skipRect = { x: skX - 8, y: skY - 8, w: skW + 16, h: skH + 16 };
-        ctx.globalAlpha = 0.82 * exitP;
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-        ctx.strokeStyle = 'rgba(246, 211, 121, 0.55)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.roundRect(skX, skY, skW, skH, 13);
-        ctx.fill();
-        ctx.stroke();
-        ctx.font = '700 11.5px -apple-system, sans-serif';
+        ctx.globalAlpha = 0.90 * exitP;
+        drawP5TagFast(ctx, skX, skY, skW, skH, '#e11d48', 0, 0.85);
+        ctx.font = '800 11.5px -apple-system, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#e2e8f0';
+        ctx.fillStyle = '#f8fafc';
         const remSec = Math.max(0, Math.ceil(showDur - elapsed));
         const skipTxt = portraitPortrait ? `跳过立绘 (${remSec}s) ▸` : `点击跳过 / Enter (${remSec}s) ▸`;
-        ctx.fillText(skipTxt, skX + skW * 0.5, skY + 17);
+        ctx.fillText(skipTxt, skX + skW * 0.5 + 2, skY + 17);
       } else {
         bc._skipRect = null;
       }

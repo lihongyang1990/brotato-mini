@@ -329,7 +329,7 @@ export function runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap }) {
       const shatterNameplateStarted = !!(phase2ShatterFx && phase2ShatterFx.stage === 'nameplate' && phase2ShatterFx.shards && phase2ShatterFx.shards.length === 18);
       draw();
       advancePhase2ShatterToArena();
-      const shatterArenaStarted = !!(phase2ShatterFx && phase2ShatterFx.stage === 'arena_shatter' && phase2ShatterFx.shards && phase2ShatterFx.shards.length === 18);
+      const shatterArenaStarted = !!(phase2ShatterFx && phase2ShatterFx.stage === 'arena_shatter' && Array.isArray(phase2ShatterFx.shards) && phase2ShatterFx.shards.length === 0 && !phase2ShatterFx.buf && phase2ShatterFx.flashT === 0);
       draw();
       phase2ShatterFx = null;
       const phaseVisuals = phaseEvents.length === 3 && distinctP2SpriteSheet && shatterNameplateStarted && shatterArenaStarted && (

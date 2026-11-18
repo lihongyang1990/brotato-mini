@@ -94,6 +94,8 @@ const SpireAssets = (function () {
     frost_queen:    'assets/spire/hero_astria_p2_sheet.png',
     jialan:         'assets/spire/hero_jialan_p2_sheet.png',
     void_weaver:    'assets/spire/hero_jialan_p2_sheet.png',
+    mech_colossus:  'assets/spire/boss_mech_colossus_p2_sheet.png',
+    crimson_lord:   'assets/spire/sb_crimson_lord_p2_sheet.png',
     qingyu:         'assets/spire/hero_qingyu_p2_sheet.png',
     plague_empress: 'assets/spire/hero_qingyu_p2_sheet.png',
     eclipse:        'assets/spire/hero_eclipse_p2_sheet.png',
@@ -110,7 +112,7 @@ const SpireAssets = (function () {
     jinyu:            'assets/spire/port_jinyu.jpg',
     brawler:          'assets/spire/port_jinyu.jpg',
     butcher:          'assets/spire/port_jinyu.jpg',
-    crimson_lord:     'assets/spire/port_jinyu.jpg',
+    crimson_lord:     'assets/spire/port_crimson_lord.jpg',
     pyro_lord:        'assets/spire/port_jinyu.jpg',
     vanguard:         'assets/spire/port_jinyu.jpg',
     astria:           'assets/spire/port_astria.jpg',
@@ -139,6 +141,7 @@ const SpireAssets = (function () {
   const PORTRAIT_P2_MAP = {
     jinyu:          'assets/spire/port_jinyu_p2.jpg',
     butcher:        'assets/spire/port_jinyu_p2.jpg',
+    crimson_lord:   'assets/spire/port_crimson_lord_p2.jpg',
     astria:         'assets/spire/port_astria_p2.jpg',
     frost_queen:    'assets/spire/port_astria_p2.jpg',
     jialan:         'assets/spire/port_jialan_p2.jpg',
@@ -206,9 +209,10 @@ const SpireAssets = (function () {
     iron_warden:      'assets/spire/mb_iron_warden.png'
   };
 
-  // 六大主宰二阶段觉醒单帧高清贴图映射（含倒悬机神裂胸双锯超载态）
+  // 七大主宰/记忆祭坛传说首领二阶段觉醒单帧高清贴图映射（含倒悬机神裂胸巨锯魔神态 & 荒祠古祟血月黑角夜叉王）
   const BOSS_P2_SPRITE_MAP = {
     butcher:        'assets/spire/hero_jinyu_p2.png',
+    crimson_lord:   'assets/spire/sb_crimson_lord_p2.png',
     frost_queen:    'assets/spire/hero_astria_p2.png',
     void_weaver:    'assets/spire/hero_jialan_p2.png',
     mech_colossus:  'assets/spire/boss_mech_colossus_p2.png',
@@ -867,6 +871,11 @@ const SpireAssets = (function () {
 
   warmup();
 
+  function getBossCutoutSourcePath(variant, isMythic) {
+    if (isMythic && BOSS_P2_SPRITE_MAP[variant]) return BOSS_P2_SPRITE_MAP[variant];
+    return BOSS_SPRITE_MAP[variant] || HERO_MAP[variant] || 'assets/spire/hero_jinyu.png';
+  }
+
   return {
     fastStoryPath,
     resolve,
@@ -880,6 +889,7 @@ const SpireAssets = (function () {
     getPropSprite,
     pickMonsterPath,
     getMonsterSprite,
+    getBossCutoutSourcePath,
     getArenaBg,
     getPortrait,
     getPortraitSrc,
@@ -913,7 +923,7 @@ const BOSS_PORTRAIT_DATA = {
     w: 440, h: 516,
     personaName: '倒悬机神 · 神枢重装巨像',
     summerTitle: '黑铁铆钉 · 封闭守卫态',
-    mythicTitle: '熔核超载 · 裂胸双锯巨像'
+    mythicTitle: '歼灭神枢 · 裂胸巨锯魔神态'
   },
   void_weaver: {
     w: 440, h: 516,
@@ -935,93 +945,91 @@ const BOSS_PORTRAIT_DATA = {
   },
   crimson_lord: {
     w: 440, h: 516,
-    personaName: '瑟琳娜 · 第998世绯影',
-    summerTitle: '永夜蝠翼夏装',
-    mythicTitle: '绯夜蔷薇蕾丝泳装'
+    personaName: '荒祠古祟 · 绯狱妖主',
+    summerTitle: '封龛半醒 · 镇魂白瓷缚灵态',
+    mythicTitle: '破龛真身 · 血月黑角夜叉王'
   },
   golden_golem: {
     w: 440, h: 516,
-    personaName: '奥蕾莉亚 · 黄金圣柜机神',
-    summerTitle: '曜金翠玉夏装',
-    mythicTitle: '曜金女神流金泳装'
+    personaName: '黄金发条圣柜巨神',
+    summerTitle: '封魂齿轮 · 黄金圣柜守卫态',
+    mythicTitle: '超载崩裂 · 曜金星盘巨神态'
   },
   abyss_devourer: {
     w: 440, h: 516,
-    personaName: '冥月 · 蚀日饥饿黑影',
-    summerTitle: '星月暗夜夏装',
-    mythicTitle: '噬星夜纱度假泳装'
+    personaName: '零号容器 · 饥饿黑影',
+    summerTitle: '残镜暗涌 · 闭合蚀影魔茧',
+    mythicTitle: '魔瞳全开 · 裂星归墟古神态'
   },
   vanguard: {
     w: 440, h: 516,
-    personaName: '凛音 · 守桥重铠统领',
-    summerTitle: '狂厄双角夏装',
-    mythicTitle: '狂厄绯红竞速泳装'
+    personaName: '碎誓先锋 · 守桥重铠统领',
+    summerTitle: '玄铁重盾 · 孤桥卫戍战铠',
+    mythicTitle: '破甲燃魂 · 狂厄赤焰统领态'
   },
   pyro_lord: {
     w: 440, h: 516,
-    personaName: '煌焱 · 赤伞焚灯督军',
-    summerTitle: '熔火龙角夏装',
-    mythicTitle: '业火流金热带泳装'
+    personaName: '灰烬督军 · 赤伞焚灯炎魔',
+    summerTitle: '烬火暗敛 · 守灯重甲督军',
+    mythicTitle: '熔火冲霄 · 业火流金狂战态'
   },
   shadow_stalker: {
     w: 440, h: 516,
-    personaName: '影凪 · 紫电斩首统领',
-    summerTitle: '暗雷翠眸夏装',
-    mythicTitle: '夜樱暗雷轻纱泳装'
+    personaName: '无面影狩 · 紫电斩首统领',
+    summerTitle: '敛息潜影 · 双刃暗夜猎装',
+    mythicTitle: '雷影千裂 · 暗雷破界刺客态'
   },
   venom_matriarch: {
     w: 440, h: 516,
-    personaName: '琉璃 · 苍翠荆棘守碑姬',
-    summerTitle: '翠蛇金簪夏装',
-    mythicTitle: '碧鳞金环薄纱泳装'
+    personaName: '腐花园主 · 苍翠荆棘守碑姬',
+    summerTitle: '枯蔓缠碑 · 沉眠毒棘战衣',
+    mythicTitle: '万蛊盛放 · 碧鳞蚀骨毒后态'
   },
   glacial_valkyrie: {
     w: 440, h: 516,
-    personaName: '塞蕾丝 · 眠冬圣枪近卫',
-    summerTitle: '苍羽冰骑夏装',
-    mythicTitle: '极北银辉霜纱泳装'
+    personaName: '霜誓近卫 · 眠冬圣枪女武神',
+    summerTitle: '寒铁覆面 · 极北冰骑银铠',
+    mythicTitle: '碎冰展翼 · 极光霜枪战神态'
   },
   iron_warden: {
     w: 440, h: 516,
-    personaName: '瓦伦蒂娜 · 黑曜镇狱统领',
-    summerTitle: '黑金盾徽夏装',
-    mythicTitle: '曜铁金链暗纱泳装'
+    personaName: '齿轮典狱长 · 黑曜镇狱统领',
+    summerTitle: '重锁封门 · 黑金盾徽重甲',
+    mythicTitle: '熔炉解禁 · 曜铁锁链审判态'
   },
   storm_siren: {
     w: 440, h: 516,
-    personaName: '岚音 · 逆钟星律歌姬',
-    summerTitle: '苍雷双马尾夏装',
-    mythicTitle: '雷鸣晴空流纱泳装'
+    personaName: '逆钟歌姬 · 苍雷星律塞壬',
+    summerTitle: '静默弦音 · 星律苍羽礼装',
+    mythicTitle: '狂雷奏鸣 · 天罚风暴神女态'
   }
 };
 
 const _bossCutoutCache = Object.create(null);
 const _bossCutoutOrder = [];
 
-function _compositeBossCutoutSlot(cacheKey, w, h, rgbRel, maskRel) {
+// 直接基于各首领原生高清透明 PNG 贴图烘焙 440×516 破框立绘（彻底淘汰 64 张旧版冗余/夏装错位 bp_* 双通道图，省去 destination-in 双图遮罩合成与 4.5MB 内存占用）
+function _bakeBossCutoutSlot(cacheKey, w, h, srcRel, isMythic) {
   let rec = _bossCutoutCache[cacheKey];
   if (rec) {
     if (rec.ready) return rec.canvas;
     if (rec._loading) return null;
   } else {
-    if (typeof document === 'undefined' || !rgbRel || !maskRel) return null;
-    rec = { ready: false, _loading: false, canvas: null, rgbImg: null, maskImg: null };
+    if (typeof document === 'undefined' || !srcRel) return null;
+    rec = { ready: false, _loading: false, canvas: null };
     _bossCutoutCache[cacheKey] = rec;
   }
-  if (typeof document === 'undefined' || !rgbRel || !maskRel) return null;
+  if (typeof document === 'undefined' || !srcRel) return null;
   rec._loading = true;
-  let failedPart = false;
 
-  const tryFinish = function () {
-    if (rec.ready || !rec.rgbImg || !rec.maskImg) return;
-    const rw = rec.rgbImg.naturalWidth || rec.rgbImg.width || 0;
-    const mw = rec.maskImg.naturalWidth || rec.maskImg.width || 0;
-    if (!(rw > 0) || !(mw > 0)) {
+  SpireAssets.loadImage(srcRel, function (img) {
+    const iw = img && (img.naturalWidth || img.width || 0);
+    const ih = img && (img.naturalHeight || img.height || 0);
+    if (!(iw > 0) || !(ih > 0)) {
       rec._loading = false;
       return;
     }
-    // 严格限制常驻首领抠像离屏画布不超过 6 张，驱逐旧画布时归零尺寸释放显存，杜绝挤爆手机 Canvas 上限
-    while (_bossCutoutOrder.length >= 6) {
+    while (_bossCutoutOrder.length >= 32) {
       const oldKey = _bossCutoutOrder.shift();
       const oldRec = oldKey ? _bossCutoutCache[oldKey] : null;
       if (oldRec && oldRec !== rec) {
@@ -1040,39 +1048,35 @@ function _compositeBossCutoutSlot(cacheKey, w, h, rgbRel, maskRel) {
         g.imageSmoothingEnabled = true;
         if ('imageSmoothingQuality' in g) g.imageSmoothingQuality = 'high';
         g.clearRect(0, 0, w, h);
-        g.drawImage(rec.rgbImg, 0, 0, w, h);
-        g.globalCompositeOperation = 'destination-in';
-        g.drawImage(rec.maskImg, 0, 0, w, h);
-        g.globalCompositeOperation = 'source-over';
+        if (isMythic) {
+          g.save();
+          g.strokeStyle = 'rgba(225, 29, 72, 0.72)';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.moveTo(w * 0.16, h * 0.84);
+          g.lineTo(w * 0.50, h * 0.10);
+          g.lineTo(w * 0.84, h * 0.84);
+          g.closePath();
+          g.stroke();
+          g.restore();
+        }
+        const pad = isMythic ? 12 : 24;
+        const sc = Math.min((w - pad * 2) / iw, (h - pad * 2) / ih);
+        const dw = iw * sc, dh = ih * sc;
+        g.drawImage(img, (w - dw) * 0.5, (h - dh) * 0.54, dw, dh);
         rec.canvas = c;
         _bossCutoutOrder.push(cacheKey);
       } else {
-        try { c.width = 0; c.height = 0; } catch (_) {}
-        rec.canvas = rec.rgbImg;
+        rec.canvas = img;
       }
     } catch (_) {
-      rec.canvas = rec.rgbImg;
+      rec.canvas = img;
     }
     rec.ready = !!rec.canvas;
     rec._loading = false;
-    rec.rgbImg = null;
-    rec.maskImg = null;
-  };
-
-  const onPartFail = function () {
-    if (failedPart) return;
-    failedPart = true;
+  }, function () {
     rec._loading = false;
-  };
-
-  SpireAssets.loadImage(rgbRel, function (img) {
-    rec.rgbImg = img;
-    tryFinish();
-  }, onPartFail);
-  SpireAssets.loadImage(maskRel, function (img) {
-    rec.maskImg = img;
-    tryFinish();
-  }, onPartFail);
+  }, true);
 
   return rec.ready ? rec.canvas : null;
 }
@@ -1080,24 +1084,12 @@ function _compositeBossCutoutSlot(cacheKey, w, h, rgbRel, maskRel) {
 function getBossAnimePortrait(variant, isMythic = false) {
   const key = variant && BOSS_PORTRAIT_DATA[variant] ? variant : 'butcher';
   const spec = BOSS_PORTRAIT_DATA[key];
-  if (spec) {
+  if (spec && typeof SpireAssets.getBossCutoutSourcePath === 'function') {
     if (isMythic) {
-      const p2 = _compositeBossCutoutSlot(
-        key + '__p2',
-        spec.w,
-        spec.h,
-        `assets/spire/bp_${key}_p2_rgb.jpg`,
-        `assets/spire/bp_${key}_p2_mask.png`
-      );
+      const p2 = _bakeBossCutoutSlot(key + '__p2', spec.w, spec.h, SpireAssets.getBossCutoutSourcePath(key, true), true);
       if (p2) return p2;
     }
-    const p1 = _compositeBossCutoutSlot(
-      key + '__p1',
-      spec.w,
-      spec.h,
-      `assets/spire/bp_${key}_p1_rgb.jpg`,
-      `assets/spire/bp_${key}_p1_mask.png`
-    );
+    const p1 = _bakeBossCutoutSlot(key + '__p1', spec.w, spec.h, SpireAssets.getBossCutoutSourcePath(key, false), false);
     if (p1) return p1;
   }
   return SpireAssets.getPortrait(key);

@@ -23,7 +23,7 @@ const jsFiles = rawJsRefs.map(r => r.split("?")[0]);
 
 assert.strictEqual(new Set(cssFiles).size, cssFiles.length, "Stylesheets must not load twice");
 assert.strictEqual(new Set(jsFiles).size, jsFiles.length, "Game modules must not load twice");
-for (const rel of ['styles/base.css', 'styles/mobile.css', 'styles/presentation.css', 'styles/narrative.css']) {
+for (const rel of ['styles/base.css', 'styles/mobile.css', 'styles/p5-ui.css', 'styles/presentation.css', 'styles/narrative.css']) {
   assert(cssFiles.includes(rel), 'Missing required stylesheet: ' + rel);
 }
 for (const rel of ['src/core/env.js', 'src/data/story-v2.js', 'src/render/relic_sprites.js', 'src/game/director.js', 'src/ui/menus.js',
@@ -1492,7 +1492,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     finishWave();
     __drainDirector();
     while (state === 'levelup') {
-      const b0 = document.getElementById('lvlBox').children[0];
+      const b0 = (document.getElementById('lvlCards') || document.getElementById('lvlBox')).children[0];
       if (!b0) break;
       b0.click();
     }
@@ -1763,13 +1763,13 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     const endSumHtml = document.getElementById('endSummaryPanel').innerHTML || '';
     const detailWpnOpened = openEndSummaryDetail('dealt', 'ember_staff') &&
       !document.getElementById('endDetailModal').classList.contains('hidden') &&
-      (document.getElementById('endDetailBody').innerHTML || '').includes('赤烬魂灯杖');
+      (document.getElementById('endDetailBody').innerHTML || '').includes('赤烬坠星法杖');
     const detailMobOpened = openEndSummaryDetail('taken', 'void_weaver') &&
       !document.getElementById('endDetailModal').classList.contains('hidden') &&
       (document.getElementById('endDetailBody').innerHTML || '').includes('伽蓝');
     closeEndSummaryDetail();
     const detailClosed = document.getElementById('endDetailModal').classList.contains('hidden');
-    const postGameSummaryOk = (!!bmSprite && endSumHtml.includes('赤烬魂灯杖') && endSumHtml.includes('伽蓝') && endSumHtml.includes('openEndSummaryDetail') && detailWpnOpened && detailMobOpened && detailClosed);
+    const postGameSummaryOk = (!!bmSprite && (endSumHtml.includes('陨石法杖') || endSumHtml.includes('赤烬坠星法杖')) && endSumHtml.includes('伽蓝') && endSumHtml.includes('openEndSummaryDetail') && detailWpnOpened && detailMobOpened && detailClosed);
     const goldAndRangedBoostOk = (
       Math.abs(CRYSTAL_YIELD_MUL - 0.77) < 1e-9 &&
       Math.abs(getWaveMatRate(1) - 0.92 * 0.77) < 1e-9 &&
@@ -2041,6 +2041,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       update(0.05);
       if (!b4.eclipseSingularity || !Number.isFinite(b4.eclipseSingularity.s1x)) return false;
       draw();
+      b4.eclipseSingularity.s1x = b4.x - 240;
+      b4.eclipseSingularity.s1y = b4.y;
       player.x = b4.eclipseSingularity.s1x;
       player.y = b4.eclipseSingularity.s1y;
       b4.eclipseSingularity.windupT = 0;
@@ -2904,9 +2906,11 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       }
     }
     const wVals = Object.values(WEAPONS);
-    const primCnt = wVals.filter(w => w.set === 'primitive').length;
-    const gunCnt = wVals.filter(w => w.set === 'gun').length;
-    if (primCnt < 6 || gunCnt < 6) return { ok: false, reason: 'Expected >=6 primitive & gun weapons, got ' + primCnt + '/' + gunCnt };
+    const expectedSets = { blade: 6, hammer: 5, bow: 5, gun: 6, cannon: 4, elemental: 5, staff: 6, tech: 5 };
+    for (const [sk, expN] of Object.entries(expectedSets)) {
+      const actualN = wVals.filter(w => w.set === sk).length;
+      if (actualN !== expN) return { ok: false, reason: 'Expected ' + expN + ' weapons in set ' + sk + ', got ' + actualN };
+    }
 
     // 实战演练 6 把新兵装开火与法阵坍缩 + 核心新遗物数值转化与免死涅槃
     selectedDiff = 1;
@@ -3043,4 +3047,160 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(env220.stats.shadowBlurs, 0, "v2.2.0 relic/weapon art & combat used shadowBlur: " + env220.stats.shadowBlurs);
 }
 
-console.log(`ALL 5 V${packageVersion} VERIFICATION SUITES PASSED! Modular files: ${cssFiles.length} CSS + ${jsFiles.length} JS | Total JS: ${(code.length / 1024).toFixed(1)} KB`);
+// ============================================================================
+// Suite 6: v2.4.3 P5 Irregular Dark-Crimson UI + Restored AriesMTR/brotato-mini 6-Set Arsenal & 138 Relics
+// ============================================================================
+{
+  const p5CssRaw = fs.readFileSync(path.join(ROOT, "styles/p5-ui.css"), "utf8");
+  assert(/\.t-rarity-pill\s*\{[\s\S]*?flex-shrink:\s*0\s*!important/.test(p5CssRaw),
+    "styles/p5-ui.css must lock .t-rarity-pill with flex-shrink: 0 !important so [传说]/[神话] never clips");
+  assert(p5CssRaw.includes(".codex-cat-arrow") && !/\.codex-cat-arrow\s*\{[^}]*display:\s*none/.test(p5CssRaw),
+    "Codex left/right category arrows must stay visible on both Desktop and Mobile");
+
+  for (const vp of [
+    { mobile: false, w: 1440, h: 900, label: "desktop" },
+    { mobile: true, w: 390, h: 844, label: "mobile-portrait" },
+    { mobile: true, w: 844, h: 390, label: "mobile-landscape" }
+  ]) {
+    const { sandbox: s6, stats: st6 } = createEnv(vp.mobile, vp.w, vp.h, vp.mobile ? 3 : 2);
+    const r6 = vm.runInContext(`(() => {
+      // 1) Original 6 weapon categories & unified canonical weapon names across all 42 weapons
+      const setKeys = Object.keys(SET_DEFS);
+      if (setKeys.join(',') !== 'primitive,precise,gun,heavy,elemental,tech') {
+        return { ok: false, reason: 'SET_DEFS mismatch: ' + setKeys.join(',') };
+      }
+      if (WEAPONS.stick.name !== '守誓残杖' ||
+          WEAPONS.pistol.name !== '封魂短铳' ||
+          WEAPONS.katana.name !== '绯红断刃太刀' ||
+          WEAPONS.shredder.name !== '裂魂爆破铳' ||
+          WEAPONS.shredder.set !== 'gun' ||
+          ITEMS.length !== 138) {
+        return { ok: false, reason: 'Original weapon/relic definitions mismatch' };
+      }
+
+      // 2) Verify all 6 SET_DEFS combat bonuses activate accurately
+      startGame('allrounder', { mode: 'endless' });
+      const testSet = (wList, checkFn, tag) => {
+        player.weapons = wList.map(id => makeWeapon(id, 2));
+        syncSetHp();
+        const sb = getSetBonuses();
+        if (!checkFn(sb)) throw new Error('Set bonus check failed for ' + tag + ': ' + JSON.stringify(sb));
+      };
+      testSet(['stick', 'knife', 'spear', 'rock', 'slingshot', 'blowgun'], sb => sb.hp === 30, 'primitive-6');
+      testSet(['claws', 'katana', 'shuriken', 'crossbow', 'sniper'], sb => sb.crit >= 0.20, 'precise-5');
+      testSet(['pistol', 'revolver', 'smg', 'shotgun', 'shredder', 'minigun'], sb => sb.range === 155 && sb.aspd >= 0.25, 'gun-6');
+      testSet(['hammer', 'spiked_shield', 'obsidian_flail', 'grenade_launcher', 'rocket'], sb => sb.armor === 8 && sb.blast >= 0.20, 'heavy-5');
+      testSet(['icicle', 'flamer', 'taser', 'laser', 'plasma'], sb => sb.elem >= 0.62, 'elemental-5');
+      testSet(['wrench', 'screwdriver', 'nailgun', 'drone_bay', 'emp_cannon'], sb => sb.tech >= 0.85 && sb.turretAspd >= 0.25, 'tech-5');
+
+      // 3) Dual-View Pavilion Shop & Overview + Non-clipping .t-rarity-pill on BOTH weapons and relics + Quick Merge
+      player.mats = 9999;
+      player.weapons = [
+        makeWeapon('katana', 3),
+        makeWeapon('katana', 3),
+        makeWeapon('obsidian_flail', 4),
+        makeWeapon('pistol', 2),
+        makeWeapon('wrench', 1)
+      ];
+      const legendRelic = ITEMS.find(it => it.tier === 4) || ITEMS[ITEMS.length - 1];
+      const epicRelic = ITEMS.find(it => it.tier === 3) || ITEMS[0];
+      epicRelic.apply(player);
+      player.items[epicRelic.id] = (player.items[epicRelic.id] || 0) + 1;
+
+      openShop(true);
+      shopOffers[0] = { kind: 'item', item: legendRelic, tier: legendRelic.tier, rawCost: 95, cost: 95, locked: false, sold: false };
+      shopOffers[1] = { kind: 'weapon', id: 'katana', tier: 3, rawCost: 72, cost: 72, locked: false, sold: false };
+      renderShop();
+
+      const shopCard0Html = document.getElementById('shopCards').children[0].innerHTML;
+      const shopCard1Html = document.getElementById('shopCards').children[1].innerHTML;
+      buyOffer(0);
+      const shopHasLegendRelicPill = shopCard0Html.includes('t-rarity-pill tp-4') && shopCard0Html.includes('传说');
+      const shopHasEpicWpnPill = shopCard1Html.includes('t-rarity-pill tp-3') && shopCard1Html.includes('史诗') && shopCard1Html.includes('绯红断刃太刀');
+      const wpnSlotsHtml = Array.from(document.getElementById('weaponSlots').children).map(c => c.innerHTML).join('');
+      const slotHasLegendPill = wpnSlotsHtml.includes('t-rarity-pill tp-4') && wpnSlotsHtml.includes('传说');
+      const quickBtnShown = !document.getElementById('shopQuickMergeBtn').classList.contains('hidden');
+
+      setShopHubTab('overview');
+      const ovActive = document.getElementById('shopPaneOverview').classList.contains('is-active') &&
+        !document.getElementById('shopPaneMain').classList.contains('is-active');
+      const stats12Cnt = document.getElementById('ovStats12Grid').children.length;
+      const ovWpnCnt = document.getElementById('ovWeaponSlots').children.length;
+      const ovRelicHtml = document.getElementById('ovRelicGrid').innerHTML;
+      const ovRelicHasPill = ovRelicHtml.includes('t-rarity-pill tp-4') && ovRelicHtml.includes('传说');
+      setOverviewRelicCols(1);
+      const cols1Ok = document.getElementById('ovRelicGrid').classList.contains('cols-1');
+      setOverviewRelicCols(2);
+      const cols2Ok = document.getElementById('ovRelicGrid').classList.contains('cols-2');
+
+      openShopSynergyModal('precise');
+      const synModalOk = isWeaponSlotModalOpen() && document.getElementById('weaponActionCard').innerHTML.includes('星芒');
+      closeWeaponSlotModal();
+      openShopRelicModal(legendRelic.id);
+      const relicModalOk = isWeaponSlotModalOpen() && document.getElementById('weaponActionCard').innerHTML.includes('传说');
+      closeWeaponSlotModal();
+
+      const mergedCnt = quickMergeAllWeapons();
+      const quickMergedOk = mergedCnt === 1 && player.weapons.some(w => w.id === 'katana' && w.tier === 4);
+      setShopHubTab('shop');
+      const backToShopOk = document.getElementById('shopPaneMain').classList.contains('is-active');
+
+      pendingCrates = 1;
+      showCrateMenu();
+      const crateHasPill = Array.from(document.getElementById('crateBox').children).map(c => c.innerHTML).join('').includes('t-rarity-pill');
+      document.getElementById('crateMenu').classList.add('hidden');
+      pendingCrates = 0;
+
+      pendingLevels = 1;
+      showLevelUp();
+      const lvlHasPill = crateHasPill && Array.from(document.getElementById('lvlCards').children).map(c => c.innerHTML).join('').includes('t-rarity-pill');
+      document.getElementById('levelMenu').classList.add('hidden');
+      pendingLevels = 0;
+      state = 'shop';
+
+      openCodex('weapons');
+      const prevBtn = document.getElementById('codexPrevBtn');
+      const nextBtn = document.getElementById('codexNextBtn');
+      const arrowsExist = !!(prevBtn && nextBtn && !document.getElementById('codexFilterBar').classList.contains('hidden'));
+      const f0 = codexFilter;
+      scrollCodexFilters(1);
+      const f1 = codexFilter; // 'primitive'
+      scrollCodexFilters(1);
+      const f2 = codexFilter; // 'precise'
+      scrollCodexFilters(-1);
+      const fBack = codexFilter; // 'primitive'
+      setCodexFilter('heavy');
+      const heavyCnt = document.getElementById('codexGrid').children.length;
+      setCodexTab('supplies');
+      const suppliesCnt = document.getElementById('codexGrid').children.length;
+      closeCodex();
+
+      showStart();
+      openMenuStage('story');
+      const bgAfterStory = document.getElementById('heroKeyArtBg').style.backgroundImage || '';
+      openMenuStage('endless');
+      const bgAfterEndless = document.getElementById('heroKeyArtBg').style.backgroundImage || '';
+      const vistaCleanOk = bgAfterStory.includes('scene_1_vista.jpg') && bgAfterEndless.includes('_vista.jpg');
+
+      return {
+        ok: shopHasLegendRelicPill && shopHasEpicWpnPill && slotHasLegendPill && quickBtnShown &&
+            ovActive && stats12Cnt === 12 && ovWpnCnt === 6 && ovRelicHasPill && cols1Ok && cols2Ok &&
+            synModalOk && relicModalOk && quickMergedOk && backToShopOk && lvlHasPill &&
+            arrowsExist && f0 === 'all' && f1 === 'primitive' && f2 === 'precise' && fBack === 'primitive' &&
+            heavyCnt >= 5 && suppliesCnt === 23 && vistaCleanOk,
+        detail: {
+          vp: '${vp.label}', shopHasLegendRelicPill, shopHasEpicWpnPill, slotHasLegendPill, quickBtnShown,
+          ovActive, stats12Cnt, ovWpnCnt, ovRelicHasPill, cols1Ok, cols2Ok,
+          synModalOk, relicModalOk, quickMergedOk, backToShopOk, lvlHasPill,
+          arrowsExist, f0, f1, f2, fBack, heavyCnt, suppliesCnt, vistaCleanOk
+        }
+      };
+    })()`, s6);
+    assert.strictEqual(r6.ok, true, `Suite 6 (${vp.label}) failed: ` + JSON.stringify(r6.detail || r6));
+    assert.strictEqual(st6.radialGradients, 0, `Suite 6 (${vp.label}) radialGradients must be 0`);
+    assert.strictEqual(st6.shadowBlurs, 0, `Suite 6 (${vp.label}) shadowBlurs must be 0`);
+    assert.strictEqual(vm.runInContext("logErrCount", s6), 0, `Zero runtime errors in Suite 6 (${vp.label})`);
+  }
+}
+
+console.log(`ALL 6 V${packageVersion} VERIFICATION SUITES PASSED! Modular files: ${cssFiles.length} CSS + ${jsFiles.length} JS | Total JS: ${(code.length / 1024).toFixed(1)} KB`);

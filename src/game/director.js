@@ -10,7 +10,7 @@ const SpireDirector = (function () {
     jialan: { name: '伽蓝', roleTag: '倒悬钟楼守望者', accent: '#c1b2dc' },
     eclipse: { name: '日蚀圣女', roleTag: '镜中的黑日半身', accent: '#dcc79f' }
   };
-  Object.keys(CAST).forEach(k => { CAST[k].id = k; CAST[k].portrait = 'assets/spire/port_' + k + '.jpg'; });
+  Object.keys(CAST).forEach(k => { CAST[k].id = k; CAST[k].portrait = k === 'zero' ? 'assets/spire/ui_art/port_zero_bust.png' : ('assets/spire/ui_art/ui_bust_' + k + '.png'); });
   const BOSS = ['jinyu', 'astria', 'jialan', 'eclipse'];
   const ACTS = ['雨夜长桥', '永冻冰窟', '倒悬钟楼', '日蚀镜界'];
   const MEMORY = {
@@ -160,7 +160,7 @@ const SpireDirector = (function () {
   function castPortraitPath(key) {
     if (key === 'zero' && typeof getActiveZeroOutfit === 'function') {
       const o = getActiveZeroOutfit();
-      if (o && o.portrait) return o.portrait;
+      if (o && (o.uiBust || o.portrait)) return o.uiBust || o.portrait;
     }
     if (key && key !== 'zero' && cur && cur.id && /\.phase2\b/.test(cur.id)) {
       return 'assets/spire/port_' + key + '_p2.jpg';
@@ -185,14 +185,13 @@ const SpireDirector = (function () {
     if (ui) return;
     const root = node('section', 'spire-narrative hidden', document.body); root.id = 'spireNarrative'; root.tabIndex = -1;
     root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', '剧情演出');
-    const frame = node('div', 'story-film-frame', root), artWindow = node('div', 'story-art-window', frame), backdrop = node('div', 'story-art-backdrop', artWindow), camera = node('div', 'story-camera', artWindow), image = node('img', 'story-scene-image', camera);
+    const frame = node('div', 'story-film-frame', root), backdrop = node('div', 'story-art-backdrop', frame), artWindow = node('div', 'story-art-window', frame), camera = node('div', 'story-camera', artWindow), image = node('img', 'story-scene-image', camera);
     image.alt = ''; image.draggable = false; image.decoding = 'async'; image.loading = 'eager';
     try { image.fetchPriority = 'high'; } catch (_) {}
     backdrop.style.backgroundImage = 'url("' + source(A + 'title-clean.png') + '")';
     image.addEventListener('load', () => {
       artWindow.classList.remove('art-loading');
-      const art = image._storyArt;
-      if (art && !art.cols && image.src) backdrop.style.backgroundImage = 'url("' + image.src + '")';
+      if (image.src) backdrop.style.backgroundImage = 'url("' + image.src + '")';
       fitArt();
     });
     image.addEventListener('error', () => {
@@ -207,29 +206,40 @@ const SpireDirector = (function () {
     const left = node('img', 'story-portrait story-portrait-left', root), right = node('img', 'story-portrait story-portrait-right', root);
     left.alt = right.alt = ''; left.draggable = right.draggable = false;
     left.decoding = right.decoding = 'async'; left.loading = right.loading = 'eager';
-    const toolbar = node('div', 'story-toolbar', root), chapter = node('div', 'story-chapter', toolbar), controls = node('div', 'story-controls', toolbar);
+    const toolbar = node('div', 'story-toolbar', root), chapterWrap = node('div', 'story-chapter-wrap', toolbar), actBadge = node('span', 'story-p5-act-badge', chapterWrap, 'STORY'), chapter = node('div', 'story-chapter', chapterWrap), controls = node('div', 'story-controls', toolbar);
+    actBadge.setAttribute('aria-hidden', 'true');
     const logBtn = button('回看', '', controls, toggleLog, '回看已显示的对白');
     const autoBtn = button('自动', '', controls, toggleAutoPlay, '切换自动阅读');
     button('隐藏', '', controls, () => setHidden(true), '隐藏界面，下一次点击恢复');
     const skipBtn = button('跳过已读', '', controls, () => { skipRead = !skipRead; syncControls(); }, '只跳过已经读过的台词');
     const sizeBtn = button('字 100%', 'story-compact-control', controls, () => { const sizes = [1, 1.15, 1.3]; setPreferences({ textScale: sizes[(sizes.indexOf(prefs.textScale) + 1) % 3] }); });
     const closeBtn = button('退出预览', 'story-exit-preview', controls, closeReplay);
-    const dialog = node('div', 'story-dialogue', root), nameRow = node('div', 'story-name-row', dialog);
+    const dialog = node('div', 'story-dialogue', root); dialog.setAttribute('data-speaker-side', 'left');
+    const p5Ghost = node('div', 'story-p5-ghost', dialog), p5Tail = node('div', 'story-p5-tail', dialog);
+    p5Ghost.setAttribute('aria-hidden', 'true'); p5Tail.setAttribute('aria-hidden', 'true');
+    const nameRow = node('div', 'story-name-row', dialog);
     const listener = node('img', 'story-listener-avatar', nameRow); listener.alt = ''; listener.draggable = false;
     const name = node('span', 'story-speaker', nameRow), role = node('span', 'story-speaker-role', nameRow), progress = node('span', 'story-line-count', nameRow);
-    const text = node('p', 'story-dialogue-text', dialog); text.setAttribute('aria-hidden', 'true');
+    const p5Shell = node('div', 'story-p5-shell', dialog), p5Fill = node('div', 'story-p5-fill', p5Shell);
+    const text = node('p', 'story-dialogue-text', p5Fill); text.setAttribute('aria-hidden', 'true');
     const accessible = node('p', 'story-sr-only', root); accessible.setAttribute('aria-live', 'polite'); accessible.setAttribute('aria-atomic', 'true');
-    const footer = node('div', 'story-dialogue-footer', dialog), readHint = node('span', 'story-read-hint', footer);
-    const nextBtn = button('继续  ›', 'story-next', footer, () => advanceOrSkip(false));
-    const cinematic = node('div', 'story-cinematic-caption', root), cinName = node('span', 'story-cinematic-speaker', cinematic), cinText = node('p', '', cinematic);
-    const cinNext = button('继续  ›', 'story-cinematic-next', cinematic, () => advanceOrSkip(false));
+    const footer = node('div', 'story-dialogue-footer', p5Fill), readHint = node('span', 'story-read-hint', footer);
+    const nextBtn = button('▶ 继续', 'story-next', footer, () => advanceOrSkip(false));
+    const cinematic = node('div', 'story-cinematic-caption', root); cinematic.setAttribute('data-speaker-side', 'none');
+    const cinGhost = node('div', 'story-p5-ghost', cinematic); cinGhost.setAttribute('aria-hidden', 'true');
+    const cinNameRow = node('div', 'story-name-row story-cin-name-row', cinematic);
+    const cinName = node('span', 'story-cinematic-speaker story-speaker', cinNameRow), cinRole = node('span', 'story-speaker-role', cinNameRow), cinProgress = node('span', 'story-line-count', cinNameRow);
+    const cinShell = node('div', 'story-p5-shell', cinematic), cinFill = node('div', 'story-p5-fill', cinShell);
+    const cinText = node('p', 'story-dialogue-text story-cinematic-text', cinFill); cinText.setAttribute('aria-hidden', 'true');
+    const cinFooter = node('div', 'story-dialogue-footer', cinFill), cinReadHint = node('span', 'story-read-hint', cinFooter);
+    const cinNext = button('▶ 继续', 'story-cinematic-next', cinFooter, () => advanceOrSkip(false));
     const titleCard = node('div', 'story-title-card', root), overline = node('span', 'story-title-overline', titleCard), title = node('h2', '', titleCard), subtitle = node('p', '', titleCard);
     const choices = node('div', 'story-choice-panel', root); choices.setAttribute('aria-label', '剧情选项');
-    const restore = button('界面已隐藏 · 点击恢复', 'story-restore', root, () => setHidden(false));
+    const restore = button('◆ 显示界面', 'story-restore', root, () => setHidden(false));
     const log = node('div', 'story-log hidden', root); log.setAttribute('role', 'dialog'); log.setAttribute('aria-label', '对白回看');
-    const logHead = node('div', 'story-log-head', log); node('h2', '', logHead, '刚才的话');
-    const logClose = button('返回剧情', '', logHead, toggleLog), logList = node('div', 'story-log-list', log); logList.tabIndex = 0;
-    ui = { root, frame, artWindow, backdrop, camera, image, atmosphere, particles, light, shutter, left, right, toolbar, chapter, logBtn, autoBtn, skipBtn, sizeBtn, closeBtn, dialog, nameRow, listener, name, role, progress, text, accessible, readHint, nextBtn, cinematic, cinName, cinText, cinNext, titleCard, overline, title, subtitle, choices, restore, log, logList, logClose };
+    const logHead = node('div', 'story-log-head', log); node('h2', '', logHead, 'BACKLOG · 对白回看');
+    const logClose = button('✕ 返回剧情', '', logHead, toggleLog), logList = node('div', 'story-log-list', log); logList.tabIndex = 0;
+    ui = { root, frame, artWindow, backdrop, camera, image, atmosphere, particles, light, shutter, left, right, toolbar, actBadge, chapter, logBtn, autoBtn, skipBtn, sizeBtn, closeBtn, dialog, p5Tail, p5Shell, p5Fill, nameRow, listener, name, role, progress, text, accessible, readHint, nextBtn, cinematic, cinNameRow, cinName, cinRole, cinProgress, cinText, cinReadHint, cinNext, titleCard, overline, title, subtitle, choices, restore, log, logList, logClose };
     // A reading gesture must never become a "next line" click after native scrolling.
     root.addEventListener('pointerdown', ev => { pointerTrack = { id: ev.pointerId, x: ev.clientX, y: ev.clientY }; suppressDragClick = false; if (cur) cur.readHold = 1.2; }, { passive: true });
     root.addEventListener('pointermove', ev => { if (pointerTrack && pointerTrack.id === ev.pointerId && Math.hypot(ev.clientX - pointerTrack.x, ev.clientY - pointerTrack.y) > 8) { suppressDragClick = true; if (cur) cur.readHold = 1.2; } }, { passive: true });
@@ -373,8 +383,11 @@ const SpireDirector = (function () {
       quiet: ['translate3d(0.25%,0,0) scale(1.025)', 'translate3d(-0.25%,0,0) scale(1.045)', 28000, 'none'],
       still: ['scale(1)', 'scale(1)', 18000, 'none']
     }[motionPreset] || ['scale(1.01)', 'scale(1.045)', 24000, 'none'];
-    // Atlas panels keep their entire safe rectangle. Camera zoom would exceed the 1.25x pixel cap.
-    if (!art.cols && motionPreset !== 'still') cameraMotion = animate(ui.camera, [{ transform: preset[0] }, { transform: preset[1] }], { duration: preset[2], easing: 'cubic-bezier(.2,.45,.35,1)', fill: 'both' }, 'camera');
+    // Atlas panels keep their entire safe rectangle; portrait framed CGs use gentle centered breathing so horizontal edges never clip.
+    const isPortraitCam = (ui.root.clientHeight || window.innerHeight) > (ui.root.clientWidth || window.innerWidth);
+    const camFrom = isPortraitCam ? 'scale(1)' : preset[0];
+    const camTo = isPortraitCam ? 'scale(1.02)' : preset[1];
+    if (!art.cols && motionPreset !== 'still') cameraMotion = animate(ui.camera, [{ transform: camFrom }, { transform: camTo }], { duration: preset[2], easing: 'cubic-bezier(.2,.45,.35,1)', fill: 'both' }, 'camera');
     const weather = preset[3]; ui.atmosphere.setAttribute('data-weather', weather); ui.atmosphere.classList.toggle('hidden', weather === 'none');
     const count = weather === 'rain' ? 8 : weather === 'none' ? 0 : 5;
     const h = ui.frame.getBoundingClientRect().height || window.innerHeight;
@@ -401,7 +414,7 @@ const SpireDirector = (function () {
     }
     if (ui.image.complete && ui.image.naturalWidth > 0) {
       ui.artWindow.classList.remove('art-loading');
-      if (!art.cols && ui.image.src) ui.backdrop.style.backgroundImage = 'url("' + ui.image.src + '")';
+      if (ui.image.src) ui.backdrop.style.backgroundImage = 'url("' + ui.image.src + '")';
     }
     fitArt(); if (changed || !motion.length) startSceneMotion(changed); else syncMotionState();
   }
@@ -413,16 +426,38 @@ const SpireDirector = (function () {
     const iw = ui.image.naturalWidth || 1672, ih = ui.image.naturalHeight || 941;
     let sx = 0, sy = 0, sw = iw, sh = ih;
     if (a.cols) { sx = iw * ((a.panel % a.cols) + a.safe[0]) / a.cols; sy = ih * (Math.floor(a.panel / a.cols) + a.safe[1]) / a.rows; sw = iw * a.safe[2] / a.cols; sh = ih * a.safe[3] / a.rows; }
-    // A matte reserves a real caption area; smaller source frames stay intact above the text.
-    const mobileBand = vw <= 600 && vh > vw;
-    const mobileSplit = vh <= 540 && vw > vh && cur && (cur.kind === 'cinematic' || cur.kind === 'dialogue' && cur.portraits === false);
-    const framed = mobileBand || mobileSplit;
-    const availableH = a.cols && !framed ? fh * (cur && cur.kind === 'dialogue' ? .61 : cur && cur.kind === 'cinematic' ? .72 : .88) : fh;
-    const scale = a.cols ? Math.min(fw * .94 / sw, availableH / sh, 1.25) : mobileSplit ? Math.min(fw / sw, fh / sh) : Math.max(fw / sw, fh / sh);
+    const isPortrait = vh > vw || !!(document.body && document.body.classList && document.body.classList.contains('m-portrait'));
+    const hasStandees = !!(cur && cur.kind === 'dialogue' && cur.portraits !== false && !a.standalone && !a.cols);
+    // 竖屏模式下所有横向剧情CG、过场分镜、信物回忆、结局与报幕插画均按完整宽银幕比例展示，绝不左右裁切
+    const portraitWidescreen = isPortrait && sw > sh * 1.02 && !hasStandees;
+    const mobileSplit = !isPortrait && vh <= 540 && vw > vh && cur && (cur.kind === 'cinematic' || (cur.kind === 'dialogue' && cur.portraits === false));
+    ui.artWindow.classList.toggle('is-portrait-framed', portraitWidescreen);
+    let scale, aw, ah, leftPos, topPos;
+    if (portraitWidescreen) {
+      const maxW = a.cols ? fw * 0.96 : fw;
+      const topPad = Math.max(74, Math.round(fh * 0.095));
+      const botLimit = cur && (cur.kind === 'dialogue' || cur.kind === 'cinematic')
+        ? Math.round(fh * 0.65)
+        : (cur && cur.kind === 'choice' ? Math.round(fh * 0.44) : Math.round(fh * 0.86));
+      const bandH = Math.max(150, botLimit - topPad);
+      scale = Math.min(maxW / sw, bandH / sh, a.cols ? 1.25 : 2.0);
+      aw = Math.round(sw * scale);
+      ah = Math.round(sh * scale);
+      leftPos = Math.round((fw - aw) / 2);
+      topPos = (cur && cur.kind === 'title')
+        ? Math.round((fh - ah) * 0.44)
+        : Math.round(topPad + Math.max(0, bandH - ah) * 0.45);
+    } else {
+      const availableH = a.cols ? fh * (cur && cur.kind === 'dialogue' ? .61 : cur && cur.kind === 'cinematic' ? .72 : .88) : fh;
+      scale = a.cols ? Math.min(fw * .94 / sw, availableH / sh, 1.25) : mobileSplit ? Math.min(fw / sw, fh / sh) : Math.max(fw / sw, fh / sh);
+      aw = a.cols || mobileSplit ? sw * scale : fw;
+      ah = a.cols || mobileSplit ? sh * scale : fh;
+      leftPos = (fw - aw) / 2;
+      topPos = a.cols ? Math.max(58, (fh * .78 - ah) / 2) : (fh - ah) / 2;
+    }
     artScale = scale;
-    const aw = a.cols || mobileSplit ? sw * scale : fw, ah = a.cols || mobileSplit ? sh * scale : fh;
     ui.artWindow.style.width = aw + 'px'; ui.artWindow.style.height = ah + 'px';
-    ui.artWindow.style.left = (fw - aw) / 2 + 'px'; ui.artWindow.style.top = a.cols && !framed ? Math.max(58, (fh * .78 - ah) / 2) + 'px' : (fh - ah) / 2 + 'px';
+    ui.artWindow.style.left = leftPos + 'px'; ui.artWindow.style.top = topPos + 'px';
     ui.image.style.width = iw * scale + 'px'; ui.image.style.height = ih * scale + 'px';
     ui.image.style.left = (aw - sw * scale) / 2 - sx * scale + 'px'; ui.image.style.top = (ah - sh * scale) / 2 - sy * scale + 'px';
     refreshReadingScroll();
@@ -574,9 +609,13 @@ const SpireDirector = (function () {
     if (!cur || !ui) return; const kind = cur.kind;
     ui.root.setAttribute('data-kind', kind); ui.root.setAttribute('data-event', cur.id || ''); ui.root.classList.toggle('story-previewing', preview);
     ui.root.classList.toggle('story-illustrated', cur.portraits === false || kind === 'cinematic');
+    const fl = Number(cur.floor) || 0;
+    const actRoman = fl > 0 ? ['I', 'II', 'III', 'IV'][Math.max(0, Math.min(3, Math.floor((fl - 1) / 4)))] : '';
+    if (ui.actBadge) ui.actBadge.textContent = preview ? 'PREVIEW' : (kind === 'choice' ? 'DESTINY' : (fl > 0 ? ('ACT ' + actRoman + ' · ' + fl + 'F') : 'CHRONICLE'));
     ui.chapter.textContent = (preview ? '演出预览 / ' : '') + (cur.chapter || '烬塔残响');
     ui.dialog.classList.toggle('hidden', kind !== 'dialogue'); ui.cinematic.classList.toggle('hidden', kind !== 'cinematic');
     ui.titleCard.classList.toggle('hidden', kind !== 'title'); ui.choices.classList.toggle('hidden', kind !== 'choice');
+    if (kind !== 'dialogue') ui.root.setAttribute('data-speaker-side', 'none');
     ui.left.classList.add('hidden'); ui.right.classList.add('hidden'); setArt(cur.art || vista(cur.floor || 1));
     if (kind === 'title') { ui.overline.textContent = cur.overline || ''; ui.title.textContent = cur.title || ''; ui.subtitle.textContent = cur.subtitle || ''; }
     else if (kind === 'choice') renderChoices(); else syncLine(); syncControls(); syncMotionState();
@@ -585,13 +624,20 @@ const SpireDirector = (function () {
     const ln = line(); if (!ln || !ui) return; lastText = '';
     cur.awaitingScroll = false; cur.readHold = 0; ui.text.scrollTop = ui.cinText.scrollTop = 0;
     const id = speakerId(ln.speaker), cast = id && CAST[id], isNarration = !ln.speaker || ln.speaker === '旁白';
+    const speakerSide = (!isNarration && cast) ? (id === 'zero' ? 'left' : 'right') : 'none';
+    ui.dialog.setAttribute('data-speaker-side', speakerSide);
+    ui.root.setAttribute('data-speaker-side', speakerSide);
     ui.accessible.textContent = (ln.speaker ? ln.speaker + '：' : '') + ln.text;
     ui.name.textContent = isNarration ? '' : (ln.speaker || ''); ui.cinName.textContent = ui.name.textContent;
     ui.cinematic.classList.toggle('story-silent', !ln.text.trim());
-    ui.role.textContent = cast ? (id === 'qingyu' && (cur.floor || 1) >= 15 ? '旧日同伴 · 记忆的保管者' : cast.roleTag) : '';
+    const roleLabel = cast ? (id === 'qingyu' && (cur.floor || 1) >= 15 ? '旧日同伴 · 记忆的保管者' : cast.roleTag) : (ln.speaker === '神秘女声' ? '高塔深处的回响' : ln.speaker === '倒悬机神' ? '第三幕神枢巨像' : ln.speaker === '旧日记忆' ? '守誓者的信物' : '');
+    ui.role.textContent = ui.cinRole.textContent = roleLabel;
     ui.nameRow.classList.toggle('story-narration', isNarration);
+    ui.cinNameRow.classList.toggle('story-narration', isNarration);
     ui.dialog.classList.toggle('story-is-narration', isNarration);
-    ui.progress.textContent = (cur.idx + 1) + ' / ' + cur.lines.length; css(ui.root, '--story-accent', cast ? cast.accent : '#c9d2d3');
+    ui.cinematic.classList.toggle('story-is-narration', isNarration);
+    const progLabel = (cur.idx + 1) + ' / ' + cur.lines.length;
+    ui.progress.textContent = ui.cinProgress.textContent = progLabel; css(ui.root, '--story-accent', cast ? cast.accent : '#c9d2d3');
     const sceneSpeakers = cur.kind === 'dialogue' && cur.portraits !== false ? cur.lines.map(row => speakerId(row.speaker)).filter(Boolean) : [];
     if (cur.kind === 'dialogue' && cur.portraits !== false && (cast || (isNarration && sceneSpeakers.length))) {
       const other = sceneSpeakers.find(k => k !== 'zero') || null;
@@ -602,6 +648,7 @@ const SpireDirector = (function () {
         el.classList.toggle('hidden', !key); el.classList.toggle('speaking', active);
         if (key) {
           const path = castPortraitPath(key), role = el === ui.left ? 'portrait-left' : 'portrait-right';
+          el.setAttribute('data-phase2', /\.jpg$/i.test(path) ? '1' : '0');
           if (el.getAttribute('data-portrait') !== path) { el.setAttribute('data-portrait', path); el.src = source(path); } el.alt = CAST[key].name; el.setAttribute('data-character', key);
           const targetOpacity = active ? 1 : .42;
           if (entering || lastPortraitSpeaker !== (id || 'narration')) {
@@ -625,11 +672,11 @@ const SpireDirector = (function () {
     const shown = cur.revealed ? ln.text : ln.text.slice(0, Math.floor(cur.lineElapsed * prefs.textSpeed));
     // Clearing on every new line also clears a previous line when the first typed frame is empty.
     if (shown !== lastText || !shown) { (cur.kind === 'cinematic' ? ui.cinText : ui.text).textContent = shown; lastText = shown; }
-    const nextLabel = cur.revealed ? '继续  ›' : '显示全文';
+    const nextLabel = cur.revealed ? '▶ 继续' : '▶ 全文';
     if (nextLabel !== lastNext) { ui.nextBtn.textContent = ui.cinNext.textContent = nextLabel; lastNext = nextLabel; }
     const compact = (document.body && document.body.classList && document.body.classList.contains('m-ui')) || window.innerWidth <= 900 || window.innerHeight <= 540;
-    const hint = cur.awaitingScroll ? '上滑阅读余下内容' : auto ? '自动阅读中 · 遇到选项暂停' : cur.revealed ? (compact ? '轻触屏幕任意处继续' : '空格 / 点击继续') : (compact ? '轻触屏幕显示全文' : '点击先显示完整句子');
-    if (hint !== lastHint) { ui.readHint.textContent = hint; lastHint = hint; }
+    const hint = cur.awaitingScroll ? '上滑阅读余下内容' : auto ? '自动阅读中 · 遇到选项暂停' : cur.revealed ? (compact ? '轻触屏幕任意处继续' : 'SPACE / 点击任意处推进') : (compact ? '轻触屏幕显示全文' : '点击先显示完整句子');
+    if (hint !== lastHint) { ui.readHint.textContent = ui.cinReadHint.textContent = hint; lastHint = hint; }
   }
   function renderChoices() {
     ui.choices.innerHTML = ''; ui.choices.scrollTop = 0; node('span', 'story-choice-eyebrow', ui.choices, cur.eyebrow || '由你决定');
@@ -693,11 +740,17 @@ const SpireDirector = (function () {
   }
   function memoryReader(key, returnScene) {
     const mem = MEMORY[key], art = memoryArt(key);
+    const hasReturn = typeof returnScene === 'function';
     const pages = mem.slice(1).map((txt, idx) => ({ speaker: '旧日记忆', text: txt, lineId: 'memory.' + key + '.description.' + (idx + 1) }));
     return [dlg('memory.' + key, mem[0], pages, art, 15, false),
       { id: 'memory.' + key + '.confirm', kind: 'choice', title: mem[0], text: '旧物的温度与亲眼所见的证据彼此印证，尘封的誓约正在掌心苏醒。', art,
-        options: [{ id: 'remember', label: '铭记这段守誓之约', detail: '将这份托付镌刻于心，不再遗忘' }, { id: 'back', label: '先贴身收好', detail: '稍后仍可在风亭或镜前回想' }],
-        onChoose: id => { if (id === 'remember' && !preview && typeof rememberSpireMemento === 'function') rememberSpireMemento(key); queue.unshift(returnScene()); }
+        options: hasReturn
+          ? [{ id: 'remember', label: '铭记这段守誓之约', detail: '将这份托付镌刻于心，不再遗忘' }, { id: 'back', label: '先贴身收好', detail: '稍后仍可在风亭或镜前回想' }]
+          : [{ id: 'remember', label: '铭记这段守誓之约', detail: '镌刻于心并贴身收好，继续登塔' }, { id: 'back', label: '暂且贴身收好，继续登塔', detail: '稍后仍可在风亭或终门前翻阅回想' }],
+        onChoose: id => {
+          if (id === 'remember' && !preview && typeof rememberSpireMemento === 'function') rememberSpireMemento(key);
+          if (hasReturn) queue.unshift(returnScene());
+        }
       }];
   }
   function memoryMenu(returnScene) {
@@ -716,7 +769,7 @@ const SpireDirector = (function () {
   function rewardChoice(key, n) {
     const make = () => ({ id: 'memento.' + key, kind: 'choice', chapter: '第 ' + n + ' 层 · 守誓者的托付', title: '收下 · ' + MEMORY[key][0], text: '微凉的旧物静静躺在掌心，似乎只要闭上眼触碰它，就能听见灾厄降临前那晚的声音。', art: memoryArt(key),
       options: [{ id: 'memory', label: '触碰信物，唤醒旧日记忆', detail: '倾听这件信物背后的真实往事' }, { id: 'continue', label: '贴身收好，继续登塔', detail: '稍后仍可在终门前翻阅回想' }],
-      onChoose: id => { if (id === 'memory') queue.unshift.apply(queue, memoryReader(key, make)); }
+      onChoose: id => { if (id === 'memory') queue.unshift.apply(queue, memoryReader(key, null)); }
     }); return make();
   }
   function finalChoiceScene(onChoice) {
@@ -754,14 +807,24 @@ const SpireDirector = (function () {
     enqueue(items, () => { seen['floor.' + n + '.complete'] = true; }); return true;
   }
   function specialBossPhase2Scenes(kind) {
-    if (kind === 'colossus' || kind === 'mech_colossus') {
-      const fb = vista(9), chap = '倒悬机神 · 熔核超载';
+    if (kind === 'crimson_lord' || kind === 'crimson') {
+      const fb = vista(1), chap = '荒祠古祟 · 血月夜叉';
       const items = [
-        cin('boss.colossus.phase2.shot.01', chap, [{ lineId: 'boss.colossus.phase2.01', speaker: '倒悬机神', text: '【神枢警报：外层黑铁铆钉甲损毁逾半……正在解除第三重发条限速锁——】' }], fb, 3.1, 9),
-        cin('boss.colossus.phase2.shot.02', chap, [{ lineId: 'boss.colossus.phase2.02', speaker: '倒悬机神', text: '【警告：主发条进入赤热超载——黑铁胸甲开炉，背部双巨锯齿轮解锁！】' }], cgJpg('colossus-p2-furnace', fb, 'rupture'), 3.2, 9),
-        cin('boss.colossus.phase2.shot.03', chap, [{ lineId: 'boss.colossus.phase2.03', speaker: '倒悬机神', text: '【歼灭协议已激活：凡踏入倒悬神枢禁区者——皆归炉心余烬！】' }], cgJpg('colossus-p2-awaken', fb, 'rupture'), 3.4, 9)
+        cin('boss.crimson.phase2.shot.01', chap, [{ lineId: 'boss.crimson.phase2.01', speaker: '绯狱妖主', text: '镇魂石碑腐朽，符锁寸断……沉睡千载，终有提灯的活人踏进这座水底荒祠了。' }], cgJpg('crimson-p2-lantern', fb, 'rupture'), 3.1, 4),
+        cin('boss.crimson.phase2.shot.02', chap, [{ lineId: 'boss.crimson.phase2.02', speaker: '绯狱妖主', text: '区区白瓷镇魂面，再锁不住吾之凶骨——破龛裂面，黑角归位！' }], cgJpg('crimson-p2-unsheathe', fb, 'rupture'), 3.2, 4),
+        cin('boss.crimson.phase2.shot.03', chap, [{ lineId: 'boss.crimson.phase2.03', speaker: '绯狱妖主', text: '血月当空，万冢妖刀齐鸣——用你的魂火，祭吾苏醒后的第一场夜宴！' }], cgJpg('crimson-p2-awaken', fb, 'rupture'), 3.4, 4)
       ];
-      if (preview) items.push(titleCard('boss.colossus.phase2.phase', '倒悬机神 · 裂胸双锯巨像', cgJpg('colossus-p2-awaken', fb, 'rupture'), 1.45, '第二阶段 · 赤金炉心 & 四门火神炮全开', '熔核超载 · 歼灭协议'));
+      if (preview) items.push(titleCard('boss.crimson.phase2.phase', '荒祠古祟 · 血月黑角夜叉王', cgJpg('crimson-p2-awaken', fb, 'rupture'), 1.45, '第二阶段 · 荒祠破封 & 万冢妖刀解禁', '千载破龛 · 血月临世'));
+      return items;
+    }
+    if (kind === 'colossus' || kind === 'mech_colossus') {
+      const fb = vista(9), chap = '倒悬机神 · 歼灭神枢';
+      const items = [
+        cin('boss.colossus.phase2.shot.01', chap, [{ lineId: 'boss.colossus.phase2.01', speaker: '倒悬机神', text: '【神枢警报：黑曜重甲损毁逾半……正在强制熔断第三重发条限速锁——】' }], fb, 3.1, 9),
+        cin('boss.colossus.phase2.shot.02', chap, [{ lineId: 'boss.colossus.phase2.02', speaker: '倒悬机神', text: '【警告：神枢炉心超载 300% —— 裂胸开膛，双翼熔岩巨锯全功率解封！】' }], cgJpg('colossus-p2-furnace', fb, 'rupture'), 3.2, 9),
+        cin('boss.colossus.phase2.shot.03', chap, [{ lineId: 'boss.colossus.phase2.03', speaker: '倒悬机神', text: '【终焉歼灭协议已激活：凡踏入倒悬钟楼禁区者——尽归炉心焦土！】' }], cgJpg('colossus-p2-awaken', fb, 'rupture'), 3.4, 9)
+      ];
+      if (preview) items.push(titleCard('boss.colossus.phase2.phase', '倒悬机神 · 裂胸巨锯魔神态', cgJpg('colossus-p2-awaken', fb, 'rupture'), 1.45, '第二阶段 · 裂胸炉心 & 双翼熔岩巨锯全开', '神枢超载 · 终焉魔神'));
       return items;
     }
     const fb = atlas('qingyu-atlas.png', 2), chap = '青羽试炼影 · 千夜苍岚';
@@ -789,12 +852,14 @@ const SpireDirector = (function () {
     return true;
   }
   function onSpecialBossPhase2(variantOrKey, bossEntity) {
+    const isCrimson = variantOrKey === 'crimson_lord' || variantOrKey === 'crimson';
     const isColossus = variantOrKey === 'mech_colossus' || variantOrKey === 'colossus';
-    const sk = isColossus ? 'colossus' : 'qingyu';
+    const sk = isCrimson ? 'crimson' : (isColossus ? 'colossus' : 'qingyu');
+    const fallbackVariant = isCrimson ? 'crimson_lord' : (isColossus ? 'mech_colossus' : 'plague_empress');
     const seenKey = 'phase2.special.' + sk;
     const launchShatter = () => {
       if (!preview && typeof startPhase2ShatterSequence === 'function') {
-        startPhase2ShatterSequence(bossEntity || (isColossus ? 'mech_colossus' : 'plague_empress'), 'story');
+        startPhase2ShatterSequence(bossEntity || fallbackVariant, 'story');
       }
     };
     if (seen[seenKey]) {
@@ -827,7 +892,8 @@ const SpireDirector = (function () {
     for (const key of BOSS) for (const sk of ['first_meeting', 'pre_battle', 'phase2', 'boss_defeated']) { const s = D.boss_stages[key][sk]; result.push({ id: s.stageId, title: CAST[key].name + ' / ' + s.title, section: '四位首领', thumbnail: bossArt(key, sk).path }); }
     result.push(
       { id: 'boss.qingyu.phase2', title: '青羽试炼影 / 第二阶段 · 千夜翠岚', section: '四位首领', thumbnail: V3 + 'qingyu-p2-awaken.jpg' },
-      { id: 'boss.colossus.phase2', title: '倒悬机神 / 第二阶段 · 熔核超载', section: '四位首领', thumbnail: V3 + 'colossus-p2-awaken.jpg' }
+      { id: 'boss.colossus.phase2', title: '倒悬机神 / 第二阶段 · 裂胸巨锯魔神', section: '四位首领', thumbnail: V3 + 'colossus-p2-awaken.jpg' },
+      { id: 'boss.crimson.phase2', title: '荒祠古祟·绯狱妖主 / 第二阶段 · 血月黑角夜叉王', section: '四位首领', thumbnail: V3 + 'crimson-p2-awaken.jpg' }
     );
     result.push({ id: 'final.choice', title: '镜前的选择（预览）', section: '败北与结局' }, { id: 'player.defeat', title: '玩家败北 · 魂灯未熄', section: '败北与结局', thumbnail: A + 'player-defeat-clean.png' });
     for (const key of ['A', 'B']) result.push({ id: 'ending.' + key, title: D.endings[key].title, section: '败北与结局' }); return result;
@@ -839,6 +905,7 @@ const SpireDirector = (function () {
     if (id === 'opening.awakening') items = openingScenes();
     else if (id === 'boss.qingyu.phase2') items = specialBossPhase2Scenes('qingyu');
     else if (id === 'boss.colossus.phase2') items = specialBossPhase2Scenes('colossus');
+    else if (id === 'boss.crimson.phase2') items = specialBossPhase2Scenes('crimson');
     else if (id === 'final.choice') items = [finalChoiceScene(choice => enqueue(endingScenes(choice === 'accept' ? 'A' : 'B')))];
     else if (id === 'player.defeat') items = [cin(id, '第 4 层 · 魂灯未熄', D.player_defeat.dialogue, { path: A + 'player-defeat-clean.png' }, 5.2, 4)];
     else if (/^ending\.[AB]$/.test(id)) items = endingScenes(id.slice(-1));

@@ -17,7 +17,7 @@ const FALLBACK_MINI_BOSS_DEFS = {
   storm_siren: { id: 'storm_siren', icon: '🕰️', name: '逆钟星律奏鸣偶', epithet: '三层钟楼雷鸣歌姬', color: '#38bdf8', spd: 90, desc: '三层钟楼雷鸣歌姬' }
 };
 const FALLBACK_SPECIAL_RELICS = [
-  { id: 'blood_altar', icon: '🏮', name: '雨夜断刃祭坛', color: '#ff2a55', bossId: 'crimson_lord', bossIcon: '🦊', bossName: '烬羽 · 第998世残响', epithet: '不肯熄灭的绯红剑魂', bossColor: '#d90429' },
+  { id: 'blood_altar', icon: '⛩️', name: '荒祠封魔血龛', color: '#ff2a55', bossId: 'crimson_lord', bossIcon: '👹', bossName: '荒祠古祟 · 绯狱妖主', epithet: '沉睡于水底古祠的千岁封剑凶灵', bossColor: '#d90429' },
   { id: 'golden_idol', icon: '🕰️', name: '黄金逆钟星盘', color: '#ffd166', bossId: 'golden_golem', bossIcon: '🏆', bossName: '黄金发条圣柜巨神', epithet: '封存千年晶尘的机神', bossColor: '#f59e0b' },
   { id: 'void_cube', icon: '🌑', name: '黑曜蚀日残镜', color: '#c77dff', bossId: 'abyss_devourer', bossIcon: '👁️', bossName: '零号容器 · 饥饿黑影', epithet: '提灯深处的天灾倒影', bossColor: '#7209b7' },
   { id: 'clockwork_altar', icon: '⚙️', name: '星晷重装祭坛', color: '#f77f00', bossId: 'mech_colossus', bossIcon: '⚙️', bossName: '倒悬机神 · 伽蓝重装态', epithet: '无尽钟楼重装主宰 · 祭坛降临', bossColor: '#f77f00' },
