@@ -17,6 +17,7 @@ const RELIC_ART_SPECS = {
   fertilizer:         ['vessel',      'flask',     '#4ade80', '#14532d', '#bbf7d0'],
   hedgehog:           ['gauntlet',    'bone',      '#e2e8f0', '#475569', '#f8fafc'],
   whetstone:          ['whetstone',   'stone',     '#94a3b8', '#334155', '#fde047'],
+  blade_gaiters:      ['footwear',    'greave',    '#34d399', '#0f172a', '#fde68a'],
   toolbox:            ['clockwork',   'box',       '#f59e0b', '#78350f', '#fef3c7'],
   gear_oil:           ['vessel',      'oilcan',    '#fbbf24', '#78350f', '#38bdf8'],
   blueprint_scroll:   ['tome_scroll', 'scroll',    '#38bdf8', '#1e3a8a', '#f6d379'],
@@ -41,6 +42,7 @@ const RELIC_ART_SPECS = {
   notched_core:       ['ammo_quiver', 'bullet',    '#fbbf24', '#78350f', '#f8fafc'],
   light_mag:          ['ammo_quiver', 'mag',       '#64748b', '#1e293b', '#38bdf8'],
   rifled_brace:       ['ammo_quiver', 'brace',     '#94a3b8', '#334155', '#f6d379'],
+  brass_recoil_spring:['clockwork',   'spring',    '#eab308', '#451a03', '#fef08a'],
   fox_fang_charm:     ['tag_bell',    'fang',      '#f8fafc', '#9f1239', '#fb7185'],
   weakness_atlas:     ['tome_scroll', 'book',      '#be123c', '#4c0519', '#fde68a'],
   keen_monocle:       ['optics',      'glasses',   '#fbbf24', '#1e293b', '#7dd3fc'],
@@ -56,8 +58,12 @@ const RELIC_ART_SPECS = {
   // --- T2 精良遗物 (40) ---
   scope:              ['optics',      'scope',     '#38bdf8', '#1e293b', '#fde047'],
   hawkeye_quiver:     ['ammo_quiver', 'quiver',    '#10b981', '#78350f', '#fef08a'],
+  buckshot_bandolier: ['belt',        'bandolier', '#f97316', '#1e293b', '#fde047'],
+  twin_feeder:        ['ammo_quiver', 'mag',       '#38bdf8', '#0f172a', '#fde047'],
   crit_gauntlet:      ['gauntlet',    'claw',      '#f43f5e', '#1e293b', '#fde68a'],
   brawler_pauldron:   ['armor',       'pauldron',  '#94a3b8', '#1e293b', '#f6d379'],
+  azure_kote:         ['gauntlet',    'silk',      '#2dd4bf', '#0f172a', '#fde68a'],
+  crescent_tassel:    ['tag_bell',    'tassel',    '#fb7185', '#1e293b', '#fde047'],
   landmine_pack:      ['explosive',   'mine',      '#38bdf8', '#1e293b', '#ff2a55'],
   mine_magnet:        ['curio',       'magnet',    '#38bdf8', '#eab308', '#72efdd'],
   repair_drone:       ['clockwork',   'drone',     '#fbbf24', '#1e293b', '#72efdd'],
@@ -94,10 +100,22 @@ const RELIC_ART_SPECS = {
   pocket_factory:     ['clockwork',   'box',       '#fbbf24', '#1e293b', '#72efdd'],
   arcane_echo_stone:  ['optics',      'prism',     '#c084fc', '#3b0764', '#72efdd'],
   gravity_collapser:  ['core_sphere', 'orb',       '#8b5cf6', '#090514', '#fde68a'],
+  silver_medal:       ['tag_bell',    'dogtag',    '#e2e8f0', '#334155', '#38bdf8'],
+  blindfold_band:     ['headgear',    'bandana',   '#1e293b', '#090d16', '#72efdd'],
+  ore_compass:        ['timepiece',   'watch',     '#fbbf24', '#1e3a8a', '#72efdd'],
+  amber_tonic:        ['vessel',      'flask',     '#f59e0b', '#78350f', '#fef08a'],
+  silver_boss_slug:   ['ammo_quiver', 'bullet',    '#e2e8f0', '#1e293b', '#38bdf8'],
+  iron_wrist_weight:  ['gauntlet',    'bone',      '#64748b', '#0f172a', '#f59e0b'],
+  gale_knuckle:       ['gauntlet',    'claw',      '#38bdf8', '#0f766e', '#fef08a'],
+  dual_grindstone:    ['whetstone',   'stone',     '#cbd5e1', '#1e293b', '#fb7185'],
+  arcane_inkwell:     ['vessel',      'flask',     '#c084fc', '#1e1b4b', '#fbbf24'],
+  charred_bracer:     ['gauntlet',    'silk',      '#fb923c', '#7c2d12', '#fde047'],
+  tungsten_firing_pin:['ammo_quiver', 'brace',     '#38bdf8', '#334155', '#fbbf24'],
 
-  // --- T3 史诗遗物 (34) ---
+  // --- T3 史诗遗物 (49) ---
   bandana:            ['headgear',    'bandana',   '#e11d48', '#4c0519', '#fde68a'],
   prism:              ['optics',      'prism',     '#60a5fa', '#1e3a8a', '#ffffff'],
+  dragon_piercer_ammo:['ammo_quiver', 'bullet',    '#f43f5e', '#1e1b4b', '#fde047'],
   tentacle:           ['curio',       'tentacle',  '#a855f7', '#3b0764', '#f43f5e'],
   sniper_cloak:       ['cloak',       'cape',      '#38bdf8', '#0c4a6e', '#f8fafc'],
   overseer_chip:      ['clockwork',   'spring',    '#fbbf24', '#78350f', '#c084fc'],
@@ -107,6 +125,7 @@ const RELIC_ART_SPECS = {
   absolute_zero_orb:  ['optics',      'eye',       '#38bdf8', '#082f49', '#ffffff'],
   blood_thorn_heart:  ['curio',       'heart',     '#e11d48', '#14532d', '#84cc16'],
   whirlwind_belt:     ['belt',        'sash',      '#fb7185', '#4c0519', '#fde68a'],
+  asura_wardrum:      ['belt',        'sash',      '#dc2626', '#1e1b4b', '#fde047'],
   titan_heart:        ['curio',       'heart',     '#f97316', '#7c2d12', '#fef08a'],
   fortress_plate:     ['armor',       'spiked',    '#64748b', '#090d16', '#f6d379'],
   tesla:              ['clockwork',   'fork',      '#c084fc', '#1e1b4b', '#72efdd'],
@@ -130,8 +149,21 @@ const RELIC_ART_SPECS = {
   giant_slayer_belt:  ['belt',        'sash',      '#eab308', '#1e1b4b', '#38bdf8'],
   wind_dynamo:        ['clockwork',   'battery',   '#2dd4bf', '#064e3b', '#fde047'],
   blood_covenant:     ['tome_scroll', 'seal',      '#e11d48', '#4c0519', '#fde68a'],
+  glass_cannon_core:  ['optics',      'prism',     '#f43f5e', '#31102f', '#fde047'],
+  wisdom_scroll:      ['tome_scroll', 'scroll',    '#38bdf8', '#1e1b4b', '#fde047'],
+  lone_war_banner:    ['tag_bell',    'tassel',    '#ef4444', '#450a0a', '#fbbf24'],
+  vigilante_ring:     ['ring',        'arcane',    '#fde047', '#312e81', '#72efdd'],
+  mithril_alloy:      ['whetstone',   'stone',     '#7dd3fc', '#312e81', '#fde047'],
+  abyss_twin_embryo:  ['curio',       'heart',     '#a855f7', '#064e3b', '#4ade80'],
+  emerald_fourleaf:   ['wing_feather','leaf',      '#10b981', '#064e3b', '#fde047'],
+  shark_dorsal_fin:   ['blade_relic', 'windblade', '#38bdf8', '#0c4a6e', '#f43f5e'],
+  peacock_plume_crown:['headgear',    'crown',     '#2dd4bf', '#1e3a8a', '#fde047'],
+  mastery_codex:      ['tome_scroll', 'book',      '#f59e0b', '#451a03', '#fef08a'],
+  compound_ledger:    ['tome_scroll', 'book',      '#eab308', '#0f172a', '#4ade80'],
+  ironblood_grit:     ['armor',       'cuirass',   '#dc2626', '#1e293b', '#fde047'],
+  flow_metronome:     ['timepiece',   'pendulum',  '#c084fc', '#0f172a', '#72efdd'],
 
-  // --- T4 传说遗物 (22) ---
+  // --- T4 传说遗物 (24) ---
   reactor:            ['core_sphere', 'orb',       '#fde047', '#b45309', '#ffffff'],
   anvil:              ['curio',       'anvil',     '#94a3b8', '#1e293b', '#fbbf24'],
   cornucopia:         ['vessel',      'chalice',   '#fbbf24', '#78350f', '#4ade80'],
@@ -146,9 +178,11 @@ const RELIC_ART_SPECS = {
   doomsday_warhead:   ['explosive',   'warhead',   '#fb923c', '#090514', '#fde047'],
   titan_breaker:      ['blade_relic', 'sword',     '#fb7185', '#4c0519', '#fde047'],
   fox_parry_sheath:   ['blade_relic', 'sheath',    '#e11d48', '#0f172a', '#fde68a'],
+  kenshin_scroll:     ['tome_scroll', 'scroll',    '#fb7185', '#4c0519', '#fde047'],
   trinity_orb:        ['core_sphere', 'orb',       '#38bdf8', '#c084fc', '#fb923c'],
   twin_hourglass:     ['timepiece',   'hourglass', '#fde047', '#3b0764', '#72efdd'],
   infinite_bandolier: ['belt',        'bandolier', '#fde047', '#78350f', '#38bdf8'],
+  celestial_arsenal_box:['clockwork', 'box',       '#38bdf8', '#1e1b4b', '#fde047'],
   astral_god_eye:     ['optics',      'eye',       '#fde047', '#1e1b4b', '#72efdd'],
   qingyu_hoodie:      ['cloak',       'hood',      '#10b981', '#090d16', '#fde047'],
   crimson_grail:      ['vessel',      'chalice',   '#f43f5e', '#4c0519', '#fde047'],
@@ -777,7 +811,7 @@ function getItemArtDataUrl(id, tier = 1) {
   }
 
   if (url && url.indexOf('data:image/') === 0) {
-    if (_relicDataUrlCache.size >= 220) {
+    if (_relicDataUrlCache.size >= 260) {
       const oldestKey = _relicDataUrlCache.keys().next().value;
       _relicDataUrlCache.delete(oldestKey);
     }

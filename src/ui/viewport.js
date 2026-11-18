@@ -136,8 +136,8 @@ function syncArenaAndZoom(forceBake = false) {
   syncUIMode();
   const portraitPhone = uiMode === 'mobile-portrait';
   const landscapePhone = uiMode === 'mobile-landscape';
-  let targetW = portraitPhone ? 1416 : (landscapePhone ? 2304 : 2640);
-  let targetH = portraitPhone ? 2352 : (landscapePhone ? 1464 : 1800);
+  let targetW = portraitPhone ? 1416 : (landscapePhone ? 2040 : 2280);
+  let targetH = portraitPhone ? 2100 : (landscapePhone ? 1320 : 1560);
   // Rotation changes the camera, not an active level's collision geometry.
   // Rescaling only some entities leaves bullets, portals and dash endpoints
   // in their old positions. A new player/run can choose a fresh arena size.

@@ -1313,6 +1313,8 @@ function beginWave(retryMeta = null) {
   player._pocketTurretsSpawned = 0;
   player._bloodShieldPool = 0;
   player._stillTime = 0;
+  player._waveElapsed = 0;
+  player.healSpdT = 0;
   player._gardenCd = (player.gardenPlots || 0) > 0 ? Math.max(4.5, 11 / player.gardenPlots) : 11;
   cam.x = player.x; cam.y = player.y;
   clampCam();
@@ -1364,24 +1366,42 @@ function beginWave(retryMeta = null) {
     const mobCountMul = (typeof isMobileCombatBalance === 'function' && isMobileCombatBalance())
       ? (typeof MOBILE_MOB_COUNT_MUL === 'number' ? MOBILE_MOB_COUNT_MUL : 0.80)
       : 1.0;
-    const earlyOpenMul = wave <= 2 ? 0.62 : (wave <= 4 ? 0.70 : (wave === 5 ? 0.80 : (wave === 6 ? 0.94 : 1.0)));
-    const baseOpen = Math.max(2, Math.round((wave === 1 ? 5 : 4) * earlyOpenMul * diff.spawnMul));
+    const earlyOpenMul = wave <= 2 ? 0.95 : 1.0;
+    const baseOpen = Math.max(4, Math.round((wave === 1 ? 6 : 5) * earlyOpenMul * diff.spawnMul));
     const rawOpen = baseOpen * mobCountMul * (survivalTrialWave ? 0.30 : 1.0);
     const openCnt = (survivalTrialWave || mobCountMul < 1)
-      ? Math.max(survivalTrialWave ? 0 : 1, Math.floor(rawOpen) + (Math.random() < (rawOpen - Math.floor(rawOpen)) ? 1 : 0))
+      ? Math.max(survivalTrialWave ? 0 : 2, Math.floor(rawOpen) + (Math.random() < (rawOpen - Math.floor(rawOpen)) ? 1 : 0))
       : baseOpen;
+    let sqAng = Math.random() * Math.PI * 2, sqDist = 225, sqType = 'chaser';
     for (let oi = 0; oi < openCnt; oi++) {
-      const oa = (oi / Math.max(1, openCnt)) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
-      const od = (wave <= 5 ? 325 : 265) + Math.random() * 125;
-      const ox = Math.max(60, Math.min(WORLD.w - 60, player.x + Math.cos(oa) * od));
-      const oy = Math.max(60, Math.min(WORLD.h - 60, player.y + Math.sin(oa) * od));
-      spawnWarning(ox, oy, pickWaveEnemyType(wave));
+      if (oi % 3 === 0) {
+        sqAng = (Math.floor(oi / 3) / Math.max(1, Math.ceil(openCnt / 3))) * Math.PI * 2 + (Math.random() - 0.5) * 0.55;
+        sqDist = (wave <= 5 ? 195 : 220) + Math.random() * 95;
+        sqType = pickWaveEnemyType(wave);
+      }
+      const ax = player.x + Math.cos(sqAng) * sqDist + (oi % 3 === 0 ? 0 : (Math.random() - 0.5) * 86);
+      const ay = player.y + Math.sin(sqAng) * sqDist + (oi % 3 === 0 ? 0 : (Math.random() - 0.5) * 86);
+      spawnWarning(Math.max(60, Math.min(WORLD.w - 60, ax)), Math.max(60, Math.min(WORLD.h - 60, ay)), sqType);
     }
   }
 
-  // 主线剧情与无尽模式的非首领常规层均恢复随机奇遇召唤祭坛（包含无尽双主宰入池；仅蚀界生存试炼与固定首领层禁用）
-  const relicChance = (!survivalTrialWave && wave >= 2 && !isBossWave) ? Math.min(0.55, 0.36 + (player.luck || 0) * 0.003) : 0;
-  relicSpawnT = Math.random() < relicChance ? (3.0 + Math.random() * 2.8) : -1;
+  // 主线每幕（每4层）最多自然刷出 1 座奇遇召唤祭坛，防止单幕连刷祭坛导致永久属性与神话秘匣滚雪球（蚀界生存试炼与固定首领层禁用）
+  const altarActSlot = Math.floor((wave - 1) / 4);
+  if (player && (!player._altarActsSpawned || typeof player._altarActsSpawned !== 'object')) {
+    player._altarActsSpawned = {};
+  }
+  const actAlreadyHadAltar = !endlessMode && wave <= MAX_WAVE && !!(player && player._altarActsSpawned && player._altarActsSpawned[altarActSlot]);
+  const relicChance = (!survivalTrialWave && wave >= 2 && !isBossWave && !actAlreadyHadAltar)
+    ? Math.min(0.32, 0.24 + (player.luck || 0) * 0.002)
+    : 0;
+  if (Math.random() < relicChance) {
+    relicSpawnT = 3.0 + Math.random() * 2.8;
+    if (!endlessMode && wave <= MAX_WAVE && player && player._altarActsSpawned) {
+      player._altarActsSpawned[altarActSlot] = true;
+    }
+  } else {
+    relicSpawnT = -1;
+  }
 
   if (survivalTrialWave) {
     const sTheme = getSurvivalTrialTheme();
@@ -1396,7 +1416,7 @@ function beginWave(retryMeta = null) {
 
   // 部署自动防御炮台、浮游激光塔、紫电震波塔与秘法共鸣图腾塔（机械师天赋 + 构筑遗物 + 扳手/无人机/共鸣法杖 + 5阶进化额外塔）
   const turretSpecs = [];
-  for (let i = 0; i < (player.bonusTurrets || 0); i++) turretSpecs.push({ kind: 'bullet', tier: 2 });
+  for (let i = 0; i < (player.bonusTurrets || 0); i++) turretSpecs.push({ kind: 'bullet', tier: wave >= 4 ? 2 : 1 });
   for (let i = 0; i < (player.laserTurrets || 0); i++) turretSpecs.push({ kind: 'laser', tier: 2 });
   for (let i = 0; i < (player.shockTurrets || 0); i++) turretSpecs.push({ kind: 'shock', tier: 3 });
   for (let i = 0; i < (player.totemTurrets || 0); i++) turretSpecs.push({ kind: 'totem', tier: 3 });
@@ -1561,7 +1581,8 @@ function spawnWarning(x, y, type, variant = '') {
       getBossAnimePortrait(variant, true);
     }
   }
-  spawns.push({ x: sx, y: sy, type, variant, t: 0.90, maxT: 0.90 });
+  const warnDur = (type === 'boss' || type === 'mini_boss' || type === 'special_boss') ? 0.95 : 0.92;
+  spawns.push({ x: sx, y: sy, type, variant, t: warnDur, maxT: warnDur });
 }
 
 const RANGED_ENEMY_TYPES = new Set(['shooter', 'sniper_bug', 'mortar', 'spinner', 'rad_scorpion', 'frost_wisp', 'spore_mother', 'summoner']);
@@ -2092,23 +2113,30 @@ function createEnemy(x, y, type, variant = '') {
   const hpLinearSlope = typeof MONSTER_HP_LINEAR_SLOPE === 'number' ? MONSTER_HP_LINEAR_SLOPE : 0.72;
   const bossHpMul = typeof BOSS_HP_MUL === 'number' ? BOSS_HP_MUL : 4.80;
   const lateBossMaxMul = typeof LATE_BOSS_HP_MUL === 'number' ? LATE_BOSS_HP_MUL : 9.60;
-  // 后期首领血量阶梯：第 10 层及以后首领血量整体回调 -20%（6.72 / 8.96 / 9.60），前 8 层保持不变
-  const lateBossScale = wave <= 4 ? 1.00 : (wave <= 6 ? 1.90 : (wave <= 8 ? 3.80 : (wave === 9 ? 5.60 : (wave === 10 ? 6.72 : (wave <= 12 ? 8.96 : lateBossMaxMul)))));
+  // 1~16 层平滑防膨胀首领/统领同级一阶段血量阶梯：以【单阶段独立击杀耗时 ~20s-33s】为基准标定（W4 一阶约 1.8万、W6 统领约 3.7万、W8 一阶约 7.8万、W10 统领约 13.6万、W12 一阶约 25万、W14 统领约 37.4万、W16 一阶约 52.3万）
+  const lateBossScale = wave <= 4 ? 1.00 : (wave <= 6 ? 1.42 : (wave <= 8 ? 2.04 : (wave <= 10 ? 2.40 : (wave <= 12 ? 2.95 : (wave <= 14 ? 3.55 : Math.min(lateBossMaxMul, 4.10))))));
   const monsterDmgMul = typeof MONSTER_DMG_MUL === 'number' ? MONSTER_DMG_MUL : 1.20;
   const midLateHpMul = typeof getMidLateWaveHpMul === 'function' ? getMidLateWaveHpMul(wave) : 1.0;
   const midLateDmgMul = typeof getMidLateWaveDmgMul === 'function' ? getMidLateWaveDmgMul(wave) : 1.0;
   const earlyMobHpMul = getEarlyMobHpMul(wave);
+  const oldLateFirm = wave >= 10 ? (1 + Math.min(0.44, (wave - 9) * 0.062)) : 1.0;
+  const densityHpCompMul = wave >= 6 ? (1 + Math.min(0.42, 0.12 + (wave - 6) * 0.030)) : 1.0;
+  const lateMobFirmMul = oldLateFirm * densityHpCompMul;
   const endlessMul = wave > MAX_WAVE ? Math.pow(1.20, wave - MAX_WAVE) : 1;
   const wIdx = Math.max(0, wave - 1);
-  // 常规魔物与首领生命值、攻击力随波数进一步成长：中后期血量再翻一倍（2.0x）、攻击力再翻一倍（2.0x），1~5层小怪血量降低 15%！
   const clampedStoryIdx = Math.min(15, wIdx);
-  const s = hpBaseMul * (1 + wIdx * hpLinearSlope) * midLateHpMul * earlyMobHpMul * endlessMul * diff.hpMul;
-  const dm = (1 + clampedStoryIdx * 0.105 + Math.max(0, Math.min(16, wave) - 7) * 0.048) * midLateDmgMul * (wave > MAX_WAVE ? Math.pow(1.10, wave - MAX_WAVE) : 1) * diff.dmgMul * monsterDmgMul;
+  const s = hpBaseMul * (1 + wIdx * hpLinearSlope) * midLateHpMul * earlyMobHpMul * lateMobFirmMul * endlessMul * diff.hpMul;
+  const lateDmgCalmMul = wave <= 7 ? 1.0 : Math.max(0.62, 1.0 - (Math.min(16, wave) - 7) * 0.042);
+  const dm = (1 + clampedStoryIdx * 0.105 + Math.max(0, Math.min(16, wave) - 7) * 0.048) * midLateDmgMul * lateDmgCalmMul * (wave > MAX_WAVE ? Math.pow(1.10, wave - MAX_WAVE) : 1) * diff.dmgMul * monsterDmgMul;
   // 普通与特异小怪（非 Boss / 非统领 / 非奇遇首领）攻击力整体下调 10%（MOB_DMG_MUL = 0.90）
   const mobDmgMul = typeof MOB_DMG_MUL === 'number' ? MOB_DMG_MUL : 0.90;
   const mobDm = dm * mobDmgMul;
   const monsterSpdMul = typeof MONSTER_SPD_MUL === 'number' ? MONSTER_SPD_MUL : 0.80;
   const sm = (1 + Math.min(0.18, wIdx * 0.012)) * diff.spdMul * monsterSpdMul;
+  const lateMeleePush = (type !== 'boss' && type !== 'mini_boss' && type !== 'special_boss' && type !== 'stalker' && type !== 'swarmer' && wave >= 9)
+    ? (1 + Math.min(0.08, (wave - 8) * 0.01))
+    : 1.0;
+  const smMelee = sm * lateMeleePush;
   const base = {
     x, y, hitFlash: 0, phase: Math.random() * 6.28, vx: 0, vy: 0, faceA: 0,
     burnT: 0, burnTick: 0, burnDmg: 0, chillT: 0, freezeT: 0, sunderT: 0, _touchCd: 0,
@@ -2130,7 +2158,7 @@ function createEnemy(x, y, type, variant = '') {
     for (let k = 0; k < swCnt; k++) {
       const ox = x + (Math.random() - 0.5) * 54, oy = y + (Math.random() - 0.5) * 54;
       const swMat = +((k === 0 ? 0.90 : 0.45) * lateCoinMul * trialCoinMul * mobileCoinMul).toFixed(2);
-      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (146 + wave * 2.0) * sm, dmg: Math.max(2, Math.round(2.2 * mobDm)), color: '#ffbe0b', type, mat: swMat });
+      enemies.push({ ...base, x: ox, y: oy, r: 16, hp: 5.0 * s, maxHp: 5.0 * s, spd: (168 + wave * 1.8) * sm, dmg: Math.max(2, Math.round(2.2 * mobDm)), color: '#ffbe0b', type, mat: swMat });
     }
     addBurst(x, y, '#ff4d6d', 5, 85);
     return;
@@ -2142,20 +2170,21 @@ function createEnemy(x, y, type, variant = '') {
   const miniBossDefs = getMiniBossDefs();
   const specialRelics = getSpecialRelics();
   const bossSizeMul = typeof BOSS_SIZE_MUL === 'number' ? BOSS_SIZE_MUL : 1.20;
+  let unifiedBaseBossHp = 8850;
+  if (wave <= 4) unifiedBaseBossHp = wave === 1 ? 1650 : (wave === 2 ? 2250 : (wave === 3 ? 3100 : 4065));
+  else if (wave <= 8) unifiedBaseBossHp = 4050 + (wave - 4) * 520;
+  else if (wave <= 12) unifiedBaseBossHp = 6130 + (wave - 8) * 360;
+  else if (wave <= 16) unifiedBaseBossHp = 7570 + (wave - 12) * 320;
+  else unifiedBaseBossHp = 8850 + Math.max(0, wave - MAX_WAVE) * 1850;
+  const unifiedBossCoreHp = unifiedBaseBossHp * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul;
+  const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.4 : (wave <= 12 ? 8.8 : 9.6));
+  const bossMatVal = wave <= 4 ? 26 : (wave <= 8 ? 34 : (wave <= 12 ? 42 : 52));
   if (type === 'boss') {
     const bKey = (variant && bossDefs[variant]) ? variant : getFixedActBossForWave(wave);
     const bDef = bossDefs[bKey] || FALLBACK_BOSS_DEFS.butcher;
     const isStoryBoss = (!endlessMode && wave <= MAX_WAVE);
     const twinScale = (!isStoryBoss && (diff.doubleBoss || (endlessMode && wave >= 20))) ? 0.68 : 1;
-    // 四幕固定首领血量提高 300%，且中后期首领血量再额外提升最高 +200%（第 12~16 层及无尽轮回达 3.0x 终局强度）
-    let baseBossHp = 13600;
-    if (wave <= 4) baseBossHp = 800;
-    else if (wave <= 8) baseBossHp = 3400;
-    else if (wave <= 12) baseBossHp = 7600;
-    else if (wave <= 16) baseBossHp = 12600;
-    else baseBossHp = 14800 + Math.max(0, wave - MAX_WAVE) * 3600;
-    const bhp = Math.round(baseBossHp * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinScale);
-    const bossDmgBase = wave <= 4 ? 6.2 : (wave <= 8 ? 9.6 : (wave <= 12 ? 11.2 : 12.6));
+    const bhp = Math.round(unifiedBossCoreHp * twinScale);
     // 主线以稳定的两阶段讲清每位守誓者的坚持与败北；青羽试炼影与 D5 第 16 层首领 100% 必定进入二阶段！
     const isD5Floor16Boss = (wave === 16 && typeof diff !== 'undefined' && diff && diff.id === 5);
     const forcePhase2 = isStoryBoss || isD5Floor16Boss || bKey === 'plague_empress';
@@ -2173,22 +2202,22 @@ function createEnemy(x, y, type, variant = '') {
       venomCd: 4.4, p2SkillT: 2.8, arenaMechCd: (bKey === 'solar_seraph' ? 2.5 : 4.2),
       burstLeft: 0, burstCd: 0, canPhase2: forcePhase2 ? true : (Math.random() < phase2Chance), mythicPhase2: false,
       _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
-      mat: wave <= 4 ? 26 : (wave <= 8 ? 34 : (wave <= 12 ? 42 : 52))
+      mat: bossMatVal
     };
   } else if (type === 'mini_boss') {
     const mKey = (variant && miniBossDefs[variant]) ? variant : getFixedMiniBossForWave(wave, false);
     const mDef = miniBossDefs[mKey] || FALLBACK_MINI_BOSS_DEFS.vanguard;
     const twinMiniScale = (diff.dualElite && wave >= 10) ? 0.70 : 1;
-    const mhp = Math.round((460 + wave * 95 + Math.pow(Math.max(0, Math.min(16, wave) - 3), 2.05) * 32) * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul * twinMiniScale);
+    const mhp = Math.round(unifiedBossCoreHp * twinMiniScale);
     ent = {
-      ...base, r: Math.round(45 * bossSizeMul), hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(8.4 * dm),
+      ...base, r: Math.round(50 * bossSizeMul), hp: mhp, maxHp: mhp, spd: mDef.spd * sm, dmg: Math.round(bossDmgBase * dm),
       color: mDef.color, type: 'mini_boss', variant: mKey, bossTitle: `${mDef.icon} ${mDef.name}`,
       dashT: 2.3, meteorT: 4.4, skillT: 1.9, ringCd: 5.0, venomCd: 4.0, p2SkillT: 2.6,
-      canPhase2: Math.random() < mythicRate, mythicPhase2: false, mat: 24
+      canPhase2: Math.random() < mythicRate, mythicPhase2: false, mat: bossMatVal
     };
   } else if (type === 'special_boss') {
     const relDef = specialRelics.find(r => r.bossId === variant) || specialRelics[0];
-    const shp = Math.round((960 + wave * 240 + Math.pow(wave, 1.92) * 14) * bossHpMul * lateBossScale * midLateHpMul * endlessMul * diff.hpMul);
+    const shp = Math.round(unifiedBossCoreHp * 0.90);
     const sSpd = relDef.bossId === 'crimson_lord' ? 98
       : (relDef.bossId === 'golden_golem' ? 74
         : (relDef.bossId === 'mech_colossus' ? 78
@@ -2198,70 +2227,70 @@ function createEnemy(x, y, type, variant = '') {
         : (relDef.bossId === 'plague_empress' ? 32
           : (relDef.bossId === 'crimson_lord' ? 30 : 26)));
     ent = {
-      ...base, r: Math.round(52 * bossSizeMul), hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(9.0 * dm),
+      ...base, r: Math.round(52 * bossSizeMul), hp: shp, maxHp: shp, spd: sSpd * sm, dmg: Math.round(8.6 * dm),
       color: relDef.bossColor, type: 'special_boss', variant: relDef.bossId, bossTitle: `${relDef.bossIcon} ${relDef.bossName}`,
       dashT: 2.1, skillT: 1.9, sigSkillT: 3.8, meteorT: 3.9, sumT: 5.8, terrainCd: 6.2, ringCd: 4.8,
       venomCd: 4.2, p2SkillT: 2.6, arenaMechCd: (relDef.bossId === 'abyss_devourer' ? 2.4 : 4.0),
       burstLeft: 0, burstCd: 0, _d5LastStandUsed: false, d5LastStandT: 0, d5LastStandMaxT: 10.0,
-      goldStage: 4, canPhase2: (relDef.bossId === 'plague_empress' || (!endlessMode && relDef.bossId === 'mech_colossus')) ? true : (Math.random() < mythicRate), mythicPhase2: false,
+      goldStage: 4, canPhase2: relDef.bossId === 'plague_empress' ? true : (Math.random() < mythicRate), mythicPhase2: false,
       mat: sMat
     };
   } else if (type === 'stalker') {
-    ent = { ...base, r: 21, hp: 20.0 * s, maxHp: 20.0 * s, spd: 138 * sm, dmg: Math.round(5.0 * mobDm), color: '#06d6a0', type, slashCd: 0.7, stepCd: 2.0 + Math.random(), zigT: 0.35 + Math.random() * 0.25, zigDir: Math.random() < 0.5 ? 1 : -1, mat: 2 };
+    ent = { ...base, r: 21, hp: 20.0 * s, maxHp: 20.0 * s, spd: 154 * sm, dmg: Math.round(5.0 * mobDm), color: '#06d6a0', type, slashCd: 0.7, stepCd: 2.0 + Math.random(), zigT: 0.35 + Math.random() * 0.25, zigDir: Math.random() < 0.5 ? 1 : -1, mat: 2 };
   } else if (type === 'iron_guard') {
-    ent = { ...base, r: 29, hp: 60 * s, maxHp: 60 * s, spd: 66 * sm, dmg: Math.round(6.6 * mobDm), color: '#e11d48', type, cleaveCd: 2.0 + Math.random() * 0.6, cleaveWindup: 0, mat: 3 };
+    ent = { ...base, r: 29, hp: 60 * s, maxHp: 60 * s, spd: 86 * smMelee, dmg: Math.round(6.6 * mobDm), color: '#e11d48', type, cleaveCd: 2.0 + Math.random() * 0.6, cleaveWindup: 0, mat: 3 };
   } else if (type === 'frost_knight') {
-    ent = { ...base, r: 26, hp: 46 * s, maxHp: 46 * s, spd: 106 * sm, dmg: Math.round(6.2 * mobDm), color: '#38bdf8', type, thrustCd: 1.85 + Math.random() * 0.6, thrustWindup: 0, mat: 3 };
+    ent = { ...base, r: 26, hp: 46 * s, maxHp: 46 * s, spd: 106 * smMelee, dmg: Math.round(6.2 * mobDm), color: '#38bdf8', type, thrustCd: 1.85 + Math.random() * 0.6, thrustWindup: 0, mat: 3 };
   } else if (type === 'blade_duelist') {
     ent = { ...base, r: 20, hp: 24 * s, maxHp: 24 * s, spd: 132 * sm, dmg: Math.round(5.4 * mobDm), color: '#f59e0b', type, whirlCd: 2.1 + Math.random() * 0.6, whirlT: 0, whirlSpin: 0, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'shadow_reaper') {
-    ent = { ...base, r: 25, hp: 38 * s, maxHp: 38 * s, spd: 94 * sm, dmg: Math.round(6.8 * mobDm), color: '#a855f7', type, blinkCd: 2.6 + Math.random() * 0.8, reapWindup: 0, mat: 4 };
+    ent = { ...base, r: 25, hp: 38 * s, maxHp: 38 * s, spd: 94 * smMelee, dmg: Math.round(6.8 * mobDm), color: '#a855f7', type, blinkCd: 2.6 + Math.random() * 0.8, reapWindup: 0, mat: 4 };
   } else if (type === 'sniper_bug') {
     ent = { ...base, r: 22, hp: 13.0 * s, maxHp: 13.0 * s, spd: 54 * sm, dmg: Math.round(6.8 * mobDm), color: '#ef233c', type, shotT: 2.1 + Math.random() * 0.8, aimA: undefined, aimMaxT: 0.72, recoilT: 0, mat: 3 };
   } else if (type === 'spinner') {
     ent = { ...base, r: 26, hp: 28 * s, maxHp: 28 * s, spd: 74 * sm, dmg: Math.round(5.0 * mobDm), color: '#f59e0b', type, shotT: 2.1 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'juggernaut') {
-    // 泰坦超巨型血牛（r=54 山岳体型，极沉缓霸体推进 spd=34，十字四向地裂震波）
-    ent = { ...base, r: 54, hp: 340 * s, maxHp: 340 * s, spd: 34 * sm, dmg: Math.round(11.6 * mobDm), color: '#475569', type, slamCd: 3.1, slamWindup: 0, mat: 7 };
+    // 泰坦超巨型血牛（r=54 山岳体型，稳沉霸体推进 spd=50，十字四向地裂震波）
+    ent = { ...base, r: 54, hp: 340 * s, maxHp: 340 * s, spd: 50 * smMelee, dmg: Math.round(11.6 * mobDm), color: '#475569', type, slamCd: 3.1, slamWindup: 0, mat: 7 };
   } else if (type === 'rad_scorpion') {
     ent = { ...base, r: 28, hp: 36 * s, maxHp: 36 * s, spd: 70 * sm, dmg: Math.round(5.5 * mobDm), color: '#a3e635', type, shotT: 2.0 + Math.random() * 0.8, mat: 3 };
   } else if (type === 'sand_worm') {
     // 潜渊遁地奇袭怪（钻入地底化作高速黑水潜影突进，破土震爆并迸射斜十字骨刺）
-    ent = { ...base, r: 26, hp: 48 * s, maxHp: 48 * s, spd: 104 * sm, dmg: Math.round(6.0 * mobDm), color: '#f4a261', type, burrowCd: 2.0 + Math.random() * 0.7, burrowWindup: 0, burrowT: 0, mat: 3 };
+    ent = { ...base, r: 26, hp: 48 * s, maxHp: 48 * s, spd: 104 * smMelee, dmg: Math.round(6.0 * mobDm), color: '#f4a261', type, burrowCd: 2.0 + Math.random() * 0.7, burrowWindup: 0, burrowT: 0, mat: 3 };
   } else if (type === 'frost_wisp') {
     ent = { ...base, r: 22, hp: 17 * s, maxHp: 17 * s, spd: 82 * sm, dmg: Math.round(4.6 * mobDm), color: '#48cae4', type, shotT: 1.8 + Math.random() * 0.8, orbitDir: Math.random() < 0.5 ? 1 : -1, mat: 3 };
   } else if (type === 'magma_imp') {
-    ent = { ...base, r: 21, hp: 20 * s, maxHp: 20 * s, spd: 118 * sm, dmg: Math.round(5.8 * mobDm), color: '#fb5607', type, mat: 3 };
+    ent = { ...base, r: 21, hp: 20 * s, maxHp: 20 * s, spd: 134 * smMelee, dmg: Math.round(5.8 * mobDm), color: '#fb5607', type, mat: 3 };
   } else if (type === 'spore_mother') {
     ent = { ...base, r: 35, hp: 56 * s, maxHp: 56 * s, spd: 48 * sm, dmg: Math.round(5.8 * mobDm), color: '#c77dff', type, shotT: 2.4 + Math.random() * 0.9, mat: 4 };
   } else if (type === 'charger') {
     // 健硕重骑（r=31，快步 spd=92，尖角楔阵冲锋 + 收招前挑弧斩）
-    ent = { ...base, r: 31, hp: 68 * s, maxHp: 68 * s, spd: 92 * sm, dmg: Math.round(6.8 * mobDm), color: '#f77f00', type, dashT: 1.85 + Math.random() * 0.75, mat: 3 };
+    ent = { ...base, r: 31, hp: 68 * s, maxHp: 68 * s, spd: 92 * smMelee, dmg: Math.round(6.8 * mobDm), color: '#f77f00', type, dashT: 1.85 + Math.random() * 0.75, mat: 3 };
   } else if (type === 'shooter') {
     ent = { ...base, r: 23, hp: 13.5 * s, maxHp: 13.5 * s, spd: 62 * sm, dmg: Math.round(4.2 * mobDm), color: '#00b4d8', type, shotT: 1.6 + Math.random() * 0.9, mat: 2 };
   } else if (type === 'mortar') {
     ent = { ...base, r: 27, hp: 24 * s, maxHp: 24 * s, spd: 52 * sm, dmg: Math.round(7.8 * mobDm), color: '#ff9f1c', type, shotT: 2.0 + Math.random() * 1.0, mat: 3 };
   } else if (type === 'bomber') {
-    ent = { ...base, r: 22, hp: 18 * s, maxHp: 18 * s, spd: 114 * sm, dmg: Math.round(8.8 * mobDm), color: '#ff4d6d', type, primed: false, fuseT: 1.25, maxFuseT: 1.25, blastR: 86, mat: 2 };
+    ent = { ...base, r: 22, hp: 18 * s, maxHp: 18 * s, spd: (126 + Math.min(16, wave) * 1.1) * smMelee, dmg: Math.round(8.8 * mobDm), color: '#ff4d6d', type, primed: false, fuseT: 1.25, maxFuseT: 1.25, blastR: 86, mat: 2 };
   } else if (type === 'splitter') {
     // 宽大弹性软泥（r=34，蓄蹲停顿—猛然蛙跃逼近，纯近战不射子弹）
-    ent = { ...base, r: 34, hp: 58 * s, maxHp: 58 * s, spd: 68 * sm, dmg: Math.round(5.0 * mobDm), color: '#52b788', type, hopT: 0.9 + Math.random() * 0.5, mat: 3 };
+    ent = { ...base, r: 34, hp: 58 * s, maxHp: 58 * s, spd: 84 * smMelee, dmg: Math.round(5.0 * mobDm), color: '#52b788', type, hopT: 0.9 + Math.random() * 0.5, mat: 3 };
   } else if (type === 'mini_slime') {
     const minSlimeDmg = (typeof diff !== 'undefined' && diff && diff.id === 0) ? 1 : 2;
-    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 140 * sm, dmg: Math.max(minSlimeDmg, Math.round(2.6 * mobDm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
+    ent = { ...base, r: 17, hp: 9.0 * s, maxHp: 9.0 * s, spd: 152 * sm, dmg: Math.max(minSlimeDmg, Math.round(2.6 * mobDm)), color: '#74c69d', type, mat: Math.random() < 0.35 ? 1 : 0 };
   } else if (type === 'shielder') {
-    // 紧凑高甲塔盾卫（r=28，稳健 spd=54，近身发动重盾猛击震波）
-    ent = { ...base, r: 28, hp: 94 * s, maxHp: 94 * s, spd: 54 * sm, dmg: Math.round(6.2 * mobDm), color: '#5c677d', type, bashCd: 2.1 + Math.random() * 0.5, bashWindup: 0, mat: 4 };
+    // 紧凑高甲塔盾卫（r=28，稳健 spd=76，近身发动重盾猛击震波）
+    ent = { ...base, r: 28, hp: 94 * s, maxHp: 94 * s, spd: 76 * smMelee, dmg: Math.round(6.2 * mobDm), color: '#5c677d', type, bashCd: 2.1 + Math.random() * 0.5, bashWindup: 0, mat: 4 };
   } else if (type === 'summoner') {
     ent = { ...base, r: 25, hp: 22 * s, maxHp: 22 * s, spd: 54 * sm, dmg: Math.round(3.5 * mobDm), color: '#7209b7', type, sumT: 3.1 + Math.random(), boltT: 2.4, mat: 4 };
   } else if (type === 'healer') {
     ent = { ...base, r: 24, hp: 28 * s, maxHp: 28 * s, spd: 62 * sm, dmg: Math.round(3.0 * mobDm), color: '#2ec4b6', type, healT: 2.5, mat: 4 };
   } else if (type === 'brute') {
-    // 高大狂暴重锤卫（r=39，残血 <65% 狂暴提速 + 前向 90° 扇形锥区裂地重锤）
-    ent = { ...base, r: 39, hp: 190 * s, maxHp: 190 * s, spd: 64 * sm, dmg: Math.round(9.4 * mobDm), color: '#9d4edd', type, slamCd: 2.5, slamWindup: 0, bargeCd: 2.1 + Math.random() * 0.7, bargeT: 0, mat: 5 };
+    // 高大狂暴重锤卫（r=39，稳步压迫 spd=84，残血 <65% 狂暴提速 + 前向 90° 扇形锥区裂地重锤）
+    ent = { ...base, r: 39, hp: 190 * s, maxHp: 190 * s, spd: 84 * smMelee, dmg: Math.round(9.4 * mobDm), color: '#9d4edd', type, slamCd: 2.5, slamWindup: 0, bargeCd: 2.1 + Math.random() * 0.7, bargeT: 0, mat: 5 };
   } else {
     const minChaserDmg = (typeof diff !== 'undefined' && diff && diff.id === 0) ? 1 : 2;
-    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (88 + wave * 2.0) * sm, dmg: Math.max(minChaserDmg, Math.round(3.8 * mobDm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
+    ent = { ...base, r: 22, hp: 25.0 * s, maxHp: 25.0 * s, spd: (114 + wave * 1.8) * smMelee, dmg: Math.max(minChaserDmg, Math.round(3.8 * mobDm)), color: '#d65db1', type: 'chaser', lungeCd: 1.65 + Math.random() * 0.8, lungeT: 0, mat: Math.random() < 0.65 ? 1 : 2 };
   }
 
   // 中后期普通与特异小怪晶石产出下调约 20%（手机端为适配 -20% 怪物数量相应提升 +20% 金币/晶石产出，平衡手机端经济曲线）

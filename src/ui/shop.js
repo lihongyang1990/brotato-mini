@@ -633,14 +633,14 @@ function toggleSurvivalTrial() {
 function calcSurvivalTrialGoldComp(waveNum, hits = 0, p = player) {
   const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const wv = Math.max(1, Number(waveNum) || 1);
-  const harvestMul = Math.max(1, Math.min(2.2, (p && p.harvest) || 1));
-  // 丰厚渡劫金币补偿：足额弥补 40 秒 70% 刷怪削减与器物缺口，并额外发放身法评级赏金
-  const baseBounty = Math.max(32, Math.round((38 + wv * 8.4) * crystalMul * (0.65 + 0.35 * harvestMul)));
+  const harvestMul = Math.max(1, Math.min(2.0, (p && p.harvest) || 1));
+  // 适度渡劫金币补偿：弥补 40 秒 70% 刷怪削减的晶石缺口且不引发滚雪球通胀，无伤身法享专属圣匣高阶加成
+  const baseBounty = Math.max(25, Math.round((30 + wv * 6.5) * crystalMul * (0.68 + 0.32 * harvestMul)));
   const masterBonus = hits === 0
-    ? Math.max(18, Math.round((22 + wv * 3.8) * crystalMul))
+    ? Math.max(14, Math.round((17 + wv * 3.0) * crystalMul))
     : (hits <= 2
-        ? Math.max(11, Math.round((14 + wv * 2.4) * crystalMul))
-        : Math.max(6, Math.round((8 + wv * 1.3) * crystalMul)));
+        ? Math.max(8, Math.round((10 + wv * 1.8) * crystalMul))
+        : Math.max(4, Math.round((6 + wv * 1.0) * crystalMul)));
   return { baseBounty, masterBonus, total: baseBounty + masterBonus };
 }
 globalThis.calcSurvivalTrialGoldComp = calcSurvivalTrialGoldComp;
@@ -671,8 +671,8 @@ function completeSurvivalTrial() {
     player.xp -= player.xpNeed;
     player.lv++;
     player.xpNeed = Math.max(10, Math.round(player.xpNeed * 1.36 + 6));
-    player.maxHp += 1;
-    player.hp += 1;
+    player.maxHp += 2;
+    player.hp += 2;
     pendingLevels++;
   }
 
@@ -686,9 +686,9 @@ function completeSurvivalTrial() {
     dodgeBlessed = true;
   }
 
-  // 100% 必得【蚀界渡劫秘匣】（剧情与无尽通用，开启必出紫色 3 阶史诗或金色 4 阶传说的兵装 + 遗物！）
+  // 100% 必得【蚀界渡劫秘匣】（分四幕品质锁：第1幕保底蓝/紫禁出橙装，第2幕保底紫低率橙，第3~4幕高率橙；仅 0 受击享无瑕圣匣！）
   pendingCrates++;
-  const isGoldGrade = survivalTrialHits <= 2;
+  const isGoldGrade = survivalTrialHits === 0;
   if (isGoldGrade) {
     player.survivalGoldCratesQueued = (player.survivalGoldCratesQueued || 0) + 1;
   } else {
@@ -696,7 +696,7 @@ function completeSurvivalTrial() {
   }
 
   beep(880, 0.16, 'triangle', 0.075);
-  logInfo('SURVIVAL', `第 ${wave} 层蚀界生存试炼通关 · 受击=${survivalTrialHits}次 · 赏金+${totalMatGain}💎 · 经验+${xpComp} · 秘匣=${isGoldGrade ? '无瑕圣匣(高金率)' : '渡劫秘匣(紫+保底)'}${dodgeBlessed ? ' · 无伤闪避+2%' : ''}`);
+  logInfo('SURVIVAL', `第 ${wave} 层蚀界生存试炼通关 · 受击=${survivalTrialHits}次 · 赏金+${totalMatGain}💎 · 经验+${xpComp} · 秘匣=${isGoldGrade ? '无瑕圣匣(高金率)' : '渡劫秘匣(高阶保底)'}${dodgeBlessed ? ' · 无伤闪避+2%' : ''}`);
 }
 
 function finishWave() {
@@ -748,17 +748,26 @@ function settleWaveRewards() {
   const clearBonus = Math.max(2, Math.round((4 + Math.floor(wave * 1.5)) * crystalMul));
   const harvestGain = Math.max(0, Math.round((player.harvestFlat || 0) * crystalMul));
   player.mats += leftover + clearBonus + interestGain + harvestGain;
+  player._lvlRerollsThisWave = 0;
   if (harvestGain > 0) {
-    player.xp += Math.round(harvestGain * 0.70);
+    player.xp += Math.round(harvestGain * 0.35);
     let lvGuard = 0;
     while (player.xp >= player.xpNeed && lvGuard++ < 25) {
       player.xp -= player.xpNeed; player.lv++;
       player.xpNeed = Math.max(10, Math.round(player.xpNeed * 1.36 + 6));
-      player.maxHp += 1; player.hp += 1;
+      player.maxHp += 2; player.hp += 2;
       pendingLevels++;
     }
-    // 复刻原版《土豆兄弟》收获复利：每波结算后收获值自动递增 +8%！
-    player.harvestFlat = Math.round((player.harvestFlat || 0) * 1.08 * 10) / 10;
+    // 复刻原版《土豆兄弟》收获复利：每波结算后收获值自动递增 +8%（持有黑金复利账簿为 +10%）！
+    const harvGrowth = player.harvestCompoundBoost ? 1.10 : 1.08;
+    player.harvestFlat = Math.round((player.harvestFlat || 0) * harvGrowth * 10) / 10;
+  }
+  if ((player.vigilanteStacks || 0) > 0 && (player.vigilanteGained || 0) < 0.20) {
+    const step = Math.min(0.022 * player.vigilanteStacks, 0.20 - (player.vigilanteGained || 0));
+    if (step > 0) {
+      player.dmgMul += step;
+      player.vigilanteGained = +((player.vigilanteGained || 0) + step).toFixed(4);
+    }
   }
   logInfo('WAVE_END', `第 ${wave} 波通关 · 结算晶石=${player.mats} (回收+${leftover}, 津贴+${clearBonus}, 收获+${harvestGain}, 利息+${interestGain}, 宝箱=${pendingCrates}) · 击杀=${player.kills}`);
   document.getElementById('hud').classList.add('hidden');
@@ -825,11 +834,11 @@ function getArchetypeAffinityBoosts(p = player) {
   const constructCnt = (p.bonusTurrets || 0) + (p.laserTurrets || 0) + (p.mineLayers || 0) + (p.shockTurrets || 0) + (p.totemTurrets || 0);
   const bonusSpd = Math.max(0, (p.spdMul || 1) - 1.08);
   const rawScores = {
-    tech: (p.cls === 'engineer' ? 0.26 : 0) + techW * 0.26 + constructCnt * 0.25 + (p.techBonus || 0) * 1.35 + ((p.turretAspdBonus || 0) + (p.mineHaste || 0)) * 0.9 + (p.pocketFactory ? 0.28 : 0),
+    tech: (p.cls === 'engineer' ? 0.26 : 0) + techW * 0.26 + constructCnt * 0.25 + (p.techBonus || 0) * 1.35 + (p.flatTech || 0) * 0.08 + ((p.turretAspdBonus || 0) + (p.mineHaste || 0)) * 0.9 + (p.pocketFactory ? 0.28 : 0),
     staff: staffW * 0.34 + ((p.staffVolley || 0) + (p.staffPierce || 0)) * 0.26 + (p.staffHaste || 0) * 1.25 + (p.archmageMeteor ? 0.36 : 0) + Math.max(0, (p.staffRange || 0)) * 0.006 + (p.staffZoneScale || 0) * 0.9,
-    elemental: elemW * 0.26 + staffW * 0.12 + (p.elemBonus || 0) * 1.45 + ((p.burnChance || 0) + (p.chillChance || 0) + (p.poisonChance || 0)) * 0.78 + (p.dotHaste || 0) * 1.15 + (p.elemCrit ? 0.28 : 0),
-    melee: (p.cls === 'brawler' ? 0.26 : 0) + meleeW * 0.25 + (p.meleeBonus || 0) * 1.45 + (p.meleeSweepBonus || 0) * 0.20,
-    ranged: (p.cls === 'ranger' ? 0.26 : 0) + rangedW * 0.25 + (p.rangedBonus || 0) * 1.45 + ((p.bounceBonus || 0) + (p.pierceBonus || 0) + (p.rangedPelletsBonus || 0)) * 0.20,
+    elemental: elemW * 0.26 + staffW * 0.14 + (p.elemBonus || 0) * 1.45 + (p.flatElem || 0) * 0.09 + ((p.burnChance || 0) + (p.chillChance || 0) + (p.poisonChance || 0)) * 0.78 + (p.dotHaste || 0) * 1.15 + (p.elemCrit ? 0.28 : 0),
+    melee: (p.cls === 'brawler' ? 0.26 : 0) + meleeW * 0.25 + (p.meleeBonus || 0) * 1.45 + (p.flatMelee || 0) * 0.08 + (p.meleeSweepBonus || 0) * 0.20,
+    ranged: (p.cls === 'ranger' ? 0.26 : 0) + rangedW * 0.25 + (p.rangedBonus || 0) * 1.45 + (p.flatRanged || 0) * 0.09 + ((p.bounceBonus || 0) + (p.pierceBonus || 0) + (p.rangedPelletsBonus || 0)) * 0.20,
     tank: (p.cls === 'bull' ? 0.36 : 0) + heavyW * 0.24 + Math.max(0, p.armor || 0) * 0.055 + Math.max(0, (p.maxHp || 30) - 36) * 0.014 + (p.maxShield || 0) * 0.028,
     crit: preciseW * 0.25 + Math.max(0, (p.crit || 0) - 0.06) * 1.65 + Math.max(0, p.critDmg || 0) * 0.55,
     dodge: (p.cls === 'ghost' ? 0.26 : 0) + Math.max(0, (p.dodge || 0) - 0.04) * 1.65 + bonusSpd * 1.25 + (p.dashSurge ? 0.26 : 0),
@@ -905,12 +914,13 @@ function getPlayerBuildAffinities() {
   return tags;
 }
 
-function pickWeightedItem(targetTier, excludeSet = new Set(), checkWaveMin = false, minTierFloor = 1) {
-  const floorT = Math.max(1, Math.min(4, minTierFloor || 1));
-  const clampedTarget = Math.max(floorT, Math.min(4, targetTier || floorT));
+function pickWeightedItem(targetTier, excludeSet = new Set(), checkWaveMin = false, minTierFloor = 1, maxTierCap = 4) {
+  const capT = Math.max(1, Math.min(4, maxTierCap || 4));
+  const floorT = Math.max(1, Math.min(capT, minTierFloor || 1));
+  const clampedTarget = Math.max(floorT, Math.min(capT, targetTier || floorT));
   const tierOrder = [];
   for (let t = clampedTarget; t >= floorT; t--) tierOrder.push(t);
-  for (let t = clampedTarget + 1; t <= 4; t++) tierOrder.push(t);
+  for (let t = clampedTarget + 1; t <= capT; t++) tierOrder.push(t);
   for (let t = floorT - 1; t >= 1; t--) {
     if (floorT === 1) tierOrder.push(t);
   }
@@ -922,13 +932,13 @@ function pickWeightedItem(targetTier, excludeSet = new Set(), checkWaveMin = fal
     if (pool.length > 0) break;
   }
   if (!pool.length && floorT > 1) {
-    pool = ITEMS.filter(it => it.tier >= floorT && (!isWeaponless || !it.weaponOnly) && isItemAvailable(it, excludeSet, false));
+    pool = ITEMS.filter(it => it.tier >= floorT && it.tier <= capT && (!isWeaponless || !it.weaponOnly) && isItemAvailable(it, excludeSet, false));
   }
   if (!pool.length && floorT > 1) {
-    pool = ITEMS.filter(it => it.tier >= floorT && isItemAvailable(it, excludeSet, false));
+    pool = ITEMS.filter(it => it.tier >= floorT && it.tier <= capT && isItemAvailable(it, excludeSet, false));
   }
   if (!pool.length) {
-    pool = ITEMS.filter(it => (!isWeaponless || !it.weaponOnly) && isItemAvailable(it, excludeSet, false));
+    pool = ITEMS.filter(it => it.tier <= capT && (!isWeaponless || !it.weaponOnly) && isItemAvailable(it, excludeSet, false));
   }
   if (!pool.length) {
     pool = ITEMS.filter(it => isItemAvailable(it, excludeSet, false));
@@ -962,20 +972,23 @@ function recordCrateHistory(itemId) {
   if (player.recentCrateIds.length > 6) player.recentCrateIds.shift();
 }
 
-function buildCrateWeaponChoice(isBossCrate, forcedTier = 0, minTierFloor = 1) {
+function buildCrateWeaponChoice(isBossCrate, forcedTier = 0, minTierFloor = 1, maxTierCap = 4) {
   if (!player || player.maxSlots <= 0) return null;
-  const floorT = Math.max(1, Math.min(4, minTierFloor || 1));
+  const capT = Math.max(1, Math.min(4, maxTierCap || 4));
+  const floorT = Math.max(1, Math.min(capT, minTierFloor || 1));
   const rawTier = forcedTier > 0 ? forcedTier : rollCrateTier(wave, player.luck || 0, isBossCrate);
-  let wTier = Math.max(floorT, Math.min(4, rawTier));
+  let wTier = Math.max(floorT, Math.min(capT, rawTier));
 
-  const tryTiers = floorT >= 3 ? (wTier === 4 ? [4, 3] : [3, 4]) : [wTier];
+  const tryTiers = [];
+  for (let t = wTier; t >= floorT; t--) tryTiers.push(t);
+  for (let t = wTier + 1; t <= capT; t++) tryTiers.push(t);
   let wKeys = [];
   let chosenTier = wTier;
   let autoReplaceLowest = false;
   for (const candT of tryTiers) {
     const cands = Object.keys(WEAPONS).filter(k => {
       const effT = Math.max(candT, WEAPONS[k].minTier || 1);
-      return effT >= floorT && effT <= 4 && (WEAPONS[k].minTier || 1) <= candT && canBuyWeapon(k, effT);
+      return effT >= floorT && effT <= capT && (WEAPONS[k].minTier || 1) <= candT && canBuyWeapon(k, effT);
     });
     if (cands.length > 0) {
       wKeys = cands;
@@ -983,11 +996,11 @@ function buildCrateWeaponChoice(isBossCrate, forcedTier = 0, minTierFloor = 1) {
       break;
     }
   }
-  // 当兵装槽已满且全为低阶（无可合成紫/金槽位）时，针对保底紫+试炼秘匣仍强制提供紫/金兵装，拾取时自动熔炼替换最低阶兵装
-  if (!wKeys.length && floorT >= 3) {
+  // 当兵装槽已满且全为低阶（无可合成高阶槽位）时，针对保底蓝+/紫+试炼秘匣仍强制提供达标兵装，拾取时自动熔炼替换最低阶兵装
+  if (!wKeys.length && floorT >= 2) {
     wKeys = Object.keys(WEAPONS).filter(k => {
       const effT = Math.max(wTier, WEAPONS[k].minTier || 1);
-      return effT >= floorT && effT <= 4 && (WEAPONS[k].minTier || 1) <= wTier;
+      return effT >= floorT && effT <= capT && (WEAPONS[k].minTier || 1) <= wTier;
     });
     chosenTier = wTier;
     autoReplaceLowest = wKeys.length > 0;
@@ -1008,7 +1021,7 @@ function buildCrateWeaponChoice(isBossCrate, forcedTier = 0, minTierFloor = 1) {
   }
 
   const tpl = WEAPONS[pickedId];
-  const effTier = Math.min(4, Math.max(floorT, wTier, tpl.minTier || 1));
+  const effTier = Math.min(capT, Math.max(floorT, wTier, tpl.minTier || 1));
   const tierMul = WEAPON_TIER_COST_MUL[effTier] || 4.4;
   const crystalMul = typeof CRYSTAL_YIELD_MUL === 'number' ? CRYSTAL_YIELD_MUL : 0.77;
   const recycleVal = Math.max(6, Math.round(tpl.cost * tierMul * getShopScale() * 0.48 * crystalMul));
@@ -1037,14 +1050,15 @@ function showCrateMenu() {
   const isSurvivalGoldCrate = !isMythicCrate && (player.survivalGoldCratesQueued || 0) > 0;
   const isSurvivalCrate = isSurvivalGoldCrate || (!isMythicCrate && (player.survivalCratesQueued || 0) > 0);
   const isBossCrate = isMythicCrate || isSurvivalCrate || (player.bossCratesQueued || 0) > 0;
+  const actCapTier = wave <= 4 ? 3 : 4;
   const ct = document.getElementById('crateTitle');
   if (ct) {
     const titlePrefix = isMythicCrate
-      ? '开启神骸二阶段秘匣 · 必得传说'
+      ? (wave <= 4 ? '开启神骸二阶段秘匣 · 必得史诗紫装' : (wave <= 8 ? '开启神骸二阶段秘匣 · 保底史诗/概率传说' : '开启神骸二阶段秘匣 · 必得传说'))
       : (isSurvivalGoldCrate
-          ? '开启蚀界无瑕圣匣 · 必出紫/金兵装与遗物'
+          ? (wave <= 4 ? '开启蚀界无瑕圣匣 · 保底蓝/紫高阶双飨' : '开启蚀界无瑕圣匣 · 必出紫/金兵装与遗物')
           : (isSurvivalCrate
-              ? '开启蚀界渡劫秘匣 · 保底紫色及以上双飨'
+              ? (wave <= 4 ? '开启蚀界渡劫秘匣 · 保底稀有及以上双飨' : '开启蚀界渡劫秘匣 · 保底紫色及以上双飨')
               : (isBossCrate ? '开启守誓主宰秘匣' : '开启守誓遗物匣')));
     ct.textContent = `${titlePrefix}（剩余 ${pendingCrates}）`;
   }
@@ -1055,12 +1069,31 @@ function showCrateMenu() {
   const excludeIds = new Set();
   const choices = [];
 
-  // 选项 1：防重复加权战利品道具（神话二阶段宝箱必出 T4 传说；蚀界生存秘匣 100% 保底紫色 T3 史诗或金色 T4 传说！）
-  const survivalP4 = (isSurvivalGoldCrate ? 0.42 : 0.20) + luckF * 0.12;
+  // 四幕秘匣品质锁：第1幕(W1~4)严禁刷出橙色T4传说(0%)；第2幕(W5~8)保底紫T3低率出橙；第3~4幕(W9+)逐步高率/必出橙装！
+  const survFloorTier = wave <= 4 ? 2 : 3;
+  const rollSurvivalActTier = () => {
+    if (wave <= 4) {
+      const p3 = (isSurvivalGoldCrate ? 0.52 : 0.25) + luckF * 0.12;
+      return Math.random() < p3 ? 3 : 2;
+    }
+    const p4 = wave <= 8
+      ? ((isSurvivalGoldCrate ? 0.14 : 0.04) + luckF * 0.08)
+      : (wave <= 12
+          ? ((isSurvivalGoldCrate ? 0.36 : 0.16) + luckF * 0.10)
+          : ((isSurvivalGoldCrate ? 0.56 : 0.28) + luckF * 0.12));
+    return Math.random() < p4 ? 4 : 3;
+  };
+  const rollMythicActTier = () => {
+    if (wave <= 4) return 3;
+    if (wave <= 8) return Math.random() < (0.28 + luckF * 0.10) ? 4 : 3;
+    return 4;
+  };
+  const mythicFloorTier = wave <= 8 ? 3 : 4;
   const t1 = isMythicCrate
-    ? 4
-    : (isSurvivalCrate ? (Math.random() < survivalP4 ? 4 : 3) : rollCrateTier(wave, luck, isBossCrate));
-  const item1 = pickWeightedItem(t1, excludeIds, !(isMythicCrate || isSurvivalCrate), isSurvivalCrate ? 3 : 1);
+    ? rollMythicActTier()
+    : (isSurvivalCrate ? rollSurvivalActTier() : rollCrateTier(wave, luck, isBossCrate));
+  const item1Floor = isMythicCrate ? mythicFloorTier : (isSurvivalCrate ? survFloorTier : 1);
+  const item1 = pickWeightedItem(t1, excludeIds, !(isMythicCrate || isSurvivalCrate), item1Floor, actCapTier);
   if (item1) {
     excludeIds.add(item1.id);
     recordCrateHistory(item1.id);
@@ -1072,16 +1105,16 @@ function showCrateMenu() {
     });
   }
 
-  // 选项 2：蚀界生存秘匣 100% 同步提供一把紫色(T3)或金色(T4)兵装（无武器角色则提供第二件紫色/金色遗物）！
+  // 选项 2：蚀界生存秘匣 100% 同步提供一把与当前幕次品质锁匹配的达标兵装（无武器角色则提供第二件高阶遗物）！
   const modeR = Math.random();
   let secondChoice = null;
   if (isSurvivalCrate) {
-    const wpnTier = Math.random() < survivalP4 ? 4 : 3;
+    const wpnTier = rollSurvivalActTier();
     if (player.maxSlots > 0) {
-      secondChoice = buildCrateWeaponChoice(true, wpnTier, 3);
+      secondChoice = buildCrateWeaponChoice(true, wpnTier, survFloorTier, actCapTier);
     }
     if (!secondChoice) {
-      const item2 = pickWeightedItem(wpnTier, excludeIds, false, 3);
+      const item2 = pickWeightedItem(wpnTier, excludeIds, false, survFloorTier, actCapTier);
       if (item2) {
         excludeIds.add(item2.id);
         recordCrateHistory(item2.id);
@@ -1094,42 +1127,44 @@ function showCrateMenu() {
       }
     }
   } else if (isMythicCrate) {
-    const item2 = pickWeightedItem(4, excludeIds, false, 4);
-    if (item2 && item2.tier === 4 && Math.random() < 0.65) {
+    const mTier2 = rollMythicActTier();
+    const item2 = pickWeightedItem(mTier2, excludeIds, false, mythicFloorTier, actCapTier);
+    if (item2 && item2.tier >= mythicFloorTier && Math.random() < 0.65) {
       excludeIds.add(item2.id);
       recordCrateHistory(item2.id);
       secondChoice = {
         kind: 'item',
         item: item2,
-        tier: 4,
+        tier: item2.tier,
         recycleVal: Math.max(12, Math.round(item2.cost * getShopScale() * 0.55 * crystalMul))
       };
     } else {
+      const supTier = wave <= 4 ? 3 : 4;
       secondChoice = {
         kind: 'supply',
         supply: {
-          id: 'sup_mythic_dragon', name: '神话真红神髓', icon: '🐉', tier: 4, cost: 72,
-          desc: '【二阶段神话秘宝】全体伤害永久 +22%，暴击伤害 +45%，并立即回满全部生命！',
-          apply: p => { p.dmgMul += 0.22; p.critDmg = (p.critDmg || 0) + 0.45; p.hp = p.maxHp; }
+          id: 'sup_mythic_dragon', name: '神话真红神髓', icon: '🐉', tier: supTier, cost: wave <= 4 ? 52 : 72,
+          desc: '【二阶段神话秘宝】全体伤害永久 +10%，暴击伤害 +18%，并立即回满全部生命！',
+          apply: p => { p.dmgMul += 0.10; p.critDmg = (p.critDmg || 0) + 0.18; p.hp = p.maxHp; }
         },
-        tier: 4,
-        recycleVal: Math.max(16, Math.round(42 * getShopScale() * crystalMul))
+        tier: supTier,
+        recycleVal: Math.max(14, Math.round((wave <= 4 ? 32 : 42) * getShopScale() * crystalMul))
       };
     }
   } else if (player.maxSlots > 0 && modeR < 0.42) {
-    secondChoice = buildCrateWeaponChoice(isBossCrate);
+    secondChoice = buildCrateWeaponChoice(isBossCrate, 0, 1, actCapTier);
   } else if (modeR < 0.76 && typeof CRATE_SUPPLIES !== 'undefined' && CRATE_SUPPLIES.length > 0) {
     const sup = CRATE_SUPPLIES[Math.floor(Math.random() * CRATE_SUPPLIES.length)];
     secondChoice = {
       kind: 'supply',
       supply: sup,
-      tier: sup.tier || 2,
+      tier: Math.min(actCapTier, sup.tier || 2),
       recycleVal: Math.max(7, Math.round((sup.cost || 28) * getShopScale() * 0.50 * crystalMul))
     };
   }
   if (!secondChoice) {
-    const t2 = isSurvivalCrate ? 3 : rollCrateTier(wave, luck, isBossCrate);
-    const item2 = pickWeightedItem(t2, excludeIds, !isSurvivalCrate, isSurvivalCrate ? 3 : 1);
+    const t2 = isSurvivalCrate ? survFloorTier : rollCrateTier(wave, luck, isBossCrate);
+    const item2 = pickWeightedItem(t2, excludeIds, !isSurvivalCrate, isSurvivalCrate ? survFloorTier : 1, actCapTier);
     if (item2) {
       excludeIds.add(item2.id);
       recordCrateHistory(item2.id);
@@ -1214,8 +1249,8 @@ function showCrateMenu() {
       descTxt = tpl.desc;
       footReady = !!(c.canMergeNow || willHit);
       footBadgeTxt = c.canMergeNow
-        ? `${setLabel} (${curCnt}/${nextStep}) · ${c.tier === 4 ? '拾取觉醒5阶神话!' : '可直接共鸣升阶!'}`
-        : `${setLabel} (${curCnt}/${nextStep})${willHit ? ' ➔ 凑齐激活!' : ''}`;
+        ? `⚔️ 兵装 · ${setLabel} (${curCnt}/${nextStep}) · ${c.tier === 4 ? '拾取觉醒5阶神话!' : '可直接共鸣升阶!'}`
+        : `⚔️ 兵装 · ${setLabel} (${curCnt}/${nextStep})${willHit ? ' ➔ 凑齐激活!' : ''}`;
       onFootClick = tpl.set ? `event.stopPropagation();openShopSynergyModal('${tpl.set}')` : '';
     } else if (c.kind === 'supply') {
       const sup = c.supply;
@@ -1305,6 +1340,22 @@ let _selectedEvoIdx = 0, _evoPickHandlers = [];
 let _selectedCrateIdx = 0, _crateTakeHandlers = [], _crateRecycleHandlers = [], _crateRecycleVals = [];
 let _selectedLvlIdx = 0, _lvlPickHandlers = [], _lvlRerollCount = 0;
 
+function rollLevelUpCardTier(lv, luck = 0) {
+  const luckF = Math.min(1, Math.max(0, luck || 0) / 95);
+  const u = Math.random();
+  if (lv <= 4) {
+    return u < Math.min(0.32, 0.18 + luckF * 0.10) ? 2 : 1;
+  }
+  if (lv <= 9) {
+    const p3 = Math.min(0.26, 0.14 + luckF * 0.10);
+    const p2 = 0.58;
+    if (u < p3) return 3;
+    if (u < p3 + p2) return 2;
+    return 1;
+  }
+  return u < Math.min(0.58, 0.45 + luckF * 0.12) ? 3 : 2;
+}
+
 function confirmSelectedEvolution() {
   const fn = _evoPickHandlers[_selectedEvoIdx] || _evoPickHandlers[0];
   if (typeof fn === 'function') fn();
@@ -1320,7 +1371,8 @@ function recycleSelectedCrateChoice() {
 function _calcLvlRerollCost() {
   if (!player) return 6;
   if (typeof freeRerollsLeft !== 'undefined' && freeRerollsLeft > 0) return 0;
-  const base = Math.max(4, Math.round(5 * (1 + Math.max(0, wave - 1) * 0.14) + _lvlRerollCount * 3));
+  const rerollIdx = Math.max(_lvlRerollCount, player._lvlRerollsThisWave || 0);
+  const base = Math.max(4, Math.round(3 + wave * 1.1 + rerollIdx * 3));
   return calcDiscountedShopCost(base, 2);
 }
 function confirmSelectedLevelUp() {
@@ -1339,6 +1391,7 @@ function rerollLevelUpChoices() {
   } else if (cost > 0) {
     player.mats -= cost;
     _lvlRerollCount++;
+    player._lvlRerollsThisWave = (player._lvlRerollsThisWave || 0) + 1;
   }
   beep(460, 0.05, 'triangle', 0.04);
   _renderLevelUpPool();
@@ -1357,9 +1410,12 @@ function _renderLevelUpPool() {
     const rCost = _calcLvlRerollCost();
     rBtn.textContent = rCost === 0 ? `↻ 免费重铸 (${freeRerollsLeft})` : `↻ 重铸刻印 · ◇${rCost}`;
     rBtn.disabled = rCost > 0 && player.mats < rCost;
+    rBtn.onclick = rerollLevelUpChoices;
   }
-  const pool = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 4);
   const box = document.getElementById('lvlCards');
+  const lvNow = (player && player.lv) || 1;
+  const luckNow = (player && player.luck) || 0;
+  const pool = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 4);
   box.innerHTML = '';
   _selectedLvlIdx = 0;
   _lvlPickHandlers = [];
@@ -1368,11 +1424,14 @@ function _renderLevelUpPool() {
     Array.from(box.children).forEach((ch, ci) => ch.classList.toggle('is-sel', ci === _selectedLvlIdx));
   };
   pool.forEach((u, idx) => {
-    const uTier = u.tier || 2;
+    const cTier = rollLevelUpCardTier(lvNow, luckNow);
+    const tierMul = cTier === 1 ? 0.78 : (cTier === 3 ? 1.35 : 1.00);
+    const tierLabel = cTier === 1 ? '微光刻印' : (cTier === 3 ? '高阶刻印' : '记忆刻印');
+    const descTxt = typeof u.tierDesc === 'function' ? u.tierDesc(tierMul) : u.desc;
     const el = document.createElement('div');
-    el.className = `p5-row t${uTier}${idx === 0 ? ' is-sel' : ''}`;
+    el.className = `p5-row t${cTier}${idx === 0 ? ' is-sel' : ''}`;
     const plainScope = (u.scopeLabel || '').trim();
-    const footTxt = plainScope || '✦ 魂灯全局共鸣刻印';
+    const footTxt = `${tierLabel} · ${plainScope || '✦ 魂灯全局共鸣刻印'}`;
     el.innerHTML = `
       <div class="p5-ico-edge"><div class="p5-ico-inner">${u.icon}</div></div>
       <div class="p5-notch" aria-hidden="true"></div>
@@ -1381,17 +1440,18 @@ function _renderLevelUpPool() {
           <div class="p5-bar-top">
             <div class="p5-title-group">
               <span class="p5-bar-title" title="${u.name}">${u.name}</span>
-              ${_rarityPill(uTier)}
+              ${_rarityPill(cTier)}
+              ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(u) : ''}
             </div>
             <div class="sr-contract-hidden"><button type="button" class="lvl-pick-btn">铭刻</button></div>
           </div>
-          <div class="p5-bar-cat">${u.desc}</div>
+          <div class="p5-bar-cat">${descTxt}</div>
           <div class="p5-bar-foot"><span class="bar-prog-badge ready">${footTxt}</span></div>
         </div>
       </div>`;
     const pick = () => {
-      u.apply(player); syncSetHp(); beep(580, 0.07, 'triangle');
-      logInfo('LEVELUP', `选择强化 ${u.name} (Lv.${player.lv})`);
+      u.apply(player, tierMul); syncSetHp(); beep(580, 0.07, 'triangle');
+      logInfo('LEVELUP', `选择强化 ${u.name} [${tierLabel}] (Lv.${player.lv})`);
       pendingLevels--;
       advancePostWave();
     };
@@ -1459,24 +1519,36 @@ function rollOffers() {
   const shopScale = getShopScale();
   const luck = player.luck || 0;
   let guard = 0;
+  const slotsFull = player.weapons && player.weapons.length >= player.maxSlots;
+  const wepSlotChance = player.maxSlots <= 0 ? 0 : (wave <= 5 ? 0.54 : (slotsFull ? 0.35 : 0.42));
   while (locked.length < 4 && guard++ < 40) {
-    const isWeapon = player.maxSlots > 0 && Math.random() < 0.54;
+    const isWeapon = player.maxSlots > 0 && Math.random() < wepSlotChance;
     const tier = rollShopTier(wave, luck);
 
     if (isWeapon) {
       const validW = wKeys.filter(k => (WEAPONS[k].minTier || 1) <= tier);
       if (!validW.length) continue;
       const wBoosts = getArchetypeAffinityBoosts(player);
-      // 结合流派倾向隐藏暗增（最高 +20%）与同名未满阶合成保底，既尊重流派成型又不锁死刷池
-      let id = pickWeightedWeaponKey(validW, wBoosts);
-      if (player.weapons.length && Math.random() < 0.30) {
+      // 参照《土豆兄弟》三层武器池：满槽时 36% 优先刷出可直接二合一升阶的同阶同名武器（未满槽 22%）+ 18% 同羁绊套装 + 其余全池流派权重
+      let id = null;
+      let matchedTier = 0;
+      const subRoll = Math.random();
+      const dupChance = slotsFull ? 0.36 : 0.22;
+      if (player.weapons.length && subRoll < dupChance) {
         const upgradable = player.weapons.filter(w => w.tier < 5 && validW.includes(w.id));
         if (upgradable.length) {
-          id = upgradable[Math.floor(Math.random() * upgradable.length)].id;
+          const pickedW = upgradable[Math.floor(Math.random() * upgradable.length)];
+          id = pickedW.id;
+          if (slotsFull && pickedW.tier <= 4 && Math.abs(pickedW.tier - tier) <= 1) matchedTier = pickedW.tier;
         }
+      } else if (player.weapons.length && subRoll < dupChance + 0.18) {
+        const ownedSets = new Set(player.weapons.map(w => WEAPONS[w.id] && WEAPONS[w.id].set).filter(Boolean));
+        const sameSet = validW.filter(k => ownedSets.has(WEAPONS[k].set));
+        if (sameSet.length) id = pickWeightedWeaponKey(sameSet, wBoosts);
       }
+      if (!id) id = pickWeightedWeaponKey(validW, wBoosts);
       const tpl = WEAPONS[id];
-      const effTier = Math.max(tier, tpl.minTier || 1);
+      const effTier = matchedTier > 0 ? matchedTier : Math.max(tier, tpl.minTier || 1);
       const tierMul = WEAPON_TIER_COST_MUL[effTier] || 4.4;
       const rawCost = Math.max(2, Math.round(tpl.cost * tierMul * shopScale));
       const cost = calcDiscountedShopCost(rawCost, 2);
@@ -1534,7 +1606,7 @@ function openShop(fresh) {
     rerollCost = freeRerollsLeft > 0 ? 0 : calcDiscountedShopCost(rerollRawCost, 1);
     anvilUpgradedMsg = '';
     if (player.hasAnvil && player.weapons.length > 0) {
-      const upgradable = player.weapons.filter(w => w.tier < 5);
+      const upgradable = player.weapons.filter(w => w.tier < 4);
       if (upgradable.length > 0) {
         const uw = upgradable[Math.floor(Math.random() * upgradable.length)];
         uw.tier++;
@@ -1543,6 +1615,10 @@ function openShop(fresh) {
         const uwName = _wpnDispName(uw);
         anvilUpgradedMsg = ` · ⚒️ 神砧免费升阶【${uwName}】!`;
         logInfo('SHOP', `铁匠神砧自动升阶 ${uwName} -> Lv.${uw.tier}`);
+      } else {
+        player.armor += 1;
+        anvilUpgradedMsg = ` · ⚒️ 神砧淬甲【护甲 +1】!`;
+        logInfo('SHOP', `铁匠神砧全满4阶改为护甲 +1`);
       }
     }
     mobDrawerOpen = false;
@@ -1732,6 +1808,11 @@ function _renderShopOverviewPane(floorBadgeTxt, mergePairs) {
     const dodgePct = Math.round(Math.min(player.dodgeCap || 0.80, Math.max(0, player.dodge || 0)) * 100);
     const spdPct = Math.round(getEffectiveSpdMul() * 100);
     const harv = Math.round(player.harvestFlat || 0);
+    const fMel = player.flatMelee || 0, fRng = player.flatRanged || 0, fElm = player.flatElem || 0, fTec = player.flatTech || 0;
+    const ovStatsSub = st12El.previousElementSibling ? st12El.previousElementSibling.lastElementChild : null;
+    if (ovStatsSub) {
+      ovStatsSub.textContent = `点伤 ⚔️+${fMel} · 🔫+${fRng} · 🔥+${fElm} · ⚙️+${fTec}`;
+    }
     const cells = [
       ['生命上限', `${Math.max(0, Math.ceil(player.hp))}/${player.maxHp}`, true],
       ['护甲减伤', `${arm} (${mit >= 0 ? '-' : '+'}${Math.abs(mit)}%)`, arm > 0],
@@ -1990,7 +2071,11 @@ function renderShop() {
     const aspdScaleVal = typeof PLAYER_ASPD_SCALE === 'number' ? PLAYER_ASPD_SCALE : 0.70;
     const aspdPctVal = Math.round((player.atkSpd + setB.aspd) * aspdScaleVal * 100);
     const critPctVal = Math.round(getEffectiveCrit() * 100);
-    briefEl.innerHTML = `<div class="sbs-items"><span>生命<b>${Math.max(0, Math.ceil(player.hp))}/${player.maxHp}</b></span><span>护甲<b>${armVal}</b></span><span>伤害<b class="gold">${dmgPctVal}%</b></span><span>攻速<b>${aspdPctVal}%</b></span><span>暴击<b class="gold">${critPctVal}%</b></span></div><span class="sbs-more">行囊总览 ▸</span>`;
+    const fMelB = player.flatMelee || 0, fRngB = player.flatRanged || 0, fElmB = player.flatElem || 0, fTecB = player.flatTech || 0;
+    const flatHiTxt = (fMelB || fRngB || fElmB || fTecB)
+      ? `<span>点伤<b>⚔️${fMelB}/🔫${fRngB}/🔥${fElmB}/⚙️${fTecB}</b></span>`
+      : '';
+    briefEl.innerHTML = `<div class="sbs-items"><span>生命<b>${Math.max(0, Math.ceil(player.hp))}/${player.maxHp}</b></span><span>护甲<b>${armVal}</b></span><span>伤害<b class="gold">${dmgPctVal}%</b></span>${flatHiTxt}<span>攻速<b>${aspdPctVal}%</b></span><span>暴击<b class="gold">${critPctVal}%</b></span></div><span class="sbs-more">行囊总览 ▸</span>`;
   }
   if (typeof window._shopSelOfferIdx !== 'number' || !shopOffers[window._shopSelOfferIdx]) {
     const firstLive = shopOffers.findIndex(Boolean);
