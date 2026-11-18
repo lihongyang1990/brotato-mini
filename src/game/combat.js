@@ -368,6 +368,10 @@ function castChainLightning(sx, sy, firstTarget, jumps, rawDmg, critChance, srcI
         if (dSq < bestDSq) { bestDSq = dSq; next = e; }
       }
     }
+    if (step === 0 && !next && jumps > 1 && firstTarget && firstTarget.hp > 0 && state === 'wave') {
+      hurtEnemy(firstTarget, rawDmg * 0.36 * (isCrit ? cmul : 1), isCrit, hitAng, true, { forceChill: true, forceBurn, noProc: true, silentHit: true, srcId: useSrc });
+      if (state !== 'wave') break;
+    }
     target = next;
   }
 }
@@ -436,7 +440,8 @@ function triggerExplosion(x, y, radius, enemyDmg, hurtPlayerToo = false, playerD
 
 function getTotalArmor() {
   const stillArm = (player && player.standStillBuff && (player._stillTime || 0) >= 0.45) ? 4 : 0;
-  return (player ? player.armor : 0) + getSetBonuses().armor + getRockCount() + stillArm;
+  const gritArm = (player && player.ironbloodGrit && player.hp < player.maxHp * 0.70) ? 4 : 0;
+  return (player ? player.armor : 0) + getSetBonuses().armor + getRockCount() + stillArm + gritArm;
 }
 function getTotalRangeBonus() {
   const scale = typeof PLAYER_RANGE_SCALE === 'number' ? PLAYER_RANGE_SCALE : 0.80;
@@ -456,16 +461,30 @@ function getArmorMitigation() {
 function getEffectiveDmgMul() {
   if (!player) return 1;
   const penalty = player.cls === 'multitasker' ? player.weapons.length * 0.04 : 0;
-  const rangeConvert = player.rangeToDmg ? Math.min(0.28, Math.max(0, Math.floor(getTotalRangeBonus() / 16)) * 0.01) : 0;
-  const hpConvert = (player.hpToDmg || 0) > 0 ? Math.min(0.32, Math.max(0, Math.floor(player.maxHp / 6)) * 0.015 * player.hpToDmg) : 0;
-  const armorConvert = (player.armorToDmg || 0) > 0 ? Math.min(0.30, Math.max(0, getTotalArmor()) * 0.012 * player.armorToDmg) : 0;
-  const regenConvert = (player.regenToDmg && !player.noRegen && player.regen > 0) ? Math.min(0.30, player.regen * 0.020) : 0;
-  const spdConvert = player.spdToDmg ? Math.min(0.38, Math.max(0, (getEffectiveSpdMul() - 1) * 1.00)) : 0;
-  const lsConvert = player.lifestealToDmg ? Math.min(0.36, Math.max(0, (player.lifesteal || 0) * 1.85)) : 0;
-  const harvConvert = player.harvestToDmg ? Math.min(0.32, Math.max(0, Math.floor((player.harvestFlat || 0) / 12) * 0.022)) : 0;
-  const frenzyDmg = (player.lowHpFrenzy && player.hp < player.maxHp * 0.65) ? 0.14 : 0;
+  const rangeConvert = player.rangeToDmg ? Math.min(0.18, Math.max(0, Math.floor(getTotalRangeBonus() / 18)) * 0.01) : 0;
+  const hpConvert = Math.max(
+    (player.hpToDmg || 0) > 0 ? Math.min(0.20, Math.max(0, Math.floor(player.maxHp / 8)) * 0.014 * player.hpToDmg) : 0,
+    player.minorHpToDmg ? Math.min(0.10, Math.max(0, Math.floor(player.maxHp / 12)) * 0.01) : 0
+  );
+  const armorConvert = Math.max(
+    (player.armorToDmg || 0) > 0 ? Math.min(0.18, Math.max(0, getTotalArmor()) * 0.010 * player.armorToDmg) : 0,
+    player.minorArmorToDmg ? Math.min(0.10, Math.floor(Math.max(0, getTotalArmor()) / 2) * 0.01) : 0
+  );
+  const regenConvert = (player.regenToDmg && !player.noRegen && player.regen > 0) ? Math.min(0.18, player.regen * 0.018) : 0;
+  const spdConvert = Math.max(
+    player.spdToDmg ? Math.min(0.20, Math.max(0, (getEffectiveSpdMul() - 1) * 0.85)) : 0,
+    player.minorSpdToDmg ? Math.min(0.10, Math.max(0, (getEffectiveSpdMul() - 1) * 0.45)) : 0
+  );
+  const lsConvert = Math.max(
+    player.lifestealToDmg ? Math.min(0.20, Math.max(0, (player.lifesteal || 0) * 1.40)) : 0,
+    player.minorLeechToDmg ? Math.min(0.10, Math.max(0, (player.lifesteal || 0) * 0.80)) : 0
+  );
+  const harvConvert = player.harvestToDmg ? Math.min(0.18, Math.max(0, Math.floor((player.harvestFlat || 0) / 14) * 0.018)) : 0;
+  const totalConvert = Math.min(0.35, rangeConvert + hpConvert + armorConvert + regenConvert + spdConvert + lsConvert + harvConvert);
+  const wisdomBonus = player.wisdomRamp ? Math.min(0.28, Math.floor(Math.max(0, player._waveElapsed || 0) / 5) * 0.035) : 0;
+  const frenzyDmg = (player.lowHpFrenzy && player.hp < player.maxHp * 0.65) ? 0.12 : 0;
   const dashSurgeBonus = (player.dashSurgeT || 0) > 0 ? 0.15 : 0;
-  return Math.max(0.25, player.dmgMul - penalty + rangeConvert + hpConvert + armorConvert + regenConvert + spdConvert + lsConvert + harvConvert + frenzyDmg + dashSurgeBonus);
+  return Math.max(0.25, player.dmgMul - penalty + totalConvert + wisdomBonus + frenzyDmg + dashSurgeBonus);
 }
 function getEffectiveAtkSpd() {
   const scale = typeof PLAYER_ASPD_SCALE === 'number' ? PLAYER_ASPD_SCALE : 0.70;
@@ -474,17 +493,18 @@ function getEffectiveAtkSpd() {
   const sporeBonus = player.inSpore ? 0.14 : 0;
   const auraBonus = (player._inTurretAura && (player.turretAuraHeal || 0) > 0) ? 0.12 : 0;
   const dashBonus = ((player.dashHasteT || 0) > 0 ? 0.20 : 0) + ((player.dashSurgeT || 0) > 0 ? 0.14 : 0);
-  const dodgeConvert = player.dodgeToAspd ? Math.min(player.dodgeCap || 0.80, Math.max(0, player.dodge || 0)) * 1.20 : 0;
-  const stillAspd = (player.standStillBuff && (player._stillTime || 0) >= 0.45) ? 0.22 : 0;
-  const frenzyAspd = (player.lowHpFrenzy && player.hp < player.maxHp * 0.65) ? 0.20 : 0;
-  const harvAspd = player.harvestToDmg ? Math.min(0.24, Math.max(0, Math.floor((player.harvestFlat || 0) / 12) * 0.012)) : 0;
-  return Math.max(0.18, (player.atkSpd + getSetBonuses().aspd + missingBonus + sporeBonus + auraBonus + dashBonus + dodgeConvert + stillAspd + frenzyAspd + harvAspd) * scale);
+  const dodgeConvert = player.dodgeToAspd ? Math.min(0.36, Math.min(player.dodgeCap || 0.80, Math.max(0, player.dodge || 0)) * 0.65) : 0;
+  const stillAspd = (player.standStillBuff && (player._stillTime || 0) >= 0.45) ? 0.20 : 0;
+  const frenzyAspd = (player.lowHpFrenzy && player.hp < player.maxHp * 0.65) ? 0.18 : 0;
+  const harvAspd = player.harvestToDmg ? Math.min(0.12, Math.max(0, Math.floor((player.harvestFlat || 0) / 14) * 0.010)) : 0;
+  const bannerAspd = (player.crowdAspdBanner && typeof enemies !== 'undefined' && Array.isArray(enemies)) ? Math.min(0.18, enemies.length * 0.006) : 0;
+  return Math.max(0.18, (player.atkSpd + getSetBonuses().aspd + missingBonus + sporeBonus + auraBonus + dashBonus + dodgeConvert + stillAspd + frenzyAspd + harvAspd + bannerAspd) * scale);
 }
 function getEffectiveCrit() { return (player ? player.crit : 0) + getSetBonuses().crit; }
 function getEffectiveCritMult(baseMult = 1.95) {
   if (!player) return baseMult;
-  const luckBonus = player.luckToCritDmg ? Math.min(0.42, Math.floor(Math.max(0, player.luck || 0) / 10) * 0.06) : 0;
-  const overflowBonus = player.overflowCritConvert ? Math.max(0, getEffectiveCrit() - 1.0) * 2.0 : 0;
+  const luckBonus = player.luckToCritDmg ? Math.min(0.30, Math.floor(Math.max(0, player.luck || 0) / 10) * 0.05) : 0;
+  const overflowBonus = player.overflowCritConvert ? Math.max(0, getEffectiveCrit() - 1.0) * 1.6 : 0;
   return baseMult + (player.critDmg || 0) + luckBonus + overflowBonus;
 }
 function getElemMul() { return 1 + (player ? player.elemBonus : 0) + getSetBonuses().elem; }
@@ -492,7 +512,7 @@ function getTechMul() {
   const bastionBonus = (player && (player.turretBastion || 0) > 0 && typeof turrets !== 'undefined')
     ? Math.min(5, turrets.length) * 0.04 * player.turretBastion
     : 0;
-  const elemInherit = (player && player.turretElemInherit) ? Math.max(0, (player.elemBonus || 0) + getSetBonuses().elem) * 0.40 : 0;
+  const elemInherit = (player && player.turretElemInherit) ? Math.max(0, (player.elemBonus || 0) + getSetBonuses().elem) * 0.35 : 0;
   return 1 + (player ? (player.techBonus || 0) : 0) + getSetBonuses().tech + bastionBonus + elemInherit;
 }
 function getBlastScale() { return (player ? player.explosionScale : 1) + getSetBonuses().blast; }
@@ -546,7 +566,8 @@ function getEffectiveSpdMul() {
   if (!player) return 1;
   const dashSpd = (player.dashHasteT || 0) > 0 ? 0.26 : 0;
   const meleeHitBonus = (player.meleeHitSpdT || 0) > 0 ? 0.08 : 0;
-  const raw = player.spdMul + dashSpd + meleeHitBonus;
+  const healSpd = (player.healSpdT || 0) > 0 ? 0.10 : 0;
+  const raw = player.spdMul + dashSpd + meleeHitBonus + healSpd;
   const baseSpd = player.noSlow ? Math.max(1.0, raw) : Math.max(0.72, raw);
   return isBossLastStandFearActive() ? +(baseSpd * D5_LAST_STAND_FEAR_SPD_MUL).toFixed(4) : baseSpd;
 }
@@ -1370,8 +1391,8 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
   // 1) 近战武器对首领/统领自带 1.28x 破甲加成，且对重甲血牛怪（镇狱像/重锤卫/盾卫/铁卫）享有 1.18x 碎甲加成，杜绝近战打重装吃亏
   const isBossTarget = e.type === 'boss' || e.type === 'special_boss' || e.type === 'mini_boss';
   if (opts.isMelee) {
-    if (isBossTarget) rawDmg *= 1.08;
-    else if (e.type === 'juggernaut' || e.type === 'brute' || e.type === 'shielder' || e.type === 'iron_guard') rawDmg *= 1.14;
+    if (isBossTarget) rawDmg *= (wave >= 9 ? 1.24 : 1.18);
+    else if (e.type === 'juggernaut' || e.type === 'brute' || e.type === 'shielder' || e.type === 'iron_guard') rawDmg *= 1.24;
     if (player && !opts.isDot) {
       if (player.meleeHitSpd) player.meleeHitSpdT = 2.6;
       if ((player.meleeShieldEvery12 || 0) > 0) {
@@ -1383,27 +1404,25 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
         }
       }
     }
-  } else if (opts.isTurret) {
-    if (isBossTarget && wave >= 7) rawDmg *= (wave >= 9 ? 1.24 : 1.12);
-  } else if (!opts.isDot) {
-    const sKey = opts.srcId || _activeWeaponId || '';
-    if (isBossTarget && sKey && WEAPONS[sKey] && WEAPONS[sKey].isStaff) {
-      rawDmg *= (wave >= 9 ? 1.58 : (wave >= 6 ? 1.24 : 1.12));
-    } else if (!opts.isExplosion && player && (player.rangedBossAmp || 0) > 0 && (isBossTarget || e.elite)) {
-      rawDmg *= (1 + player.rangedBossAmp);
-    }
   }
-  // 2) 首领阵眼击破后的【20秒真实破防】（全源承伤增加 +20%）与常规技能收招【破绽暴露】（近战 +25%，远程 +15%）
+  // 统一合并首领/精英特攻乘区并设定 +25% 硬上限（杜绝破魔纯银铭文 + 猎龙穿甲弹 + 弱点解剖图谱多重连乘秒 Boss！）
+  if (player && !opts.isDot && (isBossTarget || e.elite)) {
+    const sKey = opts.srcId || _activeWeaponId || '';
+    const isRngHit = !opts.isMelee && !opts.isTurret && !opts.isExplosion && !(sKey && WEAPONS[sKey] && WEAPONS[sKey].isStaff);
+    const bossAmpPool = (player.allBossAmp || 0) + (isRngHit ? (player.rangedBossAmp || 0) : 0) + (isCrit ? (player.bossCritAmp || 0) : 0);
+    if (bossAmpPool > 0) rawDmg *= (1 + Math.min(0.25, bossAmpPool));
+  }
+  // 2) 首领阵眼击破后的【20秒真实破防】（全源承伤增加 +20%）与常规技能收招【破绽暴露】（近战 +38%，远程 +15%）
   if ((e.pylonBrokenT || 0) > 0 && !(opts && opts.isPylonBacklash)) {
     const pVulnMul = typeof BOSS_PYLON_BROKEN_DMG_MUL === 'number' ? BOSS_PYLON_BROKEN_DMG_MUL : 1.20;
     rawDmg *= pVulnMul;
-    if (e.exposeT > 0 && opts.isMelee && 1.25 > pVulnMul) rawDmg *= (1.25 / pVulnMul);
+    if (e.exposeT > 0 && opts.isMelee && 1.38 > pVulnMul) rawDmg *= (1.38 / pVulnMul);
     if (!opts.isDot && (!e._vulnTxtCd || e._vulnTxtCd <= 0)) {
       e._vulnTxtCd = 1.45;
       addText(e.x, e.y - e.r - 14, '◈ 真实破防 · 承伤+20%', '#fde68a', 12, 0.44, false);
     }
   } else if (e.exposeT > 0) {
-    rawDmg *= (opts.isMelee ? 1.25 : 1.15);
+    rawDmg *= (opts.isMelee ? 1.38 : 1.15);
   }
   // 3) 统一收敛异常与破甲易伤乘区（合并加法计算并设定 +55% 易伤硬上限，彻底消除 10 层后五重易伤连乘 3.7x 爆炸！）
   let vulnAdd = 0;
@@ -1423,14 +1442,11 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
   if (vulnAdd > 0) rawDmg *= (1 + Math.min(0.55, vulnAdd));
   // 6) 【弱点解剖图谱】与【弑巨星芒重腰带】暴击专精结算
   if (isCrit && player && !opts.isDot) {
-    if ((player.bossCritAmp || 0) > 0 && (isBossTarget || e.elite)) {
-      rawDmg *= (1 + Math.min(0.24, player.bossCritAmp));
-    }
     if (player.giantBelt) {
-      const pctBonus = isBossTarget ? Math.min(140, e.hp * 0.010) : Math.min(200, e.hp * 0.035);
+      const pctBonus = isBossTarget ? Math.min(120, e.hp * 0.010) : Math.min(180, e.hp * 0.030);
       rawDmg += Math.max(1, pctBonus);
     }
-    if ((player.critMatChance || 0) > 0 && !opts.noProc && (player._waveCritMats || 0) < 35 && Math.random() < Math.min(0.65, player.critMatChance)) {
+    if ((player.critMatChance || 0) > 0 && !opts.noProc && (player._waveCritMats || 0) < 30 && Math.random() < Math.min(0.65, player.critMatChance)) {
       player._waveCritMats = (player._waveCritMats || 0) + 1;
       player.mats += 1;
       if (player.paddingStacks > 0) syncSetHp();
@@ -1510,8 +1526,9 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
     const procPoison = opts.forcePoison || (player.poisonChance > 0 && Math.random() < player.poisonChance);
     if (procBurn) {
       e.burnT = 3.0;
-      const burnScale = (1 + (getElemMul() - 1) * 0.85) * (1 + (getEffectiveDmgMul() - 1) * 0.55);
-      e.burnDmg = Math.max(e.burnDmg || 0, Math.max(2, (3.4 + wave * 0.95) * burnScale));
+      const burnScale = (1 + (getElemMul() - 1) * 0.80) * (1 + (getEffectiveDmgMul() - 1) * 0.48);
+      const flatElemBurn = (player ? (player.flatElem || 0) : 0) * 1.35;
+      e.burnDmg = Math.max(e.burnDmg || 0, Math.max(2, (3.4 + flatElemBurn + wave * 0.90 + (wave >= 7 ? (wave - 6) * 1.85 : 0)) * burnScale));
       if (!e.burnTick || e.burnTick <= 0) e.burnTick = 0.42;
     }
     if (procFreeze) {
@@ -1539,7 +1556,8 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
       }
       if (reactLabel && player) {
         player._reactionCount = (player._reactionCount || 0) + 1;
-        const canBlastNow = player.reactionBlast && _frameExplosions < 2 && !(player._procBlastCd > 0);
+        const reactBlastTier = player.reactionBlast ? 1.0 : (player.minorReactionBlast ? 0.48 : 0);
+        const canBlastNow = reactBlastTier > 0 && _frameExplosions < 2 && !(player._procBlastCd > 0);
         if (_frameReactRings < 2) {
           _frameReactRings++;
           if (!canBlastNow && rings.length < 28) {
@@ -1548,9 +1566,10 @@ function hurtEnemy(e, rawDmg, isCrit, knockA = null, ignoreShield = false, opts 
           addText(e.x, e.y - e.r - 14, reactLabel, reactColor === '#fb923c' ? '#fde68a' : reactColor, 13, 0.48, false);
         }
         if (canBlastNow) {
-          player._procBlastCd = 0.09;
-          const rScale = (1 + (getElemMul() - 1) * 0.85) * (1 + (getEffectiveDmgMul() - 1) * 0.55);
-          triggerExplosion(e.x, e.y, 82 * getBlastScale(), (16 + wave * 3.0) * rScale, false, 0, '#fde68a', false, 0, 'elemental_reaction');
+          player._procBlastCd = 0.22;
+          const rScale = (1 + (getElemMul() - 1) * 0.72) * (1 + (getEffectiveDmgMul() - 1) * 0.45) * reactBlastTier;
+          const reactWaveBase = 14 + (player.flatElem || 0) * 2.2 + wave * 2.4;
+          triggerExplosion(e.x, e.y, (reactBlastTier >= 1 ? 82 : 62) * getBlastScale(), reactWaveBase * rScale, false, 0, '#fde68a', false, 0, 'elemental_reaction');
         }
         if (player.archmageMeteor && player._reactionCount % 4 === 0 && _frameExplosions < 2) {
           const mTarget = (e && e.hp > 0) ? e : pickRandomAliveEnemy(null);
@@ -1649,21 +1668,23 @@ function dropCrystals(x, y, totalMat, allowBigChunks = false) {
 
   if (!allowBigChunks) {
     const isLate = (typeof wave === 'number' && wave >= 5);
+    const mobYieldComp = (typeof wave === 'number' && wave >= 6) ? 1.14 : ((typeof wave === 'number' && wave >= 2) ? 1.06 : 1.0);
+    const effMobTotal = rawTotal * mobYieldComp;
     const unitVal = isLate ? 3.2 : 1.85;
-    const xpComp = (typeof wave === 'number' && wave >= 6) ? 1.25 : 1.0;
+    const xpComp = (typeof wave === 'number' && wave >= 6) ? 1.12 : 1.0;
     let coinCount = 0;
     let perCoinVal = 1;
-    if (rawTotal <= unitVal * 1.05) {
-      const dropProb = Math.min(0.78, Math.max(0.12, rawTotal / unitVal));
+    if (effMobTotal <= unitVal * 1.05) {
+      const dropProb = Math.min(0.78, Math.max(0.12, effMobTotal / unitVal));
       if (Math.random() >= dropProb) return;
       coinCount = 1;
-      perCoinVal = +(rawTotal / dropProb).toFixed(2);
+      perCoinVal = +(effMobTotal / dropProb).toFixed(2);
     } else {
-      const estCnt = rawTotal / unitVal;
+      const estCnt = effMobTotal / unitVal;
       const whole = Math.floor(estCnt);
       const frac = estCnt - whole;
       coinCount = Math.min(2, Math.max(1, whole + (Math.random() < frac ? 1 : 0)));
-      perCoinVal = +(rawTotal / coinCount).toFixed(2);
+      perCoinVal = +(effMobTotal / coinCount).toFixed(2);
     }
     for (let k = 0; k < coinCount; k++) {
       if (drops.length >= 68) {
@@ -2150,9 +2171,9 @@ function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
       // 收敛多重隐性减伤叠乘，并与线性 EHP 护甲合并设定 <= 66% 非闪避总减伤封顶，防止重甲流无脑站撸不掉血
       let closeGuard = 0;
       const meleeCnt = getSetBonuses().meleeCnt || 0;
-      const meleeParry = Math.min(0.08, meleeCnt * 0.018);
+      const meleeParry = Math.min(0.12, meleeCnt * 0.025);
       const meleeProjGuard = (isProjectile && (meleeCnt >= 2 || player.cls === 'brawler'))
-        ? Math.min(0.08, Math.max(2, meleeCnt) * 0.02)
+        ? Math.min(0.10, Math.max(2, meleeCnt) * 0.022)
         : 0;
       if (meleeCnt >= 2 || player.cls === 'brawler' || player.cls === 'bull' || (player.meleeBossGuard || 0) > 0) {
         let bossNear = false;
@@ -2160,11 +2181,11 @@ function hurtPlayer(rawDmg, isProjectile = false, dmgSrc = null) {
           const be = enemies[bi];
           if (be && be.hp > 0 && (be.type === 'boss' || be.type === 'special_boss' || be.type === 'mini_boss')) {
             const bdx = be.x - player.x, bdy = be.y - player.y;
-            if (bdx * bdx + bdy * bdy < 210 * 210) { bossNear = true; break; }
+            if (bdx * bdx + bdy * bdy < 220 * 220) { bossNear = true; break; }
           }
         }
         if (bossNear) {
-          closeGuard = Math.min(0.14, (meleeCnt >= 2 || player.cls === 'brawler' || player.cls === 'bull' ? 0.06 : 0) + (player.meleeBossGuard || 0));
+          closeGuard = Math.min(0.18, (meleeCnt >= 2 || player.cls === 'brawler' || player.cls === 'bull' ? 0.08 : 0) + (player.meleeBossGuard || 0));
         }
       }
       const armorMit = getArmorMitigation();

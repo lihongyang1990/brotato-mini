@@ -1313,6 +1313,8 @@ function beginWave(retryMeta = null) {
   player._pocketTurretsSpawned = 0;
   player._bloodShieldPool = 0;
   player._stillTime = 0;
+  player._waveElapsed = 0;
+  player.healSpdT = 0;
   player._gardenCd = (player.gardenPlots || 0) > 0 ? Math.max(4.5, 11 / player.gardenPlots) : 11;
   cam.x = player.x; cam.y = player.y;
   clampCam();
@@ -1575,7 +1577,8 @@ function spawnWarning(x, y, type, variant = '') {
       getBossAnimePortrait(variant, true);
     }
   }
-  spawns.push({ x: sx, y: sy, type, variant, t: 0.90, maxT: 0.90 });
+  const warnDur = (type === 'boss' || type === 'mini_boss' || type === 'special_boss') ? 0.95 : 1.12;
+  spawns.push({ x: sx, y: sy, type, variant, t: warnDur, maxT: warnDur });
 }
 
 const RANGED_ENEMY_TYPES = new Set(['shooter', 'sniper_bug', 'mortar', 'spinner', 'rad_scorpion', 'frost_wisp', 'spore_mother', 'summoner']);
@@ -2112,7 +2115,9 @@ function createEnemy(x, y, type, variant = '') {
   const midLateHpMul = typeof getMidLateWaveHpMul === 'function' ? getMidLateWaveHpMul(wave) : 1.0;
   const midLateDmgMul = typeof getMidLateWaveDmgMul === 'function' ? getMidLateWaveDmgMul(wave) : 1.0;
   const earlyMobHpMul = getEarlyMobHpMul(wave);
-  const lateMobFirmMul = wave >= 10 ? (1 + Math.min(0.44, (wave - 9) * 0.062)) : 1.0;
+  const oldLateFirm = wave >= 10 ? (1 + Math.min(0.44, (wave - 9) * 0.062)) : 1.0;
+  const densityHpCompMul = wave >= 6 ? (1 + Math.min(0.42, 0.12 + (wave - 6) * 0.030)) : 1.0;
+  const lateMobFirmMul = oldLateFirm * densityHpCompMul;
   const endlessMul = wave > MAX_WAVE ? Math.pow(1.20, wave - MAX_WAVE) : 1;
   const wIdx = Math.max(0, wave - 1);
   const clampedStoryIdx = Math.min(15, wIdx);
@@ -2158,7 +2163,7 @@ function createEnemy(x, y, type, variant = '') {
   const specialRelics = getSpecialRelics();
   const bossSizeMul = typeof BOSS_SIZE_MUL === 'number' ? BOSS_SIZE_MUL : 1.20;
   let unifiedBaseBossHp = 8850;
-  if (wave <= 4) unifiedBaseBossHp = wave === 1 ? 1650 : (wave === 2 ? 2250 : (wave === 3 ? 3100 : 4420));
+  if (wave <= 4) unifiedBaseBossHp = wave === 1 ? 1650 : (wave === 2 ? 2250 : (wave === 3 ? 3100 : 4065));
   else if (wave <= 8) unifiedBaseBossHp = 4050 + (wave - 4) * 520;
   else if (wave <= 12) unifiedBaseBossHp = 6130 + (wave - 8) * 360;
   else if (wave <= 16) unifiedBaseBossHp = 7570 + (wave - 12) * 320;

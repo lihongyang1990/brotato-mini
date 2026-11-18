@@ -515,8 +515,16 @@ function settleWaveRewards() {
       player.maxHp += 2; player.hp += 2;
       pendingLevels++;
     }
-    // 复刻原版《土豆兄弟》收获复利：每波结算后收获值自动递增 +8%！
-    player.harvestFlat = Math.round((player.harvestFlat || 0) * 1.08 * 10) / 10;
+    // 复刻原版《土豆兄弟》收获复利：每波结算后收获值自动递增 +8%（持有黑金复利账簿为 +10%）！
+    const harvGrowth = player.harvestCompoundBoost ? 1.10 : 1.08;
+    player.harvestFlat = Math.round((player.harvestFlat || 0) * harvGrowth * 10) / 10;
+  }
+  if ((player.vigilanteStacks || 0) > 0 && (player.vigilanteGained || 0) < 0.20) {
+    const step = Math.min(0.022 * player.vigilanteStacks, 0.20 - (player.vigilanteGained || 0));
+    if (step > 0) {
+      player.dmgMul += step;
+      player.vigilanteGained = +((player.vigilanteGained || 0) + step).toFixed(4);
+    }
   }
   logInfo('WAVE_END', `第 ${wave} 波通关 · 结算晶石=${player.mats} (回收+${leftover}, 津贴+${clearBonus}, 收获+${harvestGain}, 利息+${interestGain}, 宝箱=${pendingCrates}) · 击杀=${player.kills}`);
   document.getElementById('hud').classList.add('hidden');
@@ -583,11 +591,11 @@ function getArchetypeAffinityBoosts(p = player) {
   const constructCnt = (p.bonusTurrets || 0) + (p.laserTurrets || 0) + (p.mineLayers || 0) + (p.shockTurrets || 0) + (p.totemTurrets || 0);
   const bonusSpd = Math.max(0, (p.spdMul || 1) - 1.08);
   const rawScores = {
-    tech: (p.cls === 'engineer' ? 0.26 : 0) + techW * 0.26 + constructCnt * 0.25 + (p.techBonus || 0) * 1.35 + ((p.turretAspdBonus || 0) + (p.mineHaste || 0)) * 0.9 + (p.pocketFactory ? 0.28 : 0),
+    tech: (p.cls === 'engineer' ? 0.26 : 0) + techW * 0.26 + constructCnt * 0.25 + (p.techBonus || 0) * 1.35 + (p.flatTech || 0) * 0.08 + ((p.turretAspdBonus || 0) + (p.mineHaste || 0)) * 0.9 + (p.pocketFactory ? 0.28 : 0),
     staff: staffW * 0.34 + ((p.staffVolley || 0) + (p.staffPierce || 0)) * 0.26 + (p.staffHaste || 0) * 1.25 + (p.archmageMeteor ? 0.36 : 0) + Math.max(0, (p.staffRange || 0)) * 0.006 + (p.staffZoneScale || 0) * 0.9,
-    elemental: elemW * 0.26 + staffW * 0.12 + (p.elemBonus || 0) * 1.45 + ((p.burnChance || 0) + (p.chillChance || 0) + (p.poisonChance || 0)) * 0.78 + (p.dotHaste || 0) * 1.15 + (p.elemCrit ? 0.28 : 0),
-    melee: (p.cls === 'brawler' ? 0.26 : 0) + meleeW * 0.25 + (p.meleeBonus || 0) * 1.45 + (p.meleeSweepBonus || 0) * 0.20,
-    ranged: (p.cls === 'ranger' ? 0.26 : 0) + rangedW * 0.25 + (p.rangedBonus || 0) * 1.45 + ((p.bounceBonus || 0) + (p.pierceBonus || 0) + (p.rangedPelletsBonus || 0)) * 0.20,
+    elemental: elemW * 0.26 + staffW * 0.14 + (p.elemBonus || 0) * 1.45 + (p.flatElem || 0) * 0.09 + ((p.burnChance || 0) + (p.chillChance || 0) + (p.poisonChance || 0)) * 0.78 + (p.dotHaste || 0) * 1.15 + (p.elemCrit ? 0.28 : 0),
+    melee: (p.cls === 'brawler' ? 0.26 : 0) + meleeW * 0.25 + (p.meleeBonus || 0) * 1.45 + (p.flatMelee || 0) * 0.08 + (p.meleeSweepBonus || 0) * 0.20,
+    ranged: (p.cls === 'ranger' ? 0.26 : 0) + rangedW * 0.25 + (p.rangedBonus || 0) * 1.45 + (p.flatRanged || 0) * 0.09 + ((p.bounceBonus || 0) + (p.pierceBonus || 0) + (p.rangedPelletsBonus || 0)) * 0.20,
     tank: (p.cls === 'bull' ? 0.36 : 0) + heavyW * 0.24 + Math.max(0, p.armor || 0) * 0.055 + Math.max(0, (p.maxHp || 30) - 36) * 0.014 + (p.maxShield || 0) * 0.028,
     crit: preciseW * 0.25 + Math.max(0, (p.crit || 0) - 0.06) * 1.65 + Math.max(0, p.critDmg || 0) * 0.55,
     dodge: (p.cls === 'ghost' ? 0.26 : 0) + Math.max(0, (p.dodge || 0) - 0.04) * 1.65 + bonusSpd * 1.25 + (p.dashSurge ? 0.26 : 0),
@@ -1181,24 +1189,36 @@ function rollOffers() {
   const shopScale = getShopScale();
   const luck = player.luck || 0;
   let guard = 0;
+  const slotsFull = player.weapons && player.weapons.length >= player.maxSlots;
+  const wepSlotChance = player.maxSlots <= 0 ? 0 : (wave <= 5 ? 0.54 : (slotsFull ? 0.35 : 0.42));
   while (locked.length < 4 && guard++ < 40) {
-    const isWeapon = player.maxSlots > 0 && Math.random() < 0.54;
+    const isWeapon = player.maxSlots > 0 && Math.random() < wepSlotChance;
     const tier = rollShopTier(wave, luck);
 
     if (isWeapon) {
       const validW = wKeys.filter(k => (WEAPONS[k].minTier || 1) <= tier);
       if (!validW.length) continue;
       const wBoosts = getArchetypeAffinityBoosts(player);
-      // 结合流派倾向隐藏暗增（最高 +20%）与同名未满阶合成保底，既尊重流派成型又不锁死刷池
-      let id = pickWeightedWeaponKey(validW, wBoosts);
-      if (player.weapons.length && Math.random() < 0.30) {
+      // 参照《土豆兄弟》三层武器池：满槽时 36% 优先刷出可直接二合一升阶的同阶同名武器（未满槽 22%）+ 18% 同羁绊套装 + 其余全池流派权重
+      let id = null;
+      let matchedTier = 0;
+      const subRoll = Math.random();
+      const dupChance = slotsFull ? 0.36 : 0.22;
+      if (player.weapons.length && subRoll < dupChance) {
         const upgradable = player.weapons.filter(w => w.tier < 5 && validW.includes(w.id));
         if (upgradable.length) {
-          id = upgradable[Math.floor(Math.random() * upgradable.length)].id;
+          const pickedW = upgradable[Math.floor(Math.random() * upgradable.length)];
+          id = pickedW.id;
+          if (slotsFull && pickedW.tier <= 4 && Math.abs(pickedW.tier - tier) <= 1) matchedTier = pickedW.tier;
         }
+      } else if (player.weapons.length && subRoll < dupChance + 0.18) {
+        const ownedSets = new Set(player.weapons.map(w => WEAPONS[w.id] && WEAPONS[w.id].set).filter(Boolean));
+        const sameSet = validW.filter(k => ownedSets.has(WEAPONS[k].set));
+        if (sameSet.length) id = pickWeightedWeaponKey(sameSet, wBoosts);
       }
+      if (!id) id = pickWeightedWeaponKey(validW, wBoosts);
       const tpl = WEAPONS[id];
-      const effTier = Math.max(tier, tpl.minTier || 1);
+      const effTier = matchedTier > 0 ? matchedTier : Math.max(tier, tpl.minTier || 1);
       const tierMul = WEAPON_TIER_COST_MUL[effTier] || 4.4;
       const rawCost = Math.max(2, Math.round(tpl.cost * tierMul * shopScale));
       const cost = calcDiscountedShopCost(rawCost, 2);
@@ -1256,7 +1276,7 @@ function openShop(fresh) {
     rerollCost = freeRerollsLeft > 0 ? 0 : calcDiscountedShopCost(rerollRawCost, 1);
     anvilUpgradedMsg = '';
     if (player.hasAnvil && player.weapons.length > 0) {
-      const upgradable = player.weapons.filter(w => w.tier < 5);
+      const upgradable = player.weapons.filter(w => w.tier < 4);
       if (upgradable.length > 0) {
         const uw = upgradable[Math.floor(Math.random() * upgradable.length)];
         uw.tier++;
@@ -1265,6 +1285,10 @@ function openShop(fresh) {
         const uwName = (WEAPONS[uw.id] && WEAPONS[uw.id].name) || uw.id;
         anvilUpgradedMsg = ` · ⚒️ 神砧免费升阶【${uwName} Lv${uw.tier}】!`;
         logInfo('SHOP', `铁匠神砧自动升阶 ${uwName} -> Lv.${uw.tier}`);
+      } else {
+        player.armor += 1;
+        anvilUpgradedMsg = ` · ⚒️ 神砧淬甲【护甲 +1】!`;
+        logInfo('SHOP', `铁匠神砧全满4阶改为护甲 +1`);
       }
     }
     mobDrawerOpen = false;

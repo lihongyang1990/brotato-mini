@@ -1077,25 +1077,26 @@ function startGame(cls, opts) {
     dashHasteT: 0, turretOverclockT: 0, magnetPulseT: 0,
     hp: 30, maxHp: 30, _setHp: 0, regen: 0.5, regenAcc: 0, noRegen: false, lifesteal: 0, _lifestealCd: 0,
     armor: 0, maxShield: 0, shield: 0, shieldRegenT: 0, shieldHitT: 0,
-    spd: 194, spdMul: 1, dmgMul: 1, meleeBonus: 0, rangedBonus: 0, elemBonus: 0, techBonus: 0, atkSpd: 0.90, crit: 0.05, critDmg: 0,
+    spd: 194, spdMul: 1, dmgMul: 1, flatMelee: 0, flatRanged: 0, flatElem: 0, flatTech: 0, meleeBonus: 0, rangedBonus: 0, elemBonus: 0, techBonus: 0, atkSpd: 0.90, crit: 0.05, critDmg: 0,
     dodge: 0, dodgeCap: 0.80, maxSlots: 6, bonusTurrets: 0, laserTurrets: 0, shockTurrets: 0, totemTurrets: 0, mineLayers: 0, mineCd: 1.4,
     turretAspdBonus: 0, turretBastion: 0, mineHaste: 0, mineRadiusBonus: 0, turretAuraHeal: 0, turretElemInherit: false, turretMissile: false, _inTurretAura: false,
-    turretCrit: false, turretElem: false, turretSalvo: false, _salvoCd: 0, bullCd: 0,
-    staffHaste: 0, staffPierce: 0, staffRange: 0, dotHaste: 0, staffVolley: 0, elemCrit: false, archmageMeteor: false, _reactionCount: 0,
+    turretCrit: false, turretCritScale: 0, turretElem: false, turretSalvo: false, _salvoCd: 0, bullCd: 0,
+    staffHaste: 0, staffPierce: 0, staffRange: 0, dotHaste: 0, staffVolley: 0, staffBoltEvery4: false, elemCrit: false, archmageMeteor: false, _reactionCount: 0,
     magnet: typeof BASE_PICKUP_MAGNET === 'number' ? BASE_PICKUP_MAGNET : 143, harvest: 1, harvestFlat: 0, luck: 0, rangeBonus: 0, _displayRange: 140,
-    pierceBonus: 0, bounceBonus: 0, bounceAmpDmg: 0, farShotBonus: 0, closeShotBonus: 0, rangedBossAmp: 0, shopDiscount: 0, freeRerolls: 0, shopVisits: 0, shopRerollRaw: 1, bonusTrees: 0,
-    enemySlow: 0, thorns: 0, cyberball: 0, critHeal: 0, critMeleeHeal: false, ailmentLeech: 0, rangeToDmg: false, hpToDmg: 0, armorToDmg: 0, regenToDmg: false, hasAnvil: false, healBonus: 0,
-    burnChance: 0, chillChance: 0, chillDmgBonus: 0, freezeChance: 0, freezeDeathNova: false, poisonChance: 0, maxPoisonStacks: 8, plagueSpread: false, elemSynergy: false, reactionBlast: false,
-    meleeBossGuard: 0, meleeSweepBonus: 0, meleeKnockBonus: 0, meleeShockwave: false, meleeBulletCutChance: 0, meleeSunder: false, meleeShieldEvery12: 0, _meleeHitAcc: 0, meleeHitSpd: false, meleeHitSpdT: 0, kenshinFourthSlash: false, _meleeSwingSeq: 0, strideQuake: false, _strideDist: 0, blastChance: 0, explosionScale: 1, napalmBlast: false, bloodNova: false,
+    pierceBonus: 0, bounceBonus: 0, bounceAmpDmg: 0, falloffMitigation: 0, farShotBonus: 0, closeShotBonus: 0, rangedBossAmp: 0, shopDiscount: 0, freeRerolls: 0, shopVisits: 0, shopRerollRaw: 1, bonusTrees: 0,
+    enemySlow: 0, thorns: 0, cyberball: 0, critHeal: 0, critMeleeHeal: false, ailmentLeech: 0, rangeToDmg: false, hpToDmg: 0, minorHpToDmg: false, armorToDmg: 0, minorArmorToDmg: false, regenToDmg: false, hasAnvil: false, healBonus: 0,
+    burnChance: 0, chillChance: 0, chillDmgBonus: 0, freezeChance: 0, freezeDeathNova: false, poisonChance: 0, maxPoisonStacks: 8, plagueSpread: false, elemSynergy: false, reactionBlast: false, minorReactionBlast: false,
+    meleeBossGuard: 0, meleeSweepBonus: 0, meleeKnockBonus: 0, meleeShockwave: false, meleeBulletCutChance: 0, meleeSunder: false, meleeShieldEvery12: 0, _meleeHitAcc: 0, meleeHitSpd: false, meleeHitSpdT: 0, kenshinFourthSlash: false, kenshinFifthSlash: false, _meleeSwingSeq: 0, strideQuake: false, _strideDist: 0, blastChance: 0, explosionScale: 1, napalmBlast: false, bloodNova: false,
     interest: 0, teslaCount: 0, teslaCd: 1.0, healDropBonus: 0, chillSlowT: 0, inSpore: false,
     dashCdMul: 1, dashFreezeNova: false, dashSurge: false, dashSurgeT: 0, shieldPulseNova: false, executeLowHp: 0,
     invulnBonus: 0, fastShield: false, soulBolt: false, noSlow: false, bossCratesQueued: 0, mythicCratesQueued: 0,
     mobSpawnBonus: 0, crateMatBonus: 0, matHealEvery25: 0, _matPickAcc: 0, paddingStacks: 0, standStillBuff: false, _stillTime: 0,
     spicySauce: false, gardenPlots: 0, _gardenCd: 11, sacrificeCrown: false, _sacTick: 0, harvestToDmg: false, luckyRerollChance: 0, luckToCritDmg: false,
     bossCritAmp: 0, critMatChance: 0, _waveCritMats: 0, giantBelt: false, critBounce: false, overflowCritConvert: false,
-    rangedPelletsBonus: 0, extraShotChance: 0, rangedKillDashRefund: 0, celestialRailEvery14: false, _rangedShotsAcc: 0, dodgeHealChance: 0, spdToDmg: false, dodgeWindBlades: false, _dodgeBladeCd: 0, dodgeToAspd: false,
-    lowHpFrenzy: false, lifestealToDmg: false, lifestealIcdMul: 1, bloodShield: false, _bloodShieldPool: 0, phoenixFeather: false, _phoenixUsedWave: -1,
+    rangedPelletsBonus: 0, extraShotChance: 0, rangedKillDashRefund: 0, celestialRailEvery14: false, _rangedShotsAcc: 0, dodgeHealChance: 0, spdToDmg: false, minorSpdToDmg: false, dodgeWindBlades: false, _dodgeBladeCd: 0, dodgeToAspd: false,
+    lowHpFrenzy: false, lifestealToDmg: false, minorLeechToDmg: false, lifestealIcdMul: 1, bloodShield: false, _bloodShieldPool: 0, phoenixFeather: false, _phoenixUsedWave: -1,
     staffZoneScale: 0, staffZoneDurBonus: 0, pocketFactory: false, _pocketTurretsSpawned: 0, blastPull: false, staffDoubleCastChance: 0,
+    doubleMatChance: 0, healSpdBoost: false, healSpdT: 0, allBossAmp: 0, wisdomRamp: false, _waveElapsed: 0, crowdAspdBanner: false, vigilanteStacks: 0, vigilanteGained: 0, xpGainBonus: 0, harvestCompoundBoost: false, ironbloodGrit: false,
     survivalActsCleared: {}, survivalCratesQueued: 0, survivalGoldCratesQueued: 0, survivalFlawlessCnt: 0,
     _fissureHitCd: 0, _fissureLeapHintCd: 0, recentCrateIds: [],
     rarePortraitShown: false, shownBossPortraits: {}, mythicAwakenedCount: 0, waveMythicAwakened: false, waveBossCrateDropped: false, retryCount: 0,
@@ -1108,13 +1109,13 @@ function startGame(cls, opts) {
     player.maxHp += 6; player.hp += 6; player.spdMul += 0.04; player.dmgMul += 0.08; player.harvestFlat += 4;
     player.weapons.push(makeWeapon('pistol', 1), makeWeapon('stick', 1));
   } else if (cls === 'ranger') {
-    player.spdMul += 0.08; player.dodge += 0.06; player.atkSpd += 0.20; player.crit += 0.12; player.rangeBonus += 65;
+    player.spdMul += 0.08; player.dodge += 0.06; player.atkSpd += 0.20; player.crit += 0.12; player.rangeBonus += 65; player.flatRanged = 1; player.flatElem = 1;
     player.weapons.push(makeWeapon('smg', 1), makeWeapon('icicle', 1));
   } else if (cls === 'brawler') {
-    player.maxHp += 8; player.hp += 8; player.armor += 1; player.regen += 1.1; player.meleeBonus = 0.16; player.rangeBonus -= 10;
+    player.maxHp += 8; player.hp += 8; player.armor += 1; player.regen += 1.1; player.flatMelee = 2; player.meleeBonus = 0.08; player.rangeBonus -= 10;
     player.weapons.push(makeWeapon('katana', 1), makeWeapon('stick', 1));
   } else if (cls === 'engineer') {
-    player.armor += 2; player.regen += 1.5; player.techBonus = 0.12; player.bonusTurrets = 1;
+    player.armor += 2; player.regen += 1.5; player.flatTech = 2; player.techBonus = 0.06; player.bonusTurrets = 1;
     player.weapons.push(makeWeapon('wrench', 1), makeWeapon('pistol', 1));
   } else if (cls === 'multitasker') {
     player.maxSlots = 12;
@@ -1209,6 +1210,12 @@ function renderBuildSummary(statsId, setsId) {
   const showTurretAspd = turretAspdBonusTotal > 0 || (setB.counts && setB.counts.tech > 0) ||
     ((player.bonusTurrets || 0) + (player.laserTurrets || 0) + (player.shockTurrets || 0) + (player.totemTurrets || 0)) > 0;
   const turretAspdPct = Math.round(tAspdBase * (1 + turretAspdBonusTotal) * 100);
+  const fMel = player.flatMelee || 0, fRng = player.flatRanged || 0, fElm = player.flatElem || 0, fTec = player.flatTech || 0;
+  const flatStatSpans =
+    `<span>近战 <b>+${fMel}</b></span>` +
+    `<span>远程 <b>+${fRng}</b></span>` +
+    `<span>元素 <b>+${fElm}</b></span>` +
+    `<span>工程 <b>+${fTec}</b></span>`;
   const stEl = document.getElementById(statsId);
   if (stEl) {
     stEl.innerHTML =
@@ -1216,7 +1223,8 @@ function renderBuildSummary(statsId, setsId) {
       `<span>护甲 <b>${arm}</b> <small>(${mit >= 0 ? '-' : '+'}${Math.abs(mit)}%伤)</small></span>` +
       `<span>再生 <b>${player.regen.toFixed(1)}/s</b></span>` +
       `<span>汲血 <b>${Math.round(player.lifesteal * 100)}%</b></span>` +
-      `<span>伤害 <b>${dmgPct}%</b></span>` +
+      `<span>全伤 <b>${dmgPct}%</b></span>` +
+      flatStatSpans +
       `<span>攻速 <b>${aspdPct}%</b></span>` +
       (showTurretAspd ? `<span>建筑攻速 <b>${turretAspdPct}%</b></span>` : '') +
       `<span>范围 <b>${rngTxt}</b></span>` +
