@@ -2032,8 +2032,8 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
 
       // Advance past 20.0s mark and clear any mid-cast lock -> Boss must re-summon 2 brand-new Cryo-Obelisks!
       for (let step = 0; step < 8; step++) {
-        player.hp = 5000; b2.hp = 50000;
-        b2.dashing = false; b2.sigWindupT = 0; b2.p2WindupT = 0;
+        player.hp = 5000; b2.hp = 50000; spawnAcc = 99;
+        b2.dashing = false; b2.sigWindupT = 0; b2.p2WindupT = 0; b2.beamSweepT = 0;
         update(0.10);
       }
       const respawnedPylons = trees.filter(t => t && t.isBossPylon && t.owner === b2 && t.pylonKind === 'cryo_obelisk' && t.hp > 0);
@@ -2508,7 +2508,7 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
   assert.strictEqual(coreCheck.invulnAfterHit, 0, "Player must have ZERO invulnerability frames after taking damage");
   assert.strictEqual(coreCheck.consecutiveHitRegistered, true, "Back-to-back hits must immediately register damage without i-frame immunity");
   assert.strictEqual(coreCheck.wCnt, 42, "Codex must render 42 weapons (including 6 Staffs)");
-  assert.strictEqual(coreCheck.iCnt, 148, "Codex must render 148 items");
+  assert.strictEqual(coreCheck.iCnt, 172, "Codex must render 172 items");
   assert.strictEqual(coreCheck.hCnt, 6, "Codex must render 6 Spire heroes");
   assert.strictEqual(coreCheck.mCnt, 41, "Codex must render all 41 unique Spire monsters, commanders & bosses");
   assert.strictEqual(coreCheck.sCnt, 4, "Codex must render 4 Spire scenes");
@@ -2911,10 +2911,10 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
       if (RELIC_ART_SPECS[cloakId][0] !== 'cloak') return { ok: false, reason: 'Cloak item not mapped to cloak archetype: ' + cloakId };
     }
     if (RELIC_ART_SPECS.whetstone[0] !== 'whetstone') return { ok: false, reason: 'whetstone not mapped to whetstone archetype' };
-    if (tCounts[1] !== 44 || tCounts[2] !== 44 || tCounts[3] !== 36 || tCounts[4] !== 24) {
+    if (tCounts[1] !== 44 || tCounts[2] !== 55 || tCounts[3] !== 49 || tCounts[4] !== 24) {
       return { ok: false, reason: 'Unexpected item tier pyramid: ' + JSON.stringify(tCounts) };
     }
-    const newRelicIds = ['blade_gaiters', 'brass_recoil_spring', 'buckshot_bandolier', 'twin_feeder', 'azure_kote', 'crescent_tassel', 'dragon_piercer_ammo', 'asura_wardrum', 'kenshin_scroll', 'celestial_arsenal_box'];
+    const newRelicIds = ['blade_gaiters', 'brass_recoil_spring', 'buckshot_bandolier', 'twin_feeder', 'azure_kote', 'crescent_tassel', 'dragon_piercer_ammo', 'asura_wardrum', 'kenshin_scroll', 'celestial_arsenal_box', 'silver_medal', 'glass_cannon_core', 'wisdom_scroll', 'lone_war_banner', 'vigilante_ring', 'mithril_alloy', 'abyss_twin_embryo', 'ironblood_grit', 'flow_metronome'];
     for (const nrId of newRelicIds) {
       if (!ITEMS.some(x => x.id === nrId)) return { ok: false, reason: 'Missing new balance relic: ' + nrId };
     }
@@ -3080,14 +3080,49 @@ runStoryV2Suite({ createEnv, vm, assert, ROOT, assetDimsMap });
     player.maxHp = 100; player.hp = 100; player.armor = 0; player.dodge = 0; player.shield = 0; player._bloodShieldPool = 0; player.phoenixFeather = 0;
     hurtPlayer(80, false, dummy);
     const noAntiOneshotCapOk = (player.hp === 20 && player.invuln === 0);
+
+    // 8) 复刻《土豆兄弟》波次节拍防秒刷校验 + 近战独立阶梯领先 + T1/T2 机制下放校验
+    waveTime = 20; overtime = false; spawnAcc = -2.0; spawns.length = 0; enemies.length = 0;
+    for (let mi = 0; mi < 65; mi++) enemies.push({ x: 300, y: 300, r: 18, hp: 50, maxHp: 50, spd: 0, dmg: 1, type: 'chaser' });
+    update(0.016); // 满怪时节拍触发必须重置 spawnAcc > 1.0s，绝不保留负数待命！
+    const spawnAccResetWhenFull = spawnAcc > 1.0;
+    enemies.length = 10; spawns.length = 0;
+    update(0.016); // 清怪下一帧 (0.016s) 绝不立即秒补怪！
+    const noInstantRespawnOnKill = spawns.length === 0;
+    enemies.length = 0;
+    const meleeTierLeadOk = calcWeaponTierScale(WEAPONS.katana, 1) > calcWeaponTierScale(WEAPONS.pistol, 1) * 1.15;
+    const staffEarlyPoolOk = !WEAPONS.storm_rod.minTier && !WEAPONS.chrono_staff.minTier;
+    // 9) 四维真实固定点伤 (flatMelee/flatRanged/flatElem/flatTech) + 防滚雪球硬上限校验
+    startGame('allrounder', { mode: 'endless' });
+    player.flatMelee = 10; player.flatRanged = 10; player.flatElem = 10; player.flatTech = 10;
+    const flatAddKatana = calcWeaponFlatDmgAdd('katana', WEAPONS.katana, 2);
+    const flatAddSmg = calcWeaponFlatDmgAdd('smg', WEAPONS.smg, 2);
+    const flatAddStaff = calcWeaponFlatDmgAdd('ember_staff', WEAPONS.ember_staff, 2);
+    const flatDualAxisOk = flatAddKatana > flatAddSmg * 1.35 && flatAddStaff > flatAddSmg * 1.5;
+    player.dmgMul = 1.0; player.wisdomRamp = 0; player._waveElapsed = 0;
+    ITEMS.find(x => x.id === 'wisdom_scroll').apply(player);
+    const wisdomStartDmg = getEffectiveDmgMul();
+    player._waveElapsed = 90;
+    const wisdomCappedDmg = getEffectiveDmgMul();
+    const wisdomCapOk = wisdomStartDmg < 0.90 && Math.abs(wisdomCappedDmg - 1.12) < 1e-6;
+    player.dmgMul = 1.0; player.wisdomRamp = 0;
+    player.spdMul = 2.2; player.lifesteal = 0.8; player.armor = 30; player.maxHp = 260;
+    player.spdToDmg = true; player.lifestealToDmg = true; player.armorToDmg = 1; player.hpToDmg = 1;
+    const convertCapOk = getEffectiveDmgMul() <= 1.35 + 1e-6;
+    const bandolierPenOk = (() => {
+      const pTmp = { rangedPelletsBonus: 0, dmgMul: 1.0, rangeBonus: 0 };
+      ITEMS.find(x => x.id === 'infinite_bandolier').apply(pTmp);
+      return pTmp.rangedPelletsBonus === 1 && pTmp.dmgMul < 0.82 && pTmp.rangeBonus <= -30;
+    })();
+    const brotatoPaceAndCurveOk = spawnAccResetWhenFull && noInstantRespawnOnKill && meleeTierLeadOk && staffEarlyPoolOk && flatDualAxisOk && wisdomCapOk && convertCapOk && bandolierPenOk;
     wave = savedWave7; state = savedState7; diff = savedDiff7;
 
     return {
-      ok: spdDmg1 > baseDmg0 + 0.30 && dodgeAspd1 > baseAspd0 + 0.40 && lsDmg1 > spdDmg1 + 0.10
+      ok: spdDmg1 > baseDmg0 + 0.12 && spdDmg1 <= baseDmg0 + 0.22 && dodgeAspd1 > baseAspd0 + 0.24 && dodgeAspd1 <= baseAspd0 + 0.42 && lsDmg1 > spdDmg1 + 0.06
         && hpAfterPad >= hpBeforePad + 9 && slots1 === slots0 + 1
         && pocketTurretOk && bloodShieldOk && phoenixSavedOk && allNewWpnsDealt && scalingBadgesOk && brotatoSlotUxOk
-        && tieredLvlOk && rangedFloorOk && miniSameTierAsBossOk && noAntiOneshotCapOk,
-      detail: { spdDmg1, baseDmg0, dodgeAspd1, baseAspd0, lsDmg1, hpBeforePad, hpAfterPad, slots0, slots1, pocketTurretOk, bloodShieldOk, phoenixSavedOk, allNewWpnsDealt, scalingBadgesOk, brotatoSlotUxOk, tieredLvlOk, rangedFloorOk, miniSameTierAsBossOk, noAntiOneshotCapOk }
+        && tieredLvlOk && rangedFloorOk && miniSameTierAsBossOk && noAntiOneshotCapOk && brotatoPaceAndCurveOk,
+      detail: { spdDmg1, baseDmg0, dodgeAspd1, baseAspd0, lsDmg1, hpBeforePad, hpAfterPad, slots0, slots1, pocketTurretOk, bloodShieldOk, phoenixSavedOk, allNewWpnsDealt, scalingBadgesOk, brotatoSlotUxOk, tieredLvlOk, rangedFloorOk, miniSameTierAsBossOk, noAntiOneshotCapOk, brotatoPaceAndCurveOk, spawnAccResetWhenFull, noInstantRespawnOnKill, meleeTierLeadOk, staffEarlyPoolOk, flatDualAxisOk, wisdomCapOk, convertCapOk, bandolierPenOk }
     };
   })()`, env220.sandbox);
   assert.strictEqual(v220Res.ok, true, "v2.2.0 full-archetype arsenal & relic suite failed: " + JSON.stringify(v220Res));
