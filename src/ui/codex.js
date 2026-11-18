@@ -1,5 +1,6 @@
-// 📖 《烬塔残响》圣典全图鉴交互与原画展示引擎（全面接入角色立绘、分层域 Q 版怪物贴图与层域全景图）
+// 📖 《烬塔残响》圣典全图鉴交互与原画展示引擎（1:1 复刻 ui_p5_final.html #s-codex · 常驻左右翻页箭头 + P5 不规则黑底白边横条）
 let codexTab = 'weapons', codexFilter = 'all', codexPrevState = 'menu', codexSynergyOpen = false;
+let _codexTrackBound = false;
 
 function toggleCodexSynergy() {
   codexSynergyOpen = !codexSynergyOpen;
@@ -16,18 +17,93 @@ function _spireImgUrl(relPath) {
   return relPath;
 }
 
+function syncCodexFilterArrows() {
+  const track = typeof document !== 'undefined' ? document.getElementById('codexFilters') : null;
+  const prevBtn = typeof document !== 'undefined' ? document.getElementById('codexPrevBtn') : null;
+  const nextBtn = typeof document !== 'undefined' ? document.getElementById('codexNextBtn') : null;
+  if (!track || !prevBtn || !nextBtn) return;
+  const maxScroll = Math.max(0, (track.scrollWidth || 0) - (track.clientWidth || 0));
+  const sl = track.scrollLeft || 0;
+  if (maxScroll <= 4) {
+    const btns = track.querySelectorAll ? track.querySelectorAll('.codex-filter') : [];
+    let actIdx = -1;
+    for (let i = 0; i < btns.length; i++) {
+      if (btns[i].classList && btns[i].classList.contains('active')) { actIdx = i; break; }
+    }
+    prevBtn.classList.toggle('at-end', actIdx <= 0);
+    nextBtn.classList.toggle('at-end', btns.length <= 1 || actIdx >= btns.length - 1);
+    return;
+  }
+  prevBtn.classList.toggle('at-end', sl <= 2);
+  nextBtn.classList.toggle('at-end', sl >= maxScroll - 2);
+}
+globalThis.syncCodexFilterArrows = syncCodexFilterArrows;
+
+function scrollCodexFilters(dir) {
+  const track = typeof document !== 'undefined' ? document.getElementById('codexFilters') : null;
+  if (!track) return false;
+  const step = dir < 0 ? -1 : 1;
+  const maxScroll = Math.max(0, (track.scrollWidth || 0) - (track.clientWidth || 0));
+  beep(485, 0.028, 'triangle', 0.024);
+  if (maxScroll > 4) {
+    const nextLeft = Math.max(0, Math.min(maxScroll, (track.scrollLeft || 0) + step * 210));
+    track.scrollLeft = nextLeft;
+    syncCodexFilterArrows();
+    return true;
+  }
+  const btns = track.querySelectorAll ? Array.from(track.querySelectorAll('.codex-filter')) : [];
+  if (btns.length <= 1) return false;
+  let actIdx = btns.findIndex(b => b.classList && b.classList.contains('active'));
+  if (actIdx < 0) actIdx = 0;
+  const targetIdx = Math.max(0, Math.min(btns.length - 1, actIdx + step));
+  if (targetIdx !== actIdx && btns[targetIdx]) {
+    btns[targetIdx].click();
+    return true;
+  }
+  syncCodexFilterArrows();
+  return false;
+}
+globalThis.scrollCodexFilters = scrollCodexFilters;
+
+function _bindCodexFilterTrackEvents() {
+  if (_codexTrackBound || typeof document === 'undefined') return;
+  const track = document.getElementById('codexFilters');
+  if (!track || !track.addEventListener) return;
+  _codexTrackBound = true;
+  track.addEventListener('scroll', () => syncCodexFilterArrows(), { passive: true });
+  track.addEventListener('wheel', ev => {
+    if (!ev) return;
+    const dy = ev.deltaY || 0;
+    const dx = ev.deltaX || 0;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 0) {
+      if (ev.preventDefault) ev.preventDefault();
+      track.scrollLeft = (track.scrollLeft || 0) + dy;
+      syncCodexFilterArrows();
+    }
+  }, { passive: false });
+}
+
 function openCodex(initialTab) {
   if (state === 'wave') pauseGame();
   if (state !== 'codex') codexPrevState = state;
   if (initialTab) { codexTab = initialTab; codexFilter = 'all'; }
   codexSynergyOpen = false;
   beep(520, 0.05, 'triangle', 0.04);
+  const standeeImg = typeof document !== 'undefined' ? document.getElementById('codexStandeeImg') : null;
+  if (standeeImg) {
+    standeeImg.src = typeof getHeroUiBustUrl === 'function' ? getHeroUiBustUrl('ghost') : _spireImgUrl('assets/spire/ui_art/ui_bust_qingyu.png');
+  }
+  const vistaBg = typeof document !== 'undefined' ? document.getElementById('codexVistaBg') : null;
+  if (vistaBg && vistaBg.style) {
+    vistaBg.style.backgroundImage = `url('${_spireImgUrl('assets/spire/ui_art/ui_shop_qingyu_scene.jpg')}')`;
+  }
   renderCodex();
   const modal = document.getElementById('codexModal');
   if (modal) {
     modal.classList.remove('hidden');
     modal.scrollTop = 0;
   }
+  syncCodexFilterArrows();
 }
 
 function closeCodex() {
@@ -44,6 +120,9 @@ function setCodexTab(tab) {
   renderCodex();
   const sc = document.getElementById('codexScroll');
   if (sc) sc.scrollTop = 0;
+  const track = document.getElementById('codexFilters');
+  if (track) track.scrollLeft = 0;
+  syncCodexFilterArrows();
 }
 
 function setCodexFilter(f) {
@@ -53,29 +132,104 @@ function setCodexFilter(f) {
   renderCodex();
   const sc = document.getElementById('codexScroll');
   if (sc) sc.scrollTop = 0;
+  const track = document.getElementById('codexFilters');
+  if (track && track.querySelector) {
+    const actBtn = track.querySelector('.codex-filter.active');
+    if (actBtn && typeof actBtn.scrollIntoView === 'function') {
+      try { actBtn.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_) { actBtn.scrollIntoView(); }
+    }
+  }
+  syncCodexFilterArrows();
 }
+
+function _codexRarityPill(tier, extraCls = '') {
+  if (typeof renderRarityPillHtml === 'function') return renderRarityPillHtml(tier, extraCls);
+  const t = Math.max(1, Math.min(5, Number(tier) || 1));
+  return `<span class="t-rarity-pill tp-${t}${extraCls ? ' ' + extraCls : ''}">${(typeof TIER_NAMES !== 'undefined' && TIER_NAMES[t]) || ('阶' + t)}</span>`;
+}
+
+function openCodexWeaponDetail(wId) {
+  const w = WEAPONS && WEAPONS[wId];
+  const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
+  const card = typeof document !== 'undefined' ? document.getElementById('weaponActionCard') : null;
+  if (!w || !modal || !card) return;
+  beep(515, 0.035, 'triangle', 0.03);
+  const minT = w.minTier || 1;
+  const wpnArt = (typeof renderWeaponEmblemHtml === 'function') ? renderWeaponEmblemHtml(wId, Math.max(3, minT), '', w.icon) : w.icon;
+  const setLabel = SET_DEFS[w.set] ? SET_DEFS[w.set].label : w.set;
+  const scaleBadges = typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(w, wId) : '';
+  const evoHtml = Array.isArray(w.evos) && w.evos.length
+    ? `<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+        <div style="font-size:11.5px;font-weight:900;color:var(--p5-gold)">◆ 五阶神话 · 二选一超限觉醒分支：</div>
+        ${w.evos.map(ev => `<div style="padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,92,138,0.45)">
+          <div class="p5-title-group" style="margin-bottom:3px">
+            <b style="color:${ev.color || '#ff8ca6'};font-size:12.5px">★ ${ev.name}</b>
+            ${_codexRarityPill(5, 'mini')}
+            <span class="tag">${ev.tag || '神话进化'}</span>
+          </div>
+          <div style="font-size:11.5px;color:#dad4e4;line-height:1.45">${ev.desc}</div>
+        </div>`).join('')}
+      </div>`
+    : '';
+  card.className = `wpn-action-card p5-modal-card t${minT}`;
+  card.innerHTML = `
+    <div class="wpn-act-head">
+      <div class="item-emblem t${Math.max(3, minT)}">${wpnArt}</div>
+      <div class="card-meta" style="flex:1;min-width:0">
+        <div class="p5-title-group">
+          <div class="wpn-act-title">${w.name}</div>
+          ${_codexRarityPill(minT)}
+        </div>
+        <div class="card-badges">
+          <span class="tag">${setLabel}</span>
+          ${scaleBadges}
+        </div>
+      </div>
+    </div>
+    <div class="stat-chips">
+      <span class="stat-chip">伤害 ${w.dmg}${w.pellets ? '×' + w.pellets : ''}</span>
+      <span class="stat-chip">冷却 ${w.cd}s</span>
+      <span class="stat-chip">射程 ${w.range}</span>
+      <span class="stat-chip">基准 ◇${w.cost}</span>
+    </div>
+    <div class="wpn-act-desc">${w.desc}</div>
+    ${evoHtml}
+    <div class="wpn-act-btns" style="margin-top:10px">
+      <div class="wpn-act-btns-row">
+        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭档案</button>
+      </div>
+    </div>`;
+  modal.classList.remove('hidden');
+}
+globalThis.openCodexWeaponDetail = openCodexWeaponDetail;
 
 function renderCodex() {
   const tabsEl = document.getElementById('codexTabs');
+  const filterBarEl = document.getElementById('codexFilterBar');
   const filtersEl = document.getElementById('codexFilters');
   const bannerEl = document.getElementById('codexBanner');
   const gridEl = document.getElementById('codexGrid');
-  if (!tabsEl || !gridEl) return;
+  if (!tabsEl || !gridEl || !filtersEl) return;
+  _bindCodexFilterTrackEvents();
+
+  const supCount = ((typeof CRATE_SUPPLIES !== 'undefined' && Array.isArray(CRATE_SUPPLIES)) ? CRATE_SUPPLIES.length : 0) +
+    ((typeof UPGRADES !== 'undefined' && Array.isArray(UPGRADES)) ? UPGRADES.length : 0);
 
   const tabs = [
-    { id: 'weapons',  roman: 'I',   title: '守誓兵装', count: Object.keys(WEAPONS).length },
-    { id: 'items',    roman: 'II',  title: '记忆遗物', count: ITEMS.length },
-    { id: 'heroes',   roman: 'III', title: '誓约角色', count: CLASSES.length },
-    { id: 'monsters', roman: 'IV',  title: '层域魔物', count: MONSTER_CODEX.length },
-    { id: 'world',    roman: 'V',   title: '世界生态', count: SCENES.length + (typeof TERRAIN_CODEX !== 'undefined' ? TERRAIN_CODEX.length : 0) + SPECIAL_RELICS.length }
+    { id: 'weapons',  ico: '⚔️', title: '兵装', count: Object.keys(WEAPONS).length },
+    { id: 'items',    ico: '💍', title: '遗物', count: ITEMS.length },
+    { id: 'heroes',   ico: '🕯️', title: '角色', count: CLASSES.length },
+    { id: 'monsters', ico: '👹', title: '魔物', count: MONSTER_CODEX.length },
+    { id: 'world',    ico: '🗺️', title: '生态', count: SCENES.length + (typeof TERRAIN_CODEX !== 'undefined' ? TERRAIN_CODEX.length : 0) + SPECIAL_RELICS.length },
+    { id: 'supplies', ico: '📜', title: '刻印', count: supCount }
   ];
   tabsEl.innerHTML = '';
   tabs.forEach(t => {
     const b = document.createElement('button');
     b.type = 'button';
     b.setAttribute('role', 'tab');
-    b.className = 'codex-tab' + (codexTab === t.id ? ' active' : '');
-    b.innerHTML = `<span class="ct-roman">${t.roman}</span><span class="ct-title">${t.title}</span><span class="ct-count">${t.count}</span>`;
+    b.className = 'hub-tab-btn codex-tab' + (codexTab === t.id ? ' on active' : '');
+    b.innerHTML = `<span>${t.ico} ${t.title}(${t.count})</span>`;
     b.onclick = () => setCodexTab(t.id);
     tabsEl.appendChild(b);
   });
@@ -84,180 +238,201 @@ function renderCodex() {
   bannerEl.innerHTML = '';
   bannerEl.classList.remove('is-weapons-banner', 'is-synergy-open');
   gridEl.innerHTML = '';
-  gridEl.classList.toggle('wide', codexTab === 'heroes' || codexTab === 'monsters' || codexTab === 'world');
 
   const buildFilterBar = opts => {
-    opts.forEach(o => {
+    if (filterBarEl) filterBarEl.classList.toggle('is-empty', !opts || opts.length === 0);
+    (opts || []).forEach(o => {
+      const wrap = document.createElement('div');
+      wrap.className = 'p5-chip-wrap';
       const fb = document.createElement('button');
       fb.type = 'button';
-      fb.className = 'codex-filter' + (codexFilter === o.id ? ' active' : '');
+      fb.setAttribute('data-filter', o.id);
+      const isAct = codexFilter === o.id;
+      fb.className = 'p5-chip codex-filter' + (isAct ? ' on active' : '');
       fb.textContent = o.label;
       fb.onclick = () => setCodexFilter(o.id);
-      filtersEl.appendChild(fb);
+      wrap.appendChild(fb);
+      filtersEl.appendChild(wrap);
     });
+    syncCodexFilterArrows();
   };
 
   if (codexTab === 'weapons') {
+    const wEntries = Object.entries(WEAPONS);
+    const setCounts = {};
+    wEntries.forEach(([, w]) => { setCounts[w.set] = (setCounts[w.set] || 0) + 1; });
     buildFilterBar([
-      { id: 'all', label: '全部兵装' },
+      { id: 'all', label: `全部(${wEntries.length})` },
+      ...Object.entries(SET_DEFS).map(([k, v]) => ({
+        id: k,
+        label: `${v.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')}(${setCounts[k] || 0})`
+      })),
       { id: 'melee', label: '近战斩击' },
-      { id: 'ranged', label: '远程魂弹' },
-      { id: 'staff', label: '🪄秘术法杖' },
-      ...Object.entries(SET_DEFS).map(([k, v]) => ({ id: k, label: v.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '') }))
+      { id: 'ranged', label: '远程射击' },
+      { id: 'staff_only', label: '法杖秘术' }
     ]);
     bannerEl.classList.toggle('is-synergy-open', !!codexSynergyOpen);
     bannerEl.classList.toggle('is-weapons-banner', true);
     if (SET_DEFS[codexFilter]) {
       const selSet = SET_DEFS[codexFilter];
-      const selName = selSet.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '');
       bannerEl.innerHTML = `
-        <div class="codex-active-set-row">
-          <span class="set-pill active-set-pill"><b>${selName}</b> ${selSet.desc}</span>
-          <button type="button" class="codex-syn-toggle" onclick="setCodexFilter('all')">全部兵装 ✕</button>
+        <div class="codex-syn-bar">
+          <span><b>${selSet.label} (${setCounts[codexFilter] || 0}把)</b> · ${selSet.desc}</span>
+          <button type="button" class="sys-mini-btn" onclick="setCodexFilter('all')">全部兵装 ✕</button>
         </div>`;
     } else {
       const setEntries = Object.entries(SET_DEFS);
       const pillsHtml = setEntries
-        .map(([k, s]) => `<span class="set-pill" role="button" tabindex="0" onclick="setCodexFilter('${k}')"><b>${s.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')}</b> ${s.desc}</span>`)
+        .map(([k, s]) => `<span class="set-pill" role="button" tabindex="0" onclick="setCodexFilter('${k}')"><b>${s.label} (${setCounts[k] || 0})</b> ${s.desc}</span>`)
         .join('');
       bannerEl.innerHTML = `
         <button type="button" class="codex-syn-bar" onclick="toggleCodexSynergy()">
-          <span class="codex-syn-summary">✦ 流派与四象元素羁绊总览（共 ${setEntries.length} 项 · 点此或点上方流派筛选）</span>
+          <span class="codex-syn-summary">✦ 六大守誓兵装羁绊（古誓 · 星芒 · 封魂铳 · 黑曜重装 · 四象元素 · 发条机巧 · 点击词条查看五阶觉醒）</span>
           <span class="codex-syn-pill">${codexSynergyOpen ? '收起 ▴' : '展开羁绊 ▾'}</span>
         </button>
         <div class="codex-syn-list">${pillsHtml}</div>`;
     }
-    Object.entries(WEAPONS).forEach(([id, w]) => {
+    wEntries.forEach(([id, w]) => {
       if (codexFilter === 'melee' && !w.melee) return;
       if (codexFilter === 'ranged' && (w.melee || w.isStaff)) return;
-      if (codexFilter === 'staff' && !w.isStaff) return;
+      if (codexFilter === 'staff_only' && !w.isStaff) return;
       if (SET_DEFS[codexFilter] && w.set !== codexFilter) return;
       const minT = w.minTier || 1;
       const wpnArt = (typeof renderWeaponEmblemHtml === 'function')
         ? renderWeaponEmblemHtml(id, Math.max(3, minT), '', w.icon)
         : w.icon;
-      const evoHtml = Array.isArray(w.evos) && w.evos.length
-        ? `<div class="codex-evo-list">
-            <div class="codex-evo-head">◆ 五阶神话 · 二选一进化分支</div>
-            ${w.evos.map(ev => `<div class="codex-evo-item">
-              <span class="codex-evo-name" style="color:${ev.color || '#ff5c8a'}">★ ${ev.name}</span>
-              <span class="tag t5">${ev.tag || '神话'}</span>
-              <div class="codex-evo-desc">${ev.desc}</div>
-            </div>`).join('')}
-          </div>`
-        : '';
-      const card = document.createElement('div');
-      card.className = `codex-card t${minT}`;
-      card.innerHTML = `
-        <div class="codex-card-top">
-          <div class="item-emblem t${Math.max(minT, 3)}">${wpnArt}</div>
-          <div class="card-meta">
-            <div class="codex-card-title">${w.name}</div>
-            <div class="card-badges">
-              ${typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(w, id) : `<span class="tag">${w.melee ? '近战挥砍' : (w.isStaff ? '🪄秘术法杖' : '远程射击')}</span>`}
-              <span class="tag">${SET_DEFS[w.set].label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '')}</span>
-              <span class="tag t5">可升5阶</span>
-              ${minT > 1 ? `<span class="tag t${minT}">最低${['','普通','精良','史诗','传说','神话'][minT]}</span>` : ''}
+      const evoNames = Array.isArray(w.evos) ? w.evos.map(e => `★${e.name}`).join(' / ') : '';
+      const setLbl = SET_DEFS[w.set] ? SET_DEFS[w.set].label : w.set;
+      const row = document.createElement('div');
+      row.className = `p5-row codex-card t${minT}`;
+      row.onclick = () => openCodexWeaponDetail(id);
+      row.innerHTML = `
+        <div class="p5-ico-edge"><div class="p5-ico-inner">${wpnArt}</div></div>
+        <div class="p5-notch" aria-hidden="true"></div>
+        <div class="p5-bar-edge">
+          <div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <div class="p5-title-group">
+                <span class="p5-bar-title codex-card-title" title="${w.name}">${w.name}</span>
+                ${_codexRarityPill(minT)}
+              </div>
+              <div class="p5-bar-right">
+                <span class="bar-prog-badge">${setLbl}</span>
+                <span class="bar-prog-badge ready">◇${w.cost}</span>
+              </div>
+            </div>
+            <div class="p5-bar-cat">伤害 ${w.dmg}${w.pellets ? '×' + w.pellets : ''} · 间隔 ${w.cd}s · 射程 ${w.range} · ${w.desc}</div>
+            <div class="p5-bar-foot">
+              <span class="bar-prog-badge">${evoNames || '点按查看神话分支'}</span>
+              <span class="p5-foot-tags">${typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(w, id) : ''}</span>
             </div>
           </div>
-        </div>
-        <div class="stat-chips">
-          <span class="stat-chip">伤害 ${w.dmg}${w.pellets ? '×' + w.pellets : ''}</span>
-          <span class="stat-chip">冷却 ${w.cd}s</span>
-          <span class="stat-chip">范围 ${w.range}</span>
-          <span class="stat-chip">基准 ◇${w.cost}</span>
-        </div>
-        <div class="codex-card-desc">${w.desc}</div>
-        ${evoHtml}`;
-      gridEl.appendChild(card);
+        </div>`;
+      gridEl.appendChild(row);
     });
   } else if (codexTab === 'items') {
+    const tCnt = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    ITEMS.forEach(it => { tCnt[it.tier] = (tCnt[it.tier] || 0) + 1; });
     buildFilterBar([
-      { id: 'all', label: '全部品质' },
-      { id: '1', label: 'T1 · 普通' },
-      { id: '2', label: 'T2 · 精良' },
-      { id: '3', label: 'T3 · 史诗' },
-      { id: '4', label: 'T4 · 传说' }
+      { id: 'all', label: `全部遗物(${ITEMS.length})` },
+      { id: '1', label: `普通(${tCnt[1]})` },
+      { id: '2', label: `精良(${tCnt[2]})` },
+      { id: '3', label: `史诗(${tCnt[3]})` },
+      { id: '4', label: `传说(${tCnt[4]})` }
     ]);
-    bannerEl.innerHTML = `<span>◆ 击碎层域中的<b>石灯笼 / 寒冰晶簇 / 齿轮断柱 / 黑曜方碑</b>或击败<b>蚀日精英 / 守层主宰</b>，均可获赠免费守誓遗物匣。</span>`;
+    bannerEl.innerHTML = `<span>◆ 全部 <b>${ITEMS.length} 件记忆遗物</b> · 点击任意遗物横条可调阅完整效果与叠加上限档案。</span>`;
     ITEMS.forEach(it => {
       if (codexFilter !== 'all' && String(it.tier) !== codexFilter) return;
-      const tNames = ['', 'T1 普通', 'T2 精良', 'T3 史诗', 'T4 传说'];
-      const card = document.createElement('div');
-      card.className = `codex-card t${it.tier}`;
+      const row = document.createElement('div');
+      row.className = `p5-row codex-card t${it.tier}`;
       const itemArt = typeof renderItemEmblemHtml === 'function' ? renderItemEmblemHtml(it) : it.icon;
-      card.innerHTML = `
-        <div class="codex-card-top">
-          <div class="item-emblem t${it.tier}">${itemArt}</div>
-          <div class="card-meta">
-            <div class="codex-card-title">${it.name}</div>
-            <div class="card-badges">
-              <span class="tag t${it.tier}">${tNames[it.tier]}</span>
-              ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(it) : ''}
-              ${it.maxCount ? `<span class="tag tag-merge">${it.maxCount === 1 ? '唯一' : '上限 ×' + it.maxCount}</span>` : ''}
-              <span class="tag">基准 ◇${it.cost}</span>
+      row.onclick = () => { if (typeof openShopRelicModal === 'function') openShopRelicModal(it.id); };
+      row.innerHTML = `
+        <div class="p5-ico-edge"><div class="p5-ico-inner">${itemArt}</div></div>
+        <div class="p5-notch" aria-hidden="true"></div>
+        <div class="p5-bar-edge">
+          <div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <div class="p5-title-group">
+                <span class="p5-bar-title codex-card-title" title="${it.name}">${it.name}</span>
+                ${_codexRarityPill(it.tier)}
+              </div>
+              <div class="p5-bar-right">
+                ${it.maxCount ? `<span class="bar-prog-badge">${it.maxCount === 1 ? '唯一' : '上限×' + it.maxCount}</span>` : ''}
+                <span class="bar-prog-badge ready">◇${it.cost}</span>
+              </div>
+            </div>
+            <div class="p5-bar-cat">${it.desc}</div>
+            <div class="p5-bar-foot">
+              <span class="bar-prog-badge">记忆圣遗物</span>
+              <span class="p5-foot-tags">${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(it) : ''}</span>
             </div>
           </div>
-        </div>
-        <div class="codex-card-desc">${it.desc}</div>`;
-      gridEl.appendChild(card);
+        </div>`;
+      gridEl.appendChild(row);
     });
   } else if (codexTab === 'heroes') {
-    bannerEl.innerHTML = `<span>◆ 六位誓约者均配备设定集高清半身立绘与实机四帧动态精灵，并拥有各自独立的【青焰瞬步】主动残响战技。</span>`;
+    buildFilterBar([]);
+    bannerEl.innerHTML = `<span>◆ 六位誓约者均配备无框去背半身立绘、实机四帧精灵与独立【青焰瞬步】主动战技。</span>`;
     CLASSES.forEach(c => {
-      const portSrc = _spireImgUrl(c.portrait);
-      const chibiSrc = _spireImgUrl(c.chibi);
-      const card = document.createElement('div');
-      card.className = 'codex-card t2';
-      card.innerHTML = `
-        <div class="codex-card-top">
-          <div class="codex-thumb-wrap">
-            ${portSrc ? `<img src="${portSrc}" alt="${c.name}" class="codex-thumb-img">` : c.icon}
-          </div>
-          <div class="card-meta" style="flex:1">
-            <div class="codex-card-title">${c.name}</div>
-            <div class="card-badges">
-              <span class="tag tag-merge">${c.tag}</span>
-              <span class="tag">起手 · ${c.loadout}</span>
-              ${c.dashName ? `<span class="tag t2">${c.dashName}</span>` : ''}
+      const portSrc = typeof getHeroUiBustUrl === 'function' ? getHeroUiBustUrl(c.id) : _spireImgUrl(c.portrait);
+      const row = document.createElement('div');
+      row.className = 'p5-row codex-card t4';
+      row.innerHTML = `
+        <div class="p5-ico-edge"><div class="p5-ico-inner">${portSrc ? `<img src="${portSrc}" alt="${c.name}">` : c.icon}</div></div>
+        <div class="p5-notch" aria-hidden="true"></div>
+        <div class="p5-bar-edge">
+          <div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <div class="p5-title-group">
+                <span class="p5-bar-title codex-card-title">${c.name}</span>
+                <span class="t-rarity-pill tp-4">${c.tag}</span>
+              </div>
+              <span class="bar-prog-badge ready">${c.dashName || '青焰瞬步'}</span>
+            </div>
+            <div class="p5-bar-cat">${c.perks}${c.dashDesc ? ` · 战技：${c.dashDesc}` : ''}</div>
+            <div class="p5-bar-foot">
+              <span class="bar-prog-badge">初始兵装 · ${c.loadout}</span>
             </div>
           </div>
-          ${chibiSrc ? `<img src="${chibiSrc}" alt="${c.name} 实机精灵" class="codex-chibi-mini">` : ''}
-        </div>
-        <div class="codex-card-desc">${c.perks}${c.dashDesc ? `<br><span style="color:#dfc084;font-weight:700">${c.dashName}：</span><span style="color:#cbd5e1">${c.dashDesc}</span>` : ''}</div>`;
-      gridEl.appendChild(card);
+        </div>`;
+      gridEl.appendChild(row);
     });
   } else if (codexTab === 'monsters') {
     buildFilterBar([
-      { id: 'all', label: '全部魔物' },
+      { id: 'all', label: `全部魔物(${MONSTER_CODEX.length})` },
       { id: 'normal', label: '层域傀儡' },
       { id: 'scene', label: '层域精英' },
       { id: 'boss', label: '统领与守誓主宰' },
       { id: 'special', label: '无尽祭坛首领' }
     ]);
-    bannerEl.innerHTML = `<span>◆ 第 6 / 10 / 14 层固定刷新先锋统领，第 4 / 8 / 12 / 16 层固定迎战四幕守誓主宰并触发宽银幕过场与救赎谢幕。</span>`;
+    bannerEl.innerHTML = `<span>◆ 第 6 / 10 / 14 层刷新先锋统领，第 4 / 8 / 12 / 16 层迎战四幕双阶段守誓主宰。</span>`;
     MONSTER_CODEX.forEach(m => {
       if (codexFilter !== 'all' && m.cat !== codexFilter) return;
-      const tierCls = m.cat === 'special' ? 't4' : (m.cat === 'boss' ? 't3' : (m.cat === 'scene' ? 't2' : 't1'));
+      const tierNum = m.cat === 'special' ? 4 : (m.cat === 'boss' ? 3 : (m.cat === 'scene' ? 2 : 1));
       const sprUrl = _spireImgUrl(m.sprite);
-      const card = document.createElement('div');
-      card.className = `codex-card ${tierCls}`;
-      card.innerHTML = `
-        <div class="codex-card-top">
-          <div class="item-emblem ${tierCls}" style="overflow:hidden;padding:2px">
-            ${sprUrl ? `<img src="${sprUrl}" alt="${m.name}" style="width:100%;height:100%;object-fit:contain">` : m.icon}
-          </div>
-          <div class="card-meta">
-            <div class="codex-card-title">${m.name}</div>
-            <div class="card-badges">
-              <span class="tag ${tierCls}">${m.badge}</span>
-              <span class="tag">${m.wave}</span>
+      const row = document.createElement('div');
+      row.className = `p5-row codex-card t${tierNum}`;
+      row.innerHTML = `
+        <div class="p5-ico-edge"><div class="p5-ico-inner">${sprUrl ? `<img src="${sprUrl}" alt="${m.name}">` : m.icon}</div></div>
+        <div class="p5-notch" aria-hidden="true"></div>
+        <div class="p5-bar-edge">
+          <div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <div class="p5-title-group">
+                <span class="p5-bar-title codex-card-title">${m.name}</span>
+                ${_codexRarityPill(tierNum)}
+              </div>
+              <span class="bar-prog-badge">${m.wave}</span>
+            </div>
+            <div class="p5-bar-cat">${m.desc}</div>
+            <div class="p5-bar-foot">
+              <span class="bar-prog-badge">${m.badge}</span>
+              <span class="p5-foot-tags"><span class="tag">${m.stats}</span></span>
             </div>
           </div>
-        </div>
-        <div class="stat-chips"><span class="stat-chip">${m.stats}</span></div>
-        <div class="codex-card-desc">${m.desc}</div>`;
-      gridEl.appendChild(card);
+        </div>`;
+      gridEl.appendChild(row);
     });
   } else if (codexTab === 'world') {
     buildFilterBar([
@@ -266,68 +441,134 @@ function renderCodex() {
       { id: 'terrain', label: '层域标志机关' },
       { id: 'relic', label: '无尽共鸣祭坛' }
     ]);
-    bannerEl.innerHTML = `<span>◆ 随登塔进度依次穿越<b>雨夜长桥 → 永冻冰窟 → 倒悬钟楼 → 日蚀镜界</b>，每层均配备独立机关、环境音景与可破坏封魂器物。</span>`;
+    bannerEl.innerHTML = `<span>◆ 依次穿越<b>雨夜长桥 → 永冻冰窟 → 倒悬钟楼 → 日蚀镜界</b>，每幕配备专属环境音景与地形机关。</span>`;
     if (codexFilter === 'all' || codexFilter === 'scene') {
       SCENES.forEach(sc => {
-        const vistaUrl = _spireImgUrl(sc.vistaImg);
-        const card = document.createElement('div');
-        card.className = 'codex-card t2';
-        card.innerHTML = `
-          ${vistaUrl ? `<div class="codex-scene-banner"><img src="${vistaUrl}" alt="${sc.name}"></div>` : ''}
-          <div class="codex-card-top">
-            <div class="item-emblem t2">${sc.icon}</div>
-            <div class="card-meta">
-              <div class="codex-card-title">${sc.name}</div>
-              <div class="card-badges">
-                <span class="tag t2">${sc.eventIcon} ${sc.eventName}</span>
-                <span class="tag">${sc.exclMobName}</span>
+        const row = document.createElement('div');
+        row.className = 'p5-row codex-card t3';
+        row.innerHTML = `
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${sc.icon}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge">
+            <div class="p5-bar-fill">
+              <div class="p5-bar-top">
+                <div class="p5-title-group">
+                  <span class="p5-bar-title codex-card-title">${sc.name}</span>
+                  ${_codexRarityPill(3)}
+                </div>
+                <span class="bar-prog-badge ready">${sc.eventIcon} ${sc.eventName}</span>
+              </div>
+              <div class="p5-bar-cat">${sc.eventDesc}</div>
+              <div class="p5-bar-foot">
+                <span class="bar-prog-badge">${sc.exclMobName}</span>
+                <span class="p5-foot-tags"><span class="tag">${sc.terrainSummary || ''}</span></span>
               </div>
             </div>
-          </div>
-          <div class="stat-chips"><span class="stat-chip">${sc.terrainSummary || ''}</span></div>
-          <div class="codex-card-desc">${sc.eventDesc}</div>`;
-        gridEl.appendChild(card);
+          </div>`;
+        gridEl.appendChild(row);
       });
     }
     if ((codexFilter === 'all' || codexFilter === 'terrain') && typeof TERRAIN_CODEX !== 'undefined') {
       TERRAIN_CODEX.forEach(tr => {
-        const card = document.createElement('div');
-        card.className = `codex-card t3`;
-        card.innerHTML = `
-          <div class="codex-card-top">
-            <div class="item-emblem t3">${tr.icon}</div>
-            <div class="card-meta">
-              <div class="codex-card-title">【层域机关】${tr.name}</div>
-              <div class="card-badges">
-                <span class="tag t3">${tr.badge}</span>
-                <span class="tag">${tr.scenes}</span>
+        const row = document.createElement('div');
+        row.className = 'p5-row codex-card t2';
+        row.innerHTML = `
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${tr.icon}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge">
+            <div class="p5-bar-fill">
+              <div class="p5-bar-top">
+                <div class="p5-title-group">
+                  <span class="p5-bar-title codex-card-title">【层域机关】${tr.name}</span>
+                  ${_codexRarityPill(2)}
+                </div>
+                <span class="bar-prog-badge">${tr.scenes}</span>
               </div>
+              <div class="p5-bar-cat">${tr.desc}</div>
             </div>
-          </div>
-          <div class="codex-card-desc">${tr.desc}</div>`;
-        gridEl.appendChild(card);
+          </div>`;
+        gridEl.appendChild(row);
       });
     }
     if (codexFilter === 'all' || codexFilter === 'relic') {
       SPECIAL_RELICS.forEach(rel => {
-        const card = document.createElement('div');
-        card.className = 'codex-card t4';
-        card.innerHTML = `
-          <div class="codex-card-top">
-            <div class="item-emblem t4">${rel.icon}</div>
-            <div class="card-meta">
-              <div class="codex-card-title">【记忆祭坛】${rel.name}</div>
-              <div class="card-badges">
-                <span class="tag t4">小概率现世</span>
-                <span class="tag tag-merge">唤醒 ${rel.bossIcon} ${rel.bossName}</span>
+        const row = document.createElement('div');
+        row.className = 'p5-row codex-card t4';
+        row.innerHTML = `
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${rel.icon}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge">
+            <div class="p5-bar-fill">
+              <div class="p5-bar-top">
+                <div class="p5-title-group">
+                  <span class="p5-bar-title codex-card-title">【记忆祭坛】${rel.name}</span>
+                  ${_codexRarityPill(4)}
+                </div>
+                <span class="bar-prog-badge ready">唤醒 ${rel.bossIcon} ${rel.bossName}</span>
               </div>
+              <div class="p5-bar-cat">无尽模式第 17 层起现世 · 驻留 1.1 秒唤醒记忆首领 · ${rel.rewardDesc}</div>
             </div>
-          </div>
-          <div class="codex-card-desc">第 17 层无尽试炼起概率在层域中现世（屏幕边缘显示方位信标，主线 1~16 层绝不乱入）。<b>踏入祭坛驻留 1.1 秒</b>即可唤醒记忆首领（超时转入死战）！<br><b>${rel.rewardDesc}</b></div>`;
-        gridEl.appendChild(card);
+          </div>`;
+        gridEl.appendChild(row);
+      });
+    }
+  } else if (codexTab === 'supplies') {
+    const suppliesArr = (typeof CRATE_SUPPLIES !== 'undefined' && Array.isArray(CRATE_SUPPLIES)) ? CRATE_SUPPLIES : [];
+    const upgradesArr = (typeof UPGRADES !== 'undefined' && Array.isArray(UPGRADES)) ? UPGRADES : [];
+    buildFilterBar([
+      { id: 'all', label: `全部(${suppliesArr.length + upgradesArr.length})` },
+      { id: 'supply', label: `秘匣补给(${suppliesArr.length})` },
+      { id: 'upgrade', label: `升级刻印(${upgradesArr.length})` }
+    ]);
+    bannerEl.innerHTML = `<span>◆ 收录遗物匣 <b>${suppliesArr.length} 种魂灯秘髓补给</b> 与升级共鸣 <b>${upgradesArr.length} 枚记忆刻印</b>。</span>`;
+    if (codexFilter === 'all' || codexFilter === 'supply') {
+      suppliesArr.forEach(sup => {
+        const t = sup.tier || 3;
+        const supArt = typeof renderItemEmblemHtml === 'function' ? renderItemEmblemHtml(sup, t) : sup.icon;
+        const row = document.createElement('div');
+        row.className = `p5-row codex-card t${t}`;
+        row.innerHTML = `
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${supArt}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge">
+            <div class="p5-bar-fill">
+              <div class="p5-bar-top">
+                <div class="p5-title-group">
+                  <span class="p5-bar-title codex-card-title">${sup.name}</span>
+                  ${_codexRarityPill(t)}
+                </div>
+                <span class="bar-prog-badge ready">秘匣补给</span>
+              </div>
+              <div class="p5-bar-cat">${sup.desc}</div>
+            </div>
+          </div>`;
+        gridEl.appendChild(row);
+      });
+    }
+    if (codexFilter === 'all' || codexFilter === 'upgrade') {
+      upgradesArr.forEach(u => {
+        const row = document.createElement('div');
+        row.className = 'p5-row codex-card t2';
+        row.innerHTML = `
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${u.icon}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge">
+            <div class="p5-bar-fill">
+              <div class="p5-bar-top">
+                <div class="p5-title-group">
+                  <span class="p5-bar-title codex-card-title">${u.name}</span>
+                  ${_codexRarityPill(2)}
+                </div>
+                <span class="bar-prog-badge">升级记忆刻印</span>
+              </div>
+              <div class="p5-bar-cat">${u.desc}</div>
+            </div>
+          </div>`;
+        gridEl.appendChild(row);
       });
     }
   }
+  syncCodexFilterArrows();
 }
 
 function openChangelogModal() {

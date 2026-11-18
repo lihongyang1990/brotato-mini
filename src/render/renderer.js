@@ -303,10 +303,11 @@ function drawSingleTerrain(tr, showLabel = false) {
     const lx = midPt.x, ly = tr.kind === 'chasm' ? midPt.y - 6 : midPt.y - 46;
     ctx.font = '800 11.5px -apple-system, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(14, 10, 24, 0.82)';
-    ctx.beginPath(); ctx.roundRect(lx - 68, ly - 11, 136, 16, 6); ctx.fill();
-    ctx.fillStyle = '#f1ecff';
-    ctx.fillText(tLabel, lx, ly + 1);
+    const tw = Math.max(156, SpirePerf.measureText(ctx, tLabel) + 26);
+    const tAcc = tr.kind === 'lava_pool' ? '#ff5c38' : (tr.kind === 'swamp' ? '#34d399' : (tr.kind === 'ice_sheet' ? '#67e8f9' : '#c084fc'));
+    drawP5TagFast(ctx, lx - tw * 0.5, ly - 13, tw, 20, tAcc, 0, 0.76);
+    ctx.fillStyle = '#f8f5ff';
+    ctx.fillText(tLabel, lx + 2, ly + 1);
   }
   ctx.restore();
 }
@@ -382,10 +383,10 @@ function drawSinglePortal(p, partner, cooling, cdRemain) {
   ctx.font = '800 12px -apple-system, sans-serif';
   ctx.textAlign = 'center';
   const pTxt = cooling ? `⏳ 充能 ${(cdRemain || 0).toFixed(1)}s` : `🌀 晶裂门 ${p.label}`;
-  ctx.fillStyle = 'rgba(14, 10, 24, 0.80)';
-  ctx.beginPath(); ctx.roundRect(-50, -pr - 26, 100, 17, 6); ctx.fill();
+  const pw = Math.max(114, SpirePerf.measureText(ctx, pTxt) + 24);
+  drawP5TagFast(ctx, -pw * 0.5, -pr - 28, pw, 20, cooling ? '#94a3b8' : '#a855f7', 0, 0.76);
   ctx.fillStyle = cooling ? '#cbd5e1' : '#f8f5ff';
-  ctx.fillText(pTxt, 0, -pr - 13);
+  ctx.fillText(pTxt, 2, -pr - 14);
   ctx.restore();
 }
 
@@ -971,14 +972,11 @@ function draw() {
       const lbl = prog > 0.03
         ? `⚡ 正在唤醒【${bName}】 ${Math.round(prog * 100)}%`
         : `⛩️ 隐藏Boss祭坛：【${bName}】（踏阵召唤）`;
-      const ltw = Math.max(180, ctx.measureText(lbl).width + 24);
-      const lby = -rr - 32;
-      ctx.fillStyle = 'rgba(15, 11, 26, 0.86)';
-      ctx.strokeStyle = prog > 0.03 ? '#ffd166' : col;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.roundRect(-ltw * 0.5, lby, ltw, 24, 12); ctx.fill(); ctx.stroke();
+      const ltw = Math.max(192, SpirePerf.measureText(ctx, lbl) + 30);
+      const lby = -rr - 34;
+      drawP5TagFast(ctx, -ltw * 0.5, lby, ltw, 25, prog > 0.03 ? '#ffd166' : col, prog, 0.92);
       ctx.fillStyle = '#ffd166';
-      ctx.fillText(lbl, 0, lby + 12.5);
+      ctx.fillText(lbl, 2, lby + 12.5);
       ctx.textBaseline = 'alphabetic';
       ctx.restore();
     }
@@ -1085,13 +1083,10 @@ function draw() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           const tagTxt = `⛩️召唤Boss ${stepsM}m`;
-          const tagW = Math.max(78, ctx.measureText(tagTxt).width + 12);
-          ctx.fillStyle = 'rgba(15, 11, 26, 0.78)';
-          ctx.strokeStyle = 'rgba(255, 209, 102, 0.85)';
-          ctx.lineWidth = 1.2;
-          ctx.beginPath(); ctx.roundRect(ax - tagW * 0.5, tagY - 9, tagW, 18, 9); ctx.fill(); ctx.stroke();
+          const tagW = Math.max(88, SpirePerf.measureText(ctx, tagTxt) + 20);
+          drawP5TagFast(ctx, ax - tagW * 0.5, tagY - 10, tagW, 20, '#ffd166', 0, 0.72);
           ctx.fillStyle = '#fde68a';
-          ctx.fillText(tagTxt, ax, tagY + 0.5);
+          ctx.fillText(tagTxt, ax + 2, tagY + 0.5);
           ctx.restore();
         }
       }
@@ -2008,18 +2003,12 @@ function draw() {
         ctx.font = `900 ${fSize}px -apple-system, sans-serif`;
       }
       if (t.important) {
-        const padX = 11, pillH = fSize + 10;
+        const padX = 14, pillH = fSize + 11;
         if (!(t._baseW > 0)) {
           t._baseW = ctx.measureText(t.txt).width / Math.max(0.5, scale);
         }
-        const tw = Math.min(400, Math.max(48, t._baseW * scale + padX * 2));
-        ctx.fillStyle = 'rgba(15, 11, 26, 0.78)';
-        ctx.strokeStyle = t.color;
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.roundRect(t.x - tw * 0.5, t.y - fSize + 1, tw, pillH, 7);
-        ctx.fill();
-        ctx.stroke();
+        const tw = Math.min(410, Math.max(58, t._baseW * scale + padX * 2));
+        drawP5TagFast(ctx, t.x - tw * 0.5, t.y - fSize, tw, pillH, t.color || '#e11d48', 0, 0.82);
       }
       if (isTouch || (denseTexts && !t.important)) {
         ctx.fillStyle = '#120d18';
@@ -2159,16 +2148,17 @@ function drawPhase2ShatterOverlay(isFullNameplate) {
       ctx.textAlign = 'center';
       ctx.fillStyle = cfg.themeGold;
       ctx.font = 'bold 12px "PingFang SC", -apple-system, sans-serif';
-      ctx.fillText('PHASE II AWAKENED FORM · 二阶段神装解封', viewW * 0.5, viewH * 0.66);
+      const maxTxtW = Math.max(220, viewW - 28);
+      ctx.fillText('PHASE II AWAKENED FORM · 二阶段神装解封', viewW * 0.5, viewH * 0.66, maxTxtW);
       ctx.fillStyle = '#ffffff';
-      ctx.font = '800 30px "PingFang SC", -apple-system, sans-serif';
-      ctx.fillText(cfg.name, viewW * 0.5, viewH * 0.73);
+      ctx.font = '800 28px "PingFang SC", -apple-system, sans-serif';
+      ctx.fillText(cfg.name, viewW * 0.5, viewH * 0.73, maxTxtW);
       ctx.fillStyle = cfg.theme;
-      ctx.font = 'bold 18px "PingFang SC", -apple-system, sans-serif';
-      ctx.fillText(cfg.title, viewW * 0.5, viewH * 0.79);
+      ctx.font = 'bold 17px "PingFang SC", -apple-system, sans-serif';
+      ctx.fillText(cfg.title, viewW * 0.5, viewH * 0.79, maxTxtW);
       ctx.fillStyle = '#dce5f7';
       ctx.font = '13px "Noto Serif SC", serif';
-      ctx.fillText(cfg.quote, viewW * 0.5, viewH * 0.85);
+      ctx.fillText(cfg.quote, viewW * 0.5, viewH * 0.85, maxTxtW);
     } else {
       if (portIm && (portIm.naturalWidth || portIm.width)) {
         const iw = portIm.naturalWidth || portIm.width, ih = portIm.naturalHeight || portIm.height;
@@ -2200,7 +2190,7 @@ function drawPhase2ShatterOverlay(isFullNameplate) {
       ctx.fillStyle = 'rgba(226, 232, 240, 0.72)';
       ctx.font = '600 12px "PingFang SC", -apple-system, sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText('点击屏幕 / 空格 破屏开战 ▸', viewW - 28, viewH - 22);
+      ctx.fillText('点击屏幕 / 空格 迎战二阶段 ▸', viewW - 28, viewH - 22);
     }
   } else {
     if ((fx.hudT || 0) > 0 && (!endlessMode || fx.variant === 'plague_empress')) {

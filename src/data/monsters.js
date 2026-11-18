@@ -15,7 +15,7 @@ const BOSS_DEFS = {
   mech_colossus: {
     id: 'mech_colossus', icon: '⚙️', sprite: 'assets/spire/boss_mech_colossus.png', portrait: 'assets/spire/port_colossus.jpg',
     name: '倒悬机神 · 伽蓝重装态', epithet: '三层逆转发条钟楼镇守者', color: '#f77f00', spd: 78,
-    desc: '伽蓝操控的钟楼重装巨像：部署可破坏的【超导磁暴引力桩】牵引猎物（击破引力桩可令机神陷入 20 秒真实破防：承伤 +20%，20 秒后方重新部署新桩！）、横扫熔核加特林与钢铁矩阵排炮；二阶段解锁终式【末日熔核锯刃风暴】，D5 二阶段独享 10 秒【临死挣扎】！'
+    desc: '伽蓝操控的钟楼重装巨像：部署可破坏的【超导磁暴引力桩】牵引猎物（击破引力桩可令机神陷入 20 秒真实破防：承伤 +20%，20 秒后方重新部署新桩！）、横扫熔核加特林与钢铁矩阵排炮；二阶段蜕变为黑曜裂胸【歼灭神枢 · 裂胸巨锯魔神态】并解锁终式【末日熔核锯刃风暴】，D5 二阶段独享 10 秒【临死挣扎】！'
   },
   void_weaver: {
     id: 'void_weaver', icon: '🕰️', sprite: 'assets/spire/hero_jialan.png', portrait: 'assets/spire/port_jialan.jpg',
@@ -75,10 +75,10 @@ const MINI_BOSS_DEFS = {
 // 战场随机刷新的 5 座记忆共鸣召唤祭坛（主线与无尽均会降临，包含无尽专属双主宰）
 const SPECIAL_RELICS = [
   {
-    id: 'blood_altar', icon: '🏮', name: '雨夜断刃祭坛', color: '#ff2a55',
-    bossId: 'crimson_lord', bossIcon: '🦊', bossName: '烬羽 · 第998世残响', epithet: '不肯熄灭的绯红剑魂', bossColor: '#d90429',
-    rewardDesc: '击败必爆：💎30 封魂晶石 + 🎁×1 守誓遗物匣 + 瞬间回满全部生命！（若觉醒二阶段必爆传说圣遗物）',
-    bossDesc: '残留在孤桥石灯里的第998世剑魂：化作绯影瞬步斩击，展开红莲外环阵（内圈安全）并唤出赤伞纸偶助战。'
+    id: 'blood_altar', icon: '⛩️', name: '荒祠封魔血龛', color: '#ff2a55',
+    bossId: 'crimson_lord', bossIcon: '👹', bossName: '荒祠古祟 · 绯狱妖主', epithet: '沉睡于水底古祠的千岁封剑凶灵', bossColor: '#d90429',
+    rewardDesc: '击败必爆：💎30 封魂晶石 + 🎁×1 守誓遗物匣 + 瞬间回满全部生命！（觉醒二阶段触发专属三镜剧场并必爆传说圣遗物）',
+    bossDesc: '在烬塔筑起前便被封入水底荒祠铁龛的千岁大妖：一阶段受白瓷镇魂面束缚，单刃瞬步斩击并展开红莲外环阵（内圈安全）；二阶段破封觉醒【破龛真身 · 血月黑角夜叉王】，黑角睁瞳、万冢妖刀齐鸣！'
   },
   {
     id: 'golden_idol', icon: '🕰️', name: '黄金逆钟星盘', color: '#ffd166',
@@ -157,7 +157,7 @@ const MONSTER_CODEX = [
   { id: 'b_solar',      cat: 'boss',   sprite: 'assets/spire/hero_eclipse.png',         icon: '🌑', name: '第999号 · 日蚀圣女',     badge: '终幕镜中真我',   wave: '第 16 层最终决战', stats: '❤️巨额主宰级 · 💨D2~D5最高25%闪避 · 🎬必入二阶段', desc: BOSS_DEFS.solar_seraph.desc },
 
   // 3 大记忆祭坛召唤 Boss（无尽深渊奇遇）
-  { id: 'sb_crimson',   cat: 'special', sprite: 'assets/spire/sb_crimson_lord.png',     icon: '🦊', name: '烬羽 · 第998世残响',     badge: '🏮 记忆祭坛首领', wave: '无尽深渊 · 激活雨夜断刃祭坛', stats: '🎁×1 遗物匣 + 💎30 + 满血恢复',     desc: `${SPECIAL_RELICS[0].bossDesc}<br><b>${SPECIAL_RELICS[0].rewardDesc}</b>` },
+  { id: 'sb_crimson',   cat: 'special', sprite: 'assets/spire/sb_crimson_lord.png',     icon: '👹', name: '荒祠古祟 · 绯狱妖主',     badge: '⛩️ 记忆祭坛首领', wave: '无尽深渊 · 激活荒祠封魔血龛', stats: '🎁×1 遗物匣 + 💎30 + 满血恢复',     desc: `${SPECIAL_RELICS[0].bossDesc}<br><b>${SPECIAL_RELICS[0].rewardDesc}</b>` },
   { id: 'sb_golden',    cat: 'special', sprite: 'assets/spire/sb_golden_golem.png',     icon: '🏆', name: '黄金发条圣柜巨神',       badge: '🕰️ 记忆祭坛首领', wave: '无尽深渊 · 激活黄金逆钟星盘', stats: '💎48+ 晶石雨 + 🎁×1 遗物匣',       desc: `${SPECIAL_RELICS[1].bossDesc}<br><b>${SPECIAL_RELICS[1].rewardDesc}</b>` },
   { id: 'sb_abyss',     cat: 'special', sprite: 'assets/spire/sb_abyss_devourer.png',   icon: '👁️', name: '零号容器 · 饥饿黑影',    badge: '🌑 记忆祭坛首领', wave: '无尽深渊 · 激活黑曜蚀日残镜', stats: '🎁×1 遗物匣 + 💎26 + 永久+12%全伤', desc: `${SPECIAL_RELICS[2].bossDesc}<br><b>${SPECIAL_RELICS[2].rewardDesc}</b>` }
 ];

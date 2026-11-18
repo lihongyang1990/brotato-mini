@@ -1,40 +1,26 @@
 // 60FPS 核心战术状态机主更新循环（移动、武器开火、投射物、怪物与首领 AI）
 function compactAliveEnemies() {
   let w = 0;
-  for (let r = 0; r < enemies.length; r++) {
-    const e = enemies[r];
-    if (e && e.hp > 0) enemies[w++] = e;
-  }
+  for (let r = 0; r < enemies.length; r++) { if (enemies[r] && enemies[r].hp > 0) enemies[w++] = enemies[r]; }
   enemies.length = w;
 }
-
-function hasBulletHit(b, target) {
-  if (b.lastHit === target) return true;
-  return b.hit ? b.hit.has(target) : false;
-}
-
+function hasBulletHit(b, target) { return b.lastHit === target || (b.hit ? b.hit.has(target) : false); }
 function markBulletHit(b, target) {
   if (!b.lastHit) { b.lastHit = target; return; }
   if (b.lastHit === target) return;
   if (!b.hit) { b.hit = new Set(); b.hit.add(b.lastHit); }
   b.hit.add(target);
 }
-
 function unmarkBulletHitForBounce(b, nextTarget, curHit) {
   if (b.hit) b.hit.delete(nextTarget);
   if (curHit) {
-    if (b.lastHit && b.lastHit !== curHit) {
-      if (!b.hit) b.hit = new Set();
-      b.hit.add(b.lastHit);
-    }
+    if (b.lastHit && b.lastHit !== curHit) { if (!b.hit) b.hit = new Set(); b.hit.add(b.lastHit); }
     b.lastHit = curHit;
     if (b.hit) b.hit.add(curHit);
   }
 }
-
 const _meleeTargets = [];
-
-// 远程投射物严格「先弹射、后穿透」核心索敌器：优先消耗 bounces 折向邻近敌人（不扣 pierce），耗尽弹射次数后才进入穿透阶段
+// 远程投射物严格「先弹射、后穿透」核心索敌器
 function bounceBulletToNearest(b, curEnemy) {
   if (!(b.bounces > 0)) return false;
   let nextE = null, nextDSq = 410 * 410, reusedHit = false;
@@ -47,7 +33,6 @@ function bounceBulletToNearest(b, curEnemy) {
       if (cdSq < nextDSq) { nextDSq = cdSq; nextE = cand; }
     }
   }
-  // 场上仅存双目标（双王 / 首领+单精英）时允许往返乒乓弹射，杜绝弹射次数闲置直接穿透飞走
   if (!nextE && curEnemy) {
     nextDSq = 385 * 385;
     for (let ci = 0; ci < enemies.length; ci++) {
@@ -62,29 +47,17 @@ function bounceBulletToNearest(b, curEnemy) {
   }
   if (!nextE) return false;
   if (reusedHit) unmarkBulletHitForBounce(b, nextE, curEnemy);
-  if (b.isGrenade) {
-    triggerExplosion(b.x, b.y, b.blastR || 76, b.dmg * 0.72, false, 0, '#ff9f1c', false);
-  }
-  const spd = Math.max(240, Math.hypot(b.vx, b.vy));
-  const na = Math.atan2(nextE.y - b.y, nextE.x - b.x);
-  b.vx = Math.cos(na) * spd;
-  b.vy = Math.sin(na) * spd;
-  b.angle = na;
-  b.x += Math.cos(na) * 4;
-  b.y += Math.sin(na) * 4;
+  if (b.isGrenade) triggerExplosion(b.x, b.y, b.blastR || 76, b.dmg * 0.72, false, 0, '#ff9f1c', false);
+  const spd = Math.max(240, Math.hypot(b.vx, b.vy)), na = Math.atan2(nextE.y - b.y, nextE.x - b.x);
+  b.vx = Math.cos(na) * spd; b.vy = Math.sin(na) * spd; b.angle = na;
+  b.x += Math.cos(na) * 4; b.y += Math.sin(na) * 4;
   b.bounces--;
   b.dmg *= Math.min(1.0, Math.max(0.45, 0.74 + (player.falloffMitigation || 0)));
   const flightNeed = (Math.sqrt(nextDSq) + 135) / spd;
   b.life = Math.max(b.life, Math.min(1.35, Math.max(0.52, flightNeed)));
   b.maxLife = Math.max(b.maxLife || b.life, b.life);
-  if (typeof _frameSparks !== 'undefined' && _frameSparks < 14) {
-    _frameSparks++;
-    addSparks(b.x, b.y, na, b.isGrenade ? '#ff9f1c' : (b.isPebble ? '#e2e8f0' : '#72efdd'), 2);
-  }
-  if (typeof _frameHitBeeps !== 'undefined' && _frameHitBeeps < 2) {
-    _frameHitBeeps++;
-    beep(b.isPebble ? 490 : 610, 0.022, 'triangle', 0.018);
-  }
+  if (typeof _frameSparks !== 'undefined' && _frameSparks < 14) { _frameSparks++; addSparks(b.x, b.y, na, b.isGrenade ? '#ff9f1c' : (b.isPebble ? '#e2e8f0' : '#72efdd'), 2); }
+  if (typeof _frameHitBeeps !== 'undefined' && _frameHitBeeps < 2) { _frameHitBeeps++; beep(b.isPebble ? 490 : 610, 0.022, 'triangle', 0.018); }
   return true;
 }
 
@@ -2362,7 +2335,7 @@ function update(dt) {
         if (!tpl.isStar && !tpl.isFlame && !tpl.isPebble && !tpl.isIce && !tpl.isDart) {
           pushParticle({ x: mx, y: my, vx: 0, vy: 0, r: w.id === 'shotgun' || tpl.isRocket || tpl.isGrenade || tpl.isPlasma ? 12 : 8.5, color: (evo && evo.color) ? evo.color : (tpl.isPlasma ? '#c77dff' : (tpl.techScale ? '#72efdd' : '#ffd166')), t: 0.085, maxT: 0.085, muzzle: true, angle: w.angle });
         }
-        if ((tpl.set === 'gun' || w.id === 'minigun' || w.id === 'revolver') && shells.length < 60 && (w.id !== 'minigun' || Math.random() < 0.45)) {
+        if (tpl.set === 'gun' && shells.length < 60 && (w.id !== 'minigun' || Math.random() < 0.45)) {
           const sa = w.angle - Math.PI * 0.5 + (Math.random() - 0.5) * 0.5;
           shells.push({ x: baseWx, y: baseWy, vx: Math.cos(sa) * 95, vy: Math.sin(sa) * 95 - 30, rot: Math.random() * 6, t: 0.45 });
         }
@@ -2589,6 +2562,9 @@ function update(dt) {
     if (e.y + er > eEnvMaxY) eEnvMaxY = e.y + er;
   }
   const hasEnemyEnvelope = eEnvMinX <= eEnvMaxX;
+  let gridSnapLen = enemies.length;
+  let gridActive = hasEnemyEnvelope ? SpirePerf.rebuildEnemyGrid(enemies, WORLD.w, WORLD.h) : 0;
+  const gridQueryBuf = SpirePerf.getQueryBuffer();
 
   for (let i = bullets.length - 1; i >= 0; i--) {
     if (state !== 'wave') return;
@@ -2610,7 +2586,7 @@ function update(dt) {
       if (b._bmReturning && player) {
         const dxP = player.x - b.x, dyP = player.y - b.y;
         const dP = Math.hypot(dxP, dyP) || 1;
-        if (dP < 24) { bullets.splice(i, 1); continue; }
+        if (dP < 24) { SpirePerf.swapPop(bullets, i); continue; }
         const retSpd = (b.bmSpd || 610) * 1.14;
         b.vx = (dxP / dP) * retSpd;
         b.vy = (dyP / dP) * retSpd;
@@ -2654,7 +2630,7 @@ function update(dt) {
         _activeWeaponId = prevActB;
       }
       if (state !== 'wave') return;
-      bullets.splice(i, 1); continue;
+      SpirePerf.swapPop(bullets, i); continue;
     }
 
     // 子弹命中异星晶树（同样严格先弹射向附近敌人，无弹射时再消耗穿透）
@@ -2711,12 +2687,18 @@ function update(dt) {
         }
       }
       if (state !== 'wave') return;
-      bullets.splice(i, 1); continue;
+      SpirePerf.swapPop(bullets, i); continue;
     }
 
     const br = b.r || 4;
-    if (hasEnemyEnvelope && b.x + br >= eEnvMinX && b.x - br <= eEnvMaxX && b.y + br >= eEnvMinY && b.y - br <= eEnvMaxY) {
-      for (let j = enemies.length - 1; j >= 0; j--) {
+    if (enemies.length !== gridSnapLen) {
+      gridSnapLen = enemies.length;
+      gridActive = SpirePerf.rebuildEnemyGrid(enemies, WORLD.w, WORLD.h);
+    }
+    if (gridActive > 0 && b.x + br >= eEnvMinX && b.x - br <= eEnvMaxX && b.y + br >= eEnvMinY && b.y - br <= eEnvMaxY) {
+      let candCnt = SpirePerf.queryEnemiesNear(b.x, b.y, br);
+      for (let q = 0; q < candCnt; q++) {
+        const j = gridQueryBuf[q];
         const e = enemies[j];
         if (!e || e.hp <= 0 || e.primed) continue;
         const hitR = e.r + br;
@@ -2829,6 +2811,13 @@ function update(dt) {
             }
             b.pierce--;
             b.dmg *= (b.isStaffOrb || b.isWaveArc || b.isFlame) ? 0.86 : Math.min(1.0, Math.max(0.42, 0.70 + (player.falloffMitigation || 0)));
+            if (player.bounceAmpDmg > 0) b.dmg *= (1 + player.bounceAmpDmg);
+            if (enemies.length !== gridSnapLen) {
+              gridSnapLen = enemies.length;
+              gridActive = SpirePerf.rebuildEnemyGrid(enemies, WORLD.w, WORLD.h);
+              candCnt = gridActive > 0 ? SpirePerf.queryEnemiesNear(b.x, b.y, br) : 0;
+              q = -1;
+            }
           } finally {
             _activeWeaponId = prevActH;
           }
@@ -2849,9 +2838,9 @@ function update(dt) {
         }
         if (state !== 'wave') return;
       }
-      bullets.splice(i, 1);
+      SpirePerf.swapPop(bullets, i);
     } else if (b.life <= 0) {
-      bullets.splice(i, 1);
+      SpirePerf.swapPop(bullets, i);
     }
   }
 
@@ -2959,7 +2948,7 @@ function update(dt) {
     if (typeof ensureEnemyBulletScale === 'function') ensureEnemyBulletScale(b);
     if (b.life !== undefined) {
       b.life -= dt;
-      if (b.life <= 0) { eBullets.splice(i, 1); continue; }
+      if (b.life <= 0) { SpirePerf.swapPop(eBullets, i); continue; }
     }
     b.px = b.x; b.py = b.y;
     b.age = (b.age || 0) + dt * ebSpdMul;
@@ -2996,7 +2985,7 @@ function update(dt) {
     b.x += b.vx * ebSpdMul * dt; b.y += b.vy * ebSpdMul * dt;
     if (b.shape === 'disc' || b.shape === 'orb') b.rot = (b.rot || 0) + dt * (b.shape === 'disc' ? 14 : 5);
     const oobPad = b.isCelestial ? 640 : 16;
-    if (b.x < -oobPad || b.x > WORLD.w + oobPad || b.y < -oobPad || b.y > WORLD.h + oobPad) { eBullets.splice(i, 1); continue; }
+    if (b.x < -oobPad || b.x > WORLD.w + oobPad || b.y < -oobPad || b.y > WORLD.h + oobPad) { SpirePerf.swapPop(eBullets, i); continue; }
     const effHitR = b.hitR || b.r || 6.2;
     const bx0 = b.px !== undefined ? b.px : b.x;
     const by0 = b.py !== undefined ? b.py : b.y;
@@ -3015,7 +3004,7 @@ function update(dt) {
     if (dxLow * dxLow + dyLow * dyLow < hitRLow * hitRLow || dxHigh * dxHigh + dyHigh * dyHigh < hitRHigh * hitRHigh) {
       if (b.chillPlayer && !player.noSlow) player.chillSlowT = 1.25;
       hurtPlayer(b.dmg, true, b.bossOwner || b.srcKey || (b.isVortexTrap ? 'trap_void_orb' : (b.isCelestial ? 'trap_sky_lance' : 'enemy_proj')));
-      eBullets.splice(i, 1);
+      SpirePerf.swapPop(eBullets, i);
       if (state !== 'wave') return;
     }
   }
@@ -3125,7 +3114,7 @@ function update(dt) {
           if (state !== 'wave') return;
         }
       }
-      drops.splice(i, 1);
+      SpirePerf.swapPop(drops, i);
     }
   }
 
@@ -3152,13 +3141,13 @@ function update(dt) {
   }
   sparks.length = sw;
 
-  for (let i = lightnings.length - 1; i >= 0; i--) { lightnings[i].t -= dt; if (lightnings[i].t <= 0) lightnings.splice(i, 1); }
-  for (let i = rings.length - 1; i >= 0; i--) { rings[i].t -= dt; if (rings[i].t <= 0) rings.splice(i, 1); }
-  for (let i = slashes.length - 1; i >= 0; i--) { slashes[i].t -= dt; if (slashes[i].t <= 0) slashes.splice(i, 1); }
-  for (let i = beams.length - 1; i >= 0; i--) { beams[i].t -= dt; if (beams[i].t <= 0) beams.splice(i, 1); }
+  for (let i = lightnings.length - 1; i >= 0; i--) { lightnings[i].t -= dt; if (lightnings[i].t <= 0) SpirePerf.swapPop(lightnings, i); }
+  for (let i = rings.length - 1; i >= 0; i--) { rings[i].t -= dt; if (rings[i].t <= 0) SpirePerf.swapPop(rings, i); }
+  for (let i = slashes.length - 1; i >= 0; i--) { slashes[i].t -= dt; if (slashes[i].t <= 0) SpirePerf.swapPop(slashes, i); }
+  for (let i = beams.length - 1; i >= 0; i--) { beams[i].t -= dt; if (beams[i].t <= 0) SpirePerf.swapPop(beams, i); }
   for (let i = shells.length - 1; i >= 0; i--) {
     const s = shells[i]; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 260 * dt; s.rot += 12 * dt; s.t -= dt;
-    if (s.t <= 0) shells.splice(i, 1);
+    if (s.t <= 0) SpirePerf.swapPop(shells, i);
   }
   let tw = 0;
   for (let i = 0; i < texts.length; i++) {
@@ -3211,11 +3200,12 @@ function update(dt) {
     if (tcEl) {
       const isUrgent = isDeathmatchHud || waveTime <= 5;
       const isWarn = !isUrgent && waveTime <= 10;
-      const timerState = isUrgent ? 'urgent' : (isWarn ? 'warn' : 'normal');
+      const timerState = (isDeathmatchHud ? 'overtime:' : '') + (isUrgent ? 'urgent' : (isWarn ? 'warn' : 'normal'));
       if (hudCache.timerState !== timerState) {
         hudCache.timerState = timerState;
         tcEl.classList.toggle('warn', isWarn);
         tcEl.classList.toggle('urgent', isUrgent);
+        tcEl.classList.toggle('is-overtime', !!isDeathmatchHud);
       }
     }
     setHudText('matText', `◇ ${player.mats}`);
@@ -3285,11 +3275,18 @@ function update(dt) {
     if (bossCnt > 0) {
       const b0 = aliveBosses[0];
       const b0Mythic = !!(b0.mythicPhase2 || (b0.d5LastStandT || 0) > 0);
+      SpirePerf.setBossBarVisible(true);
       if (bwEl) {
         if (bwEl.classList.contains('hidden')) bwEl.classList.remove('hidden');
-        bwEl.classList.toggle('mythic', anyMythicBoss);
+        if (hudCache.bossWrapMythic !== anyMythicBoss) {
+          hudCache.bossWrapMythic = anyMythicBoss;
+          bwEl.classList.toggle('mythic', anyMythicBoss);
+        }
       }
-      if (bprEl) bprEl.classList.toggle('mythic', b0Mythic);
+      if (bprEl && hudCache.bossPrimaryMythic !== b0Mythic) {
+        hudCache.bossPrimaryMythic = b0Mythic;
+        bprEl.classList.toggle('mythic', b0Mythic);
+      }
       if (bcsEl) {
         if (activeCastLabel) {
           if (bcsEl.classList.contains('hidden')) bcsEl.classList.remove('hidden');
@@ -3319,19 +3316,22 @@ function update(dt) {
         }
         while (rows.length < extraCnt) {
           const row = document.createElement('div');
-          row.className = 'boss-row boss-sub-row';
-          const nm = document.createElement('div');
+          row.className = 'boss-p5-row boss-sub-row';
+          const head = document.createElement('div');
+          head.className = 'boss-p5-head';
+          const nm = document.createElement('span');
           nm.className = 'boss-name';
+          const txt = document.createElement('span');
+          txt.className = 'boss-hp-text';
+          head.appendChild(nm);
+          head.appendChild(txt);
           const bar = document.createElement('div');
-          bar.className = 'bar bar-boss';
+          bar.className = 'boss-p5-track';
           const fill = document.createElement('div');
-          fill.className = 'bar-fill hp-fill';
+          fill.className = 'boss-p5-fill';
           fill.style.width = '100%';
-          const txt = document.createElement('div');
-          txt.className = 'bar-text boss-hp-text';
           bar.appendChild(fill);
-          bar.appendChild(txt);
-          row.appendChild(nm);
+          row.appendChild(head);
           row.appendChild(bar);
           bexEl.appendChild(row);
           rows.push({ row, nm, fill, txt, lastNm: '', lastW: '', lastTxt: '', lastMythic: false });
@@ -3364,16 +3364,23 @@ function update(dt) {
         }
       }
     } else if (!pendingBossSpawn) {
+      SpirePerf.setBossBarVisible(false);
       setHudWidth('bossFill', '0%');
       setHudText('bossHpText', '');
       if (bexEl && hudEls.extraBossRows && hudEls.extraBossRows.length > 0) {
         hudEls.extraBossRows.length = 0;
         bexEl.innerHTML = '';
       }
-      if (bprEl) bprEl.classList.remove('mythic');
+      if (bprEl && hudCache.bossPrimaryMythic) {
+        hudCache.bossPrimaryMythic = false;
+        bprEl.classList.remove('mythic');
+      }
       if (bcsEl && !bcsEl.classList.contains('hidden')) bcsEl.classList.add('hidden');
       if (bwEl) {
-        bwEl.classList.remove('mythic');
+        if (hudCache.bossWrapMythic) {
+          hudCache.bossWrapMythic = false;
+          bwEl.classList.remove('mythic');
+        }
         if (!bwEl.classList.contains('hidden')) bwEl.classList.add('hidden');
       }
     }

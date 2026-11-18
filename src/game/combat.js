@@ -505,7 +505,7 @@ function getEffectiveCritMult(baseMult = 1.95) {
   if (!player) return baseMult;
   const luckBonus = player.luckToCritDmg ? Math.min(0.30, Math.floor(Math.max(0, player.luck || 0) / 10) * 0.05) : 0;
   const overflowBonus = player.overflowCritConvert ? Math.max(0, getEffectiveCrit() - 1.0) * 1.6 : 0;
-  return baseMult + (player.critDmg || 0) + luckBonus + overflowBonus;
+  return baseMult + (player.critDmg || 0) + (getSetBonuses().critDmg || 0) + luckBonus + overflowBonus;
 }
 function getElemMul() { return 1 + (player ? player.elemBonus : 0) + getSetBonuses().elem; }
 function getTechMul() {
@@ -835,6 +835,10 @@ function triggerBossMythicPhase2(e) {
     e.bossTitle = String(e.bossTitle || '守誓者').replace(/ · 第一阶段$/, '') + ' · 第二阶段';
   } else if (e.variant === 'plague_empress') {
     e.bossTitle = '🍃 残羽魔女 · 青羽试炼影 · 第二阶段 · 千夜翠岚';
+  } else if (e.variant === 'mech_colossus') {
+    e.bossTitle = '⚙️ 倒悬机神 · 伽蓝重装态 · 第二阶段 · 裂胸巨锯魔神';
+  } else if (e.variant === 'crimson_lord') {
+    e.bossTitle = '👹 荒祠古祟 · 绯狱妖主 · 第二阶段 · 血月黑角夜叉王';
   } else if (!String(e.bossTitle || '').includes('神话')) {
     e.bossTitle = `⚡ ${e.bossTitle || '深渊首领'} · 神话二阶段`;
   }
@@ -873,9 +877,8 @@ function triggerBossMythicPhase2(e) {
     if (player) addText(player.x, player.y - 74, '◆ 蚀日浓雾降临 · 凭魂灯照明迎敌!', '#f6d379', 18, 2.5, true);
     announce('🌫️ D5 第 16 层终幕神罚 ·【蚀日浓雾】笼罩全场！二阶段全程迷雾封锁视野，留意提灯边缘首领方位！', '#f6d379', 4.4);
   }
-  const isQingyuP2 = e.variant === 'plague_empress';
-  const isStorySpecialSovereign = !endlessMode && (e.variant === 'plague_empress' || e.variant === 'mech_colossus');
-  const useFullCinematicP2 = storyPhase || isQingyuP2 || isStorySpecialSovereign;
+  const isFullSpecialCinematicP2 = e.variant === 'plague_empress' || e.variant === 'mech_colossus' || e.variant === 'crimson_lord';
+  const useFullCinematicP2 = storyPhase || isFullSpecialCinematicP2;
 
   if (useFullCinematicP2) {
     if (typeof startPhase2RuptureBeat === 'function') {
@@ -966,14 +969,23 @@ const PHASE2_SHATTER_CONFIGS = {
   mech_colossus: {
     variant: 'mech_colossus',
     name: '倒悬机神',
-    title: '熔核超载 · 裂胸双锯蒸汽巨像',
-    quote: '【主发条超载 200% —— 神枢炉心，全弹倾泻！】',
-    theme: '#f08c2b', themeSoft: 'rgba(240, 140, 43, 0.24)', themeGold: '#ffd470',
+    title: '歼灭神枢 · 裂胸巨锯魔神态',
+    quote: '【神枢限速锁全毁 · 熔核超载 300% —— 巨锯开膛，万炮归烬！】',
+    theme: '#ff5400', themeSoft: 'rgba(255, 84, 0, 0.26)', themeGold: '#ffd470',
     portPath: 'assets/spire/port_colossus_p2.jpg',
     shot3Path: 'assets/spire/v3/colossus-p2-awaken.jpg'
+  },
+  crimson_lord: {
+    variant: 'crimson_lord',
+    name: '荒祠古祟 · 绯狱妖主',
+    title: '破龛真身 · 血月黑角夜叉王',
+    quote: '「千载封龛已碎——荒祠血月之下，活物俱灭！」',
+    theme: '#e11d48', themeSoft: 'rgba(225, 29, 72, 0.26)', themeGold: '#ffd166',
+    portPath: 'assets/spire/port_crimson_lord_p2.jpg',
+    shot3Path: 'assets/spire/v3/crimson-p2-awaken.jpg'
   }
 };
-const _STORY_KEY_TO_VARIANT = { jinyu: 'butcher', astria: 'frost_queen', jialan: 'void_weaver', eclipse: 'solar_seraph', qingyu: 'plague_empress', colossus: 'mech_colossus' };
+const _STORY_KEY_TO_VARIANT = { jinyu: 'butcher', astria: 'frost_queen', jialan: 'void_weaver', eclipse: 'solar_seraph', qingyu: 'plague_empress', colossus: 'mech_colossus', crimson: 'crimson_lord', crimson_lord: 'crimson_lord' };
 let _p2ShardCanvas = null, _p2ShardCtx = null;
 
 function _ensureP2ShardCanvas() {
@@ -1169,8 +1181,6 @@ function startPhase2ShatterSequence(bossOrKey, modeHint) {
 
 function advancePhase2ShatterToArena() {
   if (!phase2ShatterFx || phase2ShatterFx.stage !== 'nameplate') return false;
-  const vw = typeof viewW === 'number' && viewW > 0 ? viewW : 1280;
-  const vh = typeof viewH === 'number' && viewH > 0 ? viewH : 720;
   const cfg = phase2ShatterFx.cfg;
   const b = phase2ShatterFx.boss;
   if (b) {
@@ -1184,17 +1194,15 @@ function advancePhase2ShatterToArena() {
       addBurst(b.x, b.y, cfg.theme, 16, 230);
     }
   }
-  _bakeP2ShardSource(cfg, true);
+  // 直接平滑切回实机二阶段战场，不再触发第三次全屏碎镜与强闪白
   phase2ShatterFx.stage = 'arena_shatter';
   phase2ShatterFx.t = 0;
-  phase2ShatterFx.fxShake = 32;
-  phase2ShatterFx.flashT = 0.10;
-  phase2ShatterFx.shards = _buildP2ShardArray(vw, vh);
-  phase2ShatterFx.buf = _p2ShardCanvas;
-  if (typeof shake === 'number') shake = Math.max(shake, 38);
+  phase2ShatterFx.fxShake = 0;
+  phase2ShatterFx.flashT = 0;
+  phase2ShatterFx.shards = [];
+  phase2ShatterFx.buf = null;
   if (typeof beep === 'function') {
-    beep(152, 0.26, 'sawtooth', 0.088);
-    beep(340, 0.14, 'triangle', 0.06);
+    beep(340, 0.10, 'triangle', 0.045);
   }
   return true;
 }
@@ -1922,8 +1930,8 @@ function awardEnemyRewards(e) {
     if (e.variant === 'crimson_lord') {
       player.hp = player.maxHp;
       grantBossCrateDirect({ isMythic: false, x: e.x, y: e.y });
-      addText(e.x, e.y - e.r - 22, '◆ 鲜血赐福：满血恢复 + 首领秘宝已入袋！', '#ff4d6d', 18, 2.5);
-      announce('◆ 击败猩红血主！已恢复满生命并直接获得【首领秘宝箱】（结算开启）', '#ff758f', 3.8);
+      addText(e.x, e.y - e.r - 22, '◆ 荒祠赐福：满血恢复 + 首领秘宝已入袋！', '#ff4d6d', 18, 2.5);
+      announce('◆ 击败荒祠古祟·绯狱妖主！已恢复满生命并直接获得【首领秘宝箱】（结算开启）', '#ff758f', 3.8);
     } else if (e.variant === 'golden_golem') {
       grantBossCrateDirect({ isMythic: false, x: e.x, y: e.y });
       addText(e.x, e.y - e.r - 22, '◆ 黄金秘宝：巨量晶石 + 首领秘宝已入袋！', '#ffd166', 18, 2.5);

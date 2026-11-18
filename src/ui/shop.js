@@ -227,6 +227,236 @@ function _itmEmblem(itemObj, fallbackTier = 1) {
   return (itemObj && itemObj.icon) || '✨';
 }
 
+function _wpnDispName(wOrId, tierArg, evoArg) {
+  if (wOrId && typeof wOrId === 'object') {
+    const tpl = WEAPONS[wOrId.id];
+    if (wOrId.tier >= 5 && wOrId.evoName) return wOrId.evoName;
+    if (wOrId.tier >= 5 && wOrId.evo && tpl && Array.isArray(tpl.evos)) {
+      const hit = tpl.evos.find(e => e.id === wOrId.evo);
+      if (hit) return hit.name;
+    }
+    return tpl ? tpl.name : (wOrId.id || '');
+  }
+  const tpl = WEAPONS[wOrId];
+  if (!tpl) return String(wOrId || '');
+  const t = Number(tierArg) || 1;
+  if (t >= 5 && evoArg && Array.isArray(tpl.evos)) {
+    const hit = tpl.evos.find(e => e.id === evoArg);
+    if (hit) return hit.name;
+  }
+  return tpl.name;
+}
+
+function _rarityPill(tier, extraCls = '') {
+  if (typeof renderRarityPillHtml === 'function') {
+    return renderRarityPillHtml(tier, extraCls);
+  }
+  const t = Math.max(1, Math.min(5, Number(tier) || 1));
+  return `<span class="t-rarity-pill tp-${t}${extraCls ? ' ' + extraCls : ''}">${TIER_NAMES[t] || ('阶' + t)}</span>`;
+}
+
+function _syncChoiceStandee(standeeId, subtitleTxt, vistaId = '', matId = '') {
+  if (typeof document === 'undefined') return;
+  const hudEl = document.getElementById('hud');
+  if (hudEl && state !== 'wave') hudEl.classList.add('hidden');
+  const clsId = (player && player.cls) || 'allrounder';
+  const clsObj = (typeof CLASSES !== 'undefined' && Array.isArray(CLASSES)) ? CLASSES.find(c => c.id === clsId) : null;
+  const heroName = clsObj ? clsObj.name : '零 · 提灯人';
+  if (vistaId) {
+    const vEl = document.getElementById(vistaId);
+    if (vEl && vEl.style) {
+      const sceneUrl = typeof getHeroMasterSceneUrl === 'function'
+        ? getHeroMasterSceneUrl(clsId)
+        : ((typeof curScene !== 'undefined' && curScene && curScene.vistaImg) ? curScene.vistaImg : 'assets/spire/scene_1_vista.jpg');
+      vEl.style.backgroundImage = `url('${sceneUrl}')`;
+    }
+  }
+  if (matId) {
+    const mEl = document.getElementById(matId);
+    if (mEl) mEl.textContent = `◇ ${player ? (player.mats || 0) : 0}`;
+  }
+  const el = document.getElementById(standeeId);
+  if (!el) return;
+  if (el.style) el.style.backgroundImage = '';
+  const bustUrl = typeof getHeroUiBustUrl === 'function' ? getHeroUiBustUrl(clsId) : '';
+  el.innerHTML = `
+    <div class="dhs-frame">
+      ${bustUrl ? `<img src="${bustUrl}" alt="${heroName}" class="dhs-bust-img" decoding="async">` : ''}
+      <div class="dss-quote">
+        <b>${heroName}</b>
+        <span>${subtitleTxt || ''}</span>
+      </div>
+    </div>`;
+}
+
+let shopHubTab = 'shop';
+let ovRelicCols = 2;
+
+function setShopHubTab(tab) {
+  shopHubTab = tab === 'overview' ? 'overview' : 'shop';
+  beep(495, 0.035, 'triangle', 0.03);
+  if (state === 'shop') renderShop();
+}
+
+function setOverviewRelicCols(cols) {
+  ovRelicCols = cols === 1 ? 1 : 2;
+  beep(470, 0.03, 'triangle', 0.025);
+  const g = typeof document !== 'undefined' ? document.getElementById('ovRelicGrid') : null;
+  if (g && g.classList) {
+    g.classList.toggle('cols-2', ovRelicCols === 2);
+    g.classList.toggle('cols-1', ovRelicCols === 1);
+  }
+  const b2 = typeof document !== 'undefined' ? document.getElementById('ovColBtn2') : null;
+  const b1 = typeof document !== 'undefined' ? document.getElementById('ovColBtn1') : null;
+  if (b2 && b2.classList) b2.classList.toggle('on', ovRelicCols === 2);
+  if (b1 && b1.classList) b1.classList.toggle('on', ovRelicCols === 1);
+}
+
+function countMergeableWeaponPairs() {
+  if (!player || !Array.isArray(player.weapons)) return 0;
+  const map = {};
+  for (let i = 0; i < player.weapons.length; i++) {
+    const w = player.weapons[i];
+    if (!w || w.tier >= 5) continue;
+    const k = `${w.id}_${w.tier}`;
+    map[k] = (map[k] || 0) + 1;
+  }
+  let pairs = 0;
+  for (const k of Object.keys(map)) pairs += Math.floor(map[k] / 2);
+  return pairs;
+}
+
+function quickMergeAllWeapons() {
+  if (!player || !Array.isArray(player.weapons)) return 0;
+  if (typeof closeWeaponSlotModal === 'function') closeWeaponSlotModal(true);
+  let mergedCount = 0;
+  let guard = 0;
+  while (guard++ < 24) {
+    let didOne = false;
+    for (let i = 0; i < player.weapons.length; i++) {
+      const w = player.weapons[i];
+      if (!w || w.tier >= 5) continue;
+      const j = player.weapons.findIndex((x, idx) => idx > i && x && x.id === w.id && x.tier === w.tier);
+      if (j !== -1) {
+        w.tier++;
+        player.weapons.splice(j, 1);
+        mergedCount++;
+        didOne = true;
+        break;
+      }
+    }
+    if (!didOne) break;
+  }
+  if (mergedCount > 0) {
+    player._sbCache = null;
+    syncSetHp();
+    beep(820, 0.12, 'triangle', 0.07);
+    logInfo('SHOP', `一键共鸣合阶完成 ×${mergedCount} 次`);
+    if (state === 'shop') renderShop();
+    checkPendingWeaponEvolutions();
+  }
+  return mergedCount;
+}
+
+const _SET_MODAL_TIERS = {
+  primitive: { icon: '🌿', fx: ['最大生命 +8', '最大生命 +18', '最大生命 +30'] },
+  precise:   { icon: '🎯', fx: ['暴击率 +6%', '暴击率 +12%', '暴击率 +20%'] },
+  gun:       { icon: '🔫', fx: ['攻击范围 +45 · 攻速 +8%', '攻击范围 +95 · 攻速 +16%', '攻击范围 +155 · 攻速 +25%'] },
+  heavy:     { icon: '🛡️', fx: ['护甲 +2 · 爆破范围 +20%', '护甲 +5 · 爆破范围 +20%', '护甲 +8 · 爆破范围 +20%'] },
+  elemental: { icon: '🔥', fx: ['元素与反应伤害 +18%', '元素与反应伤害 +38%', '元素与反应伤害 +62%'] },
+  tech:      { icon: '⚙️', fx: ['工程伤害 +25% · 建筑攻速 +8%', '工程伤害 +52% · 建筑攻速 +16%', '工程伤害 +85% · 建筑攻速 +25%'] }
+};
+function openShopSynergyModal(setKey) {
+  const def = SET_DEFS && SET_DEFS[setKey];
+  const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
+  const card = typeof document !== 'undefined' ? document.getElementById('weaponActionCard') : null;
+  if (!def || !modal || !card) return false;
+  selectedWeaponSlotIdx = -1;
+  beep(500, 0.035, 'triangle', 0.03);
+  const sb = getSetBonuses();
+  const curCnt = (sb && sb.counts && sb.counts[setKey]) || 0;
+  const meta = _SET_MODAL_TIERS[setKey] || { icon: '✦', fx: [] };
+  const steps = Array.isArray(def.steps) ? def.steps : [];
+  const tierRows = steps.map((need, idx) => {
+    const unlocked = curCnt >= need;
+    const fxTxt = meta.fx[idx] || def.desc;
+    return `<div style="padding:8px 11px;border:1px solid ${unlocked ? '#f2ede6' : 'rgba(242,237,230,0.22)'};background:${unlocked ? 'linear-gradient(92deg,rgba(140,25,43,0.78),rgba(54,10,18,0.88))' : 'rgba(255,255,255,0.04)'};display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px">
+      <b>${unlocked ? '★ 已激活' : '◇ 需凑齐'} (${need} 把)</b>
+      <span style="color:${unlocked ? '#ffe3aa' : '#cfd5e4'}">${fxTxt}</span>
+    </div>`;
+  }).join('');
+  const memberNames = Object.entries(WEAPONS)
+    .filter(([, w]) => w.set === setKey)
+    .map(([, w]) => w.name)
+    .join(' · ');
+  card.className = 'wpn-action-card t3';
+  card.innerHTML = `
+    <div class="wpn-act-head">
+      <div class="item-emblem t3">${meta.icon || '✦'}</div>
+      <div class="card-meta" style="flex:1;min-width:0">
+        <div class="p5-title-group">
+          <div class="wpn-act-title">${def.label} · 套装羁绊详情</div>
+        </div>
+        <div class="card-badges">
+          <span class="tag tag-owned">当前随身 ${curCnt} 把</span>
+          <span class="tag">激活阶梯 ${def.steps.join(' / ')}</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin:6px 0">${tierRows}</div>
+    <div class="wpn-act-set-line">✦ 所属兵装：${memberNames}</div>
+    <div class="wpn-act-btns">
+      <div class="wpn-act-btns-row">
+        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal()">明了</button>
+      </div>
+    </div>`;
+  modal.classList.remove('hidden');
+  return true;
+}
+
+function openShopRelicModal(itemId) {
+  const it = ITEMS.find(x => x && x.id === itemId);
+  const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
+  const card = typeof document !== 'undefined' ? document.getElementById('weaponActionCard') : null;
+  if (!it || !modal || !card) return false;
+  selectedWeaponSlotIdx = -1;
+  beep(505, 0.035, 'triangle', 0.03);
+  const ownedCnt = (player && player.items && player.items[it.id]) || 0;
+  card.className = `wpn-action-card t${it.tier}`;
+  card.innerHTML = `
+    <div class="wpn-act-head">
+      <div class="item-emblem t${it.tier}">${_itmEmblem(it, it.tier)}</div>
+      <div class="card-meta" style="flex:1;min-width:0">
+        <div class="p5-title-group">
+          <div class="wpn-act-title">${it.name}</div>
+          ${_rarityPill(it.tier)}
+        </div>
+        <div class="card-badges">
+          <span class="tag tag-owned">当前持有 ×${ownedCnt}</span>
+          ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(it) : ''}
+          ${it.maxCount ? `<span class="tag">${it.maxCount === 1 ? '唯一遗物' : '上限 ×' + it.maxCount}</span>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="wpn-act-desc">${it.desc}</div>
+    <div class="wpn-act-set-line">💎 商店基准价值：◇${it.cost}</div>
+    <div class="wpn-act-btns">
+      <div class="wpn-act-btns-row">
+        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal()">关闭</button>
+      </div>
+    </div>`;
+  modal.classList.remove('hidden');
+  return true;
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.setShopHubTab = setShopHubTab;
+  globalThis.setOverviewRelicCols = setOverviewRelicCols;
+  globalThis.quickMergeAllWeapons = quickMergeAllWeapons;
+  globalThis.openShopSynergyModal = openShopSynergyModal;
+  globalThis.openShopRelicModal = openShopRelicModal;
+}
+
 function getPendingEvoWeapon() {
   if (!player || !Array.isArray(player.weapons)) return null;
   for (let i = 0; i < player.weapons.length; i++) {
@@ -276,45 +506,52 @@ function checkPendingWeaponEvolutions(onAllResolved) {
   }
 
   const tpl = WEAPONS[targetW.id];
+  const preEvoName = _wpnDispName(targetW.id, 4);
+  _syncChoiceStandee('evoHeroStandee', 'MYTHIC AWAKENING · 五阶神话二选一觉醒', 'evoVistaBg', 'evoMat');
   const titleEl = document.getElementById('evoTitle');
   const subEl = document.getElementById('evoSub');
   const box = document.getElementById('evoChoices');
-  if (titleEl) titleEl.textContent = `【${tpl.name}】晋升五阶神话 · 二选一终极进化`;
+  if (titleEl) titleEl.textContent = `${preEvoName} · 五阶神话二选一`;
   if (subEl) subEl.textContent = tpl.melee
     ? '择定唯一神话觉醒方向，永久重塑兵装圣徽并额外觉醒 20% 概率斩碎敌弹！'
     : '择定唯一神话觉醒方向，永久重塑兵装圣徽外观与专属战斗机制';
+  _selectedEvoIdx = 0;
+  _evoPickHandlers = [];
   if (box) {
     box.innerHTML = '';
-    const sLabel = SET_DEFS[tpl.set] ? SET_DEFS[tpl.set].label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '') : '';
-    tpl.evos.slice(0, 2).forEach((opt, idx) => {
-      const card = document.createElement('div');
-      card.className = 'card t5 evo-choice-card';
-      card.style.borderColor = opt.color || '#ff5c8a';
-      if (card.style && typeof card.style.setProperty === 'function') {
-        card.style.setProperty('--evo-accent', opt.color || '#ff5c8a');
+    const sLabel = SET_DEFS[tpl.set] ? SET_DEFS[tpl.set].label : '';
+    const evoOpts = tpl.evos.slice(0, 2);
+    const syncEvoSel = nextIdx => {
+      _selectedEvoIdx = Math.max(0, Math.min(evoOpts.length - 1, nextIdx));
+      Array.from(box.children).forEach((ch, ci) => ch.classList.toggle('is-sel', ci === _selectedEvoIdx));
+      const cfm = document.getElementById('evoConfirmMainBtn');
+      if (cfm && evoOpts[_selectedEvoIdx]) {
+        cfm.textContent = `◆ 觉醒「${evoOpts[_selectedEvoIdx].name}」 →`;
       }
+    };
+    evoOpts.forEach((opt, idx) => {
+      const card = document.createElement('div');
+      card.className = 'p5-row t5 evo-choice-card' + (idx === 0 ? ' is-sel' : '');
       const artHtml = _wpnEmblem(targetW.id, 5, opt.id, tpl.icon);
       card.innerHTML = `
-        <div class="evo-branch-ribbon">BRANCH ${idx === 0 ? 'I' : 'II'} · 二选一神话分支</div>
-        <div class="evo-art-stage">
-          <div class="item-emblem t5 evo-emblem" style="border-color:${opt.color || '#ff5c8a'}">${artHtml}</div>
-          <div class="evo-meta">
-            <div class="evo-name" style="color:${opt.color || '#ffd6e5'}">${opt.name}</div>
-            <div class="card-badges">
-              <span class="tag t5">${opt.tag || '神话进化'}</span>
-              ${typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(tpl, targetW.id) : ''}
-              ${sLabel ? `<span class="tag">${sLabel}</span>` : ''}
+        <div class="p5-ico-edge"><div class="p5-ico-inner">${artHtml}</div></div>
+        <div class="p5-notch" aria-hidden="true"></div>
+        <div class="p5-bar-edge">
+          <div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <div class="p5-title-group">
+                <span class="p5-bar-title" style="color:${opt.color || '#ffd6e5'}" title="${opt.name}">★ ${opt.name}</span>
+                ${_rarityPill(5)}
+              </div>
+              <div class="sr-contract-hidden"><button type="button" class="evo-pick-btn">觉醒</button></div>
             </div>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="card-desc evo-desc">${opt.desc}</div>
-          <div class="card-actions">
-            <button type="button" class="btn btn-go evo-pick-btn">◆ 觉醒「${opt.name}」</button>
+            <div class="p5-bar-cat">${opt.desc}</div>
+            <div class="p5-bar-foot">
+              <span class="bar-prog-badge ready">★ ${sLabel ? sLabel + ' · ' : ''}神话分支 ${idx === 0 ? 'I' : 'II'} · ${opt.tag || '终极质变'}</span>
+            </div>
           </div>
         </div>`;
       const pick = () => {
-        // 已销毁的卡片与双击均不能修改新一局或覆盖已经选定的分支。
         if (serial !== _evoUiSerial || player !== owner || wave !== ownerWave ||
             targetW !== getPendingEvoWeapon()) return;
         applyWeaponEvolution(targetW, idx);
@@ -322,11 +559,17 @@ function checkPendingWeaponEvolutions(onAllResolved) {
         if (state === 'shop') renderShop();
         checkPendingWeaponEvolutions();
       };
+      _evoPickHandlers[idx] = pick;
       const btn = card.querySelector('.evo-pick-btn');
       if (btn) btn.onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); pick(); };
-      if (uiMode !== 'desktop') card.onclick = pick;
+      card.onclick = () => {
+        if (_selectedEvoIdx === idx) { pick(); return; }
+        beep(520, 0.035, 'triangle', 0.03);
+        syncEvoSel(idx);
+      };
       box.appendChild(card);
     });
+    syncEvoSel(0);
   }
   modal.classList.remove('hidden');
   modal.scrollTop = 0;
@@ -960,65 +1203,91 @@ function showCrateMenu() {
     advancePostWave();
   };
 
+  _syncChoiceStandee('crateHeroStandee', 'RELIC RELIQUARY · 主宰秘匣抉择', 'crateVistaBg', 'crateMat');
   const box = document.getElementById('crateBox');
   box.innerHTML = '';
   box.classList.toggle('single', choices.length <= 1);
+  _selectedCrateIdx = 0;
+  _crateTakeHandlers = [];
+  _crateRecycleHandlers = [];
+  _crateRecycleVals = [];
+  const setB = getSetBonuses();
 
-  choices.forEach(c => {
+  const syncCrateSel = nextIdx => {
+    _selectedCrateIdx = Math.max(0, Math.min(choices.length - 1, nextIdx));
+    Array.from(box.children).forEach((ch, ci) => ch.classList.toggle('is-sel', ci === _selectedCrateIdx));
+    const meltBtn = document.getElementById('crateMeltBtn');
+    if (meltBtn) {
+      const rv = _crateRecycleVals[_selectedCrateIdx] || 0;
+      meltBtn.textContent = `♻️ 熔炼折现 +◇${rv}`;
+    }
+  };
+
+  choices.forEach((c, idx) => {
     const el = document.createElement('div');
-    el.className = `card t${c.tier}`;
-    let icon = '🏮', title = '', badgesHtml = '', descHtml = '';
-    if (isMythicCrate) badgesHtml += `<span class="tag t4">神骸二阶段</span>`;
-    else if (isSurvivalGoldCrate) badgesHtml += `<span class="tag t4">蚀界无瑕秘宝</span>`;
-    else if (isSurvivalCrate) badgesHtml += `<span class="tag t3">蚀界渡劫秘宝</span>`;
-    else if (isBossCrate) badgesHtml += `<span class="tag tag-merge">主宰秘宝</span>`;
+    el.className = `p5-row t${c.tier}${idx === 0 ? ' is-sel' : ''}`;
+    let icon = '🏮', title = '', descTxt = '', footBadgeTxt = '', footReady = false, onFootClick = '';
 
     if (c.kind === 'item') {
       const it = c.item;
       const ownedCnt = (player.items && player.items[it.id]) || 0;
       icon = _itmEmblem(it, it.tier);
       title = it.name;
-      badgesHtml += `<span class="tag t${it.tier}">${TIER_NAMES[it.tier]}遗物</span>`;
-      if (typeof renderRelicScopeBadgesHtml === 'function') badgesHtml += renderRelicScopeBadgesHtml(it);
-      if (it.maxCount) badgesHtml += `<span class="tag">${it.maxCount === 1 ? '唯一' : '上限×' + it.maxCount}</span>`;
-      if (ownedCnt > 0) badgesHtml += `<span class="tag tag-owned">已持有 ×${ownedCnt}</span>`;
-      descHtml = `<div class="card-desc">${it.desc}</div>`;
+      descTxt = it.desc;
+      footBadgeTxt = ownedCnt > 0 ? `🏺 ${TIER_NAMES[it.tier]}圣遗物 · 已持有 ×${ownedCnt}` : `🏺 ${TIER_NAMES[it.tier]}圣遗物 · 点此查阅词条`;
+      footReady = it.tier >= 3;
+      onFootClick = `event.stopPropagation();openShopRelicModal('${it.id}')`;
     } else if (c.kind === 'weapon') {
       const tpl = c.tpl;
-      const setLabel = ((SET_DEFS[tpl.set] && SET_DEFS[tpl.set].label) || '').replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '');
+      const sDef = SET_DEFS[tpl.set];
+      const setLabel = (sDef && sDef.label) || '随身兵装';
+      const curCnt = (setB && setB.counts && tpl.set) ? (setB.counts[tpl.set] || 0) : 0;
+      const nextStep = sDef ? (sDef.steps.find(s => s > curCnt) || sDef.steps[2]) : 2;
+      const willHit = sDef && (curCnt + 1 === nextStep) && curCnt < nextStep;
       icon = _wpnEmblem(c.id, c.tier, '', tpl.icon);
-      title = `${tpl.name} · 阶${c.tier}`;
-      badgesHtml += `<span class="tag t${c.tier}">${TIER_NAMES[c.tier]}兵装</span>`;
-      if (typeof renderWeaponScalingBadgesHtml === 'function') badgesHtml += renderWeaponScalingBadgesHtml(tpl, c.id);
-      else if (tpl.isStaff) badgesHtml += `<span class="tag">🪄法杖秘术</span>`;
-      if (setLabel) badgesHtml += `<span class="tag">${setLabel}</span>`;
-      if (c.canMergeNow) badgesHtml += c.tier === 4 ? `<span class="tag t5">可觉醒5阶神话</span>` : `<span class="tag tag-merge">可共鸣升阶</span>`;
-      descHtml = `<div class="card-desc">${tpl.desc}</div>`;
+      title = _wpnDispName(c.id, c.tier);
+      descTxt = tpl.desc;
+      footReady = !!(c.canMergeNow || willHit);
+      footBadgeTxt = c.canMergeNow
+        ? `⚔️ 兵装 · ${setLabel} (${curCnt}/${nextStep}) · ${c.tier === 4 ? '拾取觉醒5阶神话!' : '可直接共鸣升阶!'}`
+        : `⚔️ 兵装 · ${setLabel} (${curCnt}/${nextStep})${willHit ? ' ➔ 凑齐激活!' : ''}`;
+      onFootClick = tpl.set ? `event.stopPropagation();openShopSynergyModal('${tpl.set}')` : '';
     } else if (c.kind === 'supply') {
       const sup = c.supply;
       icon = _itmEmblem(sup, c.tier);
       title = sup.name;
-      badgesHtml += `<span class="tag t${c.tier}">魂灯秘髓</span>`;
-      descHtml = `<div class="card-desc">${sup.desc}</div>`;
+      descTxt = sup.desc;
+      footBadgeTxt = '✨ 魂灯秘髓补给 · 即刻生效';
+      footReady = true;
     }
+    _crateRecycleVals[idx] = c.recycleVal || 0;
 
     el.innerHTML = `
-      <div class="card-head" style="padding-right:0">
-        <div class="item-emblem t${c.tier}">${icon}</div>
-        <div class="card-meta">
-          <div class="card-title">${title}</div>
-          <div class="card-badges">${badgesHtml}</div>
-        </div>
-      </div>
-      <div class="card-body">
-        ${descHtml}
-        <div class="crate-btns">
-          <button class="btn take-btn" style="justify-content:center">◆ 收归行囊</button>
-          <button class="btn btn-sec recycle-btn" style="justify-content:center">熔炼 (+◇${c.recycleVal})</button>
+      <div class="p5-ico-edge"><div class="p5-ico-inner">${icon}</div></div>
+      <div class="p5-notch" aria-hidden="true"></div>
+      <div class="p5-bar-edge">
+        <div class="p5-bar-fill">
+          <div class="p5-bar-top">
+            <div class="p5-title-group">
+              <span class="p5-bar-title" title="${title}">${title}</span>
+              ${_rarityPill(c.tier)}
+            </div>
+            <div class="p5-bar-right">
+              ${c.kind === 'item' ? `<button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopRelicModal('${c.item.id}')">详情</button>` : (c.kind === 'weapon' && c.tpl && c.tpl.set ? `<button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopSynergyModal('${c.tpl.set}')">羁绊</button>` : '')}
+              <span class="sr-contract-hidden">
+                <button type="button" class="take-btn">收归</button>
+                <button type="button" class="recycle-btn">熔炼</button>
+              </span>
+            </div>
+          </div>
+          <div class="p5-bar-cat">${descTxt}</div>
+          <div class="p5-bar-foot">
+            <span class="bar-prog-badge${footReady ? ' ready' : ''}" ${onFootClick ? `onclick="${onFootClick}"` : ''}>${footBadgeTxt}</span>
+          </div>
         </div>
       </div>`;
 
-    el.querySelector('.take-btn').onclick = () => {
+    const doTake = () => {
       if (c.kind === 'item') {
         player.items[c.item.id] = (player.items[c.item.id] || 0) + 1;
         c.item.apply(player);
@@ -1038,7 +1307,7 @@ function showCrateMenu() {
           if (player) player._sbCache = null;
         }
         addOrMergeWeapon(c.id, c.tier);
-        logInfo('CRATE', `收下空投武器 ${c.tpl.name} Lv.${c.tier}`);
+        logInfo('CRATE', `收下空投武器 ${_wpnDispName(c.id, c.tier)} Lv.${c.tier}`);
       } else if (c.kind === 'supply') {
         c.supply.apply(player, wave);
         logInfo('CRATE', `激活战术补给 ${c.supply.name}`);
@@ -1047,15 +1316,29 @@ function showCrateMenu() {
       beep(660, 0.09, 'triangle');
       consumeCrate();
     };
-    el.querySelector('.recycle-btn').onclick = () => {
+    const doRecycle = () => {
       player.mats += c.recycleVal;
       beep(480, 0.07, 'sine');
       logInfo('CRATE', `熔炼补给 ${title} (+${c.recycleVal}💎)`);
       consumeCrate();
     };
+    _crateTakeHandlers[idx] = doTake;
+    _crateRecycleHandlers[idx] = doRecycle;
+    el.querySelector('.take-btn').onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); doTake(); };
+    el.querySelector('.recycle-btn').onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); doRecycle(); };
+    el.onclick = () => {
+      if (_selectedCrateIdx === idx) { doTake(); return; }
+      beep(510, 0.035, 'triangle', 0.03);
+      syncCrateSel(idx);
+    };
     box.appendChild(el);
   });
+  syncCrateSel(0);
 }
+
+let _selectedEvoIdx = 0, _evoPickHandlers = [];
+let _selectedCrateIdx = 0, _crateTakeHandlers = [], _crateRecycleHandlers = [], _crateRecycleVals = [];
+let _selectedLvlIdx = 0, _lvlPickHandlers = [], _lvlRerollCount = 0;
 
 function rollLevelUpCardTier(lv, luck = 0) {
   const luckF = Math.min(1, Math.max(0, luck || 0) / 95);
@@ -1073,66 +1356,98 @@ function rollLevelUpCardTier(lv, luck = 0) {
   return u < Math.min(0.58, 0.45 + luckF * 0.12) ? 3 : 2;
 }
 
-function showLevelUp() {
-  state = 'levelup';
-  const lm = document.getElementById('levelMenu');
-  lm.classList.remove('hidden');
-  lm.scrollTop = 0;
-  document.getElementById('lvlTitle').textContent = `魂灯共鸣 · 择定记忆刻印（余 ${pendingLevels} 次）`;
+function confirmSelectedEvolution() {
+  const fn = _evoPickHandlers[_selectedEvoIdx] || _evoPickHandlers[0];
+  if (typeof fn === 'function') fn();
+}
+function takeSelectedCrateChoice() {
+  const fn = _crateTakeHandlers[_selectedCrateIdx] || _crateTakeHandlers[0];
+  if (typeof fn === 'function') fn();
+}
+function recycleSelectedCrateChoice() {
+  const fn = _crateRecycleHandlers[_selectedCrateIdx] || _crateRecycleHandlers[0];
+  if (typeof fn === 'function') fn();
+}
+function _calcLvlRerollCost() {
+  if (!player) return 6;
+  if (typeof freeRerollsLeft !== 'undefined' && freeRerollsLeft > 0) return 0;
+  const rerollIdx = Math.max(_lvlRerollCount, player._lvlRerollsThisWave || 0);
+  const base = Math.max(4, Math.round(3 + wave * 1.1 + rerollIdx * 3));
+  return calcDiscountedShopCost(base, 2);
+}
+function confirmSelectedLevelUp() {
+  const fn = _lvlPickHandlers[_selectedLvlIdx] || _lvlPickHandlers[0];
+  if (typeof fn === 'function') fn();
+}
+function rerollLevelUpChoices() {
+  if (state !== 'levelup' || !player) return;
+  const cost = _calcLvlRerollCost();
+  if (cost > 0 && player.mats < cost) {
+    beep(220, 0.06, 'sawtooth', 0.04);
+    return;
+  }
+  if (cost === 0 && typeof freeRerollsLeft !== 'undefined' && freeRerollsLeft > 0) {
+    freeRerollsLeft--;
+  } else if (cost > 0) {
+    player.mats -= cost;
+    _lvlRerollCount++;
+    player._lvlRerollsThisWave = (player._lvlRerollsThisWave || 0) + 1;
+  }
+  beep(460, 0.05, 'triangle', 0.04);
+  _renderLevelUpPool();
+}
+
+function _renderLevelUpPool() {
+  _syncChoiceStandee('lvlHeroStandee', `SOUL RESONANCE · Lv.${player ? player.lv : 1} 魂灯晋升共鸣`, 'lvlVistaBg', 'lvlMat');
+  const topLbl = document.getElementById('lvlTopLabel');
+  if (topLbl) topLbl.textContent = `✦ 魂灯晋升 · Lv.${player ? player.lv : 1}`;
+  const titleEl = document.getElementById('lvlTitle');
+  if (titleEl) {
+    titleEl.textContent = pendingLevels > 1 ? `择一铭刻共鸣（余 ${pendingLevels} 次）` : '择一铭刻共鸣';
+  }
+  const rBtn = document.getElementById('lvlRerollBtn');
+  if (rBtn && player) {
+    const rCost = _calcLvlRerollCost();
+    rBtn.textContent = rCost === 0 ? `↻ 免费重铸 (${freeRerollsLeft})` : `↻ 重铸刻印 · ◇${rCost}`;
+    rBtn.disabled = rCost > 0 && player.mats < rCost;
+    rBtn.onclick = rerollLevelUpChoices;
+  }
   const box = document.getElementById('lvlCards');
-  let rerollBar = document.getElementById('lvlRerollBar');
-  if (!rerollBar && lm && typeof lm.appendChild === 'function') {
-    rerollBar = document.createElement('div');
-    rerollBar.id = 'lvlRerollBar';
-    rerollBar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:12px;margin:2px 0 10px;';
-    if (box && box.parentNode && typeof box.parentNode.insertBefore === 'function') {
-      box.parentNode.insertBefore(rerollBar, box);
-    } else {
-      lm.appendChild(rerollBar);
-    }
-  }
-  if (rerollBar && player) {
-    const rerollIdx = player._lvlRerollsThisWave || 0;
-    const lvlRerollCost = calcDiscountedShopCost(3 + Math.round(wave * 1.1) + rerollIdx * 3, 2);
-    const canAfford = (player.mats || 0) >= lvlRerollCost;
-    rerollBar.innerHTML = `
-      <span style="font-size:13px;color:#fde68a;font-weight:700">💎 持有晶石 ${player.mats || 0}</span>
-      <button id="lvlRerollBtn" class="btn small" ${canAfford ? '' : 'disabled'} style="min-width:136px;justify-content:center;opacity:${canAfford ? '1' : '0.52'}">🎲 重铸刻印 (-${lvlRerollCost}💎)</button>`;
-    const rBtn = rerollBar.querySelector('#lvlRerollBtn');
-    if (rBtn) {
-      rBtn.onclick = e => {
-        if (e && e.stopPropagation) e.stopPropagation();
-        if ((player.mats || 0) < lvlRerollCost) return;
-        player.mats -= lvlRerollCost;
-        player._lvlRerollsThisWave = (player._lvlRerollsThisWave || 0) + 1;
-        beep(520, 0.06, 'sine');
-        showLevelUp();
-      };
-    }
-  }
   const lvNow = (player && player.lv) || 1;
   const luckNow = (player && player.luck) || 0;
   const pool = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 4);
   box.innerHTML = '';
-  pool.forEach(u => {
+  _selectedLvlIdx = 0;
+  _lvlPickHandlers = [];
+  const syncLvlSel = nextIdx => {
+    _selectedLvlIdx = Math.max(0, Math.min(pool.length - 1, nextIdx));
+    Array.from(box.children).forEach((ch, ci) => ch.classList.toggle('is-sel', ci === _selectedLvlIdx));
+  };
+  pool.forEach((u, idx) => {
     const cTier = rollLevelUpCardTier(lvNow, luckNow);
     const tierMul = cTier === 1 ? 0.78 : (cTier === 3 ? 1.35 : 1.00);
-    const tierCls = `t${cTier}`;
     const tierLabel = cTier === 1 ? '微光刻印' : (cTier === 3 ? '高阶刻印' : '记忆刻印');
     const descTxt = typeof u.tierDesc === 'function' ? u.tierDesc(tierMul) : u.desc;
     const el = document.createElement('div');
-    el.className = `card ${tierCls}`;
+    el.className = `p5-row t${cTier}${idx === 0 ? ' is-sel' : ''}`;
+    const plainScope = (u.scopeLabel || '').trim();
+    const footTxt = `${tierLabel} · ${plainScope || '✦ 魂灯全局共鸣刻印'}`;
     el.innerHTML = `
-      <div class="card-head" style="padding-right:0">
-        <div class="item-emblem ${tierCls}">${u.icon}</div>
-        <div class="card-meta">
-          <div class="card-title">${u.name}</div>
-          <div class="card-badges"><span class="tag ${tierCls}">${tierLabel}</span>${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(u) : ''}</div>
+      <div class="p5-ico-edge"><div class="p5-ico-inner">${u.icon}</div></div>
+      <div class="p5-notch" aria-hidden="true"></div>
+      <div class="p5-bar-edge">
+        <div class="p5-bar-fill">
+          <div class="p5-bar-top">
+            <div class="p5-title-group">
+              <span class="p5-bar-title" title="${u.name}">${u.name}</span>
+              ${_rarityPill(cTier)}
+              ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(u) : ''}
+            </div>
+            <div class="sr-contract-hidden"><button type="button" class="lvl-pick-btn">铭刻</button></div>
+          </div>
+          <div class="p5-bar-cat">${descTxt}</div>
+          <div class="p5-bar-foot"><span class="bar-prog-badge ready">${footTxt}</span></div>
         </div>
-      </div>
-      <div class="card-body">
-        <div class="card-desc">${descTxt}</div>
-        <div class="card-actions"><button class="btn" style="justify-content:center">◆ 铭刻共鸣</button></div>
       </div>`;
     const pick = () => {
       u.apply(player, tierMul); syncSetHp(); beep(580, 0.07, 'triangle');
@@ -1140,10 +1455,25 @@ function showLevelUp() {
       pendingLevels--;
       advancePostWave();
     };
+    _lvlPickHandlers[idx] = pick;
     el.querySelector('button').onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); pick(); };
-    if (uiMode !== 'desktop') el.onclick = pick;
+    el.onclick = () => {
+      if (_selectedLvlIdx === idx) { pick(); return; }
+      beep(510, 0.035, 'triangle', 0.03);
+      syncLvlSel(idx);
+    };
     box.appendChild(el);
   });
+  syncLvlSel(0);
+}
+
+function showLevelUp() {
+  state = 'levelup';
+  _lvlRerollCount = 0;
+  const lm = document.getElementById('levelMenu');
+  lm.classList.remove('hidden');
+  lm.scrollTop = 0;
+  _renderLevelUpPool();
 }
 
 // 商店波次通胀系数（严密对齐精简后期怪量后的单波晶石收益，保证 D0~D5 每波稳定购置与合成装备）
@@ -1282,8 +1612,8 @@ function openShop(fresh) {
         uw.tier++;
         if (player) player._sbCache = null;
         syncSetHp();
-        const uwName = (WEAPONS[uw.id] && WEAPONS[uw.id].name) || uw.id;
-        anvilUpgradedMsg = ` · ⚒️ 神砧免费升阶【${uwName} Lv${uw.tier}】!`;
+        const uwName = _wpnDispName(uw);
+        anvilUpgradedMsg = ` · ⚒️ 神砧免费升阶【${uwName}】!`;
         logInfo('SHOP', `铁匠神砧自动升阶 ${uwName} -> Lv.${uw.tier}`);
       } else {
         player.armor += 1;
@@ -1292,6 +1622,7 @@ function openShop(fresh) {
       }
     }
     mobDrawerOpen = false;
+    shopHubTab = 'shop';
     rollOffers();
   }
   const sm = document.getElementById('shopMenu');
@@ -1374,10 +1705,230 @@ function buyOffer(i) {
   return true;
 }
 
+function _renderWeaponSlotGrid(containerEl, isOverview) {
+  if (!containerEl || !player) return;
+  containerEl.innerHTML = '';
+  if (player.maxSlots === 0) return;
+  const isMobPortrait = !isOverview && typeof uiMode !== 'undefined' && uiMode === 'mobile-portrait';
+  const miniPillCls = isMobPortrait ? 'mini' : '';
+  player.weapons.forEach((w, idx) => {
+    const tpl = WEAPONS[w.id];
+    if (!tpl) return;
+    const hasPair = w.tier < 5 && player.weapons.some((x, j) => j !== idx && x.id === w.id && x.tier === w.tier);
+    const needsEvo = w.tier >= 5 && !w.evo && Array.isArray(tpl.evos) && tpl.evos.length >= 2;
+    const activeEvoObj = (w.evo && Array.isArray(tpl.evos)) ? tpl.evos.find(ev => ev.id === w.evo) : null;
+    const dispName = _wpnDispName(w);
+    const shortName = dispName.includes('·') ? dispName.split('·').pop() : (dispName.length > 5 && isMobPortrait ? dispName.slice(0, 4) : dispName);
+    const liveDmg = typeof calcWeaponPreviewDmg === 'function'
+      ? calcWeaponPreviewDmg(w.id, tpl, w.tier, activeEvoObj)
+      : Math.round(tpl.dmg * (1 + (w.tier - 1) * 0.55) * getEffectiveDmgMul());
+    const sellVal = typeof getWeaponSellPrice === 'function' ? getWeaponSellPrice(w) : Math.max(4, Math.round(12 * w.tier));
+    const sLabel = SET_DEFS[tpl.set] ? SET_DEFS[tpl.set].label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '') : '';
+    const d = document.createElement('button');
+    d.type = 'button';
+    d.className = `nw-slot t${w.tier}${(hasPair || needsEvo) ? ' mergeable' : ''}${selectedWeaponSlotIdx === idx ? ' is-selected' : ''}`;
+    const mergePillHtml = needsEvo
+      ? '<i class="nw-merge-pill">觉醒!</i>'
+      : (hasPair ? `<i class="nw-merge-pill">${w.tier === 4 ? '升5阶' : '可合'}</i>` : '');
+    const deskTagTxt = needsEvo ? '★ 觉醒' : (hasPair ? '✦ 合阶' : `◇${sellVal}`);
+    d.innerHTML = `
+      <div class="nw-slot-in">
+        <span class="nw-ico">${_wpnEmblem(w.id, w.tier, w.evo || '', tpl.icon)}</span>
+        <div class="nw-info">
+          <div class="nw-name-row">
+            <span class="nw-name nw-full-name" title="${dispName}">${isMobPortrait ? shortName : dispName}</span>
+            ${_rarityPill(w.tier, miniPillCls)}
+          </div>
+          <span class="nw-meta">${sLabel}·${w.tier}阶<em class="nw-desk-stat"> · 威力${liveDmg}</em>${mergePillHtml}</span>
+        </div>
+        <span class="nw-desk-tag">${deskTagTxt}</span>
+      </div>`;
+    d.onclick = () => { openWeaponSlotModal(idx); };
+    containerEl.appendChild(d);
+  });
+  const showMax = Math.max(player.weapons.length, Math.min(player.maxSlots, 6));
+  for (let k = player.weapons.length; k < showMax; k++) {
+    const emp = document.createElement('div');
+    emp.className = 'nw-slot empty';
+    emp.innerHTML = `<div class="nw-slot-in">+ 空槽 ${k + 1}</div>`;
+    containerEl.appendChild(emp);
+  }
+}
+
+function _renderShopOverviewPane(floorBadgeTxt, mergePairs) {
+  if (!player) return;
+  const heroCard = document.getElementById('ovHeroCard');
+  const setB = getSetBonuses();
+  if (heroCard) {
+    const clsObj = (typeof CLASSES !== 'undefined' && Array.isArray(CLASSES)) ? CLASSES.find(c => c.id === player.cls) : null;
+    const bustUrl = typeof getHeroUiBustUrl === 'function' ? getHeroUiBustUrl(player.cls) : '';
+    const traitsTxt = clsObj && Array.isArray(clsObj.traits) ? clsObj.traits.slice(0, 2).join(' · ') : '';
+    const synPills = Object.entries(SET_DEFS).map(([key, def]) => {
+      const c = (setB.counts && setB.counts[key]) || 0;
+      if (c <= 0) return '';
+      const nextStep = def.steps.find(s => s > c) || def.steps[2];
+      const active = c >= def.steps[0];
+      return `<button type="button" class="ov-syn-pill${active ? ' active' : ''}" onclick="openShopSynergyModal('${key}')">${def.label} ${c}/${nextStep}</button>`;
+    }).filter(Boolean).join('');
+    heroCard.innerHTML = `
+      <div class="ov-hero-row">
+        ${bustUrl ? `<div class="ov-bust-wrap"><img src="${bustUrl}" alt="${clsObj ? clsObj.name : '角色立绘'}"></div>` : ''}
+        <div class="ov-hero-info">
+          <div class="ov-hero-name-row">
+            <span class="ov-hero-name">${clsObj ? clsObj.name : '提灯人·零'}</span>
+            <span class="ov-lvl-badge">Lv.${player.lv} · ${floorBadgeTxt}</span>
+          </div>
+          ${traitsTxt ? `<div style="font-size:11.5px;color:#cfd5e4">${traitsTxt}</div>` : ''}
+          <div style="font-size:11px;color:var(--p5-gold);margin-top:2px">✦ 已装备流派羁绊（点按查看激活阈值）：</div>
+          <div class="ov-syn-wrap">${synPills || '<span style="font-size:11px;color:#9aa2b4">暂未装备流派兵装</span>'}</div>
+        </div>
+      </div>`;
+  }
+
+  const ovWpnTitle = document.getElementById('ovWpnTitle');
+  if (ovWpnTitle) {
+    ovWpnTitle.textContent = `⚔️ 随身主武器 (${player.weapons.length}/${player.maxSlots}) · 点槽直接合成/回收`;
+  }
+  const ovQm = document.getElementById('ovQuickMergeBtn');
+  if (ovQm) {
+    ovQm.classList.toggle('hidden', mergePairs <= 0);
+    ovQm.textContent = `✦ 一键合阶 (${mergePairs})`;
+  }
+  _renderWeaponSlotGrid(document.getElementById('ovWeaponSlots'), true);
+
+  const st12El = document.getElementById('ovStats12Grid');
+  if (st12El) {
+    const arm = getTotalArmor(), mit = Math.round(getArmorMitigation() * 100);
+    const dmgPct = Math.round(getEffectiveDmgMul() * 100);
+    const aspdScale = typeof PLAYER_ASPD_SCALE === 'number' ? PLAYER_ASPD_SCALE : 0.70;
+    const aspdPct = Math.round((player.atkSpd + setB.aspd) * aspdScale * 100);
+    const critPct = Math.round(getEffectiveCrit() * 100);
+    const critDmgPct = Math.round((typeof getEffectiveCritMult === 'function' ? getEffectiveCritMult() : (1.95 + (player.critDmg || 0) + (setB.critDmg || 0))) * 100);
+    const rng = getTotalRangeBonus();
+    const dodgePct = Math.round(Math.min(player.dodgeCap || 0.80, Math.max(0, player.dodge || 0)) * 100);
+    const spdPct = Math.round(getEffectiveSpdMul() * 100);
+    const harv = Math.round(player.harvestFlat || 0);
+    const fMel = player.flatMelee || 0, fRng = player.flatRanged || 0, fElm = player.flatElem || 0, fTec = player.flatTech || 0;
+    const ovStatsSub = st12El.previousElementSibling ? st12El.previousElementSibling.lastElementChild : null;
+    if (ovStatsSub) {
+      ovStatsSub.textContent = `点伤 ⚔️+${fMel} · 🔫+${fRng} · 🔥+${fElm} · ⚙️+${fTec}`;
+    }
+    const cells = [
+      ['生命上限', `${Math.max(0, Math.ceil(player.hp))}/${player.maxHp}`, true],
+      ['护甲减伤', `${arm} (${mit >= 0 ? '-' : '+'}${Math.abs(mit)}%)`, arm > 0],
+      ['生命再生', `${player.regen.toFixed(1)}/s`, false],
+      ['猩红汲血', `${Math.round((player.lifesteal || 0) * 100)}%`, (player.lifesteal || 0) > 0],
+      ['全体伤害', `${dmgPct}%`, true],
+      ['攻击急速', `${aspdPct}%`, aspdPct > 100],
+      ['暴击几率', `${critPct}%`, critPct >= 20],
+      ['暴击伤害', `${critDmgPct}%`, critDmgPct > 200],
+      ['索敌射程', `${rng >= 0 ? '+' + rng : rng}`, false],
+      ['灵巧闪避', `${dodgePct}%`, dodgePct >= 20],
+      ['移动速度', `${spdPct}%`, false],
+      ['幸运/收获', `${player.luck || 0} / ${harv}`, (player.luck || 0) > 0 || harv > 0]
+    ];
+    st12El.innerHTML = cells.map(([lbl, val, hi]) =>
+      `<div class="ov-st-cell${hi ? ' hi' : ''}"><span>${lbl}</span><b>${val}</b></div>`
+    ).join('');
+  }
+
+  const relicGrid = document.getElementById('ovRelicGrid');
+  const relicTitle = document.getElementById('ovRelicTitle');
+  if (relicGrid) {
+    relicGrid.classList.toggle('cols-2', ovRelicCols === 2);
+    relicGrid.classList.toggle('cols-1', ovRelicCols === 1);
+    const ownedEntries = [];
+    let totalPieces = 0;
+    if (player.items && typeof player.items === 'object') {
+      for (const [iid, cnt] of Object.entries(player.items)) {
+        if (!cnt || cnt <= 0) continue;
+        totalPieces += cnt;
+        const meta = ITEMS.find(x => x && x.id === iid);
+        if (meta) ownedEntries.push({ meta, cnt });
+      }
+      ownedEntries.sort((a, b) => (b.meta.tier - a.meta.tier) || (b.cnt - a.cnt));
+    }
+    if (relicTitle) relicTitle.textContent = `🎒 已购记忆遗物 (${totalPieces} 件 · ${ownedEntries.length} 种)`;
+    if (!ownedEntries.length) {
+      relicGrid.innerHTML = `<div style="grid-column:1/-1;padding:18px;text-align:center;color:#9aa2b4;font-size:12.5px">本局暂未购入记忆遗物 · 可切回【🛒 行商购物】选购圣遗物</div>`;
+    } else {
+      relicGrid.innerHTML = ownedEntries.map(({ meta, cnt }) => `
+        <div class="ov-relic-item" onclick="openShopRelicModal('${meta.id}')" title="点击查看【${meta.name}】完整效果">
+          <div class="ov-relic-ico">${_itmEmblem(meta, meta.tier)}</div>
+          <div class="ov-relic-txt">
+            <div class="ov-relic-row1">
+              <div class="ov-relic-name-wrap">
+                <span class="ov-relic-name">${meta.name}</span>
+                ${cnt > 1 ? `<em class="ov-qty-badge">×${cnt}</em>` : ''}
+              </div>
+              ${_rarityPill(meta.tier)}
+            </div>
+            <div class="ov-relic-sub">${meta.desc}</div>
+          </div>
+        </div>`).join('');
+    }
+  }
+}
+
 function renderShop() {
   syncShopOfferDiscounts();
   renderBuildSummary('statsRow', 'setRow');
+
+  const hudHideEl = document.getElementById('hud');
+  if (hudHideEl && state === 'shop') hudHideEl.classList.add('hidden');
+  const smEl = document.getElementById('shopMenu');
+  if (smEl && smEl.setAttribute) smEl.setAttribute('data-hub-tab', shopHubTab);
+  const paneMain = document.getElementById('shopPaneMain');
+  const paneOv = document.getElementById('shopPaneOverview');
+  if (paneMain && paneMain.classList) paneMain.classList.toggle('is-active', shopHubTab !== 'overview');
+  if (paneOv && paneOv.classList) paneOv.classList.toggle('is-active', shopHubTab === 'overview');
+  const tabBtnShop = document.getElementById('hubTabShopBtn');
+  const tabBtnOv = document.getElementById('hubTabOverviewBtn');
+  if (tabBtnShop && tabBtnShop.classList) tabBtnShop.classList.toggle('on', shopHubTab !== 'overview');
+  if (tabBtnOv && tabBtnOv.classList) tabBtnOv.classList.toggle('on', shopHubTab === 'overview');
+
+  const bgSceneEl = document.getElementById('shopBgScene');
+  if (bgSceneEl && bgSceneEl.style) {
+    let sceneBgUrl = '';
+    if (shopHubTab === 'overview') {
+      const vRel = (typeof curScene !== 'undefined' && curScene && curScene.vistaImg) ? curScene.vistaImg : 'assets/spire/scene_1_vista.jpg';
+      sceneBgUrl = (typeof SpireAssets !== 'undefined' && typeof SpireAssets.resolve === 'function') ? SpireAssets.resolve(vRel) : vRel;
+    } else if (typeof uiMode !== 'undefined' && uiMode === 'mobile-portrait') {
+      const pavRel = 'assets/spire/v2/wind-pavilion.jpg';
+      sceneBgUrl = (typeof SpireAssets !== 'undefined' && typeof SpireAssets.resolve === 'function') ? SpireAssets.resolve(pavRel) : pavRel;
+    } else {
+      sceneBgUrl = typeof getShopQingyuSceneUrl === 'function' ? getShopQingyuSceneUrl() : 'assets/spire/ui_art/ui_shop_qingyu_scene.jpg';
+    }
+    bgSceneEl.style.backgroundImage = `url('${sceneBgUrl}')`;
+  }
+  const atmoEl = document.getElementById('shopQingyuAtmo');
+  if (atmoEl && atmoEl.style) {
+    const qBust = typeof getHeroUiBustUrl === 'function' ? getHeroUiBustUrl('ghost') : 'assets/spire/ui_art/ui_bust_qingyu.png';
+    atmoEl.style.backgroundImage = `url('${qBust}')`;
+  }
+
   const witchImgEl = document.getElementById('shopMerchantPortrait');
+  const plaqueEl = document.getElementById('shopQingyuPlaque');
+  const bindQingyuTalk = el => {
+    if (!el || el._chatBound) return;
+    el._chatBound = true;
+    el.style.cursor = 'pointer';
+    const bonusTalks = [
+      '雨还没停。先暖暖手，再看看缺什么。',
+      '看见地上的预警就先让开。瞬步可以穿过弹雨，但要留一点余地。',
+      '同名、同阶的兵装能合在一起。带得趁手，比带得多更要紧。',
+      '想留的东西，替它扣上小锁。下次来，我还给你留着。'
+    ];
+    let talkIdx = 0;
+    el.onclick = () => {
+      beep(640, 0.05, 'triangle', 0.035);
+      const sEl = document.getElementById('shopSub');
+      if (sEl) {
+        sEl.textContent = bonusTalks[talkIdx % bonusTalks.length];
+        talkIdx++;
+      }
+    };
+  };
   if (witchImgEl) {
     witchImgEl.alt = !endlessMode && wave < 15 ? '青羽 · 风亭行商' : '青羽 · 记忆的守望者';
     witchImgEl.title = '与青羽交谈';
@@ -1388,26 +1939,10 @@ function renderShop() {
         witchImgEl._resolvedSrc = resolvedSrc;
       }
     }
-    if (!witchImgEl._chatBound) {
-      witchImgEl._chatBound = true;
-      witchImgEl.style.cursor = 'pointer';
-      const bonusTalks = [
-        '雨还没停。先暖暖手，再看看缺什么。',
-        '看见地上的预警就先让开。瞬步可以穿过弹雨，但要留一点余地。',
-        '同名、同阶的兵装能合在一起。带得趁手，比带得多更要紧。',
-        '想留的东西，替它扣上小锁。下次来，我还给你留着。'
-      ];
-      let talkIdx = 0;
-      witchImgEl.onclick = () => {
-        beep(640, 0.05, 'triangle', 0.035);
-        const sEl = document.getElementById('shopSub');
-        if (sEl) {
-          sEl.textContent = bonusTalks[talkIdx % bonusTalks.length];
-          talkIdx++;
-        }
-      };
-    }
+    bindQingyuTalk(witchImgEl);
   }
+  bindQingyuTalk(plaqueEl);
+
   const nextFloorNum = wave + 1;
   const nextIsBoss = (nextFloorNum >= 4 && nextFloorNum % 4 === 0);
   const floorBadgeTxt = endlessMode ? `无尽第 ${wave} 层` : `第 ${wave} / ${MAX_WAVE} 层`;
@@ -1441,15 +1976,18 @@ function renderShop() {
   }
   document.getElementById('shopMat').textContent = `◇ ${player.mats}`;
   const actualReroll = freeRerollsLeft > 0 ? 0 : rerollCost;
-  const rerollTxt = actualReroll === 0 ? `免费刷新 (${freeRerollsLeft})` : `刷新 (${actualReroll})`;
+  const rerollTxt = actualReroll === 0 ? `↻ 免费刷新 (${freeRerollsLeft})` : `↻ 刷新 (${actualReroll})`;
   const rb = document.getElementById('rerollBtn');
-  rb.textContent = rerollTxt;
-  rb.disabled = player.mats < actualReroll;
+  if (rb) {
+    rb.textContent = rerollTxt;
+    rb.disabled = player.mats < actualReroll;
+  }
   const mrb = document.getElementById('mobRerollBtn');
   if (mrb) {
     mrb.textContent = rerollTxt;
     mrb.disabled = player.mats < actualReroll;
   }
+
   const canTrial = canOfferSurvivalTrialForWave(nextFloorNum);
   if (!canTrial) survivalTrialQueued = false;
   const trialSec = typeof getSurvivalTrialDuration === 'function' ? getSurvivalTrialDuration(diff) : 30;
@@ -1467,12 +2005,12 @@ function renderShop() {
       const minGoldComp = calcSurvivalTrialGoldComp(nextFloorNum, 3, player).total;
       const maxGoldComp = calcSurvivalTrialGoldComp(nextFloorNum, 0, player).total;
       const titleTxt = survivalTrialQueued
-        ? `🕯️ 已缔结蚀界契约 · 第 ${nextFloorNum} 层化为 ${trialSec} 秒绝境渡劫`
-        : `🕯️ 蚀界生存试炼 · 将第 ${nextFloorNum} 层改为 ${trialSec} 秒身法躲避关`;
+        ? `🕯️ 已签蚀界契约 · 第 ${nextFloorNum} 层 (${trialSec}s 渡劫)`
+        : `🕯️ 蚀界生存试炼 · 第 ${nextFloorNum} 层改为 ${trialSec}s 身法关`;
       const mobTitleTxt = survivalTrialQueued
         ? `🕯️ 已签第${nextFloorNum}层(${trialSec}s) · 奖◇${minGoldComp}~${maxGoldComp}+紫金匣`
         : `🕯️ 蚀界试炼(${trialSec}s身法关) · 奖◇${minGoldComp}~${maxGoldComp}+紫金匣`;
-      const btnTxt = survivalTrialQueued ? '✓ 已开启试炼（点击取消）' : '🕯️ 踏入蚀界试炼';
+      const btnTxt = survivalTrialQueued ? '✓ 已开启（点此取消）' : '🕯️ 开启试炼';
       const mobBtnTxt = survivalTrialQueued ? '✓ 已开启' : '🕯️ 开启试炼';
       trialBar.innerHTML = `
         <div class="shop-trial-info">
@@ -1480,13 +2018,22 @@ function renderShop() {
             <div class="shop-trial-head">
               <span class="shop-trial-title">${titleTxt}</span>
               <span class="shop-trial-pill">${actLabel}</span>
-              <span class="shop-trial-pill gold">保底补偿 ◇${minGoldComp}~${maxGoldComp} & 必得紫/金秘匣</span>
+              <span class="shop-trial-pill gold">奖 ◇${minGoldComp}~${maxGoldComp} + 必出紫/金秘匣</span>
             </div>
-            <div class="shop-trial-desc">七类天外弹道与蚀界裂隙来袭 · 怪物仅留 <b>30%</b>（掉落晶石提升） · 浓雾提灯视野 · 撑满 <b>${trialSec}秒</b> 补偿 <b>◇${minGoldComp}~${maxGoldComp}</b> 晶石并必出<b>紫/金武器与道具</b>！</div>
           </div>
           <div class="shop-trial-mob">${mobTitleTxt}</div>
         </div>
         <button type="button" id="shopTrialToggleBtn" class="shop-trial-toggle${survivalTrialQueued ? ' is-armed' : ''}" onclick="toggleSurvivalTrial()"><span class="shop-trial-btn-desk">${btnTxt}</span><span class="shop-trial-btn-mob">${mobBtnTxt}</span></button>`;
+    }
+  }
+  const inlineTrialWrap = document.getElementById('shopInlineTrialWrap');
+  const inlineTrialBtn = document.getElementById('shopInlineTrialBtn');
+  if (inlineTrialWrap && inlineTrialBtn) {
+    inlineTrialWrap.classList.toggle('hidden', !canTrial);
+    inlineTrialWrap.classList.toggle('is-armed', !!(canTrial && survivalTrialQueued));
+    if (canTrial) {
+      inlineTrialBtn.textContent = survivalTrialQueued ? '✓ 已开试炼' : '🕯️ 开启试炼';
+      inlineTrialBtn.classList.toggle('is-armed', !!survivalTrialQueued);
     }
   }
 
@@ -1495,6 +2042,9 @@ function renderShop() {
     : (!endlessMode && nextFloorNum === 16 ? '准备好了，推开终门 →' : nextIsBoss
         ? `◆ 迎战第 ${nextFloorNum} 层守誓首领 →`
         : `◆ 登往第 ${nextFloorNum} 层 →`);
+  const mobDockNextLabel = (canTrial && survivalTrialQueued)
+    ? '🕯️ 前往试炼 →'
+    : (!endlessMode && nextFloorNum === 16 ? '◆ 推开终门 →' : '◆ 前往下一层 →');
   const dnb = document.getElementById('deskNextBtn');
   if (dnb) {
     dnb.textContent = nextLabel;
@@ -1502,162 +2052,188 @@ function renderShop() {
   }
   const mnb = document.getElementById('mobNextBtn');
   if (mnb) {
-    mnb.textContent = nextLabel;
+    mnb.textContent = mobDockNextLabel;
     mnb.classList.toggle('btn-trial-go', !!(canTrial && survivalTrialQueued));
+  }
+  const dockNb = document.getElementById('dockNextBtn');
+  const dockNLbl = document.getElementById('dockNextLabel');
+  if (dockNb && dockNLbl) {
+    dockNLbl.textContent = mobDockNextLabel;
+    dockNb.classList.toggle('is-trial-armed', !!(canTrial && survivalTrialQueued));
   }
 
   const totalRange = getTotalRangeBonus();
+  const setB = getSetBonuses();
+  const briefEl = document.getElementById('shopBriefStats');
+  if (briefEl && player) {
+    const armVal = getTotalArmor();
+    const dmgPctVal = Math.round(getEffectiveDmgMul() * 100);
+    const aspdScaleVal = typeof PLAYER_ASPD_SCALE === 'number' ? PLAYER_ASPD_SCALE : 0.70;
+    const aspdPctVal = Math.round((player.atkSpd + setB.aspd) * aspdScaleVal * 100);
+    const critPctVal = Math.round(getEffectiveCrit() * 100);
+    const fMelB = player.flatMelee || 0, fRngB = player.flatRanged || 0, fElmB = player.flatElem || 0, fTecB = player.flatTech || 0;
+    const flatHiTxt = (fMelB || fRngB || fElmB || fTecB)
+      ? `<span>点伤<b>⚔️${fMelB}/🔫${fRngB}/🔥${fElmB}/⚙️${fTecB}</b></span>`
+      : '';
+    briefEl.innerHTML = `<div class="sbs-items"><span>生命<b>${Math.max(0, Math.ceil(player.hp))}/${player.maxHp}</b></span><span>护甲<b>${armVal}</b></span><span>伤害<b class="gold">${dmgPctVal}%</b></span>${flatHiTxt}<span>攻速<b>${aspdPctVal}%</b></span><span>暴击<b class="gold">${critPctVal}%</b></span></div><span class="sbs-more">行囊总览 ▸</span>`;
+  }
+  if (typeof window._shopSelOfferIdx !== 'number' || !shopOffers[window._shopSelOfferIdx]) {
+    const firstLive = shopOffers.findIndex(Boolean);
+    window._shopSelOfferIdx = firstLive >= 0 ? firstLive : 0;
+  }
   const box = document.getElementById('shopCards');
-  box.innerHTML = '';
-  shopOffers.forEach((o, i) => {
-    const el = document.createElement('div');
-    if (!o) {
-      el.className = 'card sold-out';
-      el.innerHTML = `<span class="sold-stamp">✓ 已收入囊中</span>`;
-      box.appendChild(el); return;
-    }
-    el.className = `card t${o.tier}${o.locked ? ' is-locked' : ''}`;
-    if (o.kind === 'weapon') {
-      const tpl = WEAPONS[o.id];
-      if (!tpl) return;
-      const sLabel = SET_DEFS[tpl.set] ? SET_DEFS[tpl.set].label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '') : '';
-      const dmg = typeof calcWeaponPreviewDmg === 'function'
-        ? calcWeaponPreviewDmg(o.id, tpl, o.tier, null)
-        : Math.round(tpl.dmg * (1 + (o.tier - 1) * 0.55) * getEffectiveDmgMul());
-      const effRange = typeof calcWeaponEffectiveRange === 'function'
-        ? calcWeaponEffectiveRange(tpl, o.tier, null, totalRange)
-        : Math.max(tpl.melee ? 74 : 54, tpl.range + (tpl.melee ? Math.round(totalRange * 0.56 + (player.meleeSweepBonus || 0) * 16) : totalRange) + (o.tier - 1) * (tpl.melee ? 8 : 13));
-      const effCd = (tpl.cd / Math.max(0.18, getEffectiveAtkSpd() * (tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1) * (tpl.spdScale ? (1 + Math.max(0, getEffectiveSpdMul() - 1) * 0.45) : 1) * (1 + (o.tier - 1) * 0.08))).toFixed(2);
-      const ok = player.mats >= o.cost && canBuyWeapon(o.id, o.tier);
-      const hasMergePair = o.tier < 5 && player.weapons.some(w => w.id === o.id && w.tier === o.tier);
-      const willAwakenT5 = hasMergePair && o.tier === 4;
-      const totalShowPellets = (tpl.burstShots ? tpl.burstShots : (tpl.pellets ? tpl.pellets + (!tpl.isStaff && !tpl.melee && !tpl.isFlame ? (player.rangedPelletsBonus || 0) : 0) : 0));
-      const pelletsTxt = totalShowPellets > 1 ? `×${totalShowPellets}` : '';
-      const priceHtml = (o.rawCost && o.rawCost > o.cost)
-        ? `<s style="opacity:.55;font-size:.82em;margin-right:3px">${o.rawCost}</s>◇ ${o.cost}`
-        : `◇ ${o.cost}`;
-      const wScaleBadges = typeof renderWeaponScalingBadgesHtml === 'function'
-        ? renderWeaponScalingBadgesHtml(tpl, o.id)
-        : (tpl.isStaff ? '<span class="tag">🪄法杖秘术</span>' : '');
-      el.innerHTML = `
-        <div class="card-main">
-          <div class="card-head">
-            <div class="item-emblem t${o.tier}">${_wpnEmblem(o.id, o.tier, '', tpl.icon)}</div>
-            <div class="card-meta">
-              <div class="card-title">${tpl.name}</div>
-              <div class="card-badges">
-                <span class="tag t${o.tier}">${TIER_NAMES[o.tier]}</span>
-                ${wScaleBadges}
-                <span class="tag">${sLabel}</span>
-                ${willAwakenT5 ? '<span class="tag t5">合成觉醒5阶!</span>' : (hasMergePair ? '<span class="tag tag-merge">可升阶</span>' : '')}
+  if (box) {
+    box.innerHTML = '';
+    shopOffers.forEach((o, i) => {
+      const el = document.createElement('div');
+      if (!o) {
+        el.className = 'p5-row sold-out sold-out-row';
+        el.innerHTML = `
+          <div class="p5-ico-edge"><div class="p5-ico-inner">✓</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge"><div class="p5-bar-fill"><span class="sold-stamp">✓ 已收入行囊</span></div></div>`;
+        box.appendChild(el);
+        return;
+      }
+      const offerTier = o.tier || (o.item && o.item.tier) || 1;
+      const isRowSel = window._shopSelOfferIdx === i;
+      el.className = `p5-row t${offerTier}${isRowSel ? ' is-sel' : ''}${o.locked ? ' is-locked' : ''}`;
+      if (o.kind === 'weapon') {
+        const wid = o.id || o.weaponId;
+        const tpl = WEAPONS[wid];
+        if (!tpl) return;
+        const dispName = _wpnDispName(wid, offerTier);
+        const sDef = SET_DEFS[tpl.set];
+        const sLabel = sDef ? sDef.label : '';
+        const curCnt = (setB && setB.counts && tpl.set) ? (setB.counts[tpl.set] || 0) : 0;
+        const nextStep = sDef ? (sDef.steps.find(s => s > curCnt) || sDef.steps[2]) : 2;
+        const willHitStep = sDef && (curCnt + 1 === nextStep) && curCnt < nextStep;
+        const dmg = typeof calcWeaponPreviewDmg === 'function'
+          ? calcWeaponPreviewDmg(wid, tpl, offerTier, null)
+          : Math.round(tpl.dmg * (1 + (offerTier - 1) * 0.55) * getEffectiveDmgMul());
+        const effRange = typeof calcWeaponEffectiveRange === 'function'
+          ? calcWeaponEffectiveRange(tpl, offerTier, null, totalRange)
+          : tpl.range;
+        const effCd = (tpl.cd / Math.max(0.18, getEffectiveAtkSpd() * (tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1) * (tpl.spdScale ? (1 + Math.max(0, getEffectiveSpdMul() - 1) * 0.45) : 1) * (1 + (offerTier - 1) * 0.08))).toFixed(2);
+        const ok = player.mats >= o.cost && canBuyWeapon(wid, offerTier);
+        const hasMergePair = offerTier < 5 && player.weapons.some(w => w.id === wid && w.tier === offerTier);
+        const willAwakenT5 = hasMergePair && offerTier === 4;
+        const totalShowPellets = (tpl.burstShots ? tpl.burstShots : (tpl.pellets ? tpl.pellets + (!tpl.isStaff && !tpl.melee && !tpl.isFlame ? (player.rangedPelletsBonus || 0) : 0) : 0));
+        const pelletsTxt = totalShowPellets > 1 ? `×${totalShowPellets}` : '';
+        const priceHtml = (o.rawCost && o.rawCost > o.cost)
+          ? `<s style="opacity:.55;font-size:.82em;margin-right:2px">${o.rawCost}</s>◇ ${o.cost}`
+          : `◇ ${o.cost}`;
+        const synFootTxt = `${sLabel} (${curCnt}/${nextStep})${willAwakenT5 ? ' · 购入觉醒5阶!' : (hasMergePair ? ` · 可直接合阶 T${offerTier + 1}` : (willHitStep ? ' ➔ 凑齐激活!' : ''))}`;
+
+        el.innerHTML = `
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${_wpnEmblem(wid, offerTier, '', tpl.icon)}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge">
+            <div class="p5-bar-fill">
+              <div class="p5-bar-top">
+                <div class="p5-title-group">
+                  <span class="p5-bar-title" title="${dispName}">${dispName}</span>
+                  ${_rarityPill(offerTier)}
+                </div>
+                <div class="p5-bar-right">
+                  <button type="button" class="p5-lock-btn lock${o.locked ? ' is-locked' : ''}" title="${o.locked ? '点击解锁' : '锁定保留至下一层'}">${o.locked ? '🔒' : '🔓'}</button>
+                  <button type="button" class="p5-price-tag p5-buy-btn buy${hasMergePair ? ' merge-ready' : ''}" ${ok ? '' : 'disabled'}>${willAwakenT5 ? '觉醒 ' : (hasMergePair ? '合阶 ' : '')}${priceHtml}</button>
+                </div>
+              </div>
+              <div class="p5-bar-subwrap">
+                <div class="p5-bar-cat">威力 ${dmg}${pelletsTxt} · 间隔 ${effCd}s · 射程 ${effRange}</div>
+                <div class="p5-bar-foot">
+                  <span class="bar-prog-badge${(hasMergePair || willHitStep) ? ' ready' : ''}" onclick="event.stopPropagation();openShopSynergyModal('${tpl.set}')">${synFootTxt}</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="card-body">
-            <div class="card-desc">${tpl.desc}</div>
-            <div class="stat-chips">
-              <span class="stat-chip">伤害 ${dmg}${pelletsTxt}</span>
-              <span class="stat-chip">间隔 ${effCd}s</span>
-              <span class="stat-chip">射程 ${effRange}</span>
-            </div>
-          </div>
-        </div>
-        <div class="card-side">
-          <button class="lock-pin lock${o.locked ? ' is-locked' : ''}" title="${o.locked ? '点击解锁商品' : '锁定保留至下一层'}"><span>${o.locked ? '已锁定' : '保留'}</span></button>
-          <div class="card-actions">
-            <button class="btn buy${hasMergePair ? ' merge-ready' : ''}" ${ok ? '' : 'disabled'}>
-              <span>${willAwakenT5 ? '觉醒五阶' : (hasMergePair ? (uiMode !== 'desktop' ? '共鸣升阶' : '购入升阶') : '购入')}</span>
-              <span class="buy-price">${priceHtml}</span>
-            </button>
-          </div>
-        </div>`;
-      el.querySelector('.buy').onclick = () => { buyOffer(i); };
-    } else {
-      const it = o.item;
-      if (!it) return;
-      const ok = player.mats >= o.cost;
-      const ownedCnt = (player.items && player.items[it.id]) || 0;
-      const priceHtml = (o.rawCost && o.rawCost > o.cost)
-        ? `<s style="opacity:.55;font-size:.82em;margin-right:3px">${o.rawCost}</s>◇ ${o.cost}`
-        : `◇ ${o.cost}`;
-      el.innerHTML = `
-        <div class="card-main">
-          <div class="card-head">
-            <div class="item-emblem t${o.tier}">${_itmEmblem(it, o.tier)}</div>
-            <div class="card-meta">
-              <div class="card-title">${it.name}</div>
-              <div class="card-badges">
-                <span class="tag t${o.tier}">${TIER_NAMES[o.tier]}遗物</span>
-                ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(it) : ''}
-                ${ownedCnt > 0 ? `<span class="tag tag-owned">已持有 ×${ownedCnt}</span>` : ''}
+          </div>`;
+        el.querySelector('.buy').onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); buyOffer(i); };
+        el.onclick = () => {
+          window._shopSelOfferIdx = i;
+          if (ok) { buyOffer(i); return; }
+          renderShop();
+        };
+      } else {
+        const it = o.item;
+        if (!it) return;
+        const ok = player.mats >= o.cost;
+        const ownedCnt = (player.items && player.items[it.id]) || 0;
+        const priceHtml = (o.rawCost && o.rawCost > o.cost)
+          ? `<s style="opacity:.55;font-size:.82em;margin-right:2px">${o.rawCost}</s>◇ ${o.cost}`
+          : `◇ ${o.cost}`;
+        const relicHint = ownedCnt > 0 ? `已持有 ×${ownedCnt}` : ((it.scopeLabel || '').trim() || '全流派圣遗物');
+        el.innerHTML = `
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${_itmEmblem(it, offerTier)}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge">
+            <div class="p5-bar-fill">
+              <div class="p5-bar-top">
+                <div class="p5-title-group">
+                  <span class="p5-bar-title" title="${it.name}">${it.name}</span>
+                  ${_rarityPill(offerTier)}
+                </div>
+                <div class="p5-bar-right">
+                  <button type="button" class="p5-lock-btn lock${o.locked ? ' is-locked' : ''}" title="${o.locked ? '点击解锁' : '锁定保留至下一层'}">${o.locked ? '🔒' : '🔓'}</button>
+                  <button type="button" class="p5-price-tag p5-buy-btn buy" ${ok ? '' : 'disabled'}>${priceHtml}</button>
+                </div>
+              </div>
+              <div class="p5-bar-subwrap">
+                <div class="p5-bar-cat">${it.desc}</div>
+                <div class="p5-bar-foot">
+                  <span class="bar-prog-badge${ownedCnt > 0 ? ' ready' : ''}" onclick="event.stopPropagation();openShopRelicModal('${it.id}')">🏺 ${relicHint}</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="card-body">
-            <div class="card-desc">${it.desc}</div>
-          </div>
-        </div>
-        <div class="card-side">
-          <button class="lock-pin lock${o.locked ? ' is-locked' : ''}" title="${o.locked ? '点击解锁商品' : '锁定保留至下一层'}"><span>${o.locked ? '已锁定' : '保留'}</span></button>
-          <div class="card-actions">
-            <button class="btn buy" ${ok ? '' : 'disabled'}>
-              <span>购入</span>
-              <span class="buy-price">${priceHtml}</span>
-            </button>
-          </div>
-        </div>`;
-      el.querySelector('.buy').onclick = () => { buyOffer(i); };
-    }
-    el.querySelector('.lock').onclick = e => {
-      if (e && e.stopPropagation) e.stopPropagation();
-      confirmSellIdx = -1; o.locked = !o.locked; renderShop();
-    };
-    box.appendChild(el);
-  });
+          </div>`;
+        el.querySelector('.buy').onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); buyOffer(i); };
+        el.onclick = () => {
+          window._shopSelOfferIdx = i;
+          if (ok) { buyOffer(i); return; }
+          openShopRelicModal(it.id);
+          renderShop();
+        };
+      }
+      el.querySelector('.lock').onclick = e => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        window._shopSelOfferIdx = i;
+        confirmSellIdx = -1; o.locked = !o.locked; renderShop();
+      };
+      box.appendChild(el);
+    });
+  }
+
+  const mergePairs = countMergeableWeaponPairs();
+  const qmBtn = document.getElementById('shopQuickMergeBtn');
+  if (qmBtn) {
+    qmBtn.classList.toggle('hidden', mergePairs <= 0);
+    qmBtn.textContent = `✦ 一键合阶 (${mergePairs})`;
+  }
 
   const sBox = document.getElementById('weaponSlots');
-  sBox.innerHTML = '';
+  const slotHintEl = document.getElementById('slotHint');
   if (player.maxSlots === 0) {
-    document.getElementById('slotHint').textContent = '🐂 蛮牛铁卫特性：不可携带武器，堆叠生命、护甲、护盾与元素装备即可强化碰撞烈焰震荡波！';
+    if (sBox) sBox.innerHTML = '';
+    if (slotHintEl) slotHintEl.textContent = '🐂 蛮牛铁卫：不可携带武器，堆叠生命与护甲强化冲撞震波';
   } else {
-    document.getElementById('slotHint').innerHTML = `随身守誓兵装席 (<b>${player.weapons.length}</b>/${player.maxSlots})  ·  点击槽位查看详情，执行<b>共鸣合成</b>或<b>熔炼回收</b>`;
-    player.weapons.forEach((w, idx) => {
-      const tpl = WEAPONS[w.id];
-      if (!tpl) return;
-      const hasPair = w.tier < 5 && player.weapons.some((x, j) => j !== idx && x.id === w.id && x.tier === w.tier);
-      const needsEvo = w.tier >= 5 && !w.evo && Array.isArray(tpl.evos) && tpl.evos.length >= 2;
-      const d = document.createElement('div');
-      d.className = `slot t${w.tier}${selectedWeaponSlotIdx === idx ? ' is-selected' : ''}`;
-      const isEvoDone = w.tier >= 5 && !!w.evoName;
-      const dispName = isEvoDone ? w.evoName : `${tpl.name} · 阶${w.tier}`;
-      const nameColor = isEvoDone ? (w.evoColor || TIER_COLORS[5]) : TIER_COLORS[w.tier];
-      const badgeHtml = needsEvo
-        ? '<span class="merge-badge evo-badge">觉醒!</span>'
-        : (hasPair
-          ? `<span class="merge-badge${w.tier === 4 ? ' evo-badge' : ''}">${w.tier === 4 ? '升5阶' : '可合成'}</span>`
-          : (isEvoDone ? '<span class="merge-badge evo-badge">★神话</span>' : ''));
-      const mobSub = needsEvo ? '点此觉醒' : (hasPair ? '可合成' : '查看/操作');
-      const tipTxt = needsEvo ? '◆ 择定神话分支' : (hasPair ? '◆ 合成 / 操作' : '◆ 查看 / 操作');
-      const slotScaleHtml = typeof renderWeaponSlotScaleHtml === 'function' ? renderWeaponSlotScaleHtml(tpl, w.id) : '';
-      d.innerHTML = `${badgeHtml}
-        <div class="slot-icon">${_wpnEmblem(w.id, w.tier, w.evo || '', tpl.icon)}</div>
-        <div class="slot-name" style="color:${nameColor}" title="${dispName}">${dispName}</div>
-        ${slotScaleHtml}
-        <div class="slot-sub m-only">${mobSub}</div>
-        <div class="sell-tip">${tipTxt}</div>`;
-      d.onclick = () => {
-        openWeaponSlotModal(idx);
-      };
-      sBox.appendChild(d);
-    });
-    const showMax = Math.min(player.maxSlots, 6);
-    for (let k = player.weapons.length; k < showMax; k++) {
-      const emp = document.createElement('div');
-      emp.className = 'slot-empty';
-      emp.innerHTML = `<span>+ 空槽</span>`;
-      sBox.appendChild(emp);
+    if (slotHintEl) {
+      slotHintEl.innerHTML = `⚔️ 随身主武器 (<b>${player.weapons.length}</b>/${player.maxSlots}) · 点槽合成/回收`;
+    }
+    _renderWeaponSlotGrid(sBox, false);
+  }
+
+  let totalRelicPieces = 0;
+  if (player.items && typeof player.items === 'object') {
+    for (const cnt of Object.values(player.items)) {
+      if (cnt > 0) totalRelicPieces += cnt;
     }
   }
+  const ovTabLbl = document.getElementById('hubTabOverviewLabel');
+  if (ovTabLbl) {
+    const mergeDotHtml = mergePairs > 0 ? '<i class="hub-merge-dot" title="有同名同阶武器可合成"></i>' : '';
+    ovTabLbl.innerHTML = `<span class="hub-lbl-desk">🎒 角色与行囊 (${player.weapons.length}/${player.maxSlots} · ${totalRelicPieces}饰品)</span><span class="hub-lbl-mob">🎒 行囊</span>${mergeDotHtml}`;
+  }
+  _renderShopOverviewPane(floorBadgeTxt, mergePairs);
 }
 
 let selectedWeaponSlotIdx = -1;
@@ -1700,6 +2276,7 @@ function recycleWeaponSlotFromModal(idx) {
   const w = player.weapons[idx];
   const tpl = w && WEAPONS[w.id];
   if (!w || !tpl) return false;
+  const dispName = _wpnDispName(w);
   const tierMul = WEAPON_TIER_COST_MUL[w.tier] || 6.4;
   const refund = Math.max(4, Math.round(tpl.cost * tierMul * getShopScale() * 0.35));
   closeWeaponSlotModal(true);
@@ -1708,7 +2285,7 @@ function recycleWeaponSlotFromModal(idx) {
   player._sbCache = null;
   syncSetHp();
   beep(320, 0.06);
-  logInfo('SHOP', `回收武器 ${tpl.name} Lv.${w.tier} (+${refund}💎)`);
+  logInfo('SHOP', `回收武器 ${dispName} Lv.${w.tier} (+${refund}💎)`);
   renderShop();
   return true;
 }
@@ -1734,10 +2311,10 @@ function openWeaponSlotModal(idx) {
 
   const activeEvoObj = (w.evo && Array.isArray(tpl.evos)) ? tpl.evos.find(ev => ev.id === w.evo) : null;
   const isEvoDone = w.tier >= 5 && !!activeEvoObj;
-  const dispName = isEvoDone ? activeEvoObj.name : `${tpl.name} · 阶${w.tier}`;
-  const nameColor = isEvoDone ? (activeEvoObj.color || TIER_COLORS[5]) : TIER_COLORS[w.tier];
+  const dispName = _wpnDispName(w);
+  const nameColor = isEvoDone ? (activeEvoObj.color || TIER_COLORS[5]) : '#f4f0ea';
   const sDef = SET_DEFS[tpl.set];
-  const sLabel = sDef ? sDef.label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '') : '';
+  const sLabel = sDef ? sDef.label : '';
   const sb = getSetBonuses();
   const curSetCnt = (sb && sb.counts && tpl.set) ? (sb.counts[tpl.set] || 0) : 0;
 
@@ -1758,6 +2335,7 @@ function openWeaponSlotModal(idx) {
   const runRec = player.runStats && player.runStats.weaponDmg && player.runStats.weaponDmg[w.id];
   const scaleBadges = typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(tpl, w.id) : '';
 
+
   let evoHintHtml = '';
   if (activeEvoObj) {
     evoHintHtml = `<div class="wpn-act-evo-hint"><b style="color:${activeEvoObj.color || '#ff5c8a'}">★ 已觉醒神话：【${activeEvoObj.name}】</b><br>${activeEvoObj.desc}</div>`;
@@ -1769,17 +2347,20 @@ function openWeaponSlotModal(idx) {
   if (needsEvo) {
     combineBtnHtml = `<button type="button" id="wpnActCombineBtn" class="btn btn-go" style="justify-content:center" onclick="combineWeaponSlotFromModal(${idx})">★ 择定五阶神话进化</button>`;
   } else if (hasPair) {
-    combineBtnHtml = `<button type="button" id="wpnActCombineBtn" class="btn merge-ready" style="justify-content:center" onclick="combineWeaponSlotFromModal(${idx})">◆ ${w.tier === 4 ? '共鸣合成并觉醒五阶神话!' : `共鸣合成 (升至阶${w.tier + 1})`}</button>`;
+    const nextTierLbl = TIER_NAMES[w.tier + 1] || `${w.tier + 1}阶`;
+    combineBtnHtml = `<button type="button" id="wpnActCombineBtn" class="btn merge-ready" style="justify-content:center" onclick="combineWeaponSlotFromModal(${idx})">◆ ${w.tier === 4 ? '共鸣合成并觉醒五阶神话!' : `共鸣合成 ➔ 【${nextTierLbl} · ${tpl.name}】`}</button>`;
   }
 
   card.className = `wpn-action-card t${w.tier}`;
   card.innerHTML = `
     <div class="wpn-act-head">
       <div class="item-emblem t${w.tier}">${_wpnEmblem(w.id, w.tier, w.evo || '', tpl.icon)}</div>
-      <div class="card-meta" style="flex:1">
-        <div class="wpn-act-title" style="color:${nameColor}">${dispName}</div>
+      <div class="card-meta" style="flex:1;min-width:0">
+        <div class="p5-title-group">
+          <div class="wpn-act-title" style="color:${nameColor}" title="${dispName}">${dispName}</div>
+          ${_rarityPill(w.tier)}
+        </div>
         <div class="card-badges">
-          <span class="tag t${w.tier}">${TIER_NAMES[w.tier] || ('阶' + w.tier)}兵装</span>
           ${scaleBadges}
           ${sLabel ? `<span class="tag">${sLabel} (${curSetCnt})</span>` : ''}
         </div>
@@ -1895,28 +2476,41 @@ function showSpireEndMenu(win, ending = '') {
     }
   }
   document.getElementById('hud').classList.add('hidden');
+  const bossWrapEnd = document.getElementById('bossBarWrap');
+  if (bossWrapEnd) bossWrapEnd.classList.add('hidden');
   document.getElementById('pauseMenu').classList.add('hidden');
   const cm = document.getElementById('crateMenu');
   if (cm) cm.classList.add('hidden');
   const em = document.getElementById('endMenu');
   if (typeof em.setAttribute === 'function') em.setAttribute('data-result', win ? `ending-${ending}` : 'defeat');
   const actIndex = Math.max(1, Math.min(4, Math.ceil(wave / 4)));
-  const background = !win && wave === 4
-    ? 'assets/spire/v2/player-defeat-clean.jpg'
-    : `assets/spire/scene_${actIndex}_vista.jpg`;
+  const heroSceneUrl = typeof getHeroMasterSceneUrl === 'function' ? getHeroMasterSceneUrl(player ? player.cls : 'allrounder') : `assets/spire/scene_${actIndex}_vista.jpg`;
+  const background = (win && ending === 'B')
+    ? 'assets/spire/ui_art/ui_scene_dawn_end.jpg'
+    : (!win && wave === 4 ? 'assets/spire/v2/player-defeat-clean.jpg' : heroSceneUrl);
   const imageUrl = (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.resolve === 'function') ? SpireAssets.resolve(background) :
     (typeof resolveSpireAssetUrl === 'function' ? resolveSpireAssetUrl(background) :
     ((typeof window !== 'undefined' && window.__SPIRE_INLINE_ASSETS__ && window.__SPIRE_INLINE_ASSETS__[background]) || background));
   if (em.style && typeof em.style.setProperty === 'function') em.style.setProperty('--ending-art', `url("${imageUrl}")`);
+  const endVistaEl = document.getElementById('endVistaBg');
+  if (endVistaEl && endVistaEl.style) endVistaEl.style.backgroundImage = `url('${imageUrl}')`;
+  const waveLabel = endlessMode ? `无尽第 ${wave} 层` : `第 ${wave} / ${MAX_WAVE} 层`;
+  _syncChoiceStandee('endHeroStandee', win ? 'DAWN OF THE 1000TH · 轮回终章战绩铭刻' : `ASHEN CYCLE · ${waveLabel} 战绩铭刻`, '', '');
+  const ransomEnEl = document.getElementById('endRansomEn');
+  if (ransomEnEl) ransomEnEl.textContent = win ? 'CLEAR!!' : 'ASHEN CYCLE';
   em.classList.remove('hidden');
   em.scrollTop = 0;
-  document.getElementById('endlessBtn').classList.toggle('hidden', !win || ending !== 'B');
-  const waveLabel = endlessMode ? `无尽第 ${wave} 层` : `第 ${wave} / ${MAX_WAVE} 层`;
+  const showEndlessNext = !!(win && ending === 'B');
+  document.getElementById('endlessBtn').classList.toggle('hidden', !showEndlessNext);
+  const endEndlessWrap = document.getElementById('endEndlessWrap');
+  if (endEndlessWrap) endEndlessWrap.classList.toggle('hidden', !showEndlessNext);
   const retryBtn = document.getElementById('retryWaveBtn');
+  const endRetryWrap = document.getElementById('endRetryWrap');
   if (retryBtn) {
     const canRetry = !win && typeof waveCheckpoint !== 'undefined' && !!(waveCheckpoint && waveCheckpoint.player);
     retryBtn.classList.toggle('hidden', !canRetry);
-    retryBtn.textContent = '重试本层';
+    retryBtn.textContent = '↻ 重试本层 →';
+    if (endRetryWrap) endRetryWrap.classList.toggle('hidden', !canRetry);
   }
   const abandonBtn = document.getElementById('abandonRestartBtn');
   if (abandonBtn) {
@@ -1925,8 +2519,7 @@ function showSpireEndMenu(win, ending = '') {
   }
   const mainBtn = document.getElementById('endMainMenuBtn');
   if (mainBtn) {
-    mainBtn.className = win ? 'btn btn-go' : 'btn btn-sec';
-    mainBtn.textContent = win && ending === 'A' ? '再次提灯启程' : '返回主殿';
+    mainBtn.textContent = win && ending === 'A' ? '← 再次提灯启程' : '← 返回主殿';
   }
   const clsObj = CLASSES.find(c => c.id === player.cls);
   const retries = (player && player.retryCount) || 0;
@@ -1934,9 +2527,9 @@ function showSpireEndMenu(win, ending = '') {
   document.getElementById('endTitle').textContent = win ? (ending === 'A' ? '神座加冕' : '第一千道黎明') : '魂灯未熄';
   const storyNote = win
     ? (ending === 'A'
-      ? '<br><span class="ending-story-note">你与镜中圣女合一，黑日吞没了世界。无边的孤寂中，记忆再次崩散。第一千次轮回开始了。</span>'
-      : '<br><span class="ending-story-note">四位同伴的温暖残影与你斩碎了黑镜。长桥雨停，冰城苏醒，钟声终于向前。她们留在旧物、晨光与你的记忆里。</span>')
-    : `<br><span class="ending-story-note">你倒在了${['雨夜长桥', '永冻冰窟', '倒悬钟楼', '日蚀镜界'][actIndex - 1]}。可以从第 ${wave} 层起点重新握紧提灯。</span>`;
+      ? '<br><span class="ending-story-note">你与镜中圣女合一，黑日吞没了世界。第一千次轮回开始了。</span>'
+      : '<br><span class="ending-story-note">四位同伴的温暖残影与你斩碎了黑镜。长桥雨停，冰城苏醒，钟声终于向前。</span>')
+    : `<br><span class="ending-story-note">你倒在了${['雨夜长桥', '永冻冰窟', '倒悬钟楼', '日蚀镜界'][actIndex - 1]}。可从第 ${wave} 层起点重新握紧提灯。</span>`;
   document.getElementById('endDesc').innerHTML =
     `厄度：<b>${diff.badge}</b>  ·  登塔者：<b>${clsObj ? clsObj.name : ''}</b>  ·  抵达：<b>${waveLabel}</b>  ·  共鸣：<b>Lv.${player.lv}</b>  ·  净化：<b>${player.kills}</b>` +
     (retries > 0 ? `  ·  回溯：<b>${retries} 次</b>` : '') + storyNote;
@@ -2193,14 +2786,18 @@ function _resolveThreatDossier(key, fallbackName = '未知威胁', fallbackIcon 
 }
 
 function setEndSummaryTab(tab) {
-  _endSummaryTab = tab || 'all';
+  _endSummaryTab = tab || 'dealt';
   const panel = typeof document !== 'undefined' ? document.getElementById('endSummaryPanel') : null;
   if (!panel) return;
   if (typeof panel.setAttribute === 'function') panel.setAttribute('data-view', _endSummaryTab);
   const btns = panel.querySelectorAll ? panel.querySelectorAll('.end-sum-tab') : [];
   for (let i = 0; i < btns.length; i++) {
     const b = btns[i];
-    if (b && b.classList) b.classList.toggle('active', b.getAttribute('data-tab') === _endSummaryTab);
+    if (b && b.classList) {
+      const isMatch = b.getAttribute('data-tab') === _endSummaryTab;
+      b.classList.toggle('active', isMatch);
+      b.classList.toggle('on', isMatch);
+    }
   }
 }
 globalThis.setEndSummaryTab = setEndSummaryTab;
@@ -2330,13 +2927,18 @@ function openEndSummaryDetail(kind, id) {
           </div>`;
       }
 
+      const detailDispName = _wpnDispName(id, showTier, showEvo);
+      const baseProtoTag = detailDispName !== tpl.name ? `<span class="tag">原型：${_escRunHtml(tpl.name)}</span>` : '';
       bodyEl.innerHTML = `
         <div class="end-detail-hero">
           <div class="item-emblem t${showTier} end-detail-emblem">${entry.iconHtml}</div>
           <div class="end-detail-hero-info">
-            <div class="end-detail-name">${_escRunHtml(tpl.name)}${activeEvoObj ? ` <span class="end-detail-evo-sub" style="color:${activeEvoObj.color || '#ff5c8a'}">· ★${_escRunHtml(activeEvoObj.name)}</span>` : ''}</div>
+            <div class="p5-title-group">
+              <div class="end-detail-name">${_escRunHtml(detailDispName)}</div>
+              ${_rarityPill(showTier)}
+            </div>
             <div class="card-badges">
-              <span class="tag t${showTier}">${_escRunHtml(TIER_NAMES[showTier] || ('阶' + showTier))}兵装</span>
+              ${baseProtoTag}
               ${detailScaleBadges}
               ${setLabel ? `<span class="tag">${_escRunHtml(setLabel)}</span>` : ''}
               ${entry.ownedCount > 0 ? `<span class="tag tag-owned">结算随身 ×${entry.ownedCount}</span>` : '<span class="tag">曾出战记录</span>'}
@@ -2574,9 +3176,8 @@ function renderEndRunSummary(win = false) {
     if (tpl) {
       showTier = eq ? (eq.tier || 1) : Math.max(rec.tier || 1, tpl.minTier || 1);
       showEvo = eq && eq.evo ? eq.evo : '';
-      const evoTitle = (eq && eq.evoName) || rec.evoName || '';
-      if (evoTitle) badge = `★${evoTitle}`;
-      else if (eq || rec.tier) badge = `阶${showTier}`;
+      name = _wpnDispName(id, showTier, showEvo);
+      badge = TIER_NAMES[showTier] || `阶${showTier}`;
       iconHtml = _wpnEmblem(id, showTier, showEvo, tpl.icon);
     } else {
       badge = (extra && extra.cat) ? extra.cat.slice(0, 4) : '构装/战技';
@@ -2629,19 +3230,21 @@ function renderEndRunSummary(win = false) {
   _endSummaryState = { win: !!win, totalDealt, totalTaken, wEntries, tEntries, iEntries };
 
   const wRowsHtml = wEntries.length
-    ? wEntries.map(e => {
+    ? wEntries.map((e, idx) => {
         const pct = totalDealt > 0 ? Math.min(100, (e.dmg / totalDealt) * 100) : 0;
         const pctTxt = totalDealt > 0 ? `${pct >= 10 ? pct.toFixed(0) : pct.toFixed(1)}%` : '0%';
         const safeId = _escRunAttr(e.id);
-        return `<div class="end-sum-row is-clickable" role="button" tabindex="0" data-sum-kind="dealt" data-sum-id="${safeId}" title="点击查看【${_escRunAttr(e.name)}】详情" onclick="openEndSummaryDetail('dealt','${safeId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEndSummaryDetail('dealt','${safeId}');}">
-          <div class="end-sum-ico">${e.iconHtml}</div>
-          <div class="end-sum-main">
-            <div class="end-sum-line">
-              <span class="end-sum-name">${_escRunHtml(e.name)}${e.badge ? `<em class="end-sum-tag">${_escRunHtml(e.badge)}</em>` : ''}</span>
-              <span class="end-sum-val"><b>${_fmtRunNum(e.dmg)}</b> <small>(${pctTxt}${e.kills > 0 ? ` · 斩${e.kills}` : ''})</small><span class="end-sum-more">详情 ›</span></span>
+        const pillHtml = WEAPONS[e.id] ? _rarityPill(e.tier) : `<span class="bar-prog-badge">${_escRunHtml(e.badge)}</span>`;
+        return `<div class="p5-row end-sum-row is-clickable${idx === 0 ? ' is-sel' : ''}" role="button" tabindex="0" data-sum-kind="dealt" data-sum-id="${safeId}" title="点击查看【${_escRunAttr(e.name)}】详情" onclick="openEndSummaryDetail('dealt','${safeId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEndSummaryDetail('dealt','${safeId}');}">
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${e.iconHtml}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge"><div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <div class="p5-title-group"><span class="p5-bar-title">${_escRunHtml(e.name)}</span>${pillHtml}</div>
+              <div class="p5-bar-right"><span class="end-p5-val">${_fmtRunNum(e.dmg)} <small>(${pctTxt})</small></span></div>
             </div>
-            <div class="end-sum-track"><div class="end-sum-fill dealt" style="width:${Math.max(pct > 0 ? 2 : 0, pct).toFixed(1)}%"></div></div>
-          </div>
+            <div class="p5-bar-cat">命中 ${e.hits} 次${e.kills > 0 ? ` · 净化 ${e.kills}` : ''} · 点击查看机制档案 ›</div>
+          </div></div>
         </div>`;
       }).join('')
     : `<div class="end-sum-empty">本局尚未造成兵装伤害记录</div>`;
@@ -2654,15 +3257,16 @@ function renderEndRunSummary(win = false) {
         const thumbHtml = e.dossier && e.dossier.spriteUrl
           ? `<img src="${e.dossier.spriteUrl}" alt="${_escRunAttr(e.name)}" class="wpn-art-ico">`
           : _escRunHtml(e.icon);
-        return `<div class="end-sum-row is-clickable${e.fatal && !win ? ' is-fatal' : ''}" role="button" tabindex="0" data-sum-kind="taken" data-sum-id="${safeKey}" title="点击查看【${_escRunAttr(e.name)}】招式与承伤详情" onclick="openEndSummaryDetail('taken','${safeKey}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEndSummaryDetail('taken','${safeKey}');}">
-          <div class="end-sum-ico${e.dossier && e.dossier.spriteUrl ? '' : ' emoji'}">${thumbHtml}</div>
-          <div class="end-sum-main">
-            <div class="end-sum-line">
-              <span class="end-sum-name">${_escRunHtml(e.name)}${e.fatal && !win ? '<em class="end-sum-fatal">致命</em>' : ''}</span>
-              <span class="end-sum-val taken"><b>-${_fmtRunNum(e.dmg)}</b> <small>(${pctTxt} · 受击${e.hits}次)</small><span class="end-sum-more">详情 ›</span></span>
+        return `<div class="p5-row end-sum-row is-clickable${e.fatal && !win ? ' is-sel is-fatal' : ''}" role="button" tabindex="0" data-sum-kind="taken" data-sum-id="${safeKey}" title="点击查看【${_escRunAttr(e.name)}】招式与承伤详情" onclick="openEndSummaryDetail('taken','${safeKey}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEndSummaryDetail('taken','${safeKey}');}">
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${thumbHtml}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge"><div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <div class="p5-title-group"><span class="p5-bar-title">${_escRunHtml(e.name)}</span>${e.fatal && !win ? '<span class="t-rarity-pill tp-5">致命一击</span>' : ''}</div>
+              <div class="p5-bar-right"><span class="end-p5-val taken">-${_fmtRunNum(e.dmg)} <small>(${pctTxt})</small></span></div>
             </div>
-            <div class="end-sum-track"><div class="end-sum-fill taken" style="width:${Math.max(pct > 0 ? 2 : 0, pct).toFixed(1)}%"></div></div>
-          </div>
+            <div class="p5-bar-cat">受击 ${e.hits} 次 · 单次最高 -${e.maxHit} · 点击查看招式对策 ›</div>
+          </div></div>
         </div>`;
       }).join('')
     : `<div class="end-sum-empty flawless">✨ 全程零受伤 · 无瑕身法记录！</div>`;
@@ -2672,16 +3276,16 @@ function renderEndRunSummary(win = false) {
         const it = e.item;
         const safeId = _escRunAttr(e.id);
         const itIcoHtml = _itmEmblem(it, it.tier);
-        const isImgIco = typeof itIcoHtml === 'string' && itIcoHtml.includes('<img');
-        return `<div class="end-sum-row is-clickable" role="button" tabindex="0" data-sum-kind="item" data-sum-id="${safeId}" title="点击查看【${_escRunAttr(it.name)}】详情" onclick="openEndSummaryDetail('item','${safeId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEndSummaryDetail('item','${safeId}');}">
-          <div class="end-sum-ico${isImgIco ? '' : ' emoji'}">${itIcoHtml}</div>
-          <div class="end-sum-main">
-            <div class="end-sum-line">
-              <span class="end-sum-name">${_escRunHtml(it.name)}<em class="end-sum-tag">${_escRunHtml(TIER_NAMES[it.tier] || ('T' + it.tier))}</em></span>
-              <span class="end-sum-val"><b>×${e.count}</b><span class="end-sum-more">详情 ›</span></span>
+        return `<div class="p5-row end-sum-row is-clickable" role="button" tabindex="0" data-sum-kind="item" data-sum-id="${safeId}" title="点击查看【${_escRunAttr(it.name)}】详情" onclick="openEndSummaryDetail('item','${safeId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEndSummaryDetail('item','${safeId}');}">
+          <div class="p5-ico-edge"><div class="p5-ico-inner">${itIcoHtml}</div></div>
+          <div class="p5-notch" aria-hidden="true"></div>
+          <div class="p5-bar-edge"><div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <div class="p5-title-group"><span class="p5-bar-title">${_escRunHtml(it.name)}</span>${_rarityPill(it.tier)}</div>
+              <div class="p5-bar-right"><span class="end-p5-val">×${e.count}</span></div>
             </div>
-            <div class="end-sum-item-snip">${_escRunHtml(it.desc)}</div>
-          </div>
+            <div class="p5-bar-cat">${_escRunHtml(it.desc)}</div>
+          </div></div>
         </div>`;
       }).join('')
     : `<div class="end-sum-empty">本局尚未获取记忆遗物</div>`;
@@ -2691,36 +3295,25 @@ function renderEndRunSummary(win = false) {
   const dodgePct = Math.round(Math.min(player.dodgeCap || 0.80, Math.max(0, player.dodge || 0)) * 100);
   const lsPct = Math.round(Math.min(0.32, Math.max(0, player.lifesteal || 0)) * 100);
 
-  _endSummaryTab = (typeof uiMode !== 'undefined' && uiMode !== 'desktop') ? 'dealt' : 'all';
+  _endSummaryTab = !win && tEntries.length ? 'taken' : 'dealt';
   if (typeof panel.setAttribute === 'function') panel.setAttribute('data-view', _endSummaryTab);
   panel.innerHTML = `
-    <div class="end-sum-topbar">
-      <div class="end-sum-kpis">
-        <span>⚔️ 整局总输出 <b>${_fmtRunNum(totalDealt)}</b></span>
-        <span>🩸 整局总承伤 <b class="taken">${_fmtRunNum(totalTaken)}</b></span>
-        <span>🛡️ 护甲 <b>${armorVal}</b> (${armorMit >= 0 ? '减伤' + armorMit : '易伤' + Math.abs(armorMit)}%) · 闪避 <b>${dodgePct}%</b> · 吸血 <b>${lsPct}%</b></span>
-        <span class="end-sum-click-tip">💡 点击任意武器/魔物/遗物可查看详情</span>
+    <div class="end-p5-topbar">
+      <div class="end-p5-kpis">
+        <span>⚔️ 总输出 <b>${_fmtRunNum(totalDealt)}</b></span>
+        <span>🩸 总承伤 <b class="taken">${_fmtRunNum(totalTaken)}</b></span>
+        <span>🛡️ 护甲 <b>${armorVal}</b>(${armorMit >= 0 ? '-' + armorMit : '+' + Math.abs(armorMit)}%) · 闪避 <b>${dodgePct}%</b> · 汲血 <b>${lsPct}%</b></span>
       </div>
-      <div class="end-sum-tabs">
-        <button type="button" class="end-sum-tab${_endSummaryTab === 'all' ? ' active' : ''}" data-tab="all" onclick="setEndSummaryTab('all')">双栏总览</button>
-        <button type="button" class="end-sum-tab${_endSummaryTab === 'dealt' ? ' active' : ''}" data-tab="dealt" onclick="setEndSummaryTab('dealt')">⚔️ 兵装输出</button>
-        <button type="button" class="end-sum-tab${_endSummaryTab === 'taken' ? ' active' : ''}" data-tab="taken" onclick="setEndSummaryTab('taken')">🩸 魔物承伤</button>
-        <button type="button" class="end-sum-tab${_endSummaryTab === 'items' ? ' active' : ''}" data-tab="items" onclick="setEndSummaryTab('items')">🎒 本局遗物 (${iEntries.length})</button>
+      <div class="end-p5-tabs">
+        <div class="p5-chip-wrap"><button type="button" class="p5-chip end-sum-tab${_endSummaryTab === 'dealt' ? ' active on' : ''}" data-tab="dealt" onclick="setEndSummaryTab('dealt')"><span>⚔️ 兵装输出 (${wEntries.length})</span></button></div>
+        <div class="p5-chip-wrap"><button type="button" class="p5-chip end-sum-tab${_endSummaryTab === 'taken' ? ' active on' : ''}" data-tab="taken" onclick="setEndSummaryTab('taken')"><span>🩸 魔物承伤 (${tEntries.length})</span></button></div>
+        <div class="p5-chip-wrap"><button type="button" class="p5-chip end-sum-tab${_endSummaryTab === 'items' ? ' active on' : ''}" data-tab="items" onclick="setEndSummaryTab('items')"><span>🏺 本局遗物 (${iEntries.length})</span></button></div>
       </div>
     </div>
-    <div class="end-sum-grid">
-      <div class="end-sum-col col-dealt">
-        <div class="end-sum-col-head"><span>⚔️ 武器与构装输出统计</span><span>点击条目查看详情 · 共 ${wEntries.length} 项</span></div>
-        <div class="end-sum-list">${wRowsHtml}</div>
-      </div>
-      <div class="end-sum-col col-taken">
-        <div class="end-sum-col-head"><span>🩸 魔物与机关承伤明细</span><span>点击条目查看详情 · 共 ${tEntries.length} 源</span></div>
-        <div class="end-sum-list">${tRowsHtml}</div>
-      </div>
-      <div class="end-sum-col col-items">
-        <div class="end-sum-col-head"><span>🎒 本局收集记忆遗物</span><span>点击条目查看详情 · 共 ${iEntries.length} 种</span></div>
-        <div class="end-sum-list">${iRowsHtml}</div>
-      </div>
+    <div class="end-sum-grid end-p5-lists">
+      <div class="end-sum-col col-dealt p5-vstack">${wRowsHtml}</div>
+      <div class="end-sum-col col-taken p5-vstack">${tRowsHtml}</div>
+      <div class="end-sum-col col-items p5-vstack">${iRowsHtml}</div>
     </div>`;
 }
 globalThis.renderEndRunSummary = renderEndRunSummary;

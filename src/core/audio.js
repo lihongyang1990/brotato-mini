@@ -362,7 +362,7 @@ const SpireAudio = {
     const mb = document.getElementById('menuBgmBtn');
     if (mb) mb.textContent = muted ? '音景 · 静音' : '音景 · 开启';
     const mab = document.getElementById('menuAudioBtn');
-    if (mab) mab.textContent = muted ? '🔇 音量 · 静音' : `🔊 音量 · ${bgmPct}%`;
+    if (mab) mab.textContent = muted ? '🔇 静音' : `🔊 ${bgmPct}%`;
 
     const hb = document.getElementById('hudBgmBtn');
     if (hb) hb.textContent = muted ? '静音' : '音景';
@@ -370,7 +370,17 @@ const SpireAudio = {
     if (hab) hab.textContent = muted ? '🔇' : `🔊 ${bgmPct}%`;
 
     const sab = document.getElementById('shopAudioBtn');
-    if (sab) sab.textContent = muted ? '🔇 音量' : `🔊 ${bgmPct}%`;
+    if (sab) sab.textContent = muted ? '🔇 静音' : `🔊 ${bgmPct}%`;
+
+    if (typeof document.querySelectorAll === 'function') {
+      const volBtns = document.querySelectorAll('.js-audio-vol-btn');
+      for (let i = 0; i < volBtns.length; i++) {
+        const vb = volBtns[i];
+        if (vb && vb.id !== 'hudAudioBtn') {
+          vb.textContent = muted ? '🔇 静音' : `🔊 ${bgmPct}%`;
+        }
+      }
+    }
 
     const pMute = document.getElementById('pauseMuteBtn');
     if (pMute) pMute.textContent = muted ? '🔇 已静音（点此恢复）' : '🔊 一键静音';

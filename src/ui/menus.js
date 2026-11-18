@@ -78,11 +78,218 @@ function _buildZeroOutfitStripHtml(compact) {
   return `<div class="zero-outfit-strip" role="group" aria-label="主角战装切换">${btns}${zoomBtn}</div>`;
 }
 
+function stepMenuDiff(delta) {
+  const len = DIFFS.length;
+  selectedDiff = ((selectedDiff + (delta < 0 ? -1 : 1)) % len + len) % len;
+  beep(480, 0.04, 'triangle', 0.03);
+  initMenuUI();
+}
+globalThis.stepMenuDiff = stepMenuDiff;
+
+function stepMenuOutfit(delta) {
+  if (typeof ZERO_OUTFITS === 'undefined') return;
+  const order = ['witch', 'crimson', 'astral', 'default'];
+  const curId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
+  const idx = Math.max(0, order.indexOf(curId));
+  const nextId = order[((idx + (delta < 0 ? -1 : 1)) % order.length + order.length) % order.length];
+  selectZeroOutfitFromUI(nextId);
+}
+globalThis.stepMenuOutfit = stepMenuOutfit;
+
+function stepMenuScene(delta) {
+  const ids = ['random', ...SCENES.map(s => s.id)];
+  const curIdx = Math.max(0, ids.indexOf(selectedScene));
+  const nextId = ids[((curIdx + (delta < 0 ? -1 : 1)) % ids.length + ids.length) % ids.length];
+  selectedScene = nextId;
+  if (nextId !== 'random') {
+    curScene = SCENES.find(x => x.id === nextId) || SCENES[0];
+    sceneSeed = (1009 + nextId.charCodeAt(0) * 271) >>> 0;
+    if (bootReady) syncArenaAndZoom(true);
+    if (typeof SpireAudio !== 'undefined') SpireAudio.syncScene(nextId);
+  } else {
+    curScene = SCENES[0];
+    sceneSeed = 1024;
+    if (bootReady) syncArenaAndZoom(true);
+    if (typeof SpireAudio !== 'undefined') SpireAudio.syncScene('foundry');
+  }
+  beep(510, 0.04, 'triangle', 0.03);
+  initMenuUI();
+}
+globalThis.stepMenuScene = stepMenuScene;
+
+function _renderStoryP5Bars() {
+  const wrap = document.getElementById('storyPrepBars');
+  if (!wrap) return;
+  const activeDiff = DIFFS[selectedDiff] || DIFFS[1] || DIFFS[0];
+  const curOutfitId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
+  const curOutfit = (typeof ZERO_OUTFITS !== 'undefined' && (ZERO_OUTFITS[curOutfitId] || ZERO_OUTFITS.witch)) || { name: '提灯战装', shortName: '灰羽魔女', desc: '' };
+  const headCn = document.getElementById('storyHeroHeadCn');
+  if (headCn) headCn.textContent = `零 · 提灯人${curOutfit.captionSuffix || ''}`;
+
+  const diffIdx = Math.max(0, DIFFS.indexOf(activeDiff)) + 1;
+  const outfitKeys = typeof ZERO_OUTFITS !== 'undefined' ? Object.keys(ZERO_OUTFITS) : ['default', 'witch', 'crimson', 'astral'];
+  const outIdx = Math.max(0, outfitKeys.indexOf(curOutfitId)) + 1;
+  wrap.innerHTML = `
+    <div class="p5-row is-sel" onclick="stepMenuDiff(1)">
+      <div class="p5-ico-edge"><div class="p5-ico-inner">🕯️</div></div>
+      <div class="p5-notch" aria-hidden="true"></div>
+      <div class="p5-bar-edge">
+        <div class="p5-bar-fill">
+          <div class="p5-bar-top">
+            <div class="p5-title-group">
+              <span class="p5-bar-title">${activeDiff.badge} · ${activeDiff.name}</span>
+            </div>
+            <div class="p5-stepper" onclick="event.stopPropagation()">
+              <button type="button" class="p5-tri-btn prev" onclick="stepMenuDiff(-1)" aria-label="上一难度"><i></i></button>
+              <span class="p5-step-idx">${diffIdx}/${DIFFS.length}</span>
+              <button type="button" class="p5-tri-btn next" onclick="stepMenuDiff(1)" aria-label="下一难度"><i></i></button>
+            </div>
+          </div>
+          <div class="p5-bar-cat">${activeDiff.desc}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p5-row" onclick="openZeroOutfitModal()">
+      <div class="p5-ico-edge"><div class="p5-ico-inner">✦</div></div>
+      <div class="p5-notch" aria-hidden="true"></div>
+      <div class="p5-bar-edge">
+        <div class="p5-bar-fill">
+          <div class="p5-bar-top">
+            <div class="p5-title-group">
+              <span class="p5-bar-title">战装 · ${curOutfit.name}</span>
+            </div>
+            <div class="p5-stepper" onclick="event.stopPropagation()">
+              <button type="button" class="p5-tri-btn prev" onclick="stepMenuOutfit(-1)" aria-label="上一套战装"><i></i></button>
+              <span class="p5-step-idx">${outIdx}/${outfitKeys.length}</span>
+              <button type="button" class="p5-tri-btn next" onclick="stepMenuOutfit(1)" aria-label="下一套战装"><i></i></button>
+            </div>
+          </div>
+          <div class="p5-bar-cat">${curOutfit.desc || '同步切换立绘、实机四帧精灵与剧情演出形象'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p5-row is-static">
+      <div class="p5-ico-edge"><div class="p5-ico-inner">⚔️</div></div>
+      <div class="p5-notch" aria-hidden="true"></div>
+      <div class="p5-bar-edge">
+        <div class="p5-bar-fill">
+          <div class="p5-bar-top">
+            <span class="p5-bar-title">初始兵装 · 封魂短铳 + 守誓残杖</span>
+            <span class="p5-gold-note">命定天赋</span>
+          </div>
+          <div class="p5-bar-cat">瞬步·青焰净魂震退归晶 · 16 层四幕抵达新层自动存档</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function _renderEndlessP5Stage(activeEndlessHero, activeDiffObj, activeSceneOpt) {
+  if (!activeEndlessHero) return;
+  const isZero = activeEndlessHero.id === 'allrounder' && typeof getActiveZeroOutfit === 'function';
+  const activeOutfit = isZero ? getActiveZeroOutfit() : null;
+  const portUrl = typeof getHeroUiBustUrl === 'function'
+    ? getHeroUiBustUrl(activeEndlessHero.id, activeOutfit ? activeOutfit.id : undefined)
+    : _menuAssetUrl(activeOutfit ? (activeOutfit.uiBust || activeOutfit.portrait) : activeEndlessHero.portrait);
+  const chibiUrl = _menuAssetUrl(activeOutfit ? activeOutfit.chibi : activeEndlessHero.chibi);
+
+  const pFrame = document.getElementById('endlessPortraitFrame');
+  if (pFrame) {
+    pFrame.innerHTML = `
+      <div class="pcf-back-slash" aria-hidden="true"></div>
+      <img src="${portUrl}" alt="${activeEndlessHero.name}" class="bust-full spotlight-portrait" decoding="async">
+      <div class="pcf-chibi-badge" title="实机战斗精灵形态">
+        <img src="${chibiUrl}" alt="${activeEndlessHero.name} 实机精灵" decoding="async">
+        <span>${activeEndlessHero.shortRole || '实机'}</span>
+      </div>`;
+  }
+
+  const enEl = document.getElementById('endlessHeroEn');
+  const cnEl = document.getElementById('endlessHeroCn');
+  const trEl = document.getElementById('endlessTraitLine');
+  if (enEl) enEl.textContent = `${activeEndlessHero.code || 'HERO'} · ${activeEndlessHero.enTitle || 'ASHEN VOW'}`;
+  if (cnEl) cnEl.textContent = `${activeEndlessHero.name} · ${activeOutfit ? activeOutfit.shortName : (activeEndlessHero.shortRole || activeEndlessHero.tag)}`;
+  if (trEl) {
+    const posTxt = Array.isArray(activeEndlessHero.traits) ? activeEndlessHero.traits.join(' · ') : (activeEndlessHero.perks || '');
+    const negTxt = activeEndlessHero.negTrait ? ` ｜ ${activeEndlessHero.negTrait}` : '';
+    trEl.textContent = `✦ ${posTxt}${negTxt}`;
+  }
+
+  const barsEl = document.getElementById('endlessPrepBars');
+  if (barsEl && activeDiffObj && activeSceneOpt) {
+    const diffIdx = Math.max(0, DIFFS.indexOf(activeDiffObj)) + 1;
+    const scList = ['random', ...(typeof SCENES !== 'undefined' ? SCENES.map(s => s.id) : [])];
+    const scIdx = Math.max(0, scList.indexOf(selectedScene)) + 1;
+    const outfitKeys = typeof ZERO_OUTFITS !== 'undefined' ? Object.keys(ZERO_OUTFITS) : ['default', 'witch', 'crimson', 'astral'];
+    const curOutfitId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
+    const outIdx = Math.max(0, outfitKeys.indexOf(curOutfitId)) + 1;
+    const outfitCtrl = isZero
+      ? `<div class="p5-stepper" onclick="event.stopPropagation()">
+           <button type="button" class="p5-tri-btn prev" onclick="stepMenuOutfit(-1)" aria-label="上一套战装"><i></i></button>
+           <span class="p5-step-idx">${outIdx}/${outfitKeys.length}</span>
+           <button type="button" class="p5-tri-btn next" onclick="stepMenuOutfit(1)" aria-label="下一套战装"><i></i></button>
+         </div>`
+      : `<span class="p5-gold-note">命定天赋</span>`;
+    barsEl.innerHTML = `
+      <div class="p5-row is-sel" onclick="stepMenuDiff(1)">
+        <div class="p5-ico-edge"><div class="p5-ico-inner">🕯️</div></div>
+        <div class="p5-notch" aria-hidden="true"></div>
+        <div class="p5-bar-edge">
+          <div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <span class="p5-bar-title">${activeDiffObj.badge} · ${activeDiffObj.name}</span>
+              <div class="p5-stepper" onclick="event.stopPropagation()">
+                <button type="button" class="p5-tri-btn prev" onclick="stepMenuDiff(-1)" aria-label="上一难度"><i></i></button>
+                <span class="p5-step-idx">${diffIdx}/${DIFFS.length}</span>
+                <button type="button" class="p5-tri-btn next" onclick="stepMenuDiff(1)" aria-label="下一难度"><i></i></button>
+              </div>
+            </div>
+            <div class="p5-bar-cat">${activeDiffObj.desc}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p5-row" onclick="stepMenuScene(1)">
+        <div class="p5-ico-edge"><div class="p5-ico-inner">🗺️</div></div>
+        <div class="p5-notch" aria-hidden="true"></div>
+        <div class="p5-bar-edge">
+          <div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <span class="p5-bar-title">层域 · ${activeSceneOpt.name}</span>
+              <div class="p5-stepper" onclick="event.stopPropagation()">
+                <button type="button" class="p5-tri-btn prev" onclick="stepMenuScene(-1)" aria-label="上一层域"><i></i></button>
+                <span class="p5-step-idx">${scIdx}/${scList.length}</span>
+                <button type="button" class="p5-tri-btn next" onclick="stepMenuScene(1)" aria-label="下一层域"><i></i></button>
+              </div>
+            </div>
+            <div class="p5-bar-cat">${activeSceneOpt.sub}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p5-row is-static">
+        <div class="p5-ico-edge"><div class="p5-ico-inner">⚔️</div></div>
+        <div class="p5-notch" aria-hidden="true"></div>
+        <div class="p5-bar-edge">
+          <div class="p5-bar-fill">
+            <div class="p5-bar-top">
+              <span class="p5-bar-title">初始兵装 · ${activeEndlessHero.loadout}</span>
+              ${outfitCtrl}
+            </div>
+            <div class="p5-bar-cat">${activeEndlessHero.dashDesc || activeEndlessHero.perks || ''}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
 function syncZeroOutfitUI() {
   if (typeof ZERO_OUTFITS === 'undefined') return;
   const curId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
   const cur = ZERO_OUTFITS[curId] || ZERO_OUTFITS.witch;
-  const portUrl = _menuAssetUrl(cur.portrait);
+  const portUrl = typeof getZeroUiBustUrl === 'function' ? getZeroUiBustUrl(curId) : _menuAssetUrl(cur.uiBust || cur.portrait);
+  const chibiUrl = _menuAssetUrl(cur.chibi);
 
   // 1) Update Story Hero Showcase IN-PLACE so .prep-zero-portrait DOM node identity never changes!
   const storyBox = document.getElementById('storyHeroShowcase');
@@ -92,15 +299,23 @@ function syncZeroOutfitUI() {
       imgEl.setAttribute('data-outfit-id', curId);
       imgEl.src = portUrl;
     }
-    const sufEl = storyBox.querySelector('.prep-outfit-suffix');
-    if (sufEl) sufEl.textContent = cur.captionSuffix || ' · 白衣';
-    const pills = storyBox.querySelectorAll('.zero-outfit-pill[data-outfit]');
-    for (let i = 0; i < pills.length; i++) {
-      pills[i].classList.toggle('active', pills[i].getAttribute('data-outfit') === curId);
+    const chibiEl = storyBox.querySelector('.prep-zero-chibi');
+    if (chibiEl) chibiEl.src = chibiUrl;
+  }
+  if (typeof menuStage !== 'undefined' && menuStage === 'story') {
+    const keyArtEl = document.getElementById('heroKeyArtBg');
+    if (keyArtEl) {
+      keyArtEl.style.backgroundImage = `url('${_menuAssetUrl('assets/spire/scene_1_vista.jpg')}')`;
     }
+    _renderStoryP5Bars();
   }
 
-  // 2) Update Outfit Modal cards if open
+  // 2) Update Outfit Modal Big Portrait + 3 Primary P5 Rows + Default Row
+  const bigPort = document.getElementById('outfitBigPort');
+  if (bigPort) bigPort.src = portUrl;
+  const bigChibi = document.getElementById('outfitBigChibi');
+  if (bigChibi) bigChibi.src = chibiUrl;
+
   const grid = document.getElementById('outfitModalGrid');
   if (grid && grid.children.length > 0) {
     const cards = grid.querySelectorAll('.outfit-pick-card');
@@ -108,16 +323,26 @@ function syncZeroOutfitUI() {
       const cid = cards[i].getAttribute('data-outfit');
       const isSel = cid === curId;
       cards[i].classList.toggle('active', isSel);
+      cards[i].classList.toggle('is-sel', isSel);
       cards[i].setAttribute('aria-checked', isSel ? 'true' : 'false');
       const badge = cards[i].querySelector('.outfit-pick-state');
-      if (badge) badge.textContent = isSel ? '◆ 当前穿戴' : '点击换装';
+      if (badge) {
+        badge.textContent = isSel ? '◆ 当前穿戴' : '点击换装';
+        badge.classList.toggle('ready', isSel);
+      }
     }
   }
   const defBtn = document.getElementById('outfitDefaultToggle');
   if (defBtn) {
-    defBtn.classList.toggle('gold', curId === 'default');
-    defBtn.classList.toggle('active', curId === 'default');
-    defBtn.textContent = curId === 'default' ? '◆ 当前穿戴：初始守誓白衣' : '切换为经典形象：初始守誓白衣';
+    const isDef = curId === 'default';
+    defBtn.classList.toggle('gold', isDef);
+    defBtn.classList.toggle('active', isDef);
+    defBtn.classList.toggle('is-sel', isDef);
+    const defState = document.getElementById('outfitDefaultState');
+    if (defState) {
+      defState.textContent = isDef ? '◆ 当前穿戴' : '点击换装';
+      defState.classList.toggle('ready', isDef);
+    }
   }
   const cfmBtn = document.getElementById('outfitConfirmBtn');
   if (cfmBtn) {
@@ -126,11 +351,7 @@ function syncZeroOutfitUI() {
       : `◆ 确认穿戴「${cur.shortName}」`;
   }
 
-  // 3) Update Home Footer button label & Endless Zero showcase if active
-  const homeBtn = document.getElementById('homeOutfitBtn');
-  if (homeBtn) {
-    homeBtn.innerHTML = `<span aria-hidden="true">✦</span> 战装 · ${cur.shortName}`;
-  }
+  // 3) Update Endless Zero showcase if active
   if (typeof menuStage !== 'undefined' && menuStage === 'endless') {
     const cg = document.getElementById('classGrid');
     if (cg) {
@@ -139,7 +360,17 @@ function syncZeroOutfitUI() {
     }
     if (selectedEndlessCls === 'allrounder') {
       const zeroObj = CLASSES.find(c => c.id === 'allrounder');
-      if (zeroObj) _renderHeroSpotlight('endlessHeroShowcase', zeroObj, false);
+      if (zeroObj) {
+        _renderHeroSpotlight('endlessHeroShowcase', zeroObj, false);
+        const activeDiffObj = DIFFS[selectedDiff] || DIFFS[1] || DIFFS[0];
+        const curScObj = selectedScene === 'random'
+          ? { id: 'random', code: 'ALL ACTS', name: '四幕轮转', sub: '循序踏入四大层域生态演进' }
+          : (() => {
+              const s = SCENES.find(x => x.id === selectedScene) || SCENES[0];
+              return { id: s.id, code: 'SCENE', name: s.name.replace(/^.+·/, ''), sub: s.terrainSummary || s.bossHint };
+            })();
+        _renderEndlessP5Stage(zeroObj, activeDiffObj, curScObj);
+      }
     }
   }
 }
@@ -160,30 +391,35 @@ function openZeroOutfitModal(opts) {
     if (_outfitModalNextStage) openMenuStage(_outfitModalNextStage);
     return;
   }
+  const vistaBg = document.getElementById('outfitVistaBg');
+  if (vistaBg && vistaBg.style) {
+    vistaBg.style.backgroundImage = `url('${_menuAssetUrl('assets/spire/v2/wind-pavilion.jpg')}')`;
+  }
   const curId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
   grid.innerHTML = ZERO_PRIMARY_OUTFIT_IDS.map(id => {
     const o = ZERO_OUTFITS[id];
     const isSel = id === curId;
-    const pUrl = _menuAssetUrl(o.portrait);
-    const cUrl = _menuAssetUrl(o.chibi);
+    const pUrl = typeof getZeroUiBustUrl === 'function' ? getZeroUiBustUrl(id) : _menuAssetUrl(o.uiBust || o.portrait);
     return `
-      <button type="button" class="outfit-pick-card${isSel ? ' active' : ''}" role="radio" aria-checked="${isSel ? 'true' : 'false'}" data-outfit="${id}" style="--outfit-accent:${o.accent}" onclick="selectZeroOutfitFromUI('${id}')">
-        <div class="outfit-pick-art">
-          <img src="${pUrl}" alt="${o.name}" class="outfit-pick-portrait" decoding="async">
-          <div class="outfit-pick-chibi-box" title="实机四帧动作形态">
-            <img src="${cUrl}" alt="${o.shortName} 实机精灵" class="outfit-pick-chibi" decoding="async">
-            <span>实机形态</span>
-          </div>
-          <span class="outfit-pick-code">${o.code}</span>
-        </div>
-        <div class="outfit-pick-meta">
-          <div class="outfit-pick-top">
-            <span class="outfit-pick-badge">${o.badge}</span>
-            <span class="outfit-pick-state">${isSel ? '◆ 当前穿戴' : '点击换装'}</span>
-          </div>
-          <div class="outfit-pick-name">${o.name}</div>
-          <p class="outfit-pick-desc">${o.desc}</p>
-        </div>
+      <button type="button" class="p5-row outfit-pick-card${isSel ? ' active is-sel' : ''}" role="radio" aria-checked="${isSel ? 'true' : 'false'}" data-outfit="${id}" onclick="selectZeroOutfitFromUI('${id}')">
+        <span class="p5-ico-edge">
+          <span class="p5-ico-inner">
+            <img src="${pUrl}" alt="${o.name}" class="outfit-pick-portrait" decoding="async">
+          </span>
+        </span>
+        <span class="p5-notch" aria-hidden="true"></span>
+        <span class="p5-bar-edge">
+          <span class="p5-bar-fill">
+            <span class="p5-bar-top">
+              <span class="p5-title-group">
+                <span class="p5-bar-title outfit-pick-name">${o.name}</span>
+                <span class="t-rarity-pill tp-4">${o.code}</span>
+              </span>
+              <span class="bar-prog-badge outfit-pick-state${isSel ? ' ready' : ''}">${isSel ? '◆ 当前穿戴' : '点击换装'}</span>
+            </span>
+            <span class="p5-bar-cat outfit-pick-desc">${o.desc}</span>
+          </span>
+        </span>
       </button>`;
   }).join('');
   modal.classList.remove('hidden');
@@ -222,27 +458,33 @@ function _renderHeroSpotlight(containerId, clsObj, isStoryLocked) {
   if (!box || !clsObj) return;
   const isZero = clsObj.id === 'allrounder' && typeof getActiveZeroOutfit === 'function';
   const activeOutfit = isZero ? getActiveZeroOutfit() : null;
-  const portUrl = _menuAssetUrl(activeOutfit ? activeOutfit.portrait : clsObj.portrait);
+  const portUrl = typeof getHeroUiBustUrl === 'function'
+    ? getHeroUiBustUrl(clsObj.id, activeOutfit ? activeOutfit.id : undefined)
+    : _menuAssetUrl(activeOutfit ? (activeOutfit.uiBust || activeOutfit.portrait) : clsObj.portrait);
+  const chibiUrl = _menuAssetUrl(activeOutfit ? activeOutfit.chibi : clsObj.chibi);
   if (isStoryLocked) {
-    // The story hero never changes. Keep the decoded portrait when only the
-    // difficulty or outfit selection changes instead of replacing the image element.
     if (box.dataset.heroId === clsObj.id) {
       syncZeroOutfitUI();
       return;
     }
     box.dataset.heroId = clsObj.id;
     const outfitId = activeOutfit ? activeOutfit.id : 'default';
-    const suf = activeOutfit ? activeOutfit.captionSuffix : ' · 白衣';
-    box.innerHTML = `<img src="${portUrl}" data-outfit-id="${outfitId}" alt="零，白衣提灯少女" class="prep-zero-portrait" decoding="async"><div class="prep-hero-caption"><span>提灯人</span><h2>零<span class="prep-outfit-suffix">${suf}</span></h2><p>她忘记了自己的名字。<br>手中的灯，却仍为某个人亮着。</p>${_buildZeroOutfitStripHtml(false)}</div>`;
+    box.innerHTML = `
+      <div class="portrait-card-frame">
+        <div class="pcf-back-slash" aria-hidden="true"></div>
+        <img src="${portUrl}" data-outfit-id="${outfitId}" alt="零，白衣提灯少女" class="prep-zero-portrait bust-full" decoding="async">
+        <div class="pcf-chibi-badge" title="实机四帧战斗精灵">
+          <img src="${chibiUrl}" alt="零 实机精灵" class="prep-zero-chibi" decoding="async">
+          <span>均衡</span>
+        </div>
+      </div>`;
+    _renderStoryP5Bars();
     return;
   }
-  const chibiUrl = _menuAssetUrl(activeOutfit ? activeOutfit.chibi : clsObj.chibi);
-  const roleTag = isStoryLocked ? '唯一主角 · 提灯人' : (activeOutfit ? activeOutfit.badge : clsObj.tag);
+  const roleTag = activeOutfit ? activeOutfit.badge : clsObj.tag;
   const traitsArr = Array.isArray(clsObj.traits) ? clsObj.traits : [];
   const negTxt = clsObj.negTrait || '';
-  const bioTxt = isStoryLocked
-    ? '第九百九十九次于塔底石棺苏醒的白衣提灯人。唯有亲自执灯登临十六层四幕高塔，方能依次唤醒并救赎昔日守誓挚友。'
-    : (clsObj.bio || '');
+  const bioTxt = clsObj.bio || '';
   const weaponsArr = Array.isArray(clsObj.weaponsList) ? clsObj.weaponsList : [clsObj.loadout || ''];
   const isTraitsTab = heroDossierTab !== 'combat';
 
@@ -251,37 +493,12 @@ function _renderHeroSpotlight(containerId, clsObj, isStoryLocked) {
   const weaponChipsHtml = weaponsArr.map(w => `<span class="weapon-spec-pill">◆ ${w}</span>`).join('');
 
   box.innerHTML = `
-    <div class="spotlight-art-col">
-      <img src="${portUrl}" alt="${clsObj.name}" class="spotlight-portrait" loading="eager" decoding="async">
-      <div class="spotlight-art-shade"></div>
-      <div class="spotlight-chibi-frame" title="实机战斗精灵形态">
-        <img src="${chibiUrl}" alt="${clsObj.name} 实机精灵" class="spotlight-chibi" loading="eager" decoding="async">
-        <span class="chibi-cap">实机形态</span>
-      </div>
-    </div>
     <div class="spotlight-info-col">
-      <div class="spotlight-header-block">
-        <div class="spotlight-role-row">
-          <span class="spotlight-en">${clsObj.enTitle || clsObj.code || ''}</span>
-          <span class="spotlight-tag">${roleTag}</span>
-        </div>
-        <div class="spotlight-name">${clsObj.name}</div>
-      </div>
-      ${isZero ? _buildZeroOutfitStripHtml(true) : ''}
-
-      <div class="dossier-tabs" role="tablist" aria-label="角色档案选项卡">
-        <button type="button" class="dossier-tab${isTraitsTab ? ' active' : ''}" onclick="setHeroDossierTab('traits')">契约特质</button>
-        <button type="button" class="dossier-tab${!isTraitsTab ? ' active' : ''}" onclick="setHeroDossierTab('combat')">兵装与瞬步</button>
-      </div>
-
+      <div class="spotlight-name">${clsObj.name} · ${roleTag}</div>
       ${isTraitsTab ? `
         <div class="dossier-pane">
           <div class="trait-chip-grid">${traitChipsHtml}</div>
           <p class="spotlight-bio">${bioTxt}</p>
-          <div class="spotlight-quick-strip">
-            <span class="sq-item"><b>初始兵装</b> ${clsObj.loadout}</span>
-            ${clsObj.dashName ? `<span class="sq-item"><b>主动战技</b> ${clsObj.dashName}</span>` : ''}
-          </div>
         </div>
       ` : `
         <div class="dossier-pane">
@@ -289,11 +506,6 @@ function _renderHeroSpotlight(containerId, clsObj, isStoryLocked) {
             <div class="cs-label">STARTING ARMAMENTS  ·  初始随身兵装</div>
             <div class="weapon-spec-row">${weaponChipsHtml}</div>
           </div>
-          ${clsObj.dashName ? `
-          <div class="combat-spec-box dash-box">
-            <div class="cs-label">SOUL DASH [SPACE / 右键]  ·  ${clsObj.dashName}</div>
-            <div class="cs-desc">${clsObj.dashDesc || ''}</div>
-          </div>` : ''}
         </div>
       `}
     </div>`;
@@ -305,6 +517,10 @@ function openMenuStage(stage) {
     return;
   }
   menuStage = (stage === 'story' || stage === 'endless') ? stage : 'home';
+  const hudEl = document.getElementById('hud');
+  if (hudEl) hudEl.classList.add('hidden');
+  const bossWrapEl = document.getElementById('bossBarWrap');
+  if (bossWrapEl) bossWrapEl.classList.add('hidden');
   const sm = document.getElementById('startMenu');
   if (sm && sm.setAttribute) sm.setAttribute('data-stage', menuStage);
   const hv = document.getElementById('menuHomeView');
@@ -313,11 +529,6 @@ function openMenuStage(stage) {
   if (hv) hv.classList.toggle('hidden', menuStage !== 'home');
   if (sv) sv.classList.toggle('hidden', menuStage !== 'story');
   if (ev) ev.classList.toggle('hidden', menuStage !== 'endless');
-  const keyArtEl = document.getElementById('heroKeyArtBg');
-  if (keyArtEl) {
-    const bgRel = menuStage === 'endless' ? 'assets/spire/scene_1_vista.jpg' : 'assets/spire/v2/title-clean.jpg';
-    keyArtEl.style.backgroundImage = `url('${_menuAssetUrl(bgRel)}')`;
-  }
   beep(menuStage === 'home' ? 420 : 520, 0.04, 'triangle', 0.035);
   initMenuUI();
 }
@@ -354,24 +565,34 @@ function initMenuUI() {
   refreshUIPrefControls();
   const vp = document.getElementById('startVersionPill');
   if (vp && typeof APP_VERSION !== 'undefined') {
-    vp.innerHTML = `<span class="ver-prefix">ECHOES OF THE ASHEN SPIRE  ·  </span><span class="ver-dot" aria-hidden="true">✦</span><span class="ver-num">${APP_VERSION}</span><span class="ver-log-tag"> · 纪元志</span>`;
+    vp.innerHTML = `<span class="ver-dot" aria-hidden="true">✦ </span><span class="ver-num">${APP_VERSION}</span>`;
     vp.setAttribute('aria-label', `当前版本 ${APP_VERSION}，点击查看版本更新记录`);
   }
   const appIconEl = document.getElementById('brandAppIcon');
   if (appIconEl) appIconEl.src = _menuAssetUrl('assets/spire/app_icon.jpg');
   const keyArtEl = document.getElementById('heroKeyArtBg');
   if (keyArtEl) {
-    const bgRel = menuStage === 'endless' ? 'assets/spire/scene_1_vista.jpg' : 'assets/spire/v2/title-clean.jpg';
+    let bgRel = 'assets/spire/v2/title-clean.jpg';
+    if (menuStage === 'story') {
+      bgRel = 'assets/spire/scene_1_vista.jpg';
+    } else if (menuStage === 'endless') {
+      const scObj = (typeof SCENES !== 'undefined' && Array.isArray(SCENES) && selectedScene !== 'random')
+        ? SCENES.find(x => x.id === selectedScene)
+        : null;
+      if (scObj && scObj.vistaImg) {
+        bgRel = scObj.vistaImg;
+      } else {
+        const heroVistaMap = { allrounder: 'assets/spire/scene_1_vista.jpg', brawler: 'assets/spire/scene_1_vista.jpg', ranger: 'assets/spire/scene_2_vista.jpg', engineer: 'assets/spire/scene_3_vista.jpg', ghost: 'assets/spire/scene_3_vista.jpg', multitasker: 'assets/spire/scene_4_vista.jpg' };
+        bgRel = heroVistaMap[selectedEndlessCls] || 'assets/spire/scene_1_vista.jpg';
+      }
+    }
     keyArtEl.style.backgroundImage = `url('${_menuAssetUrl(bgRel)}')`;
   }
 
   if (typeof SpireAudio !== 'undefined') SpireAudio.refreshButtons();
-
   if (typeof refreshSpireHome === 'function') refreshSpireHome();
-  // Build only the visible preparation screen. Opening the title/story menu
-  // must not load six hidden portraits and rebuild every endless-mode card.
-  // Proactively prewarm & GPU-decode the opening story CGs (lightweight ~300KB .jpg twins)
-  // while the user is browsing the Home or Story screen so mobile opening dialogue has 0ms black screen!
+
+
   if ((menuStage === 'home' || menuStage === 'story') && typeof SpireDirector !== 'undefined' && SpireDirector && typeof SpireDirector.preloadStoryEntry === 'function') {
     const savedRun = (typeof SpireSave !== 'undefined' && SpireSave && typeof SpireSave.load === 'function') ? SpireSave.load() : null;
     const targetFloor = (menuStage === 'home' && savedRun && savedRun.checkpoint && savedRun.checkpoint.wave) ? savedRun.checkpoint.wave : 1;
@@ -382,11 +603,11 @@ function initMenuUI() {
     _renderDiffButtons('storyDiffTabs', 'storyDiffDesc');
     const zeroObj = CLASSES.find(c => c.id === 'allrounder') || CLASSES[0];
     _renderHeroSpotlight('storyHeroShowcase', zeroObj, true);
+    _renderStoryP5Bars();
     return;
   }
   _renderDiffButtons('diffTabs', 'diffDesc');
 
-  // 无尽模式：试炼整备双栏选项卡状态同步（轮回厄度 vs 起始层域）
   const diffTabBtn = document.getElementById('prepTabDiffBtn');
   const sceneTabBtn = document.getElementById('prepTabSceneBtn');
   const diffPane = document.getElementById('endlessDiffPane');
@@ -400,7 +621,6 @@ function initMenuUI() {
   const prepDiffTag = document.getElementById('prepDiffSummaryTag');
   if (prepDiffTag && activeDiffObj) prepDiffTag.textContent = activeDiffObj.badge;
 
-  // 无尽模式：层域生态 1 + 2×2 原画选项卡
   const sceneOpts = [
     { id: 'random', code: 'ALL ACTS', name: '四幕轮转', sub: '循序踏入四大层域生态演进', vistaImg: 'assets/spire/logo_banner.jpg', wide: true },
     ...SCENES.map((s, idx) => ({
@@ -423,13 +643,7 @@ function initMenuUI() {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = `scene-btn${sc.wide ? ' wide' : ''}${sc.id === selectedScene ? ' active' : ''}`;
-      const bgUrl = _menuAssetUrl(sc.vistaImg);
-      b.innerHTML = `
-        <span class="scene-btn-bg" style="background-image:url('${bgUrl}')"></span>
-        <span class="scene-btn-txt">
-          <span class="scene-code">${sc.code}</span>
-          <span class="scene-name">${sc.name}</span>
-        </span>`;
+      b.innerHTML = `<span class="scene-code">${sc.code}</span><span class="scene-name">${sc.name}</span>`;
       b.onclick = () => {
         selectedScene = sc.id;
         if (sc.id !== 'random') {
@@ -454,36 +668,28 @@ function initMenuUI() {
     sd.innerHTML = `<span class="desc-title">${activeSceneOpt.code} · ${activeSceneOpt.name}</span><span class="desc-body">${activeSceneOpt.sub}</span>`;
   }
 
-  // 无尽模式：6 位誓约者高定人物选择选项卡 + 角色档案舞台
   const cg = document.getElementById('classGrid');
   if (cg) {
     cg.innerHTML = '';
-    CLASSES.forEach((c, idx) => {
+    CLASSES.forEach(c => {
       const isAct = c.id === selectedEndlessCls;
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.setAttribute('role', 'tab');
       btn.setAttribute('aria-selected', isAct ? 'true' : 'false');
       btn.setAttribute('data-cls', c.id);
-      btn.className = 'roster-avatar' + (isAct ? ' active' : '');
-      const portUrl = _menuAssetUrl((c.id === 'allrounder' && typeof getActiveZeroOutfit === 'function') ? getActiveZeroOutfit().portrait : c.portrait);
+      btn.className = 'hm-item roster-avatar' + (isAct ? ' active on' : '');
+      const rawPort = (c.id === 'allrounder' && typeof getActiveZeroOutfit === 'function') ? getActiveZeroOutfit().portrait : c.portrait;
+      const portUrl = rawPort ? _menuAssetUrl(rawPort) : (typeof getHeroUiBustUrl === 'function' ? getHeroUiBustUrl(c.id) : '');
       const shortLbl = HERO_SHORT_NAMES[c.id] || c.name;
-      btn.innerHTML = `
-        <span class="ctab-head">
-          <span class="ctab-code">${c.code || ('0' + (idx + 1))}</span>
-          <span class="ctab-role">${c.shortRole || c.tag}</span>
-        </span>
-        <span class="ctab-port-wrap">
-          <img src="${portUrl}" alt="${c.name}" class="roster-avatar-img" loading="eager" decoding="async">
-          <span class="ctab-shade"></span>
-        </span>
-        <span class="roster-avatar-name"><span class="ctab-gem">◆</span>${shortLbl}</span>`;
+      btn.innerHTML = `<span class="hm-inner"><img src="${portUrl}" alt="${c.name}" class="roster-avatar-img" loading="eager" decoding="async"><span class="roster-avatar-name">${shortLbl}</span></span>`;
       btn.onclick = () => selectEndlessHero(c.id);
       cg.appendChild(btn);
     });
   }
   const activeEndlessHero = CLASSES.find(c => c.id === selectedEndlessCls) || CLASSES[1] || CLASSES[0];
   _renderHeroSpotlight('endlessHeroShowcase', activeEndlessHero, false);
+  _renderEndlessP5Stage(activeEndlessHero, activeDiffObj, activeSceneOpt);
   const shortHeroName = activeEndlessHero ? (HERO_SHORT_NAMES[activeEndlessHero.id] || activeEndlessHero.name) : '烬羽';
   const sumLine = document.getElementById('endlessSummaryLine');
   if (sumLine && activeDiffObj && activeSceneOpt) {
@@ -491,7 +697,7 @@ function initMenuUI() {
   }
   const goBtn = document.getElementById('startEndlessBtn');
   if (goBtn) {
-    goBtn.textContent = `◆  以「${shortHeroName}」开启无尽试炼  →`;
+    goBtn.textContent = `◆ 以「${shortHeroName}」开启无尽试炼 →`;
   }
 }
 initMenuUI();
@@ -504,14 +710,24 @@ window.addEventListener('keydown', e => {
   const presentation = document.getElementById('presentationModal');
   if (presentation && !presentation.classList.contains('hidden')) return;
   if (k === 'escape') {
-    const om = document.getElementById('outfitModal');
-    if (om && !om.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeZeroOutfitModal(); return; }
-    const cm = document.getElementById('codexModal');
-    if (cm && !cm.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeCodex(); return; }
+    if (typeof isWeaponSlotModalOpen === 'function' && isWeaponSlotModalOpen()) {
+      if (e.preventDefault) e.preventDefault();
+      closeWeaponSlotModal();
+      return;
+    }
+    if (typeof isAudioModalOpen === 'function' && isAudioModalOpen()) {
+      if (e.preventDefault) e.preventDefault();
+      closeAudioModal();
+      return;
+    }
     const clm = document.getElementById('changelogModal');
     if (clm && !clm.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeChangelogModal(); return; }
     const lm = document.getElementById('logModal');
     if (lm && !lm.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeLogModal(); return; }
+    const cm = document.getElementById('codexModal');
+    if (cm && !cm.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeCodex(); return; }
+    const om = document.getElementById('outfitModal');
+    if (om && !om.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeZeroOutfitModal(); return; }
     if (state === 'menu' && menuStage !== 'home') { if (e.preventDefault) e.preventDefault(); openMenuStage('home'); return; }
   }
   // 无尽模式人物选择选项卡支持左右方向键与数字键 1-6 快速切换角色
@@ -544,19 +760,14 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
-  if (k === 'escape' && typeof isWeaponSlotModalOpen === 'function' && isWeaponSlotModalOpen()) {
-    if (e.preventDefault) e.preventDefault();
-    closeWeaponSlotModal();
-    return;
-  }
-  if (k === 'escape' && typeof isAudioModalOpen === 'function' && isAudioModalOpen()) {
-    if (e.preventDefault) e.preventDefault();
-    closeAudioModal();
-    return;
-  }
   if (k === 'escape') {
     if (state === 'wave' || state === 'paused') { if (e.preventDefault) e.preventDefault(); togglePause(); return; }
   } else if (k === ' ' && state === 'paused') {
+    const subModalOpen = ['codexModal', 'audioModal', 'logModal', 'changelogModal'].some(id => {
+      const el = document.getElementById(id);
+      return el && !el.classList.contains('hidden');
+    });
+    if (subModalOpen) return;
     if (e.preventDefault) e.preventDefault();
     resumeGame();
     return;
@@ -1201,7 +1412,7 @@ function renderBuildSummary(statsId, setsId) {
   const aspdScale = typeof PLAYER_ASPD_SCALE === 'number' ? PLAYER_ASPD_SCALE : 0.70;
   const aspdPct = Math.round((player.atkSpd + setB.aspd) * aspdScale * 100);
   const critPct = Math.round(getEffectiveCrit() * 100);
-  const critDmgPct = Math.round((1.95 + (player.critDmg || 0)) * 100);
+  const critDmgPct = Math.round((typeof getEffectiveCritMult === 'function' ? getEffectiveCritMult() : (1.95 + (player.critDmg || 0))) * 100);
   const rng = getTotalRangeBonus();
   const rngTxt = rng >= 0 ? `+${rng}` : `${rng}`;
   const harv = Math.round(player.harvestFlat || 0);
@@ -1261,7 +1472,8 @@ function renderBuildSummary(statsId, setsId) {
           const meta = ITEMS.find(x => x.id === iid);
           if (meta) {
             const pillIco = typeof renderItemEmblemHtml === 'function' ? renderItemEmblemHtml(meta, meta.tier, meta.icon, 'pill-art-ico') : meta.icon;
-            setPills.push(`<span class="set-pill" title="${meta.desc}">${pillIco} ${meta.name}${cnt > 1 ? ' ×' + cnt : ''}</span>`);
+            const rPill = typeof renderRarityPillHtml === 'function' ? renderRarityPillHtml(meta.tier, 'mini') : '';
+            setPills.push(`<span class="set-pill" title="${meta.desc}">${pillIco} ${meta.name}${cnt > 1 ? ' ×' + cnt : ''} ${rPill}</span>`);
           }
         }
       }

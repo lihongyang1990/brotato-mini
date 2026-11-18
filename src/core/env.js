@@ -16,13 +16,23 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.2.6';
+const APP_VERSION = 'v2.2.7';
 const APP_BUILD_DATE = '2026-11-18';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.2.6', date: '2026-11-18', tag: '当前版本 · 紧凑化竞技场(2280×1560) · Brotato式屏内小队成簇刷怪 · 前后期近战/重装怪移速全面调优',
+    ver: 'v2.2.7', date: '2026-11-18', tag: '当前版本 · 全流程 P5 双端定稿 · 荒祠绯狱妖主与机神二阶段重制 · SpirePerf 空间网格防卡顿',
+    title: '🎴 全流程 P5 黑白红双端 UI 定稿 + 👹「荒祠古祟·绯狱妖主」独立二阶段与机神重塑 + ⚡ SpirePerf 空间网格防卡顿架构',
+    items: [
+      '🎴 全流程 P5 丝绒暗红 × 黑底白边双端定稿：重构主殿、整备、衣橱、战斗 HUD（含独立大字号半透明斜切倒计时牌与 P5 圆形双环虚拟摇杆）、升级/秘匣/五阶觉醒、风亭行商（手机端一屏免翻页：刷新+开启试炼同排，购物+行囊+前往下一层常驻底栏）、圣典与结算全十一屏；桌面端锁定 780 基准等比缩放（1080p/2K/带鱼屏/4K 均恒定每页 6 条饱满比例），竖屏剧情横向 CG 全宽无裁切展示。',
+      '⚔️ 完整融合六大兵装羁绊（古誓/星芒/封魂铳/黑曜重装/四象元素/发条机巧）、42 把守誓兵装、172 件圣遗物、升级三阶动态刻印与四维真实固定点伤（近战/远程/元素/工程）面板展示。',
+      '👹 记忆祭坛「荒祠古祟 · 绯狱妖主」独立沉眠凶灵重塑与二阶段【破龛真身 · 血月黑角夜叉王】非 Q 版高燃三镜演出 + ⚙️「倒悬机神」二阶段【裂胸巨锯魔神态】重绘 + 信物一步铭记收好。',
+      '⚡ 新增 SpirePerf 预分配 Int32Array 空间均匀网格碰撞加速、O(1) swapPop 弹幕粒子回收与 LRU 文本宽度缓存，并清理 65 张历史冗余贴图。'
+    ]
+  },
+  {
+    ver: 'v2.2.6', date: '2026-11-18', tag: '紧凑化竞技场(2280×1560) · Brotato式屏内小队成簇刷怪 · 前后期近战/重装怪移速全面调优',
     title: '🗺️ 竞技场尺寸紧凑化（面积-25%） + 👾 屏内小队成簇刷怪（Squad Spawn）与前期节奏提振 + ⚡ 后期重装/自爆怪移速补齐',
     items: [
       '🗺️ 竞技场紧凑化（桌面 2640×1800 ➔ 2280×1560，横屏 2040×1320，竖屏 1416×2100）：面积缩减约 25%，对齐《土豆兄弟》紧凑视野尺度，消除大片边缘空旷感同时完整保留首领大招博弈余量！',
@@ -534,6 +544,7 @@ const ZERO_OUTFITS = {
     badge: '秘术魔女',
     desc: '超大宽檐尖顶星芒魔女帽配苍夜丝绒披风，提灯折射深空紫晶微光。',
     portrait: 'assets/spire/port_zero_witch.jpg',
+    uiBust: 'assets/spire/ui_art/port_zero_witch_bust.png',
     chibi: 'assets/spire/hero_zero_witch.png',
     sheetKey: 'zero_witch',
     portraitKey: 'zero_witch',
@@ -549,6 +560,7 @@ const ZERO_OUTFITS = {
     badge: '绯夜狐火',
     desc: '玄黑织金羽织配绯红百褶战袴，斜戴白狐神乐半面与暖焰魂灯。',
     portrait: 'assets/spire/port_zero_crimson.jpg',
+    uiBust: 'assets/spire/ui_art/port_zero_crimson_bust.png',
     chibi: 'assets/spire/hero_zero_crimson.png',
     sheetKey: 'zero_crimson',
     portraitKey: 'zero_crimson',
@@ -564,6 +576,7 @@ const ZERO_OUTFITS = {
     badge: '星穹礼赞',
     desc: '星夜蓝渐变金丝礼裙配逆转时计胸针，手提黄铜浑天仪星灯。',
     portrait: 'assets/spire/port_zero_astral.jpg',
+    uiBust: 'assets/spire/ui_art/port_zero_astral_bust.png',
     chibi: 'assets/spire/hero_zero_astral.png',
     sheetKey: 'zero_astral',
     portraitKey: 'zero_astral',
@@ -579,6 +592,7 @@ const ZERO_OUTFITS = {
     badge: '初始素衣',
     desc: '第九百九十九次于石棺苏醒时的灰白守誓斗篷与苍青提灯。',
     portrait: 'assets/spire/port_zero.jpg',
+    uiBust: 'assets/spire/ui_art/port_zero_bust.png',
     chibi: 'assets/spire/hero_zero.png',
     sheetKey: 'zero',
     portraitKey: 'zero',
@@ -635,6 +649,140 @@ function setSelectedZeroOutfit(outfitId, markChosen = true) {
   }
   if (typeof syncZeroOutfitUI === 'function') syncZeroOutfitUI();
   return ZERO_OUTFITS[validId];
+}
+
+
+const HERO_UI_BUST_MAP = {
+  allrounder:  'assets/spire/ui_art/port_zero_witch_bust.png',
+  zero:        'assets/spire/ui_art/port_zero_bust.png',
+  brawler:     'assets/spire/ui_art/ui_bust_jinyu.png',
+  jinyu:       'assets/spire/ui_art/ui_bust_jinyu.png',
+  ranger:      'assets/spire/ui_art/ui_bust_astria.png',
+  astria:      'assets/spire/ui_art/ui_bust_astria.png',
+  engineer:    'assets/spire/ui_art/ui_bust_jialan.png',
+  jialan:      'assets/spire/ui_art/ui_bust_jialan.png',
+  ghost:       'assets/spire/ui_art/ui_bust_qingyu.png',
+  qingyu:      'assets/spire/ui_art/ui_bust_qingyu.png',
+  multitasker: 'assets/spire/ui_art/ui_bust_eclipse.png',
+  eclipse:     'assets/spire/ui_art/ui_bust_eclipse.png'
+};
+
+const HERO_MASTER_SCENE_MAP = {
+  allrounder:  'assets/spire/ui_art/ui_scene_hero_0.jpg',
+  brawler:     'assets/spire/ui_art/ui_scene_hero_1.jpg',
+  ranger:      'assets/spire/ui_art/ui_scene_hero_2.jpg',
+  engineer:    'assets/spire/ui_art/ui_scene_hero_3.jpg',
+  ghost:       'assets/spire/ui_art/ui_scene_hero_4.jpg',
+  multitasker: 'assets/spire/ui_art/ui_scene_hero_5.jpg'
+};
+
+function _resolveUiAsset(relPath) {
+  if (!relPath) return '';
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.resolve === 'function') {
+    return SpireAssets.resolve(relPath);
+  }
+  return relPath + '?v=' + encodeURIComponent(APP_VERSION);
+}
+
+function getZeroUiBustUrl(outfitId) {
+  const oid = outfitId || getActiveZeroOutfitId();
+  const o = ZERO_OUTFITS[oid] || ZERO_OUTFITS.witch;
+  return _resolveUiAsset(o.uiBust || 'assets/spire/ui_art/port_zero_witch_bust.png');
+}
+
+function getHeroUiBustUrl(clsOrKey, outfitOverride) {
+  const key = clsOrKey || 'allrounder';
+  if (key === 'allrounder' || key === 'zero') {
+    return getZeroUiBustUrl(outfitOverride);
+  }
+  return _resolveUiAsset(HERO_UI_BUST_MAP[key] || HERO_UI_BUST_MAP.allrounder);
+}
+
+function getHeroMasterSceneUrl(clsId) {
+  const key = clsId || (typeof player !== 'undefined' && player && player.cls) || 'allrounder';
+  return _resolveUiAsset(HERO_MASTER_SCENE_MAP[key] || HERO_MASTER_SCENE_MAP.allrounder);
+}
+
+function getShopQingyuSceneUrl() {
+  return _resolveUiAsset('assets/spire/ui_art/ui_shop_qingyu_scene.jpg');
+}
+
+function getDawnEndSceneUrl() {
+  return _resolveUiAsset('assets/spire/ui_art/ui_scene_dawn_end.jpg');
+}
+
+function renderRarityPillHtml(tier, extraCls = '') {
+  const t = Math.max(1, Math.min(5, Number(tier) || 1));
+  const label = TIER_NAMES[t] || '普通';
+  return `<span class="t-rarity-pill tp-${t}${extraCls ? ' ' + extraCls : ''}">${label}</span>`;
+}
+
+// 零 GC 分配 P5 女神异闻录风斜切黑底白框丝绒暗红标签（战场画布播报/地形/头顶预警共用，0 shadowBlur / 0 radialGradient）
+function drawP5TagFast(g, x, y, w, h, accent, prog, shScale) {
+  const sk = Math.min(8.5, Math.max(3.5, h * 0.24));
+  const tilt = Math.min(2.2, h * 0.06);
+  const sh = shScale === undefined ? 1 : shScale;
+  if (sh > 0.05) {
+    const sx = 3.2 * sh, sy = 3.8 * sh;
+    g.fillStyle = 'rgba(136, 22, 40, 0.88)';
+    g.beginPath();
+    g.moveTo(x + sk + sx, y + sy);
+    g.lineTo(x + w + sx, y + tilt + sy);
+    g.lineTo(x + w - sk + sx, y + h + sy);
+    g.lineTo(x + sx, y + h - tilt + sy);
+    g.closePath();
+    g.fill();
+  }
+  g.fillStyle = '#08090f';
+  g.beginPath();
+  g.moveTo(x + sk, y);
+  g.lineTo(x + w, y + tilt);
+  g.lineTo(x + w - sk, y + h);
+  g.lineTo(x, y + h - tilt);
+  g.closePath();
+  g.fill();
+  const slashW = Math.min(5.2, Math.max(3.2, h * 0.16));
+  g.fillStyle = accent || '#e11d48';
+  g.beginPath();
+  g.moveTo(x + sk, y + 0.8);
+  g.lineTo(x + sk + slashW, y + 0.9);
+  g.lineTo(x + slashW, y + h - tilt - 0.8);
+  g.lineTo(x, y + h - tilt - 0.8);
+  g.closePath();
+  g.fill();
+  if (prog > 0.01) {
+    const p = Math.min(1, prog);
+    const pw = Math.max(2, (w - sk * 1.4 - slashW - 4) * p);
+    const px0 = x + slashW + 3;
+    const py0 = y + h - tilt - 3.2;
+    g.fillStyle = accent || '#ffd166';
+    g.beginPath();
+    g.moveTo(px0 + 1.2, py0);
+    g.lineTo(px0 + pw + 1.2, py0 + tilt * p * 0.6);
+    g.lineTo(px0 + pw, py0 + 2.2 + tilt * p * 0.6);
+    g.lineTo(px0, py0 + 2.2);
+    g.closePath();
+    g.fill();
+  }
+  g.strokeStyle = '#f2ede6';
+  g.lineWidth = h >= 28 ? 1.8 : 1.45;
+  g.beginPath();
+  g.moveTo(x + sk, y);
+  g.lineTo(x + w, y + tilt);
+  g.lineTo(x + w - sk, y + h);
+  g.lineTo(x, y + h - tilt);
+  g.closePath();
+  g.stroke();
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.getZeroUiBustUrl = getZeroUiBustUrl;
+  globalThis.getHeroUiBustUrl = getHeroUiBustUrl;
+  globalThis.getHeroMasterSceneUrl = getHeroMasterSceneUrl;
+  globalThis.getShopQingyuSceneUrl = getShopQingyuSceneUrl;
+  globalThis.getDawnEndSceneUrl = getDawnEndSceneUrl;
+  globalThis.renderRarityPillHtml = renderRarityPillHtml;
+  globalThis.drawP5TagFast = drawP5TagFast;
 }
 
 // ============================================================================
@@ -779,6 +927,7 @@ const SpireBootGate = (function () {
 
     const checks = [
       ['01/env', () => typeof APP_VERSION === 'string' && Array.isArray(CHANGELOG_HISTORY)],
+      ['01b/perf', () => typeof SpirePerf === 'object' && SpirePerf !== null && typeof SpirePerf.rebuildEnemyGrid === 'function'],
       ['02/logger', () => typeof logInfo === 'function' && typeof logError === 'function'],
       ['03/scenes', () => typeof SCENES !== 'undefined' && Array.isArray(SCENES) && SCENES.length >= 4],
       ['04/boss_portraits', () => typeof SpireAssets === 'object' && SpireAssets !== null && typeof BOSS_PORTRAIT_DATA === 'object'],
@@ -933,7 +1082,7 @@ const SpireBootGate = (function () {
       if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('spire_auto_heal_ver');
     } catch (_) {}
     codeAllVerified = true;
-    setStep(72, '20/20 核心模块校验通过 · 正在开启主殿…');
+    setStep(72, '24/24 核心模块校验通过 · 正在开启主殿…');
     verifyCriticalAssets();
     return bootIntegrityPassed;
   }
