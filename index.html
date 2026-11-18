@@ -12,14 +12,14 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>烬塔残响：第999次救赎 · ECHOES OF THE ASHEN SPIRE</title>
-  <link rel="icon" type="image/jpeg" href="assets/spire/app_icon.jpg?v=2.2.7">
-  <link rel="apple-touch-icon" href="assets/spire/app_icon.jpg?v=2.2.7">
-  <link rel="manifest" href="manifest.json?v=2.2.7">
-  <link rel="stylesheet" href="styles/base.css?v=2.2.7">
-  <link rel="stylesheet" href="styles/mobile.css?v=2.2.7">
-  <link rel="stylesheet" href="styles/presentation.css?v=2.2.7">
-  <link rel="stylesheet" href="styles/narrative.css?v=2.2.7">
-  <link rel="stylesheet" href="styles/p5-ui.css?v=2.2.7">
+  <link rel="icon" type="image/jpeg" href="assets/spire/app_icon.jpg?v=2.2.8">
+  <link rel="apple-touch-icon" href="assets/spire/app_icon.jpg?v=2.2.8">
+  <link rel="manifest" href="manifest.json?v=2.2.8">
+  <link rel="stylesheet" href="styles/base.css?v=2.2.8">
+  <link rel="stylesheet" href="styles/mobile.css?v=2.2.8">
+  <link rel="stylesheet" href="styles/presentation.css?v=2.2.8">
+  <link rel="stylesheet" href="styles/narrative.css?v=2.2.8">
+  <link rel="stylesheet" href="styles/p5-ui.css?v=2.2.8">
 </head>
 <body>
 
@@ -28,7 +28,7 @@
   <canvas id="spireDirectorCv" class="director-cv hidden"></canvas>
 
   <!-- 首屏全链路资源完整性校验门禁 -->
-  <div id="bootGate" class="boot-gate" data-html-version="v2.2.7" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 36%,rgba(223,192,132,0.10),transparent 60%),#070a12;color:#efe8d8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;">
+  <div id="bootGate" class="boot-gate" data-html-version="v2.2.8" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 36%,rgba(223,192,132,0.10),transparent 60%),#070a12;color:#efe8d8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;">
     <div class="boot-gate-card" style="width:100%;max-width:460px;padding:28px 26px 24px;border:2px solid #f2ede6;background:linear-gradient(180deg,rgba(14,16,24,0.97),rgba(8,10,16,0.99));box-shadow:8px 10px 0 rgba(132,23,40,0.85);text-align:center;">
       <div style="font-size:11px;letter-spacing:0.22em;color:#dfc084;opacity:0.90;margin-bottom:8px;">ASHEN SPIRE · INTEGRITY CHECK</div>
       <h2 id="bootGateTitle" style="margin:0 0 8px;font-size:21px;font-weight:800;color:#fff6dc;letter-spacing:0.04em;">🕯️ 魂灯引渡 · 校验资源完整性</h2>
@@ -186,7 +186,7 @@
     <!-- 01 视图 A：原画登录主殿（1:1 复刻 ui_p5_final.html #s-home：顶栏纪元与静音/设置，居中标题与三门扉，辅助入口置底） -->
     <section id="menuHomeView" class="menu-stage home-stage-p5">
       <header class="home-top-bar">
-        <button type="button" id="startVersionPill" class="home-ver-btn" onclick="openChangelogModal()">✦ <span class="ver-num">v2.2.7</span></button>
+        <button type="button" id="startVersionPill" class="home-ver-btn" onclick="openChangelogModal()">✦ <span class="ver-num">v2.2.8</span></button>
         <div class="top-sys-icons">
           <button id="menuAudioBtn" type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
           <button type="button" class="sys-mini-btn" onclick="openSpireSettings()">⚙ 设置</button>
@@ -795,7 +795,7 @@
   <div id="changelogModal" class="overlay p5-modal-backdrop log-modal hidden">
     <div class="log-box changelog-box p5-modal-card">
       <div class="log-head">
-        <h2 id="changelogTitle">烬塔纪元志 · v2.2.7</h2>
+        <h2 id="changelogTitle">烬塔纪元志 · v2.2.8</h2>
         <button class="sys-mini-btn" onclick="closeChangelogModal()">✕ 关闭</button>
       </div>
       <div id="changelogList" class="changelog-list"></div>
@@ -863,30 +863,30 @@
   </div>
 </div>
 
-  <!-- 模块化脚本按依赖拓扑顺序统一 defer 加载（v2.2.7） -->
-  <script defer src="src/core/env.js?v=2.2.7"></script>
-  <script defer src="src/core/perf.js?v=2.2.7"></script>
-  <script defer src="src/core/logger.js?v=2.2.7"></script>
-  <script defer src="src/data/scenes.js?v=2.2.7"></script>
-  <script defer src="src/data/boss_portraits.js?v=2.2.7"></script>
-  <script defer src="src/world/textures.js?v=2.2.7"></script>
-  <script defer src="src/ui/viewport.js?v=2.2.7"></script>
-  <script defer src="src/core/audio.js?v=2.2.7"></script>
-  <script defer src="src/data/arsenal.js?v=2.2.7"></script>
-  <script defer src="src/render/relic_sprites.js?v=2.2.7"></script>
-  <script defer src="src/data/monsters.js?v=2.2.7"></script>
-  <script defer src="src/ui/codex.js?v=2.2.7"></script>
-  <script defer src="src/data/story-v2.js?v=2.2.7"></script>
-  <script defer src="src/game/director.js?v=2.2.7"></script>
-  <script defer src="src/ui/menus.js?v=2.2.7"></script>
-  <script defer src="src/ui/presentation.js?v=2.2.7"></script>
-  <script defer src="src/game/spawner.js?v=2.2.7"></script>
-  <script defer src="src/game/combat.js?v=2.2.7"></script>
-  <script defer src="src/game/boss_ai.js?v=2.2.7"></script>
-  <script defer src="src/game/update.js?v=2.2.7"></script>
-  <script defer src="src/ui/shop.js?v=2.2.7"></script>
-  <script defer src="src/render/sprites.js?v=2.2.7"></script>
-  <script defer src="src/render/vfx_overlays.js?v=2.2.7"></script>
-  <script defer src="src/render/renderer.js?v=2.2.7"></script>
+  <!-- 模块化脚本按依赖拓扑顺序统一 defer 加载（v2.2.8） -->
+  <script defer src="src/core/env.js?v=2.2.8"></script>
+  <script defer src="src/core/perf.js?v=2.2.8"></script>
+  <script defer src="src/core/logger.js?v=2.2.8"></script>
+  <script defer src="src/data/scenes.js?v=2.2.8"></script>
+  <script defer src="src/data/boss_portraits.js?v=2.2.8"></script>
+  <script defer src="src/world/textures.js?v=2.2.8"></script>
+  <script defer src="src/ui/viewport.js?v=2.2.8"></script>
+  <script defer src="src/core/audio.js?v=2.2.8"></script>
+  <script defer src="src/data/arsenal.js?v=2.2.8"></script>
+  <script defer src="src/render/relic_sprites.js?v=2.2.8"></script>
+  <script defer src="src/data/monsters.js?v=2.2.8"></script>
+  <script defer src="src/ui/codex.js?v=2.2.8"></script>
+  <script defer src="src/data/story-v2.js?v=2.2.8"></script>
+  <script defer src="src/game/director.js?v=2.2.8"></script>
+  <script defer src="src/ui/menus.js?v=2.2.8"></script>
+  <script defer src="src/ui/presentation.js?v=2.2.8"></script>
+  <script defer src="src/game/spawner.js?v=2.2.8"></script>
+  <script defer src="src/game/combat.js?v=2.2.8"></script>
+  <script defer src="src/game/boss_ai.js?v=2.2.8"></script>
+  <script defer src="src/game/update.js?v=2.2.8"></script>
+  <script defer src="src/ui/shop.js?v=2.2.8"></script>
+  <script defer src="src/render/sprites.js?v=2.2.8"></script>
+  <script defer src="src/render/vfx_overlays.js?v=2.2.8"></script>
+  <script defer src="src/render/renderer.js?v=2.2.8"></script>
 </body>
 </html>

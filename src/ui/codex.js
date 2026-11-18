@@ -379,7 +379,7 @@ function renderCodex() {
       const row = document.createElement('div');
       row.className = 'p5-row codex-card t4';
       row.innerHTML = `
-        <div class="p5-ico-edge"><div class="p5-ico-inner">${portSrc ? `<img src="${portSrc}" alt="${c.name}">` : c.icon}</div></div>
+        <div class="p5-ico-edge"><div class="p5-ico-inner is-portrait">${portSrc ? `<img src="${portSrc}" alt="${c.name}">` : c.icon}</div></div>
         <div class="p5-notch" aria-hidden="true"></div>
         <div class="p5-bar-edge">
           <div class="p5-bar-fill">

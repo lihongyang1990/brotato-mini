@@ -183,7 +183,8 @@
   width: min(31vw, calc(390 * var(--nu)));
   max-height: 72vh;
   bottom: 14%;
-  clip-path: polygon(5% 2%, 98% 0, 94% 97%, 0 100%);
+  clip-path: none;
+  border-radius: 4px !important;
 }
 .story-illustrated .story-portrait { display: none !important; }
 
