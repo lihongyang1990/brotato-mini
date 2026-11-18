@@ -593,7 +593,7 @@ function createEnv(mobile, w, h, dprVal = 2, audioMode = "running", preferences 
     setUIPref('auto');
     const autoTouchDesktopOk = uiMode === 'desktop';
     setUIPref('desktop');
-    const touchDesktopSharp = autoTouchDesktopOk && uiMode === 'desktop' && WORLD.w === 2640 && WORLD.h === 1800 && camZoom >= 1.14 && floorBakeScale >= 1.35 && floorCanvas.width <= 3840 && floorCanvas.height <= 3840;
+    const touchDesktopSharp = autoTouchDesktopOk && uiMode === 'desktop' && WORLD.w === 2280 && WORLD.h === 1560 && camZoom >= 1.14 && floorBakeScale >= 1.35 && floorCanvas.width <= 3840 && floorCanvas.height <= 3840;
     isTouch = false;
     setUIPref('auto');
 
