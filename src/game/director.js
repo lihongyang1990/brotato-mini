@@ -215,8 +215,8 @@ const SpireDirector = (function () {
     const sizeBtn = button('字 100%', 'story-compact-control', controls, () => { const sizes = [1, 1.15, 1.3]; setPreferences({ textScale: sizes[(sizes.indexOf(prefs.textScale) + 1) % 3] }); });
     const closeBtn = button('退出预览', 'story-exit-preview', controls, closeReplay);
     const dialog = node('div', 'story-dialogue', root); dialog.setAttribute('data-speaker-side', 'left');
-    const p5Ghost = node('div', 'story-p5-ghost', dialog), p5Tail = node('div', 'story-p5-tail', dialog);
-    p5Ghost.setAttribute('aria-hidden', 'true'); p5Tail.setAttribute('aria-hidden', 'true');
+    const p5Ghost = node('div', 'story-p5-ghost', dialog);
+    p5Ghost.setAttribute('aria-hidden', 'true');
     const nameRow = node('div', 'story-name-row', dialog);
     const listener = node('img', 'story-listener-avatar', nameRow); listener.alt = ''; listener.draggable = false;
     const name = node('span', 'story-speaker', nameRow), role = node('span', 'story-speaker-role', nameRow), progress = node('span', 'story-line-count', nameRow);
@@ -239,7 +239,7 @@ const SpireDirector = (function () {
     const log = node('div', 'story-log hidden', root); log.setAttribute('role', 'dialog'); log.setAttribute('aria-label', '对白回看');
     const logHead = node('div', 'story-log-head', log); node('h2', '', logHead, 'BACKLOG · 对白回看');
     const logClose = button('✕ 返回剧情', '', logHead, toggleLog), logList = node('div', 'story-log-list', log); logList.tabIndex = 0;
-    ui = { root, frame, artWindow, backdrop, camera, image, atmosphere, particles, light, shutter, left, right, toolbar, actBadge, chapter, logBtn, autoBtn, skipBtn, sizeBtn, closeBtn, dialog, p5Tail, p5Shell, p5Fill, nameRow, listener, name, role, progress, text, accessible, readHint, nextBtn, cinematic, cinNameRow, cinName, cinRole, cinProgress, cinText, cinReadHint, cinNext, titleCard, overline, title, subtitle, choices, restore, log, logList, logClose };
+    ui = { root, frame, artWindow, backdrop, camera, image, atmosphere, particles, light, shutter, left, right, toolbar, actBadge, chapter, logBtn, autoBtn, skipBtn, sizeBtn, closeBtn, dialog, p5Shell, p5Fill, nameRow, listener, name, role, progress, text, accessible, readHint, nextBtn, cinematic, cinNameRow, cinName, cinRole, cinProgress, cinText, cinReadHint, cinNext, titleCard, overline, title, subtitle, choices, restore, log, logList, logClose };
     // A reading gesture must never become a "next line" click after native scrolling.
     root.addEventListener('pointerdown', ev => { pointerTrack = { id: ev.pointerId, x: ev.clientX, y: ev.clientY }; suppressDragClick = false; if (cur) cur.readHold = 1.2; }, { passive: true });
     root.addEventListener('pointermove', ev => { if (pointerTrack && pointerTrack.id === ev.pointerId && Math.hypot(ev.clientX - pointerTrack.x, ev.clientY - pointerTrack.y) > 8) { suppressDragClick = true; if (cur) cur.readHold = 1.2; } }, { passive: true });

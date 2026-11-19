@@ -320,42 +320,8 @@
   z-index: 0;
 }
 
-/* 动态二段折线漫画尖刺尾巴（随左右立绘说话人翻转，无立绘时自动隐藏） */
+/* 对话气泡顶部指向箭头全端隐藏（桌面端与手机竖屏/横屏统一不显示尖刺尾巴） */
 .story-p5-tail {
-  position: absolute;
-  top: calc(-24 * var(--nu));
-  width: calc(80 * var(--nu));
-  height: calc(48 * var(--nu));
-  z-index: 4;
-  pointer-events: none;
-  transition: left .18s ease, right .18s ease, transform .18s ease;
-}
-.story-p5-tail::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: #f2ede6;
-  clip-path: polygon(8% 0%, 55% 46%, 39% 54%, 94% 100%, 42% 100%, 22% 62%, 35% 53%);
-}
-.story-p5-tail::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  background: #08090e;
-  clip-path: polygon(11% 5%, 52% 46%, 37% 54%, 88% 100%, 46% 100%, 26% 61%, 38% 53%);
-}
-.story-dialogue[data-speaker-side="left"] .story-p5-tail {
-  left: clamp(calc(310 * var(--nu)), 33.5%, calc(390 * var(--nu)));
-  right: auto;
-  transform: rotate(-4deg);
-}
-.story-dialogue[data-speaker-side="right"] .story-p5-tail {
-  right: clamp(calc(86 * var(--nu)), 16%, calc(200 * var(--nu)));
-  left: auto;
-  transform: scaleX(-1) rotate(-4deg);
-}
-.story-dialogue[data-speaker-side="none"] .story-p5-tail,
-.story-dialogue.story-is-narration .story-p5-tail {
   display: none !important;
 }
 
@@ -803,9 +769,6 @@ body.m-ui .spire-narrative .story-read-hint { color: #ebd29d; font-size: 12.5px;
   .story-speaker-role { font-size: 11px; padding: 3px 8px; max-width: 54%; }
   .story-p5-fill { padding: 20px 16px 12px 20px; }
   .story-dialogue-text, .story-cinematic-caption p { font-size: calc(16px * var(--story-text-scale)); line-height: 1.65; max-height: 26vh; }
-  .story-p5-tail { width: 52px; height: 32px; top: -15px; }
-  .story-dialogue[data-speaker-side="left"] .story-p5-tail { left: clamp(162px, 46vw, 216px); }
-  .story-dialogue[data-speaker-side="right"] .story-p5-tail { right: 38px; }
   .story-film-shade {
     background:
       linear-gradient(180deg, rgba(6, 7, 12, 0.80) 0%, rgba(6, 7, 12, 0.08) 16%, rgba(6, 7, 12, 0.06) 56%, rgba(5, 6, 10, 0.92) 100%);
@@ -835,7 +798,6 @@ body.m-ui .spire-narrative .story-read-hint { color: #ebd29d; font-size: 12.5px;
   .story-name-row { min-height: 26px; margin-bottom: -10px; }
   .story-speaker, .story-cinematic-speaker { font-size: calc(15px * var(--story-text-scale)); padding: 3px 12px; }
   .story-dialogue-text, .story-cinematic-caption p { min-height: 2.2em; max-height: 24vh; font-size: calc(14.5px * var(--story-text-scale)); line-height: 1.52; }
-  .story-dialogue[data-speaker-side="left"] .story-p5-tail { left: clamp(190px, 28vw, 248px); }
   .story-dialogue-footer { margin-top: 5px; padding-top: 4px; }
   .story-choice-panel, .story-log { width: min(92vw, 720px); max-height: 88vh; padding: 14px 18px; }
 }

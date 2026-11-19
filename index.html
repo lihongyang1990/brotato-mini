@@ -12,14 +12,14 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>烬塔残响：第999次救赎 · ECHOES OF THE ASHEN SPIRE</title>
-  <link rel="icon" type="image/jpeg" href="assets/spire/app_icon.jpg?v=2.2.9">
-  <link rel="apple-touch-icon" href="assets/spire/app_icon.jpg?v=2.2.9">
-  <link rel="manifest" href="manifest.json?v=2.2.9">
-  <link rel="stylesheet" href="styles/base.css?v=2.2.9">
-  <link rel="stylesheet" href="styles/mobile.css?v=2.2.9">
-  <link rel="stylesheet" href="styles/presentation.css?v=2.2.9">
-  <link rel="stylesheet" href="styles/narrative.css?v=2.2.9">
-  <link rel="stylesheet" href="styles/p5-ui.css?v=2.2.9">
+  <link rel="icon" type="image/jpeg" href="assets/spire/app_icon.jpg?v=2.2.10">
+  <link rel="apple-touch-icon" href="assets/spire/app_icon.jpg?v=2.2.10">
+  <link rel="manifest" href="manifest.json?v=2.2.10">
+  <link rel="stylesheet" href="styles/base.css?v=2.2.10">
+  <link rel="stylesheet" href="styles/mobile.css?v=2.2.10">
+  <link rel="stylesheet" href="styles/presentation.css?v=2.2.10">
+  <link rel="stylesheet" href="styles/narrative.css?v=2.2.10">
+  <link rel="stylesheet" href="styles/p5-ui.css?v=2.2.10">
 </head>
 <body>
 
@@ -28,7 +28,7 @@
   <canvas id="spireDirectorCv" class="director-cv hidden"></canvas>
 
   <!-- 首屏全链路资源完整性校验门禁 -->
-  <div id="bootGate" class="boot-gate" data-html-version="v2.2.9" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 36%,rgba(223,192,132,0.10),transparent 60%),#070a12;color:#efe8d8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;">
+  <div id="bootGate" class="boot-gate" data-html-version="v2.2.10" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 36%,rgba(223,192,132,0.10),transparent 60%),#070a12;color:#efe8d8;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;">
     <div class="boot-gate-card" style="width:100%;max-width:460px;padding:28px 26px 24px;border:2px solid #f2ede6;background:linear-gradient(180deg,rgba(14,16,24,0.97),rgba(8,10,16,0.99));box-shadow:8px 10px 0 rgba(132,23,40,0.85);text-align:center;">
       <div style="font-size:11px;letter-spacing:0.22em;color:#dfc084;opacity:0.90;margin-bottom:8px;">ASHEN SPIRE · INTEGRITY CHECK</div>
       <h2 id="bootGateTitle" style="margin:0 0 8px;font-size:21px;font-weight:800;color:#fff6dc;letter-spacing:0.04em;">🕯️ 魂灯引渡 · 校验资源完整性</h2>
@@ -186,7 +186,7 @@
     <!-- 01 视图 A：原画登录主殿（1:1 复刻 ui_p5_final.html #s-home：顶栏纪元与静音/设置，居中标题与三门扉，辅助入口置底） -->
     <section id="menuHomeView" class="menu-stage home-stage-p5">
       <header class="home-top-bar">
-        <button type="button" id="startVersionPill" class="home-ver-btn" onclick="openChangelogModal()">✦ <span class="ver-num">v2.2.9</span></button>
+        <button type="button" id="startVersionPill" class="home-ver-btn" onclick="openChangelogModal()">✦ <span class="ver-num">v2.2.10</span></button>
         <div class="top-sys-icons">
           <button id="menuAudioBtn" type="button" class="sys-mini-btn js-audio-vol-btn" onclick="openAudioModal()">🔊 28%</button>
           <button type="button" class="sys-mini-btn" onclick="openSpireSettings()">⚙ 设置</button>
@@ -497,11 +497,11 @@
           <span id="lvlTitle" class="p5-ransom-cn">择一铭刻共鸣</span>
         </div>
         <div id="lvlCards" class="p5-vstack"></div>
-        <div id="lvlBottomActions" class="bottom-action-row">
+        <div id="lvlBottomActions" class="bottom-action-row single-cta">
           <div class="p5-big-sec-wrap">
             <button id="lvlRerollBtn" type="button" onclick="rerollLevelUpChoices()">↻ 重铸刻印 · ◇8</button>
           </div>
-          <div class="p5-cta-wrap">
+          <div class="p5-cta-wrap sr-contract-hidden" aria-hidden="true">
             <button id="lvlConfirmBtn" type="button" onclick="confirmSelectedLevelUp()">◆ 确认刻印 →</button>
           </div>
         </div>
@@ -541,8 +541,34 @@
       <div id="setRow"></div>
     </div>
 
-    <!-- 页签一：🛒 行商购物主舞台（桌面左青羽立绘+6槽纵列 / 右货架4条+出发；竖屏上货架 / 中6槽3x2 / 下出发） -->
+    <!-- 页签一：🛒 行商购物主舞台（桌面端方案 C：顶栏金库+上4横卡+下双栏3x2兵装与8维战力；移动端保持定稿布局） -->
     <div id="shopPaneMain" class="hub-pane shop-main-grid is-active">
+      <!-- 桌面端方案 C 专属顶栏：左标题与青羽低语 · 中发光晶石金库+快速刷新 · 右流派羁绊胶囊 -->
+      <div id="deskShopTopBar" class="sc-top-bar d-shop-only">
+        <div class="sc-brand-wrap">
+          <div class="p5-ransom-head sc-ransom-tight">
+            <span class="p5-ransom-en">PAVILION SHOP</span>
+            <span class="p5-ransom-cn">风亭行商 · 青羽整备</span>
+          </div>
+          <button id="deskQingyuWhisperBtn" type="button" class="sc-qingyu-chip" title="点击倾听青羽整备低语">💬 <span id="deskQingyuWhisperTxt">青羽：点击卡片可调阅详情，点价格直接购入</span></button>
+          <span id="deskAnvilBadge" class="sc-anvil-badge hidden"></span>
+        </div>
+
+        <div class="sc-vault-group">
+          <div id="deskGoldVault" class="p5-gold-vault" title="当前持有封魂晶石">
+            <div class="p5-gold-vault-inner">
+              <span class="p5-gv-emblem">◇</span>
+              <span class="p5-gv-lbl">晶石</span>
+              <span class="p5-gv-divider"></span>
+              <b id="deskGoldVaultNum" class="p5-gv-num">0</b>
+            </div>
+          </div>
+          <button id="deskTopRerollBtn" type="button" class="sbb-reroll-quick" onclick="rerollShop()"><span>↻ 刷新货架 · ◇1</span></button>
+        </div>
+
+        <div id="deskShopSynRow" class="sc-syn-pills" aria-label="当前随身流派羁绊"></div>
+      </div>
+
       <div class="shop-left-stage">
         <div class="desk-shop-standee">
           <div class="dss-art-frame">
@@ -572,17 +598,26 @@
           <span class="p5-ransom-cn">风亭行商 · 青羽整备</span>
         </div>
         <div id="shopBriefStats" class="shop-brief-stats" onclick="setShopHubTab('overview')" role="button" tabindex="0" aria-label="查看角色与行囊完整属性"></div>
-        <div id="shopTrialBar" class="shop-p5-trial hidden" role="region" aria-label="蚀界生存试炼契约"></div>
         <div id="shopCards" class="p5-vstack shop-shelf-list"></div>
-        <div class="bottom-action-row shop-act-row">
-          <div class="p5-big-sec-wrap">
-            <button id="rerollBtn" type="button" onclick="rerollShop()">↻ 刷新 (1)</button>
+        <div class="sc-right-panel">
+          <div class="sc-panel sc-stats-card d-shop-only">
+            <div class="sc-panel-head">
+              <span>📊 核心战力速览</span>
+              <button type="button" class="sc-ov-jump-btn" onclick="setShopHubTab('overview')">完整 12 项见行囊 ▸</button>
+            </div>
+            <div id="deskStatGrid8" class="sc-stat-grid-8"></div>
           </div>
-          <div id="shopInlineTrialWrap" class="p5-big-sec-wrap shop-inline-trial-wrap hidden">
-            <button id="shopInlineTrialBtn" type="button" onclick="toggleSurvivalTrial()">🕯️ 开启试炼</button>
-          </div>
-          <div class="p5-cta-wrap">
-            <button id="deskNextBtn" type="button" onclick="nextWave()">◆ 登往下一层 →</button>
+          <div id="shopTrialBar" class="shop-p5-trial hidden" role="region" aria-label="蚀界生存试炼契约"></div>
+          <div class="bottom-action-row shop-act-row">
+            <div class="p5-big-sec-wrap">
+              <button id="rerollBtn" type="button" onclick="rerollShop()">↻ 刷新 (1)</button>
+            </div>
+            <div id="shopInlineTrialWrap" class="p5-big-sec-wrap shop-inline-trial-wrap hidden">
+              <button id="shopInlineTrialBtn" type="button" onclick="toggleSurvivalTrial()">🕯️ 开启试炼</button>
+            </div>
+            <div class="p5-cta-wrap">
+              <button id="deskNextBtn" type="button" onclick="nextWave()">◆ 登往下一层 →</button>
+            </div>
           </div>
         </div>
         <div class="sr-contract-hidden" aria-hidden="true">
@@ -796,7 +831,7 @@
   <div id="changelogModal" class="overlay p5-modal-backdrop log-modal hidden">
     <div class="log-box changelog-box p5-modal-card">
       <div class="log-head">
-        <h2 id="changelogTitle">烬塔纪元志 · v2.2.9</h2>
+        <h2 id="changelogTitle">烬塔纪元志 · v2.2.10</h2>
         <button class="sys-mini-btn" onclick="closeChangelogModal()">✕ 关闭</button>
       </div>
       <div id="changelogList" class="changelog-list"></div>
@@ -864,30 +899,30 @@
   </div>
 </div>
 
-  <!-- 模块化脚本按依赖拓扑顺序统一 defer 加载（v2.2.9） -->
-  <script defer src="src/core/env.js?v=2.2.9"></script>
-  <script defer src="src/core/perf.js?v=2.2.9"></script>
-  <script defer src="src/core/logger.js?v=2.2.9"></script>
-  <script defer src="src/data/scenes.js?v=2.2.9"></script>
-  <script defer src="src/data/boss_portraits.js?v=2.2.9"></script>
-  <script defer src="src/world/textures.js?v=2.2.9"></script>
-  <script defer src="src/ui/viewport.js?v=2.2.9"></script>
-  <script defer src="src/core/audio.js?v=2.2.9"></script>
-  <script defer src="src/data/arsenal.js?v=2.2.9"></script>
-  <script defer src="src/render/relic_sprites.js?v=2.2.9"></script>
-  <script defer src="src/data/monsters.js?v=2.2.9"></script>
-  <script defer src="src/ui/codex.js?v=2.2.9"></script>
-  <script defer src="src/data/story-v2.js?v=2.2.9"></script>
-  <script defer src="src/game/director.js?v=2.2.9"></script>
-  <script defer src="src/ui/menus.js?v=2.2.9"></script>
-  <script defer src="src/ui/presentation.js?v=2.2.9"></script>
-  <script defer src="src/game/spawner.js?v=2.2.9"></script>
-  <script defer src="src/game/combat.js?v=2.2.9"></script>
-  <script defer src="src/game/boss_ai.js?v=2.2.9"></script>
-  <script defer src="src/game/update.js?v=2.2.9"></script>
-  <script defer src="src/ui/shop.js?v=2.2.9"></script>
-  <script defer src="src/render/sprites.js?v=2.2.9"></script>
-  <script defer src="src/render/vfx_overlays.js?v=2.2.9"></script>
-  <script defer src="src/render/renderer.js?v=2.2.9"></script>
+  <!-- 模块化脚本按依赖拓扑顺序统一 defer 加载（v2.2.10） -->
+  <script defer src="src/core/env.js?v=2.2.10"></script>
+  <script defer src="src/core/perf.js?v=2.2.10"></script>
+  <script defer src="src/core/logger.js?v=2.2.10"></script>
+  <script defer src="src/data/scenes.js?v=2.2.10"></script>
+  <script defer src="src/data/boss_portraits.js?v=2.2.10"></script>
+  <script defer src="src/world/textures.js?v=2.2.10"></script>
+  <script defer src="src/ui/viewport.js?v=2.2.10"></script>
+  <script defer src="src/core/audio.js?v=2.2.10"></script>
+  <script defer src="src/data/arsenal.js?v=2.2.10"></script>
+  <script defer src="src/render/relic_sprites.js?v=2.2.10"></script>
+  <script defer src="src/data/monsters.js?v=2.2.10"></script>
+  <script defer src="src/ui/codex.js?v=2.2.10"></script>
+  <script defer src="src/data/story-v2.js?v=2.2.10"></script>
+  <script defer src="src/game/director.js?v=2.2.10"></script>
+  <script defer src="src/ui/menus.js?v=2.2.10"></script>
+  <script defer src="src/ui/presentation.js?v=2.2.10"></script>
+  <script defer src="src/game/spawner.js?v=2.2.10"></script>
+  <script defer src="src/game/combat.js?v=2.2.10"></script>
+  <script defer src="src/game/boss_ai.js?v=2.2.10"></script>
+  <script defer src="src/game/update.js?v=2.2.10"></script>
+  <script defer src="src/ui/shop.js?v=2.2.10"></script>
+  <script defer src="src/render/sprites.js?v=2.2.10"></script>
+  <script defer src="src/render/vfx_overlays.js?v=2.2.10"></script>
+  <script defer src="src/render/renderer.js?v=2.2.10"></script>
 </body>
 </html>

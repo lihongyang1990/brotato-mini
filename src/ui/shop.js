@@ -423,6 +423,38 @@ function openShopSynergyModal(setKey) {
   return true;
 }
 
+let _lastVaultMatsVal = null;
+let _vaultPulseTimer = null;
+
+function _syncDeskGoldVault(matsVal) {
+  const numEl = typeof document !== 'undefined' ? document.getElementById('deskGoldVaultNum') : null;
+  const vaultEl = typeof document !== 'undefined' ? document.getElementById('deskGoldVault') : null;
+  const safeMats = Math.max(0, Math.round(Number(matsVal) || 0));
+  if (numEl) numEl.textContent = String(safeMats);
+  if (vaultEl && _lastVaultMatsVal !== null && _lastVaultMatsVal !== safeMats) {
+    vaultEl.classList.remove('is-pulse');
+    if (_vaultPulseTimer) clearTimeout(_vaultPulseTimer);
+    if (typeof vaultEl.offsetWidth === 'number') void vaultEl.offsetWidth;
+    vaultEl.classList.add('is-pulse');
+    _vaultPulseTimer = setTimeout(() => {
+      if (vaultEl && vaultEl.classList) vaultEl.classList.remove('is-pulse');
+    }, 240);
+  }
+  _lastVaultMatsVal = safeMats;
+}
+
+function toggleShopOfferLock(offerIdx, reopenKind = '') {
+  const o = shopOffers && shopOffers[offerIdx];
+  if (!o) return false;
+  confirmSellIdx = -1;
+  o.locked = !o.locked;
+  beep(o.locked ? 560 : 410, 0.04, 'triangle', 0.03);
+  if (state === 'shop') renderShop();
+  if (reopenKind === 'weapon') openShopWeaponOfferModal(offerIdx);
+  else if (reopenKind === 'item') openShopItemOfferModal(offerIdx);
+  return o.locked;
+}
+
 function openShopRelicModal(itemId) {
   const it = ITEMS.find(x => x && x.id === itemId);
   const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
@@ -431,27 +463,95 @@ function openShopRelicModal(itemId) {
   selectedWeaponSlotIdx = -1;
   beep(505, 0.035, 'triangle', 0.03);
   const ownedCnt = (player && player.items && player.items[it.id]) || 0;
-  card.className = `wpn-action-card p5-modal-card t${it.tier}`;
+  const capTxt = it.maxCount ? (it.maxCount === 1 ? '唯一圣遗物' : `上限 ×${it.maxCount}`) : '可无限叠加';
+  card.className = `wpn-action-card sc-detail-split p5-modal-card t${it.tier}`;
   card.innerHTML = `
-    <div class="wpn-act-head">
-      <div class="item-emblem t${it.tier}">${_itmEmblem(it, it.tier)}</div>
-      <div class="card-meta" style="flex:1;min-width:0">
-        <div class="p5-title-group">
-          <div class="wpn-act-title">${it.name}</div>
+    <div class="dd-left-showcase">
+      ${_rarityPill(it.tier)}
+      <div class="dd-showcase-frame">${_itmEmblem(it, it.tier)}</div>
+      <div>
+        <div class="dd-left-foot">💎 基准 ◇${it.cost}</div>
+        <div class="dd-left-sub">当前持有 ×${ownedCnt}</div>
+      </div>
+    </div>
+    <div class="dd-right-pane">
+      <button type="button" class="dd-close-x" onclick="closeWeaponSlotModal(true)" aria-label="关闭">✕</button>
+      <div class="dd-head">
+        <div class="dd-title-row">
+          <span class="dd-title">${it.name}</span>
           ${_rarityPill(it.tier)}
         </div>
         <div class="card-badges">
           <span class="tag tag-owned">当前持有 ×${ownedCnt}</span>
           ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(it) : ''}
-          ${it.maxCount ? `<span class="tag">${it.maxCount === 1 ? '唯一遗物' : '上限 ×' + it.maxCount}</span>` : ''}
+          <span class="tag">${capTxt}</span>
         </div>
       </div>
+      <div class="dd-chips">
+        <div class="dd-chip-cell"><span>遗物品阶</span><b>${TIER_NAMES[it.tier] || '普通'}</b></div>
+        <div class="dd-chip-cell"><span>持有数量</span><b>×${ownedCnt}</b></div>
+        <div class="dd-chip-cell"><span>叠加上限</span><b>${it.maxCount ? '×' + it.maxCount : '不限'}</b></div>
+        <div class="dd-chip-cell"><span>基准价值</span><b>◇${it.cost}</b></div>
+      </div>
+      <div class="wpn-act-desc">${it.desc}</div>
+      <div class="dd-actions">
+        <div class="dd-actions-row">
+          <button type="button" class="btn btn-go" onclick="closeWeaponSlotModal(true)">关闭</button>
+        </div>
+      </div>
+    </div>`;
+  modal.classList.remove('hidden');
+  return true;
+}
+
+function openShopItemOfferModal(offerIdx) {
+  const o = shopOffers && shopOffers[offerIdx];
+  const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
+  const card = typeof document !== 'undefined' ? document.getElementById('weaponActionCard') : null;
+  if (!o || o.kind !== 'item' || !o.item || !modal || !card) return false;
+  const it = o.item;
+  selectedWeaponSlotIdx = -1;
+  beep(505, 0.035, 'triangle', 0.03);
+  const offerTier = o.tier || it.tier || 1;
+  const ownedCnt = (player && player.items && player.items[it.id]) || 0;
+  const ok = !!(player && player.mats >= o.cost);
+  const capTxt = it.maxCount ? (it.maxCount === 1 ? '唯一圣遗物' : `上限 ×${it.maxCount}`) : '可叠加生效';
+  card.className = `wpn-action-card sc-detail-split p5-modal-card t${offerTier}`;
+  card.innerHTML = `
+    <div class="dd-left-showcase">
+      ${_rarityPill(offerTier)}
+      <div class="dd-showcase-frame">${_itmEmblem(it, offerTier)}</div>
+      <div>
+        <div class="dd-left-foot">行商售价 ◇${o.cost}</div>
+        <div class="dd-left-sub">${o.locked ? '🔒 已锁定保留' : '当前持有 ×' + ownedCnt}</div>
+      </div>
     </div>
-    <div class="wpn-act-desc">${it.desc}</div>
-    <div class="wpn-act-set-line">💎 商店基准价值：◇${it.cost}</div>
-    <div class="wpn-act-btns">
-      <div class="wpn-act-btns-row">
-        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button>
+    <div class="dd-right-pane">
+      <button type="button" class="dd-close-x" onclick="closeWeaponSlotModal(true)" aria-label="关闭">✕</button>
+      <div class="dd-head">
+        <div class="dd-title-row">
+          <span class="dd-title">${it.name}</span>
+          ${_rarityPill(offerTier)}
+        </div>
+        <div class="card-badges">
+          <span class="tag tag-owned">当前持有 ×${ownedCnt}</span>
+          ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(it) : ''}
+          <span class="tag">${capTxt}</span>
+        </div>
+      </div>
+      <div class="dd-chips">
+        <div class="dd-chip-cell"><span>遗物品阶</span><b>${TIER_NAMES[offerTier] || '普通'}</b></div>
+        <div class="dd-chip-cell"><span>持有数量</span><b>×${ownedCnt}</b></div>
+        <div class="dd-chip-cell"><span>行商售价</span><b>◇${o.cost}</b></div>
+        <div class="dd-chip-cell"><span>当前晶石</span><b>◇${player ? player.mats : 0}</b></div>
+      </div>
+      <div class="wpn-act-desc">${it.desc}</div>
+      <div class="dd-actions">
+        <div class="dd-actions-row">
+          <button type="button" class="btn btn-sec" onclick="toggleShopOfferLock(${offerIdx}, 'item')">${o.locked ? '🔓 取消锁定' : '🔒 锁定保留'}</button>
+          <button type="button" class="btn btn-go" ${ok ? '' : 'disabled'} onclick="buyOffer(${offerIdx})">${ok ? `◆ 购入圣遗物 ◇${o.cost}` : `晶石不足 (需 ◇${o.cost})`}</button>
+          <button type="button" class="btn btn-sec" onclick="closeWeaponSlotModal(true)">关闭</button>
+        </div>
       </div>
     </div>`;
   modal.classList.remove('hidden');
@@ -482,42 +582,59 @@ function openShopWeaponOfferModal(offerIdx) {
     ? calcWeaponEffectiveRange(tpl, offerTier, null, totalRange)
     : tpl.range;
   const effCd = (tpl.cd / Math.max(0.18, getEffectiveAtkSpd() * (tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1) * (tpl.spdScale ? (1 + Math.max(0, getEffectiveSpdMul() - 1) * 0.45) : 1) * (1 + (offerTier - 1) * 0.08))).toFixed(2);
-  const ok = player && player.mats >= o.cost && canBuyWeapon(wid, offerTier);
+  const ok = !!(player && player.mats >= o.cost && canBuyWeapon(wid, offerTier));
+  const hasMergePair = offerTier < 5 && player && Array.isArray(player.weapons) && player.weapons.some(w => w.id === wid && w.tier === offerTier);
+  const slotsFullModal = !!(player && player.maxSlots > 0 && Array.isArray(player.weapons) && player.weapons.length >= player.maxSlots);
+  const isAutoMergeModal = hasMergePair && slotsFullModal;
+  const nextRarityName = TIER_NAMES[Math.min(5, offerTier + 1)] || '高阶';
   const scaleBadges = typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(tpl, wid) : '';
   const evoHtml = Array.isArray(tpl.evos) && tpl.evos.length
-    ? `<div style="display:flex;flex-direction:column;gap:5px;margin-top:6px">
-        <div style="font-size:11px;font-weight:900;color:var(--p5-gold)">◆ 五阶神话超限分支预览：</div>
-        ${tpl.evos.map(ev => `<div style="padding:5px 8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,92,138,0.40);font-size:11.5px;color:#e6e2ee"><b style="color:${ev.color || '#ffd6e5'}">★ ${ev.name}</b>：${ev.desc}</div>`).join('')}
+    ? `<div class="dd-evos">
+        <div class="dd-evos-hd">✦ 神话觉醒分支预览（升至神话品质时二选一）：</div>
+        ${tpl.evos.map(ev => `<div class="dd-evo-item"><b style="color:${ev.color || '#ffd6e5'}">★ ${ev.name}</b>：${ev.desc}</div>`).join('')}
       </div>`
     : '';
-  card.className = `wpn-action-card p5-modal-card t${offerTier}`;
+  const buyBtnLabel = isAutoMergeModal
+    ? `✦ 合阶购买【${nextRarityName}】 ◇${o.cost}`
+    : `◆ 立即购买 ◇${o.cost}`;
+  card.className = `wpn-action-card sc-detail-split p5-modal-card t${offerTier}`;
   card.innerHTML = `
-    <div class="wpn-act-head">
-      <div class="item-emblem t${offerTier}">${_wpnEmblem(wid, offerTier, '', tpl.icon)}</div>
-      <div class="card-meta" style="flex:1;min-width:0">
-        <div class="p5-title-group">
-          <div class="wpn-act-title">${dispName}</div>
+    <div class="dd-left-showcase">
+      ${_rarityPill(offerTier)}
+      <div class="dd-showcase-frame">${_wpnEmblem(wid, offerTier, '', tpl.icon)}</div>
+      <div>
+        <div class="dd-left-foot">行商售价 ◇${o.cost}</div>
+        <div class="dd-left-sub">${o.locked ? '🔒 已锁定保留' : (sLabel || '守誓主武器')}</div>
+      </div>
+    </div>
+    <div class="dd-right-pane">
+      <button type="button" class="dd-close-x" onclick="closeWeaponSlotModal(true)" aria-label="关闭">✕</button>
+      <div class="dd-head">
+        <div class="dd-title-row">
+          <span class="dd-title">${dispName}</span>
           ${_rarityPill(offerTier)}
         </div>
         <div class="card-badges">
           ${sLabel ? `<span class="tag" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">${sLabel} (${curCnt})</span>` : ''}
           ${scaleBadges}
+          ${hasMergePair ? `<span class="tag tag-owned">${isAutoMergeModal ? `满槽合阶 ➔ ${nextRarityName}` : `✦ 可合阶 ➔ ${nextRarityName}`}</span>` : ''}
         </div>
       </div>
-    </div>
-    <div class="stat-chips">
-      <span class="stat-chip">威力 ${dmg}</span>
-      <span class="stat-chip">间隔 ${effCd}s</span>
-      <span class="stat-chip">射程 ${effRange}</span>
-      <span class="stat-chip">行商售价 ◇${o.cost}</span>
-    </div>
-    <div class="wpn-act-desc">${tpl.desc}</div>
-    ${sDef ? `<div class="wpn-act-set-line" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">✦ 羁绊【${sLabel}】（随身 ${curCnt} 把）：${sDef.desc}</div>` : ''}
-    ${evoHtml}
-    <div class="wpn-act-btns">
-      <div class="wpn-act-btns-row">
-        ${ok ? `<button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="buyOffer(${offerIdx})">购买 ◇${o.cost}</button>` : ''}
-        <button type="button" class="btn ${ok ? 'btn-sec' : 'btn-go'}" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button>
+      <div class="dd-chips">
+        <div class="dd-chip-cell"><span>实战威力</span><b>${dmg}</b></div>
+        <div class="dd-chip-cell"><span>攻击间隔</span><b>${effCd}s</b></div>
+        <div class="dd-chip-cell"><span>有效射程</span><b>${effRange}</b></div>
+        <div class="dd-chip-cell"><span>行商售价</span><b>◇${o.cost}</b></div>
+      </div>
+      <div class="wpn-act-desc">${tpl.desc}</div>
+      ${sDef ? `<div class="wpn-act-set-line" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">✦ 羁绊【${sLabel}】（随身 ${curCnt} 把）：${sDef.desc}</div>` : ''}
+      ${evoHtml}
+      <div class="dd-actions">
+        <div class="dd-actions-row">
+          <button type="button" class="btn btn-sec" onclick="toggleShopOfferLock(${offerIdx}, 'weapon')">${o.locked ? '🔓 取消锁定' : '🔒 锁定保留'}</button>
+          <button type="button" class="btn btn-go" ${ok ? '' : 'disabled'} onclick="buyOffer(${offerIdx})">${ok ? buyBtnLabel : (!canBuyWeapon(wid, offerTier) ? '兵装槽已满' : `晶石不足 (需 ◇${o.cost})`)}</button>
+          <button type="button" class="btn btn-sec" onclick="closeWeaponSlotModal(true)">关闭</button>
+        </div>
       </div>
     </div>`;
   modal.classList.remove('hidden');
@@ -649,11 +766,16 @@ function openShopUpgradeModal(idx) {
     </div>
     <div class="wpn-act-desc">当前共鸣效果：${descTxt}</div>
     <div class="stat-chips">
-      <span class="stat-chip">微光(T1)：${d1}</span>
-      <span class="stat-chip">标准(T2)：${d2}</span>
-      <span class="stat-chip">高阶(T3)：${d3}</span>
+      <span class="stat-chip">普通(微光)：${d1}</span>
+      <span class="stat-chip">精良(记忆)：${d2}</span>
+      <span class="stat-chip">史诗(高阶)：${d3}</span>
     </div>
-    <div class="wpn-act-btns"><div class="wpn-act-btns-row"><button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button></div></div>`;
+    <div class="wpn-act-btns">
+      <div class="wpn-act-btns-row">
+        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="pickLevelUpChoice(${idx})">◆ 直接刻印</button>
+        <button type="button" class="btn btn-sec" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button>
+      </div>
+    </div>`;
   modal.classList.remove('hidden');
   return true;
 }
@@ -663,11 +785,14 @@ if (typeof globalThis !== 'undefined') {
   globalThis.setOverviewRelicCols = setOverviewRelicCols;
   globalThis.quickMergeAllWeapons = quickMergeAllWeapons;
   globalThis.openShopSynergyModal = openShopSynergyModal;
+  globalThis.toggleShopOfferLock = toggleShopOfferLock;
   globalThis.openShopRelicModal = openShopRelicModal;
+  globalThis.openShopItemOfferModal = openShopItemOfferModal;
   globalThis.openShopWeaponOfferModal = openShopWeaponOfferModal;
   globalThis.openShopEvoDetailModal = openShopEvoDetailModal;
   globalThis.openShopCrateChoiceModal = openShopCrateChoiceModal;
   globalThis.openShopUpgradeModal = openShopUpgradeModal;
+  globalThis.pickLevelUpChoice = pickLevelUpChoice;
 }
 
 function getPendingEvoWeapon() {
@@ -1632,6 +1757,14 @@ function rerollLevelUpChoices() {
   _renderLevelUpPool();
 }
 
+function pickLevelUpChoice(idx) {
+  const fn = _lvlPickHandlers && _lvlPickHandlers[idx];
+  if (typeof fn !== 'function') return false;
+  if (typeof closeWeaponSlotModal === 'function') closeWeaponSlotModal(true);
+  fn();
+  return true;
+}
+
 function _renderLevelUpPool() {
   _syncChoiceStandee('lvlHeroStandee', `SOUL RESONANCE · Lv.${player ? player.lv : 1} 魂灯晋升共鸣`, 'lvlVistaBg', 'lvlMat');
   const topLbl = document.getElementById('lvlTopLabel');
@@ -1655,15 +1788,6 @@ function _renderLevelUpPool() {
   _selectedLvlIdx = -1;
   _lvlPickHandlers = [];
   _currentLevelPool = [];
-  const syncLvlSel = nextIdx => {
-    _selectedLvlIdx = (typeof nextIdx === 'number' && nextIdx >= 0 && nextIdx < pool.length) ? nextIdx : -1;
-    Array.from(box.children).forEach((ch, ci) => ch.classList.toggle('is-sel', ci === _selectedLvlIdx));
-    const cBtn = document.getElementById('lvlConfirmBtn');
-    if (cBtn) {
-      cBtn.disabled = _selectedLvlIdx < 0;
-      cBtn.textContent = _selectedLvlIdx >= 0 ? '◆ 确认刻印 →' : '◆ 请先点击选择共鸣刻印';
-    }
-  };
   pool.forEach((u, idx) => {
     const cTier = rollLevelUpCardTier(lvNow, luckNow);
     const tierMul = cTier === 1 ? 0.78 : (cTier === 3 ? 1.35 : 1.00);
@@ -1687,11 +1811,15 @@ function _renderLevelUpPool() {
             </div>
             <div class="p5-bar-right">
               <button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopUpgradeModal(${idx})">详情</button>
-              <div class="sr-contract-hidden"><button type="button" class="lvl-pick-btn">铭刻</button></div>
             </div>
           </div>
-          <div class="p5-bar-cat">${descTxt}</div>
-          <div class="p5-bar-foot"><span class="bar-prog-badge ready" onclick="event.stopPropagation();openShopUpgradeModal(${idx})">${footTxt}</span></div>
+          <div class="p5-bar-subwrap">
+            <div class="p5-bar-cat">${descTxt}</div>
+            <div class="p5-bar-foot">
+              <span class="bar-prog-badge ready" onclick="event.stopPropagation();openShopUpgradeModal(${idx})">${footTxt}</span>
+              <button type="button" class="p5-lvl-imprint-btn lvl-pick-btn">◆ 刻印</button>
+            </div>
+          </div>
         </div>
       </div>`;
     const pick = () => {
@@ -1701,16 +1829,11 @@ function _renderLevelUpPool() {
       advancePostWave();
     };
     _lvlPickHandlers[idx] = pick;
-    const hiddenPickBtn = el.querySelector('.lvl-pick-btn');
-    if (hiddenPickBtn) hiddenPickBtn.onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); pick(); };
-    el.onclick = () => {
-      if (_selectedLvlIdx === idx) { pick(); return; }
-      beep(510, 0.035, 'triangle', 0.03);
-      syncLvlSel(idx);
-    };
+    const pickBtn = el.querySelector('.lvl-pick-btn');
+    if (pickBtn) pickBtn.onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); pick(); };
+    el.onclick = () => { pick(); };
     box.appendChild(el);
   });
-  syncLvlSel(-1);
 }
 
 function showLevelUp() {
@@ -1958,8 +2081,13 @@ function _renderWeaponSlotGrid(containerEl, isOverview) {
   if (!containerEl || !player) return;
   containerEl.innerHTML = '';
   if (player.maxSlots === 0) return;
+  const isDeskSchemeC = !isOverview && (typeof uiMode === 'undefined' || uiMode === 'desktop');
   const isMobPortrait = !isOverview && typeof uiMode !== 'undefined' && uiMode === 'mobile-portrait';
   const miniPillCls = isMobPortrait ? 'mini' : '';
+  const showMax = Math.max(player.weapons.length, Math.min(player.maxSlots, 6));
+  if (containerEl.classList) {
+    containerEl.classList.toggle('is-multi-slots', isDeskSchemeC && showMax > 6);
+  }
   player.weapons.forEach((w, idx) => {
     const tpl = WEAPONS[w.id];
     if (!tpl) return;
@@ -1971,35 +2099,61 @@ function _renderWeaponSlotGrid(containerEl, isOverview) {
     const liveDmg = typeof calcWeaponPreviewDmg === 'function'
       ? calcWeaponPreviewDmg(w.id, tpl, w.tier, activeEvoObj)
       : Math.round(tpl.dmg * (1 + (w.tier - 1) * 0.55) * getEffectiveDmgMul());
+    const liveCd = (tpl.cd * (activeEvoObj && activeEvoObj.cdMul ? activeEvoObj.cdMul : 1) / Math.max(0.18, getEffectiveAtkSpd() * (tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1) * (tpl.spdScale ? (1 + Math.max(0, getEffectiveSpdMul() - 1) * 0.45) : 1) * (1 + (w.tier - 1) * 0.08))).toFixed(2);
+    const totalPellets = tpl.burstShots
+      ? (tpl.burstShots + ((activeEvoObj && activeEvoObj.burstAdd) || 0))
+      : (tpl.pellets ? (tpl.pellets + ((activeEvoObj && activeEvoObj.pelletsAdd) || 0) + (!tpl.isStaff && !tpl.melee && !tpl.isFlame ? (player.rangedPelletsBonus || 0) : 0)) : 0);
+    const pelletsTxt = totalPellets > 1 ? `×${totalPellets}` : '';
     const sellVal = typeof getWeaponSellPrice === 'function' ? getWeaponSellPrice(w) : Math.max(4, Math.round(12 * w.tier));
     const sLabel = SET_DEFS[tpl.set] ? SET_DEFS[tpl.set].label.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, '') : '';
     const d = document.createElement('button');
     d.type = 'button';
-    d.className = `nw-slot t${w.tier}${(hasPair || needsEvo) ? ' mergeable' : ''}${selectedWeaponSlotIdx === idx ? ' is-selected' : ''}`;
-    const mergePillHtml = needsEvo
-      ? '<i class="nw-merge-pill">觉醒!</i>'
-      : (hasPair ? `<i class="nw-merge-pill">${w.tier === 4 ? '升5阶' : '可合'}</i>` : '');
-    const deskTagTxt = needsEvo ? '★ 觉醒' : (hasPair ? '✦ 合阶' : `◇${sellVal}`);
-    d.innerHTML = `
-      <div class="nw-slot-in">
-        <span class="nw-ico">${_wpnEmblem(w.id, w.tier, w.evo || '', tpl.icon)}</span>
-        <div class="nw-info">
-          <div class="nw-name-row">
-            <span class="nw-name nw-full-name" title="${dispName}">${isMobPortrait ? shortName : dispName}</span>
-            ${_rarityPill(w.tier, miniPillCls)}
+    if (isDeskSchemeC) {
+      d.className = `wpn-grid-card nw-slot t${w.tier}${(hasPair || needsEvo) ? ' mergeable' : ''}${selectedWeaponSlotIdx === idx ? ' is-selected' : ''}`;
+      const actTagTxt = needsEvo ? '★ 可觉醒' : (hasPair ? `✦ 升${TIER_NAMES[Math.min(5, w.tier + 1)]}` : `◇${sellVal}`);
+      d.innerHTML = `
+        <span class="wgc-ico">${_wpnEmblem(w.id, w.tier, w.evo || '', tpl.icon)}${(hasPair || needsEvo) ? '<i class="wgc-up-gem">▲</i>' : ''}</span>
+        <div class="wgc-meta">
+          <div class="wgc-row1">
+            <span class="wgc-name" title="${dispName}">${dispName}</span>
+            ${_rarityPill(w.tier)}
           </div>
-          <span class="nw-meta">${sLabel}·${w.tier}阶<em class="nw-desk-stat"> · 威力${liveDmg}</em>${mergePillHtml}</span>
-        </div>
-        <span class="nw-desk-tag">${deskTagTxt}</span>
-      </div>`;
+          <div class="wgc-row2">
+            <span>伤害 <b>${liveDmg}${pelletsTxt}</b> · ${liveCd}s · ${sLabel}</span>
+            <em class="wgc-act-tag${(hasPair || needsEvo) ? ' ready' : ''}" style="font-style:normal">${actTagTxt}</em>
+          </div>
+        </div>`;
+    } else {
+      d.className = `nw-slot t${w.tier}${(hasPair || needsEvo) ? ' mergeable' : ''}${selectedWeaponSlotIdx === idx ? ' is-selected' : ''}`;
+      const mergePillHtml = needsEvo
+        ? '<i class="nw-merge-pill">觉醒!</i>'
+        : (hasPair ? `<i class="nw-merge-pill">${w.tier === 4 ? '升神话' : '可合'}</i>` : '');
+      const deskTagTxt = needsEvo ? '★ 觉醒' : (hasPair ? '✦ 合阶' : `◇${sellVal}`);
+      d.innerHTML = `
+        <div class="nw-slot-in">
+          <span class="nw-ico">${_wpnEmblem(w.id, w.tier, w.evo || '', tpl.icon)}</span>
+          <div class="nw-info">
+            <div class="nw-name-row">
+              <span class="nw-name nw-full-name" title="${dispName}">${isMobPortrait ? shortName : dispName}</span>
+              ${_rarityPill(w.tier, miniPillCls)}
+            </div>
+            <span class="nw-meta">${sLabel}·${TIER_NAMES[w.tier] || '普通'}<em class="nw-desk-stat"> · 威力${liveDmg}</em>${mergePillHtml}</span>
+          </div>
+          <span class="nw-desk-tag">${deskTagTxt}</span>
+        </div>`;
+    }
     d.onclick = () => { openWeaponSlotModal(idx); };
     containerEl.appendChild(d);
   });
-  const showMax = Math.max(player.weapons.length, Math.min(player.maxSlots, 6));
   for (let k = player.weapons.length; k < showMax; k++) {
     const emp = document.createElement('div');
-    emp.className = 'nw-slot empty';
-    emp.innerHTML = `<div class="nw-slot-in">+ 空槽 ${k + 1}</div>`;
+    if (isDeskSchemeC) {
+      emp.className = 'wpn-grid-card nw-slot empty';
+      emp.textContent = `— 空闲兵装槽 ${k + 1} —`;
+    } else {
+      emp.className = 'nw-slot empty';
+      emp.innerHTML = `<div class="nw-slot-in">+ 空槽 ${k + 1}</div>`;
+    }
     containerEl.appendChild(emp);
   }
 }
@@ -2164,6 +2318,7 @@ function renderShop() {
 
   const witchImgEl = document.getElementById('shopMerchantPortrait');
   const plaqueEl = document.getElementById('shopQingyuPlaque');
+  const whisperBtnEl = document.getElementById('deskQingyuWhisperBtn');
   const bindQingyuTalk = el => {
     if (!el || el._chatBound) return;
     el._chatBound = true;
@@ -2177,11 +2332,12 @@ function renderShop() {
     let talkIdx = 0;
     el.onclick = () => {
       beep(640, 0.05, 'triangle', 0.035);
+      const line = bonusTalks[talkIdx % bonusTalks.length];
+      talkIdx++;
       const sEl = document.getElementById('shopSub');
-      if (sEl) {
-        sEl.textContent = bonusTalks[talkIdx % bonusTalks.length];
-        talkIdx++;
-      }
+      if (sEl) sEl.textContent = line;
+      const wTxt = document.getElementById('deskQingyuWhisperTxt');
+      if (wTxt) wTxt.textContent = `青羽：${line}`;
     };
   };
   if (witchImgEl) {
@@ -2197,41 +2353,57 @@ function renderShop() {
     bindQingyuTalk(witchImgEl);
   }
   bindQingyuTalk(plaqueEl);
+  bindQingyuTalk(whisperBtnEl);
 
+  const isDeskSchemeC = (typeof uiMode === 'undefined' || uiMode === 'desktop');
   const nextFloorNum = wave + 1;
   const nextIsBoss = (nextFloorNum >= 4 && nextFloorNum % 4 === 0);
   const floorBadgeTxt = endlessMode ? `无尽第 ${wave} 层` : `第 ${wave} / ${MAX_WAVE} 层`;
   document.getElementById('shopTitle').textContent = uiMode !== 'desktop'
     ? `${floorBadgeTxt}整备${anvilUpgradedMsg ? ' · 已升阶' : ''}`
     : `${floorBadgeTxt}整备  —  青羽的风语行商（${diff.badge}）`;
+  const storyWhispers = [
+    '我叫青羽。做些补给生意，也替人认认遗失的东西。',
+    '桥上的雨太凉。带一块干布，灯别淋灭了。',
+    '旧编号，不是名字。那块铭牌先收好。',
+    '烬羽的剑穗，还是你以前系的样子。别弄丢了。',
+    '冰里的人还在呼吸。灯举低一些。',
+    '有些声音会让灯自己亮起来。你要留意它照向哪里。',
+    '那段曲子还没弹完。见到她，再听一听。',
+    '画像是证据。你仔细看她的手，她也怕弄疼你。',
+    '这里的钟总往回走。你脚下的路却可以往前。',
+    '她不肯让你看手上的裂缝。你看到了，就替她记着。',
+    '有些事记不起了，手还会记得。',
+    '那道“阻止我”的指令，是你留下的。现在你亲自听见了。',
+    '先看清脚下，再去听镜里的声音。',
+    '我在这里。门后的话，你可以慢慢想。',
+    '四件旧物都在了。进门之前，把我们的约定想完整。',
+    '茶快凉了。'
+  ];
+  const whisper = endlessMode ? '' : storyWhispers[Math.max(0, Math.min(15, wave - 1))];
   const subEl = document.getElementById('shopSub');
   if (subEl) {
-    const storyWhispers = [
-      '我叫青羽。做些补给生意，也替人认认遗失的东西。',
-      '桥上的雨太凉。带一块干布，灯别淋灭了。',
-      '旧编号，不是名字。那块铭牌先收好。',
-      '烬羽的剑穗，还是你以前系的样子。别弄丢了。',
-      '冰里的人还在呼吸。灯举低一些。',
-      '有些声音会让灯自己亮起来。你要留意它照向哪里。',
-      '那段曲子还没弹完。见到她，再听一听。',
-      '画像是证据。你仔细看她的手，她也怕弄疼你。',
-      '这里的钟总往回走。你脚下的路却可以往前。',
-      '她不肯让你看手上的裂缝。你看到了，就替她记着。',
-      '有些事记不起了，手还会记得。',
-      '那道“阻止我”的指令，是你留下的。现在你亲自听见了。',
-      '先看清脚下，再去听镜里的声音。',
-      '我在这里。门后的话，你可以慢慢想。',
-      '四件旧物都在了。进门之前，把我们的约定想完整。',
-      '茶快凉了。'
-    ];
-    const whisper = endlessMode ? '' : storyWhispers[Math.max(0, Math.min(15, wave - 1))];
     subEl.textContent = whisper
       ? `${whisper}${anvilUpgradedMsg}`
       : `${diff.badge}  ·  ${curScene.name}  ·  同名同阶兵装可共鸣升阶${anvilUpgradedMsg}`;
   }
+  const deskWhisperTxtEl = document.getElementById('deskQingyuWhisperTxt');
+  if (deskWhisperTxtEl) {
+    deskWhisperTxtEl.textContent = whisper ? `青羽：${whisper}` : `青羽：${curScene.name} · 点卡面检视详情，点价格直接购入`;
+  }
+  const deskAnvilEl = document.getElementById('deskAnvilBadge');
+  if (deskAnvilEl) {
+    const cleanAnvil = (anvilUpgradedMsg || '').replace(/^\s*·\s*/, '').trim();
+    deskAnvilEl.textContent = cleanAnvil;
+    deskAnvilEl.classList.toggle('hidden', !cleanAnvil);
+  }
+
   document.getElementById('shopMat').textContent = `◇ ${player.mats}`;
+  _syncDeskGoldVault(player.mats);
+
   const actualReroll = freeRerollsLeft > 0 ? 0 : rerollCost;
   const rerollTxt = actualReroll === 0 ? `↻ 免费刷新 (${freeRerollsLeft})` : `↻ 刷新 (${actualReroll})`;
+  const deskRerollTxt = actualReroll === 0 ? `↻ 免费刷新 (${freeRerollsLeft})` : `↻ 刷新货架 · ◇${actualReroll}`;
   const rb = document.getElementById('rerollBtn');
   if (rb) {
     rb.textContent = rerollTxt;
@@ -2241,6 +2413,11 @@ function renderShop() {
   if (mrb) {
     mrb.textContent = rerollTxt;
     mrb.disabled = player.mats < actualReroll;
+  }
+  const dtrb = document.getElementById('deskTopRerollBtn');
+  if (dtrb) {
+    dtrb.innerHTML = `<span>${deskRerollTxt}</span>`;
+    dtrb.disabled = player.mats < actualReroll;
   }
 
   const canTrial = canOfferSurvivalTrialForWave(nextFloorNum);
@@ -2264,11 +2441,11 @@ function renderShop() {
       const maxGoldComp = calcSurvivalTrialGoldComp(nextFloorNum, 0, player).total;
       const titleTxt = survivalTrialQueued
         ? `🕯️ 已签蚀界契约 · 第 ${nextFloorNum} 层 (${trialSec}s 渡劫)`
-        : `🕯️ 蚀界生存试炼 · 第 ${nextFloorNum} 层改为 ${trialSec}s 身法关`;
+        : `🕯️ 蚀界生存试炼 · 第 ${nextFloorNum} 层 (${trialSec}s 身法关)`;
       const mobTitleTxt = survivalTrialQueued
         ? `🕯️ 已签第${nextFloorNum}层(${trialSec}s) · 奖◇${minGoldComp}~${maxGoldComp}+紫金匣`
         : `🕯️ 蚀界试炼(${trialSec}s身法关) · 奖◇${minGoldComp}~${maxGoldComp}+紫金匣`;
-      const btnTxt = survivalTrialQueued ? '✓ 已开启（点此取消）' : '🕯️ 开启试炼';
+      const btnTxt = survivalTrialQueued ? '已开启 ✓' : '开启试炼';
       const mobBtnTxt = survivalTrialQueued ? '✓ 已开启' : '🕯️ 开启试炼';
       trialBar.innerHTML = `
         <div class="shop-trial-info">
@@ -2276,7 +2453,7 @@ function renderShop() {
             <div class="shop-trial-head">
               <span class="shop-trial-title">${titleTxt}</span>
               <span class="shop-trial-pill">${actLabel}</span>
-              <span class="shop-trial-pill gold">奖 ◇${minGoldComp}~${maxGoldComp} + 必出紫/金秘匣</span>
+              <span class="shop-trial-pill gold">奖 ◇${minGoldComp}~${maxGoldComp} + 紫/金秘匣</span>
             </div>
           </div>
           <div class="shop-trial-mob">${mobTitleTxt}</div>
@@ -2322,6 +2499,55 @@ function renderShop() {
 
   const totalRange = getTotalRangeBonus();
   const setB = getSetBonuses();
+
+  // 桌面端方案 C 顶栏右侧：随身流派羁绊胶囊（点击打开羁绊详情）
+  const deskSynRow = document.getElementById('deskShopSynRow');
+  if (deskSynRow && player) {
+    const synBtns = Object.entries(SET_DEFS).map(([key, def]) => {
+      const c = (setB.counts && setB.counts[key]) || 0;
+      if (c <= 0) return '';
+      const nextStep = def.steps.find(s => s > c) || def.steps[2];
+      const active = c >= def.steps[0];
+      return `<button type="button" class="ov-syn-pill${active ? ' active' : ''}" onclick="openShopSynergyModal('${key}')">${def.label} ${c}/${nextStep}</button>`;
+    }).filter(Boolean).join('');
+    deskSynRow.innerHTML = synBtns || '<span class="sc-syn-empty">暂未激活流派羁绊</span>';
+  }
+
+  // 桌面端方案 C 右下栏：8 维核心战力速览网格
+  const deskSt8 = document.getElementById('deskStatGrid8');
+  if (deskSt8 && player) {
+    const armVal = getTotalArmor();
+    const dmgPctVal = Math.round(getEffectiveDmgMul() * 100);
+    const aspdScaleVal = typeof PLAYER_ASPD_SCALE === 'number' ? PLAYER_ASPD_SCALE : 0.70;
+    const aspdPctVal = Math.round((player.atkSpd + setB.aspd) * aspdScaleVal * 100);
+    const critPctVal = Math.round(getEffectiveCrit() * 100);
+    const spdPctVal = Math.round(getEffectiveSpdMul() * 100);
+    const harvVal = Math.round(player.harvestFlat || 0);
+    const fMelB = player.flatMelee || 0, fRngB = player.flatRanged || 0, fElmB = player.flatElem || 0, fTecB = player.flatTech || 0;
+    const activeFlats = [
+      fMelB !== 0 ? `⚔️${fMelB > 0 ? '+' + fMelB : fMelB}` : '',
+      fRngB !== 0 ? `🔫${fRngB > 0 ? '+' + fRngB : fRngB}` : '',
+      fElmB !== 0 ? `🔥${fElmB > 0 ? '+' + fElmB : fElmB}` : '',
+      fTecB !== 0 ? `⚙️${fTecB > 0 ? '+' + fTecB : fTecB}` : ''
+    ].filter(Boolean);
+    const eighthCell = activeFlats.length > 0
+      ? ['专精点伤', activeFlats.join(' '), true]
+      : ['幸运/收获', `${player.luck || 0} / ${harvVal}`, (player.luck || 0) > 0 || harvVal > 0];
+    const cells8 = [
+      ['生命', `${Math.max(0, Math.ceil(player.hp))}/${player.maxHp}`, true],
+      ['护甲', `${armVal}`, armVal > 0],
+      ['全伤', `${dmgPctVal}%`, dmgPctVal > 100],
+      ['攻速', `${aspdPctVal}%`, aspdPctVal > 100],
+      ['暴击', `${critPctVal}%`, critPctVal >= 20],
+      ['范围', `${totalRange >= 0 ? '+' + totalRange : totalRange}`, totalRange > 0],
+      ['移速', `${spdPctVal}%`, spdPctVal > 105],
+      eighthCell
+    ];
+    deskSt8.innerHTML = cells8.map(([lbl, val, hi]) =>
+      `<div class="sc-stat-box${hi ? ' hi' : ''}"><span>${lbl}</span><b>${val}</b></div>`
+    ).join('');
+  }
+
   const briefEl = document.getElementById('shopBriefStats');
   if (briefEl && player) {
     const armVal = getTotalArmor();
@@ -2338,11 +2564,121 @@ function renderShop() {
   if (typeof window._shopSelOfferIdx !== 'number' || (window._shopSelOfferIdx >= 0 && !shopOffers[window._shopSelOfferIdx])) {
     window._shopSelOfferIdx = -1;
   }
+  const slotsFullNow = !!(player && player.maxSlots > 0 && Array.isArray(player.weapons) && player.weapons.length >= player.maxSlots);
   const box = document.getElementById('shopCards');
   if (box) {
     box.innerHTML = '';
     shopOffers.forEach((o, i) => {
       const el = document.createElement('div');
+      if (isDeskSchemeC) {
+        if (!o) {
+          el.className = 'sc-card sold';
+          el.innerHTML = '<span class="sold-stamp">✓ 已收入行囊</span>';
+          box.appendChild(el);
+          return;
+        }
+        const offerTier = o.tier || (o.item && o.item.tier) || 1;
+        if (o.kind === 'weapon') {
+          const wid = o.id || o.weaponId;
+          const tpl = WEAPONS[wid];
+          if (!tpl) return;
+          const dispName = _wpnDispName(wid, offerTier);
+          const sDef = SET_DEFS[tpl.set];
+          const sLabel = sDef ? sDef.label : '';
+          const curCnt = (setB && setB.counts && tpl.set) ? (setB.counts[tpl.set] || 0) : 0;
+          const nextStep = sDef ? (sDef.steps.find(s => s > curCnt) || sDef.steps[2]) : 2;
+          const willHitStep = sDef && (curCnt + 1 === nextStep) && curCnt < nextStep;
+          const dmg = typeof calcWeaponPreviewDmg === 'function'
+            ? calcWeaponPreviewDmg(wid, tpl, offerTier, null)
+            : Math.round(tpl.dmg * (1 + (offerTier - 1) * 0.55) * getEffectiveDmgMul());
+          const effRange = typeof calcWeaponEffectiveRange === 'function'
+            ? calcWeaponEffectiveRange(tpl, offerTier, null, totalRange)
+            : tpl.range;
+          const effCd = (tpl.cd / Math.max(0.18, getEffectiveAtkSpd() * (tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1) * (tpl.spdScale ? (1 + Math.max(0, getEffectiveSpdMul() - 1) * 0.45) : 1) * (1 + (offerTier - 1) * 0.08))).toFixed(2);
+          const ok = player.mats >= o.cost && canBuyWeapon(wid, offerTier);
+          const hasMergePair = offerTier < 5 && player.weapons.some(w => w.id === wid && w.tier === offerTier);
+          const isAutoMergeBuy = hasMergePair && slotsFullNow;
+          const willAwakenT5 = hasMergePair && offerTier === 4;
+          const nextRarityName = TIER_NAMES[Math.min(5, offerTier + 1)] || '高阶';
+          const totalShowPellets = (tpl.burstShots ? tpl.burstShots : (tpl.pellets ? tpl.pellets + (!tpl.isStaff && !tpl.melee && !tpl.isFlame ? (player.rangedPelletsBonus || 0) : 0) : 0));
+          const pelletsTxt = totalShowPellets > 1 ? `×${totalShowPellets}` : '';
+          const priceHtml = (o.rawCost && o.rawCost > o.cost)
+            ? `<s style="opacity:.58;font-size:.84em;margin-right:2px">${o.rawCost}</s>◇${o.cost}`
+            : `◇${o.cost}`;
+          const mergePrefix = isAutoMergeBuy
+            ? (willAwakenT5 ? '<span class="merge-hl">【满槽合阶 ➔ 觉醒神话！】</span>' : `<span class="merge-hl">【满槽合阶 ➔ ${nextRarityName}！】</span>`)
+            : (hasMergePair
+                ? `<span class="merge-hl">【可合阶 ➔ ${nextRarityName}！】</span>`
+                : (willHitStep ? '<span class="merge-hl">【凑齐激活羁绊！】</span>' : ''));
+          const buyBtnTxt = isAutoMergeBuy ? `✦ 合阶购买 ${priceHtml}` : `购买 ${priceHtml}`;
+          const footLeftHtml = hasMergePair
+            ? `<span class="sc-merge-mark">${isAutoMergeBuy ? `➔ 升${nextRarityName}` : '✦ 可合阶'}</span>`
+            : `<span class="sc-inspect-hint">${o.locked ? '🔒 已锁定 · 点卡详阅' : '🔍 点卡面调阅详情'}</span>`;
+          el.className = `sc-card is-wpn t${offerTier}${o.locked ? ' is-locked' : ''}`;
+          el.innerHTML = `
+            <div class="sc-card-head">
+              <div class="sc-ico-box">${_wpnEmblem(wid, offerTier, '', tpl.icon)}</div>
+              <div class="sc-title-col">
+                <div class="sc-name" title="${dispName}">${dispName}</div>
+                <div class="sc-subtag">${_rarityPill(offerTier)}<span class="sc-subtag-txt">⚔️ 兵装${sLabel ? ` · ${sLabel}(${curCnt}/${nextStep})` : ''}</span></div>
+              </div>
+              <button type="button" class="p5-lock-btn lock${o.locked ? ' is-locked' : ''}" title="${o.locked ? '点击解锁' : '锁定保留至下一层'}">${o.locked ? '🔒' : '🔓'}</button>
+            </div>
+            <div class="sc-stat-line">伤害 <b>${dmg}${pelletsTxt}</b> · 冷却 <b>${effCd}s</b> · 射程 <b>${effRange}</b></div>
+            <div class="sc-desc">${mergePrefix}${tpl.desc}</div>
+            <div class="sc-foot">
+              ${footLeftHtml}
+              <button type="button" class="sc-buy-btn buy${hasMergePair ? ' merge-ready' : ''}${isAutoMergeBuy ? ' is-merge-buy' : ''}" ${ok ? '' : 'disabled'}>${buyBtnTxt}</button>
+            </div>`;
+          el.querySelector('.buy').onclick = e => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            if (ok) buyOffer(i);
+          };
+          el.querySelector('.lock').onclick = e => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            toggleShopOfferLock(i);
+          };
+          el.onclick = () => { openShopWeaponOfferModal(i); };
+        } else {
+          const it = o.item;
+          if (!it) return;
+          const ok = player.mats >= o.cost;
+          const ownedCnt = (player.items && player.items[it.id]) || 0;
+          const priceHtml = (o.rawCost && o.rawCost > o.cost)
+            ? `<s style="opacity:.58;font-size:.84em;margin-right:2px">${o.rawCost}</s>◇${o.cost}`
+            : `◇${o.cost}`;
+          const scopeTxt = (it.scopeLabel || '').trim() || '全局被动遗物';
+          const capTxt = it.maxCount ? (it.maxCount === 1 ? '唯一遗物' : `上限×${it.maxCount}`) : '可叠加';
+          el.className = `sc-card is-relic t${offerTier}${o.locked ? ' is-locked' : ''}`;
+          el.innerHTML = `
+            <div class="sc-card-head">
+              <div class="sc-ico-box">${_itmEmblem(it, offerTier)}</div>
+              <div class="sc-title-col">
+                <div class="sc-name" title="${it.name}">${it.name}</div>
+                <div class="sc-subtag">${_rarityPill(offerTier)}<span class="sc-subtag-txt">🏺 圣遗物${ownedCnt > 0 ? ` · 已持×${ownedCnt}` : ''}</span></div>
+              </div>
+              <button type="button" class="p5-lock-btn lock${o.locked ? ' is-locked' : ''}" title="${o.locked ? '点击解锁' : '锁定保留至下一层'}">${o.locked ? '🔒' : '🔓'}</button>
+            </div>
+            <div class="sc-stat-line">${scopeTxt} · <b>${capTxt}</b></div>
+            <div class="sc-desc">${it.desc}</div>
+            <div class="sc-foot">
+              <span class="sc-inspect-hint">${o.locked ? '🔒 已锁定 · 点卡详阅' : '🔍 点卡面调阅详情'}</span>
+              <button type="button" class="sc-buy-btn buy" ${ok ? '' : 'disabled'}>购买 ${priceHtml}</button>
+            </div>`;
+          el.querySelector('.buy').onclick = e => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            if (ok) buyOffer(i);
+          };
+          el.querySelector('.lock').onclick = e => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            toggleShopOfferLock(i);
+          };
+          el.onclick = () => { openShopItemOfferModal(i); };
+        }
+        box.appendChild(el);
+        return;
+      }
+
       if (!o) {
         el.className = 'p5-row sold-out sold-out-row';
         el.innerHTML = `
@@ -2374,16 +2710,18 @@ function renderShop() {
         const effCd = (tpl.cd / Math.max(0.18, getEffectiveAtkSpd() * (tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1) * (tpl.spdScale ? (1 + Math.max(0, getEffectiveSpdMul() - 1) * 0.45) : 1) * (1 + (offerTier - 1) * 0.08))).toFixed(2);
         const ok = player.mats >= o.cost && canBuyWeapon(wid, offerTier);
         const hasMergePair = offerTier < 5 && player.weapons.some(w => w.id === wid && w.tier === offerTier);
+        const isAutoMergeBuy = hasMergePair && slotsFullNow;
         const willAwakenT5 = hasMergePair && offerTier === 4;
+        const nextRarityName = TIER_NAMES[Math.min(5, offerTier + 1)] || '高阶';
         const totalShowPellets = (tpl.burstShots ? tpl.burstShots : (tpl.pellets ? tpl.pellets + (!tpl.isStaff && !tpl.melee && !tpl.isFlame ? (player.rangedPelletsBonus || 0) : 0) : 0));
         const pelletsTxt = totalShowPellets > 1 ? `×${totalShowPellets}` : '';
         const priceHtml = (o.rawCost && o.rawCost > o.cost)
           ? `<s style="opacity:.55;font-size:.82em;margin-right:2px">${o.rawCost}</s>◇ ${o.cost}`
           : `◇ ${o.cost}`;
-        const synFootTxt = `${sLabel} (${curCnt}/${nextStep})${willAwakenT5 ? ' · 购入觉醒5阶!' : (hasMergePair ? ` · 可直接合阶 T${offerTier + 1}` : (willHitStep ? ' ➔ 凑齐激活!' : ''))}`;
-        const buyLabelPrefix = isRowSel
-          ? (willAwakenT5 ? '确认觉醒 ' : (hasMergePair ? '确认合阶 ' : '购买 '))
-          : (willAwakenT5 ? '觉醒 ' : (hasMergePair ? '合阶 ' : ''));
+        const synFootTxt = `${sLabel} (${curCnt}/${nextStep})${hasMergePair ? (willAwakenT5 ? ' · ✦ 可合阶神话!' : ` · ✦ 可合阶${nextRarityName}`) : (willHitStep ? ' ➔ 凑齐激活!' : '')}`;
+        const buyLabelPrefix = isAutoMergeBuy
+          ? (isRowSel ? '确认合阶购买 ' : '合阶购买 ')
+          : (isRowSel ? '购买 ' : '');
 
         el.innerHTML = `
           <div class="p5-ico-edge"><div class="p5-ico-inner">${_wpnEmblem(wid, offerTier, '', tpl.icon)}</div></div>
@@ -2610,52 +2948,59 @@ function openWeaponSlotModal(idx) {
   const runRec = player.runStats && player.runStats.weaponDmg && player.runStats.weaponDmg[w.id];
   const scaleBadges = typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(tpl, w.id) : '';
 
-
   let evoHintHtml = '';
   if (activeEvoObj) {
-    evoHintHtml = `<div class="wpn-act-evo-hint"><b style="color:${activeEvoObj.color || '#ff5c8a'}">★ 已觉醒神话：【${activeEvoObj.name}】</b><br>${activeEvoObj.desc}</div>`;
+    evoHintHtml = `<div class="dd-evos"><div class="dd-evos-hd" style="color:${activeEvoObj.color || '#ff5c8a'}">★ 已觉醒神话：【${activeEvoObj.name}】</div><div class="dd-evo-item">${activeEvoObj.desc}</div></div>`;
   } else if (Array.isArray(tpl.evos) && tpl.evos.length >= 2) {
-    evoHintHtml = `<div class="wpn-act-evo-hint"><b>◆ 5阶神话进化预览：</b>★${tpl.evos[0].name} ／ ★${tpl.evos[1].name}</div>`;
+    evoHintHtml = `<div class="dd-evos"><div class="dd-evos-hd">✦ 神话觉醒分支预览（升至神话品质时二选一）：</div>${tpl.evos.map(ev => `<div class="dd-evo-item"><b style="color:${ev.color || '#ffd6e5'}">★ ${ev.name}</b>：${ev.desc}</div>`).join('')}</div>`;
   }
 
   let combineBtnHtml = '';
   if (needsEvo) {
-    combineBtnHtml = `<button type="button" id="wpnActCombineBtn" class="btn btn-go" style="justify-content:center" onclick="combineWeaponSlotFromModal(${idx})">★ 择定五阶神话进化</button>`;
+    combineBtnHtml = `<button type="button" id="wpnActCombineBtn" class="btn btn-go" style="justify-content:center" onclick="combineWeaponSlotFromModal(${idx})">★ 择定神话觉醒方向</button>`;
   } else if (hasPair) {
-    const nextTierLbl = TIER_NAMES[w.tier + 1] || `${w.tier + 1}阶`;
-    combineBtnHtml = `<button type="button" id="wpnActCombineBtn" class="btn merge-ready" style="justify-content:center" onclick="combineWeaponSlotFromModal(${idx})">◆ ${w.tier === 4 ? '共鸣合成并觉醒五阶神话!' : `共鸣合成 ➔ 【${nextTierLbl} · ${tpl.name}】`}</button>`;
+    const nextTierLbl = TIER_NAMES[w.tier + 1] || '高阶';
+    combineBtnHtml = `<button type="button" id="wpnActCombineBtn" class="btn btn-go merge-ready" style="justify-content:center" onclick="combineWeaponSlotFromModal(${idx})">◆ ${w.tier === 4 ? '共鸣合成并觉醒【神话】!' : `共鸣合阶 ➔ 【${nextTierLbl} · ${tpl.name}】`}</button>`;
   }
 
-  card.className = `wpn-action-card p5-modal-card t${w.tier}`;
+  card.className = `wpn-action-card sc-detail-split p5-modal-card t${w.tier}`;
   card.innerHTML = `
-    <div class="wpn-act-head">
-      <div class="item-emblem t${w.tier}">${_wpnEmblem(w.id, w.tier, w.evo || '', tpl.icon)}</div>
-      <div class="card-meta" style="flex:1;min-width:0">
-        <div class="p5-title-group">
-          <div class="wpn-act-title" style="color:${nameColor}" title="${dispName}">${dispName}</div>
+    <div class="dd-left-showcase">
+      ${_rarityPill(w.tier)}
+      <div class="dd-showcase-frame">${_wpnEmblem(w.id, w.tier, w.evo || '', tpl.icon)}</div>
+      <div>
+        <div class="dd-left-foot">随身槽位 #${idx + 1}</div>
+        <div class="dd-left-sub">回收折现 +◇${refund}</div>
+      </div>
+    </div>
+    <div class="dd-right-pane">
+      <button type="button" class="dd-close-x" onclick="closeWeaponSlotModal()" aria-label="关闭">✕</button>
+      <div class="dd-head">
+        <div class="dd-title-row">
+          <span class="dd-title" style="color:${nameColor}" title="${dispName}">${dispName}</span>
           ${_rarityPill(w.tier)}
         </div>
         <div class="card-badges">
           ${scaleBadges}
           ${sLabel ? `<span class="tag" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">${sLabel} (${curSetCnt})</span>` : ''}
+          ${runRec && runRec.dmg > 0 ? `<span class="tag tag-owned">本局输出 ${_fmtRunNum(runRec.dmg)} (${runRec.kills || 0}斩)</span>` : ''}
         </div>
       </div>
-    </div>
-    <div class="stat-chips">
-      <span class="stat-chip">伤害 ${liveDmg}${pelletsTxt}</span>
-      <span class="stat-chip">间隔 ${liveCd}s</span>
-      <span class="stat-chip">射程 ${liveRange}</span>
-      <span class="stat-chip">暴击 ${critPct}%</span>
-      ${runRec && runRec.dmg > 0 ? `<span class="stat-chip">本局输出 ${_fmtRunNum(runRec.dmg)} (${runRec.kills || 0}斩)</span>` : ''}
-    </div>
-    <div class="wpn-act-desc">${tpl.desc}</div>
-    ${sDef ? `<div class="wpn-act-set-line" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">✦ 羁绊【${sLabel}】（当前 ${curSetCnt} 把）：${sDef.desc}</div>` : ''}
-    ${evoHintHtml}
-    <div class="wpn-act-btns">
-      ${combineBtnHtml}
-      <div class="wpn-act-btns-row">
-        <button type="button" id="wpnActRecycleBtn" class="btn btn-recycle-danger" ${canRecycle ? '' : 'disabled'} onclick="recycleWeaponSlotFromModal(${idx})">${canRecycle ? `♻️ 熔炼回收 (+◇${refund})` : '♻️ 至少保留 1 把兵装'}</button>
-        <button type="button" id="wpnActCancelBtn" class="btn btn-sec" onclick="closeWeaponSlotModal()">✕ 取消</button>
+      <div class="dd-chips">
+        <div class="dd-chip-cell"><span>实战伤害</span><b>${liveDmg}${pelletsTxt}</b></div>
+        <div class="dd-chip-cell"><span>攻击间隔</span><b>${liveCd}s</b></div>
+        <div class="dd-chip-cell"><span>有效射程</span><b>${liveRange}</b></div>
+        <div class="dd-chip-cell"><span>暴击几率</span><b>${critPct}%</b></div>
+      </div>
+      <div class="wpn-act-desc">${tpl.desc}</div>
+      ${sDef ? `<div class="wpn-act-set-line" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">✦ 羁绊【${sLabel}】（当前 ${curSetCnt} 把）：${sDef.desc}</div>` : ''}
+      ${evoHintHtml}
+      <div class="dd-actions">
+        ${combineBtnHtml}
+        <div class="dd-actions-row">
+          <button type="button" id="wpnActRecycleBtn" class="btn btn-recycle-danger" ${canRecycle ? '' : 'disabled'} onclick="recycleWeaponSlotFromModal(${idx})">${canRecycle ? `♻️ 熔炼回收 (+◇${refund})` : '♻️ 至少保留 1 把兵装'}</button>
+          <button type="button" id="wpnActCancelBtn" class="btn btn-sec" onclick="closeWeaponSlotModal()">✕ 关闭</button>
+        </div>
       </div>
     </div>`;
 
