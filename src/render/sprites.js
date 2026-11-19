@@ -849,25 +849,37 @@ function drawTreeSprite(tr) {
   ctx.beginPath(); ctx.ellipse(tr.x, tr.y + 18, 22, 8.5, 0, 0, Math.PI * 2); ctx.fill();
 
   const spr = (typeof SpireAssets !== 'undefined') ? SpireAssets.getPropSprite(scId, flash) : null;
-  if (spr && spr.canvas) {
+  const sprOk = !!(spr && spr.canvas && (spr.canvas.naturalWidth || spr.canvas.width || 0) > 0);
+  let propDrawn = false;
+  if (sprOk) {
     const targetH = 68;
     const scale = targetH / Math.max(16, spr.h);
     const dw = spr.w * scale, dh = spr.h * scale;
     ctx.save();
     ctx.translate(tr.x, tr.y + 18);
     if (sw) ctx.rotate(sw);
-    ctx.drawImage(spr.canvas, -dw * 0.5, -dh, dw, dh);
+    try {
+      ctx.drawImage(spr.canvas, -dw * 0.5, -dh, dw, dh);
+      propDrawn = true;
+    } catch (_) {}
     ctx.restore();
-  } else {
-    // 首帧贴图未就绪时的哥特封魂晶碑极简兜底
+  }
+  if (!propDrawn) {
+    // 极端弱网贴图流式解码过渡期：按当前层域生态绘制高辨识度彩色魂灯柱/寒晶簇/齿轮柱/日曜方尖碑（绝不显示黑块！）
     ctx.save();
     ctx.translate(tr.x, tr.y);
-    ctx.fillStyle = flash ? '#475569' : '#1e293b';
-    ctx.strokeStyle = '#f6d379';
-    ctx.lineWidth = 2.2;
+    const propFill = flash ? '#fffbeb' : (scId === 'glacier' ? '#38bdf8' : (scId === 'wasteland' ? '#d97706' : (scId === 'desert' ? '#7e22ce' : '#64748b')));
+    const propCore = scId === 'glacier' ? '#e0f2fe' : (scId === 'wasteland' ? '#fef08a' : (scId === 'desert' ? '#fde047' : '#72efdd'));
+    ctx.fillStyle = propFill;
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.moveTo(0, -28); ctx.lineTo(14, -10); ctx.lineTo(11, 18); ctx.lineTo(-11, 18); ctx.lineTo(-14, -10);
+    ctx.moveTo(0, -30); ctx.lineTo(14, -10); ctx.lineTo(11, 18); ctx.lineTo(-11, 18); ctx.lineTo(-14, -10);
     ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = propCore;
+    ctx.beginPath();
+    ctx.arc(0, -6, 6.2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
@@ -1510,7 +1522,9 @@ function drawEnemySprite(e) {
     }
   }
 
-  if (bossSheet && bossSheet.canvas) {
+  const bossSheetReady = !!(bossSheet && bossSheet.canvas && (bossSheet.canvas.naturalWidth || bossSheet.canvas.width || 0) > 0);
+  let enemySpriteDrawn = false;
+  if (bossSheetReady) {
     // 传入 false 让 _stepEntityAnim 完全依据真实位移速度 (_smoothSpd > 22) 驱动迈步，站桩施法时绝不假跑，且施法/蓄力/出招全程切入第 4 帧出招立绘！
     const dt = _stepEntityAnim(e, now, false, targetFace, bossCastingOrActing);
     const drawSize = Math.max(209, r * 3.20);
@@ -1531,7 +1545,7 @@ function drawEnemySprite(e) {
       ctx.globalAlpha = 0.34;
       ctx.translate(e.x - splitOff, e.y + footOffset + poseOffY);
       ctx.scale(visFlip * poseSx, poseSy);
-      ctx.drawImage(bossSheet.canvas, cellX0, 0, cw0, ch0, -drawSize * 0.5, -drawSize * 0.93, drawSize, drawSize);
+      try { ctx.drawImage(bossSheet.canvas, cellX0, 0, cw0, ch0, -drawSize * 0.5, -drawSize * 0.93, drawSize, drawSize); } catch (_) {}
       ctx.restore();
     }
 
@@ -1545,15 +1559,20 @@ function drawEnemySprite(e) {
     ctx.scale(visFlip * poseSx, poseSy * idleBreath);
     const cw = bossSheet.cellW, ch = bossSheet.cellH;
     const cellX = Math.min(bossSheet.frames - 1, Math.max(0, e._curFrameIdx || 0)) * cw;
-    ctx.drawImage(bossSheet.canvas, cellX, 0, cw, ch, -drawSize * 0.5, -drawSize * 0.93, drawSize, drawSize);
+    try {
+      ctx.drawImage(bossSheet.canvas, cellX, 0, cw, ch, -drawSize * 0.5, -drawSize * 0.93, drawSize, drawSize);
+      enemySpriteDrawn = true;
+    } catch (_) {}
     ctx.restore();
-  } else {
+  }
+  if (!enemySpriteDrawn) {
     const pulse = e.primed ? (1 + Math.sin(now * 0.036) * 0.14) : 1;
     const bob = (isBoss || isMini) && bossCastingOrActing ? 0 : (Math.abs(Math.sin(e.phase * 0.9)) * (isBoss ? 3.5 : 2.4));
     const tilt = (!isBoss && !isMini) ? Math.sin(e.phase * 0.9) * 0.048 : (poseTilt * targetFace);
     const spr = (typeof SpireAssets !== 'undefined') ? SpireAssets.getMonsterSprite(e, flash) : null;
+    const sprReady = !!(spr && spr.canvas && (spr.canvas.naturalWidth || spr.canvas.width || 0) > 0);
 
-    if ((isBoss || isMini) && spr && spr.canvas && (e.dashing || (e.tpWindupT || 0) > 0 || (e._actPoseT || 0) > 0.18)) {
+    if ((isBoss || isMini) && sprReady && (e.dashing || (e.tpWindupT || 0) > 0 || (e._actPoseT || 0) > 0.18)) {
       const ghostSize = isBoss ? Math.max(199, r * 3.20) : Math.max(161, r * 3.08);
       const gsc = ghostSize / Math.max(16, Math.max(spr.w, spr.h));
       const gdw = spr.w * gsc, gdh = spr.h * gsc;
@@ -1562,7 +1581,7 @@ function drawEnemySprite(e) {
       ctx.globalAlpha = 0.30;
       ctx.translate(e.x - Math.cos(backA) * 16, e.y - Math.sin(backA) * 12);
       ctx.scale(targetFace * poseSx, poseSy);
-      ctx.drawImage(spr.canvas, -gdw * 0.5, -gdh * 0.56, gdw, gdh);
+      try { ctx.drawImage(spr.canvas, -gdw * 0.5, -gdh * 0.56, gdw, gdh); } catch (_) {}
       ctx.restore();
     }
 
@@ -1571,7 +1590,8 @@ function drawEnemySprite(e) {
     if (tilt) ctx.rotate(tilt);
     ctx.scale(targetFace * pulse * poseSx, pulse * poseSy);
 
-    if (spr && spr.canvas) {
+    let drawnSingle = false;
+    if (sprReady) {
       const targetSize = isBoss
         ? Math.max(199, r * 3.20)
         : (isMini ? Math.max(161, r * 3.08) : Math.max(60, r * 3.22));
@@ -1579,39 +1599,51 @@ function drawEnemySprite(e) {
       const dw = spr.w * sc, dh = spr.h * sc;
       try {
         ctx.drawImage(spr.canvas, -dw * 0.5, -dh * 0.56, dw, dh);
+        drawnSingle = true;
       } catch (_) {
         if (spr.rawImg && spr.rawImg !== spr.canvas) {
-          try { ctx.drawImage(spr.rawImg, -dw * 0.5, -dh * 0.56, dw, dh); } catch (_e) {}
+          try {
+            ctx.drawImage(spr.rawImg, -dw * 0.5, -dh * 0.56, dw, dh);
+            drawnSingle = true;
+          } catch (_e) {}
         }
       }
-    } else {
-      // 极端弱网贴图流式解码过渡期：绘制哥特暗影魔偶剪影（斗篷肩甲+双角+魂瞳），彻底告别纯色圆球占位
-      const bodyCol = flash ? '#f8d7da' : '#161d2e';
-      const trimCol = flash ? '#ffffff' : (e.color || '#be123c');
-      ctx.fillStyle = bodyCol;
-      ctx.strokeStyle = trimCol;
-      ctx.lineWidth = Math.max(1.8, r * 0.11);
+    }
+    if (!drawnSingle) {
+      // 极端弱网贴图流式解码过渡期：绘制高辨识度全彩二头身战铠魔偶（彻底废弃原 #161d2e 黑块剪影，绝不让玩家误以为贴图变黑！）
+      const mainCol = flash ? '#fffbeb' : (e.color || (isBoss ? '#e11d48' : (isMini ? '#c084fc' : '#4f7cac')));
+      const helmCol = flash ? '#ffffff' : (isBoss ? '#fde68a' : '#cbd5e1');
+      const outlineCol = '#090d16';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = outlineCol;
+      ctx.lineWidth = Math.max(2.0, r * 0.12);
+      // 披风与战袍下摆
+      ctx.fillStyle = mainCol;
       ctx.beginPath();
-      ctx.moveTo(0, -r * 1.18);
-      ctx.lineTo(r * 0.68, -r * 0.36);
-      ctx.lineTo(r * 0.92, r * 0.72);
-      ctx.lineTo(r * 0.34, r * 0.46);
-      ctx.lineTo(0, r * 0.84);
-      ctx.lineTo(-r * 0.34, r * 0.46);
-      ctx.lineTo(-r * 0.92, r * 0.72);
-      ctx.lineTo(-r * 0.68, -r * 0.36);
+      ctx.moveTo(-r * 0.52, -r * 0.24);
+      ctx.lineTo(r * 0.52, -r * 0.24);
+      ctx.lineTo(r * 0.84, r * 0.76);
+      ctx.lineTo(r * 0.24, r * 0.58);
+      ctx.lineTo(0, r * 0.82);
+      ctx.lineTo(-r * 0.24, r * 0.58);
+      ctx.lineTo(-r * 0.84, r * 0.76);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // 双角/冠冕与发光魂瞳
+      // 二头身银灰盔甲头冠
+      ctx.fillStyle = helmCol;
       ctx.beginPath();
-      ctx.moveTo(-r * 0.36, -r * 0.82); ctx.lineTo(-r * 0.64, -r * 1.32); ctx.lineTo(-r * 0.12, -r * 0.98);
-      ctx.moveTo(r * 0.36, -r * 0.82);  ctx.lineTo(r * 0.64, -r * 1.32);  ctx.lineTo(r * 0.12, -r * 0.98);
-      ctx.fillStyle = trimCol;
+      ctx.arc(0, -r * 0.48, r * 0.56, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = flash ? '#090d16' : '#fde68a';
-      ctx.fillRect(-r * 0.32, -r * 0.42, Math.max(2.2, r * 0.22), Math.max(2, r * 0.14));
-      ctx.fillRect(r * 0.10, -r * 0.42, Math.max(2.2, r * 0.22), Math.max(2, r * 0.14));
+      ctx.stroke();
+      // 面甲阴影与高亮魂瞳
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.roundRect(-r * 0.38, -r * 0.58, r * 0.76, r * 0.28, r * 0.10);
+      ctx.fill();
+      ctx.fillStyle = isBoss ? '#ff2a55' : '#72efdd';
+      ctx.fillRect(-r * 0.26, -r * 0.50, Math.max(2.6, r * 0.20), Math.max(2.2, r * 0.13));
+      ctx.fillRect(r * 0.08, -r * 0.50, Math.max(2.6, r * 0.20), Math.max(2.2, r * 0.13));
     }
     ctx.restore();
   }
@@ -1829,7 +1861,9 @@ function drawPotatoHero() {
   const footAnchorY = 26;
   const visFlip = Math.abs(p._visFlip) < 0.24 ? (p._visFlip < 0 ? -0.24 : 0.24) : p._visFlip;
 
-  if (heroSheet && heroSheet.canvas) {
+  const heroSheetReady = !!(heroSheet && heroSheet.canvas && (heroSheet.canvas.naturalWidth || heroSheet.canvas.width || 0) > 0);
+  let heroDrawn = false;
+  if (heroSheetReady) {
     // 仅在主动灵魂瞬步（inDash）期间绘制精简残影，移除后期高移速常驻精灵表重绘开销
     const inDash = (p.dashT || 0) > 0;
     if (inDash) {
@@ -1862,12 +1896,17 @@ function drawPotatoHero() {
     if (p.cls === 'ghost') ctx.globalAlpha = 0.93;
     const cw = heroSheet.cellW, ch = heroSheet.cellH;
     const sx = Math.min(heroSheet.frames - 1, Math.max(0, p._curFrameIdx || 0)) * cw;
-    ctx.drawImage(heroSheet.canvas, sx, 0, cw, ch, -drawSize * 0.5, -drawSize * 0.93, drawSize, drawSize);
+    try {
+      ctx.drawImage(heroSheet.canvas, sx, 0, cw, ch, -drawSize * 0.5, -drawSize * 0.93, drawSize, drawSize);
+      heroDrawn = true;
+    } catch (_) {}
     ctx.restore();
-  } else {
+  }
+  if (!heroDrawn) {
     const bounce = p.moving ? Math.abs(Math.sin(p.walkT)) * 4.6 : Math.sin(now * 0.004) * 1.8;
     const tilt = p.moving ? Math.sin(p.walkT) * 0.06 : 0;
     const spr = (typeof SpireAssets !== 'undefined') ? SpireAssets.getHeroSprite(p.cls, hurtFlash) : null;
+    const sprReady = !!(spr && spr.canvas && (spr.canvas.naturalWidth || spr.canvas.width || 0) > 0);
 
     ctx.save();
     ctx.translate(p.x, p.y + 25 - bounce);
@@ -1875,18 +1914,28 @@ function drawPotatoHero() {
     ctx.scale(visFlip, 1);
     if (p.cls === 'ghost') ctx.globalAlpha = 0.92;
 
-    if (spr && spr.canvas) {
+    let drawnSingle = false;
+    if (sprReady) {
       const targetH = 87;
       const sc = targetH / Math.max(16, spr.h);
       const dw = spr.w * sc, dh = spr.h * sc;
-      ctx.drawImage(spr.canvas, -dw * 0.5, -dh, dw, dh);
-    } else {
-      ctx.fillStyle = hurtFlash ? '#fff7ed' : '#f1efe7';
+      try {
+        ctx.drawImage(spr.canvas, -dw * 0.5, -dh, dw, dh);
+        drawnSingle = true;
+      } catch (_) {}
+    }
+    if (!drawnSingle) {
+      const cloakCol = hurtFlash ? '#fff7ed' : (p.cls === 'brawler' ? '#e11d48' : (p.cls === 'ranger' ? '#38bdf8' : (p.cls === 'engineer' ? '#7c3aed' : (p.cls === 'ghost' ? '#10b981' : (p.cls === 'multitasker' ? '#eab308' : '#6366f1')))));
+      ctx.fillStyle = cloakCol;
       ctx.strokeStyle = '#090d16';
-      ctx.lineWidth = 2.6;
+      ctx.lineWidth = 2.4;
       ctx.beginPath();
-      ctx.moveTo(-18.4, 0); ctx.lineTo(-13.8, -50.6); ctx.quadraticCurveTo(0, -66.7, 13.8, -50.6); ctx.lineTo(18.4, 0);
+      ctx.moveTo(-18.4, 0); ctx.lineTo(-13.8, -38); ctx.quadraticCurveTo(0, -48, 13.8, -38); ctx.lineTo(18.4, 0);
       ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.arc(0, -48, 13.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#72efdd';
+      ctx.beginPath(); ctx.arc(17, -20, 5.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }
     ctx.restore();
   }

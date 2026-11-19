@@ -4,6 +4,19 @@
 
 ---
 
+## [v2.2.8] - 2026-11-18
+### 🖼️ 全量怪物/器物/P5 半身立绘/场景底图裁切与破洞重绘修复 + ⚡ 根除网页端进局人物/小怪/首领黑块贴图问题
+- **根除网页端「显示加载完成但人物/小怪/Boss 变黑色贴图」问题（`src/core/env.js`、`src/data/boss_portraits.js`、`src/game/spawner.js`、`src/render/sprites.js`）**：
+  - 修复 `_isCompactDevice()` 将 `innerHeight <= 920` 的 1080p 桌面浏览器与 MacBook 误判为低配手机，导致高优贴图并发上限被压至 `4`、离屏染色池 `maxPool` 压至 `12`（多词缀精英与受击高亮同屏时每帧频繁建毁画布引发黑块）的问题；现桌面端并发提升至 `24`、染色池扩容至 `96`（移动端提升至 `8 / 28`），并补齐精灵表受击画布尺寸有效性校验。
+  - 在 `SpireAssets.loadImage()` 中对战斗贴图启用 `decoding = 'sync'`，并在 `onload` 后先完成 `img.decode()` 与 `4×4` 离屏画布 GPU 纹理强制上传后再置 `ready = true`。
+  - 升级 `SpireBootGate.verifyCriticalAssets()` 真正等待主角当前穿戴战装精灵表与首层核心魔物/首领贴图全部解码就绪后再解锁 100% 门禁，新增 `SpireAssets.warmBattlePack()` 在每层开战与选角时置顶预热当层贴图，并将极端弱网过渡造型由 `#161d2e` 纯黑剪影升级为全彩二头身战铠魔偶。
+- **全量残缺/抠穿战斗贴图、场景器物与四帧精灵表重绘修复（`assets/spire/*`）**：
+  - 全新重绘 `mob_s1_ronin.png`（补全斗笠尖顶）、`mob_s1_guard.png`、`mob_s2_knight.png`、`mob_s2_prism.png`、`mob_s3_duelist.png`、`mob_s4_shade.png` 及场景可破坏器物 `prop_s1_lantern.png`、`prop_s2_crystal.png`、`prop_s4_monolith.png`（彻底消除盔甲/白衣被抠穿的透明破洞与封魂碑贴图丢失）；重排 `sb_crimson_lord_p2_sheet.png` 四帧边距消除跨格穿帮切翅；从四帧精灵表提取零破洞单帧角色图并补齐 `assets/icon.png`（全仓 81 张 PNG 达成 `0` 切边、`0` 跨帧穿帮）。
+- **P5 半身透明立绘、全屏场景底图、绯狱妖主立绘与斜切 UI 框修复（`assets/spire/ui_art/*`、`styles/p5-ui.css`、`styles/narrative.css`、`src/ui/codex.js`、`src/ui/menus.js`）**：
+  - 无损重制全部 9 张 `520×640` `ui_art/*_bust.png`（消除左右/顶部一刀切硬边、残余金框与白雾噪点），无缝合成 `ui_scene_hero_0..5.jpg`（消除零号背景正中竖向拼接线与日蚀圣女发侧黑框水印），重绘 `port_crimson_lord.jpg` / `port_crimson_lord_p2.jpg` 完整立绘，恢复首领登场/二阶段高清半身破框立绘，并修复选角底栏头像、圣典/衣橱头像框及剧情二阶段立绘框的 `clip-path / object-fit` 裁切。
+
+---
+
 ## [v2.2.7] - 2026-11-18
 ### 🎴 全流程 P5 黑白红双端 UI 定稿重构 + 👹 水底荒祠「绯狱妖主」独立二阶段与机神压迫感重塑 + ⚡ SpirePerf 空间网格防卡顿架构
 - **全流程 P5 丝绒暗红 × 黑底白边双端 UI 定稿（`index.html`、`styles/p5-ui.css`、`styles/mobile.css`、`styles/narrative.css`、`src/ui/viewport.js`、`src/ui/menus.js`、`src/ui/shop.js`、`src/ui/codex.js`）**：

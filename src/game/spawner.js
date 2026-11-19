@@ -1294,6 +1294,9 @@ function beginWave(retryMeta = null) {
     pickSceneForWave(wave);
   }
   if (typeof SpireAudio !== 'undefined') SpireAudio.syncScene(curScene.id);
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.warmBattlePack === 'function') {
+    SpireAssets.warmBattlePack(player ? player.cls : 'allrounder', wave, curScene ? curScene.id : null);
+  }
   syncArenaAndZoom(true);
   // 回合时长：蚀界生存试炼按厄度阶梯递进（D1=30s -> D2=34s -> D3=38s -> D4=41s -> D5=45s）；常规层从第 1 层 30 秒起步，每层递增 +5 秒，最高封顶 60 秒
   const trialDur = typeof getSurvivalTrialDuration === 'function' ? getSurvivalTrialDuration(diff) : 30;
