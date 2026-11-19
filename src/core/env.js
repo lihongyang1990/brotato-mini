@@ -16,19 +16,28 @@ let viewW = window.innerWidth, viewH = window.innerHeight, dpr = 1, camZoom = 1.
 let isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let bootReady = false;
 let bootIntegrityPassed = false;
-const APP_VERSION = 'v2.2.8';
-const APP_BUILD_DATE = '2026-11-18';
+const APP_VERSION = 'v2.2.9';
+const APP_BUILD_DATE = '2026-11-19';
 
 // 游戏内置版本更新日志数据（供开局主界面「纪元志」弹窗展示）
 const CHANGELOG_HISTORY = [
   {
-    ver: 'v2.2.8', date: '2026-11-18', tag: '当前版本 · 行囊防溢出 · 顶部HUD零遮挡与红条修复 · 精炼红框二次购买与全词条详情',
+    ver: 'v2.2.9', date: '2026-11-19', tag: '当前版本 · 行囊防溢出 · 顶部HUD零遮挡与红条修复 · 精炼红框二次购买与全词条详情',
     title: '🛠️ 行囊多遗物锁高防卡死 + 🎯 首领战顶部单横幅避让与残余红线根治 + 🎴 精炼红框二次购买与全场景词条详情弹窗修复',
     items: [
       '🎒 修复行囊多遗物撑出视口导致底部武器合阶栏与切换坞消失卡死问题：桌面/横屏严格锁定行囊总览高度，仅遗物区内部滚动；同步提供顶栏「🛒 返回行商」、底栏「◆ 前往下一层」与 Esc 快捷键三重返回保障。',
       '🎯 根治战斗顶部多横幅互相遮挡与第 4 层水平残余红线：新增 SpirePerf.getTopHudClearY 动态测量倒计时、首领血条与施法条真实下沿，画布播报严格单条替换且与隐藏 Boss 雷达签互斥；彻底清除首领未现身或提前击破后的血条阴影残线。',
       '🎴 精炼购买与多选一交互：移除多余「再点购买」文字签，保留「🕯️ 开启试炼」直接单击开关；行商购买与秘匣/升级/五阶觉醒/衣橱/剧情抉择统一为首次点击醒目猩红选框（按钮同步显示「购买 ◇XX」）、二次点击确认执行。',
       '🔍 修复选中/未选中道具时点击底部羁绊与词条标签无反应问题：打通商店兵装与遗物、升级刻印、秘匣三选一、五阶觉醒、暂停驻留与圣典全六大分类的详情弹窗，查看详情并关闭后完整保留当前红框选中状态。'
+    ]
+  },
+  {
+    ver: 'v2.2.8', date: '2026-11-18', tag: '全量贴图裁切/破洞修复与重绘 · 根除网页端进局黑块贴图 · 首领高清破框立绘恢复',
+    title: '🖼️ 全量怪物/场景器物/半身立绘/场景底图裁切与抠穿破洞彻底修复 + ⚡ 根除网页端“显示加载完成但人物/小怪/首领变黑贴图”问题',
+    items: [
+      '⚡ 根除网页端“明明显示加载完成，进局人物/小怪/Boss 却是黑色贴图”三大根因：1) 修复桌面浏览器（如 1080p 窗口与笔记本）被误判为小屏移动端（innerHeight<=920）导致并发队列锁死为 4、离屏染色池上限仅 12 每帧反复建毁画布引发黑块的问题；2) 精灵贴图在 img.onload 后先完成同步 img.decode() 与 GPU 纹理预上传再置 ready=true；3) 启动门禁真正等待主角当前战装精灵表与首层核心魔物/首领贴图解码完毕再宣告 100% 就绪，进层瞬间触发高优贴图包抢占拉取，并将极端弱网占位图由 #161d2e 黑影升级为全彩二头身魔偶。',
+      '👾 重绘并精修全部残缺/抠穿战斗贴图与精灵表：全新重绘浪人傀儡（修复头顶斗笠一刀切）、玄铁重卫/永冻冰骑/发条剑偶/暗影死神（消除盔甲白衣与兜帽脸部被过度抠穿的透明破洞）及苔石魂灯柱/寒晶簇/黑曜封魂碑（修复石柱断裂与碑体 95% 被误删）；重排绯狱妖主二阶段 1024×256 四帧精灵表消除跨格穿帮切翅；从高清精灵表提取零破洞单帧角色图。',
+      '🎴 9 张 P5 角色与战装半身立绘 + 6 张全屏场景底图 + 绯狱妖主双阶立绘无损重制：彻底清除原 9 张 *_bust.png 左右/顶部的垂直硬切边、残余金框与白雾噪点；无缝重制 ui_scene_hero_0..5.jpg（消除零号背景正中白天/夜桥硬拼接竖线与日蚀圣女发侧黑框残留）；重绘绯狱妖主一/二阶段完整立绘并恢复首领登场高清半身破框立绘与头像框无损显示。'
     ]
   },
   {
@@ -1001,28 +1010,57 @@ const SpireBootGate = (function () {
     }
 
     checkingImages = true;
-    // 20/20 核心脚本与 4/4 样式表已 100% 就绪：首屏原画通过 SpireAssets 共享缓存渐进预热，
-    // 最长仅柔和等待 900ms 即自动放行入殿，彻底根除手机蜂窝网络波动误弹“未加载完全/缓存冲突”拦截框！
+    // 24/24 核心模块与样式表已就绪：真正等待主角当前穿戴精灵表 + 首层核心小怪/首领精灵贴图解码完毕再宣告 100% 就绪，彻底根除“明明显示加载完成进局却是黑块贴图”！
+    const activeOutfit = typeof getActiveZeroOutfit === 'function' ? getActiveZeroOutfit() : null;
+    const activeHeroSheet = (activeOutfit && activeOutfit.sheetKey === 'zero_crimson')
+      ? 'assets/spire/hero_zero_crimson_sheet.png'
+      : ((activeOutfit && activeOutfit.sheetKey === 'zero_astral')
+        ? 'assets/spire/hero_zero_astral_sheet.png'
+        : ((activeOutfit && activeOutfit.sheetKey === 'zero_witch')
+          ? 'assets/spire/hero_zero_witch_sheet.png'
+          : 'assets/spire/hero_zero_sheet.png'));
     const criticalList = [
       ['主殿背景原画', 'assets/spire/v2/title-clean.jpg', true],
-      ['主角立绘档案', 'assets/spire/port_zero.jpg', true],
-      ['序章石棺原画', 'assets/spire/v3/awakening-coffin.jpg', false],
-      ['主角战斗精灵表', 'assets/spire/hero_zero_sheet.png', false],
-      ['风语行商立绘', 'assets/spire/port_qingyu.jpg', false],
-      ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg', false]
+      ['主角当前战斗精灵表', activeHeroSheet, true],
+      ['主角初始战斗精灵表', 'assets/spire/hero_zero_sheet.png', true],
+      ['主角半身立绘', (activeOutfit && activeOutfit.uiBust) || 'assets/spire/ui_art/port_zero_witch_bust.png', true],
+      ['首层追猎傀儡贴图', 'assets/spire/mob_s1_ronin.png', true],
+      ['首层集群魔物贴图', 'assets/spire/mob_swarmer.png', true],
+      ['首层潜行魔物贴图', 'assets/spire/mob_stalker.png', true],
+      ['首层分裂魔物贴图', 'assets/spire/mob_splitter.png', true],
+      ['首层幼体魔物贴图', 'assets/spire/mob_mini_slime.png', true],
+      ['首层赤伞魔物贴图', 'assets/spire/mob_s1_umbrella.png', true],
+      ['首层持盾魔物贴图', 'assets/spire/mob_shielder.png', true],
+      ['首层棱镜魔物贴图', 'assets/spire/mob_s2_prism.png', true],
+      ['首层场景器物贴图', 'assets/spire/prop_s1_lantern.png', true],
+      ['首幕守桥首领精灵表', 'assets/spire/hero_jinyu_sheet.png', true],
+      ['首幕地面石板贴图', 'assets/spire/scene_1_arena.jpg', false],
+      ['序章石棺原画', 'assets/spire/v3/awakening-coffin.jpg', false]
     ];
-    const primaryTotal = 2;
+    // 去重（例如初始白衣时 activeHeroSheet === hero_zero_sheet.png）
+    const dedupList = [];
+    const seenPaths = Object.create(null);
+    for (let i = 0; i < criticalList.length; i++) {
+      const p = criticalList[i][1];
+      if (seenPaths[p]) continue;
+      seenPaths[p] = true;
+      dedupList.push(criticalList[i]);
+    }
+    let primaryTotal = 0;
+    for (let i = 0; i < dedupList.length; i++) {
+      if (dedupList[i][2]) primaryTotal++;
+    }
     let primaryDone = 0;
     let doneCount = 0;
-    const total = criticalList.length;
-    const SOFT_ART_GRACE_MS = 900;
+    const total = dedupList.length;
+    const SOFT_ART_GRACE_MS = 7500;
 
     const markDone = function (isPrimary) {
       doneCount++;
       if (isPrimary) primaryDone++;
       if (finished) return;
-      const pct = 72 + Math.round((doneCount / total) * 28);
-      setStep(pct, `核心代码已就绪 · 正在预热首屏原画 (${doneCount}/${total})…`);
+      const pct = 72 + Math.min(27, Math.round((doneCount / Math.max(1, total)) * 28));
+      setStep(pct, `核心代码已就绪 · 正在解码主角与魔物贴图 (${doneCount}/${total})…`);
       if (primaryDone >= primaryTotal || doneCount >= total) {
         checkingImages = false;
         unlockGate(doneCount >= total ? 'web_full_verified' : 'web_primary_art_ready');
@@ -1030,8 +1068,8 @@ const SpireBootGate = (function () {
     };
 
     for (let i = 0; i < total; i++) {
-      const rel = criticalList[i][1];
-      const isPrimary = !!criticalList[i][2];
+      const rel = dedupList[i][1];
+      const isPrimary = !!dedupList[i][2];
       let settled = false;
       const settle = function () {
         if (settled) return;
@@ -1039,7 +1077,7 @@ const SpireBootGate = (function () {
         markDone(isPrimary);
       };
       if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.loadImage === 'function') {
-        const cachedImg = SpireAssets.loadImage(rel, settle);
+        const cachedImg = SpireAssets.loadImage(rel, settle, settle, isPrimary ? 'urgent' : false);
         if (cachedImg) settle();
       } else {
         const img = new Image();

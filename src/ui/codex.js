@@ -418,7 +418,7 @@ function renderCodex() {
       row.className = 'p5-row codex-card t4';
       row.onclick = () => openCodexGenericModal({ tier: 4, title: c.name, iconHtml: portSrc ? `<img src="${portSrc}" alt="${c.name}" style="width:100%;height:100%;object-fit:contain">` : c.icon, badges: [c.tag, c.dashName || '青焰瞬步'], chips: [`初始兵装 · ${c.loadout}`], desc: c.perks, foot: c.dashDesc ? `专属战技【${c.dashName || '青焰瞬步'}】：${c.dashDesc}` : '' });
       row.innerHTML = `
-        <div class="p5-ico-edge"><div class="p5-ico-inner">${portSrc ? `<img src="${portSrc}" alt="${c.name}">` : c.icon}</div></div>
+        <div class="p5-ico-edge"><div class="p5-ico-inner is-portrait">${portSrc ? `<img src="${portSrc}" alt="${c.name}">` : c.icon}</div></div>
         <div class="p5-notch" aria-hidden="true"></div>
         <div class="p5-bar-edge">
           <div class="p5-bar-fill">

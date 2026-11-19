@@ -225,7 +225,9 @@ const SpireAssets = (function () {
     if (typeof isTrueMobileDevice === 'function' && isTrueMobileDevice()) return true;
     const vw = window.innerWidth || 9999;
     const vh = window.innerHeight || 9999;
-    return Math.min(vw, vh) <= 920;
+    const hasTouch = typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0);
+    if (hasTouch && Math.min(vw, vh) <= 820) return true;
+    return Math.min(vw, vh) <= 560;
   }
 
   function fastStoryPath(relPath) {
@@ -249,22 +251,65 @@ const SpireAssets = (function () {
     return fast;
   }
 
-  // 移动端双优先级防拥塞加载器：屏上急需贴图 LIFO 插队抢占 + 严控并发槽位防蜂窝队头阻塞 + 14秒看门狗与保留缓存重试 + 常驻引用防 GC 回收
+  // 双端双优先级防拥塞加载器：屏上急需贴图 LIFO 插队抢占 + 先完成 GPU 纹理解码再置 ready（根除“显示加载完成但进局变黑影/空白”）
   const _hiQueue = [];
   const _loQueue = [];
   const _pinnedImages = [];
   let _inflightHi = 0;
   let _inflightLo = 0;
+  let _decodeWarmCtx = null;
 
-  function _pinDecodedImage(img) {
-    if (!img) return;
+  function _forceUploadDecodedTexture(img) {
+    if (!img || typeof document === 'undefined') return;
+    try {
+      if (!_decodeWarmCtx) {
+        const wc = document.createElement('canvas');
+        wc.width = 4;
+        wc.height = 4;
+        _decodeWarmCtx = wc.getContext('2d');
+      }
+      if (_decodeWarmCtx) {
+        _decodeWarmCtx.clearRect(0, 0, 4, 4);
+        _decodeWarmCtx.drawImage(img, 0, 0, 4, 4);
+      }
+    } catch (_) {}
+  }
+
+  function _pinAndDecodeImage(img, isBattleSprite, doneCb) {
+    if (!img) {
+      if (doneCb) doneCb();
+      return;
+    }
     if (_pinnedImages.indexOf(img) === -1) _pinnedImages.push(img);
+    let finished = false;
+    const finish = function () {
+      if (finished) return;
+      finished = true;
+      if (isBattleSprite) _forceUploadDecodedTexture(img);
+      if (doneCb) doneCb();
+    };
     if (typeof img.decode === 'function') {
+      let timer = null;
+      if (typeof setTimeout === 'function') {
+        timer = setTimeout(finish, isBattleSprite ? 480 : 260);
+      }
       try {
         const dp = img.decode();
-        if (dp && typeof dp.catch === 'function') dp.catch(function () {});
-      } catch (_) {}
+        if (dp && typeof dp.then === 'function') {
+          dp.then(function () {
+            if (timer !== null) clearTimeout(timer);
+            finish();
+          }, function () {
+            if (timer !== null) clearTimeout(timer);
+            finish();
+          });
+          return;
+        }
+      } catch (_) {
+        if (timer !== null) clearTimeout(timer);
+      }
     }
+    finish();
   }
 
   function hasPendingHiLoads() {
@@ -273,14 +318,14 @@ const SpireAssets = (function () {
 
   function _pumpLoadQueue() {
     const compact = _isCompactDevice();
-    const hiLimit = compact ? 4 : 16;
-    const loLimit = compact ? 2 : 6;
+    const hiLimit = compact ? 8 : 24;
+    const loLimit = compact ? 3 : 8;
     while ((_inflightHi + _inflightLo) < hiLimit && _hiQueue.length > 0) {
       const item = _hiQueue.shift();
       if (item && item.fn) item.fn();
     }
     // 高优战斗贴图排队或高并发拉取期间，暂停启动新的低优大图下载，杜绝 500KB 剧情图阻塞 50KB 怪物贴图
-    const allowLo = _hiQueue.length === 0 && _inflightHi <= (compact ? 1 : 6);
+    const allowLo = _hiQueue.length === 0 && _inflightHi <= (compact ? 2 : 10);
     while (allowLo && _inflightLo < loLimit && (_inflightHi + _inflightLo) < hiLimit && _loQueue.length > 0) {
       const item = _loQueue.shift();
       if (item && item.fn) item.fn();
@@ -351,9 +396,11 @@ const SpireAssets = (function () {
       let watchdog = null;
       const img = new Image();
       rec.img = img;
-      if (!slotIsHi) img.decoding = 'async';
       if (slotIsHi) {
+        try { img.decoding = 'sync'; } catch (_) {}
         try { img.fetchPriority = 'high'; } catch (_) {}
+      } else {
+        img.decoding = 'async';
       }
 
       const releaseSlot = function () {
@@ -377,19 +424,21 @@ const SpireAssets = (function () {
         if (nw > 0 && nh > 0) {
           if (!img.width) img.width = nw;
           if (!img.height) img.height = nh;
-          _pinDecodedImage(img);
-          rec.ready = true;
-          rec.loading = false;
-          rec.failed = false;
-          rec.failCbs.length = 0;
-          const list = rec.cbs.splice(0, rec.cbs.length);
-          for (let i = 0; i < list.length; i++) {
-            try {
-              list[i](img);
-            } catch (err) {
-              if (typeof logWarn === 'function') logWarn('ASSET_CB', relPath + ': ' + String(err));
+          // 先完成纹理解码并上传 GPU，再置 ready=true 触发精灵表就绪回调，彻底杜绝网页端“显示加载完成但进局绘出黑块/空白”
+          _pinAndDecodeImage(img, !!slotIsHi, function () {
+            rec.ready = true;
+            rec.loading = false;
+            rec.failed = false;
+            rec.failCbs.length = 0;
+            const list = rec.cbs.splice(0, rec.cbs.length);
+            for (let i = 0; i < list.length; i++) {
+              try {
+                list[i](img);
+              } catch (err) {
+                if (typeof logWarn === 'function') logWarn('ASSET_CB', relPath + ': ' + String(err));
+              }
             }
-          }
+          });
         } else if (!isDataUri && attempt < 3) {
           _enqueueAttempt(attempt + 1);
         } else {
@@ -461,8 +510,8 @@ const SpireAssets = (function () {
       }
       const run = function () {
         const compact = _isCompactDevice();
-        const hiLimit = compact ? 4 : 16;
-        const loLimit = compact ? 2 : 6;
+        const hiLimit = compact ? 8 : 24;
+        const loLimit = compact ? 3 : 8;
         const qItem = { relPath, isHi, fn: null };
         qItem.fn = function () { startAttempt(attempt, qItem.isHi); };
         if (isHi) {
@@ -474,7 +523,7 @@ const SpireAssets = (function () {
             _hiQueue.push(qItem);
           }
         } else {
-          const allowLo = _hiQueue.length === 0 && _inflightHi <= (compact ? 1 : 6);
+          const allowLo = _hiQueue.length === 0 && _inflightHi <= (compact ? 2 : 10);
           if (allowLo && _inflightLo < loLimit && (_inflightHi + _inflightLo) < hiLimit) {
             startAttempt(attempt, false);
           } else {
@@ -493,11 +542,11 @@ const SpireAssets = (function () {
     return rec.ready ? rec.img : null;
   }
 
-  // 离屏染色画布 LRU 池：严控手机 WebKit 活跃 2D Canvas 数量（<=12），驱逐时归零尺寸立即释放 GPU IOSurface，彻底根除 iOS 画布超限引发的贴图静默空白！
+  // 离屏染色画布 LRU 池：覆盖同屏多词缀狂化精英+受击高亮并发缓存，驱逐时归零尺寸立即释放 GPU IOSurface，杜绝每帧反复建毁画布导致贴图变黑！
   const _tintLru = [];
   function _allocPooledCanvas(w, h, holder, prop) {
     if (typeof document === 'undefined') return null;
-    const maxPool = _isCompactDevice() ? 12 : 64;
+    const maxPool = _isCompactDevice() ? 28 : 96;
     while (_tintLru.length >= maxPool) {
       const oldest = _tintLru.shift();
       if (oldest) {
@@ -607,7 +656,9 @@ const SpireAssets = (function () {
 
   function _getSheetFlashView(entry) {
     if (!entry || !entry.normal) return null;
-    if (entry.flashView) return entry.flashView;
+    if (entry.flashView && entry.flashView.canvas && (!(entry.flashView.canvas.tagName === 'CANVAS') || (entry.flashView.canvas.width > 0 && entry.flashView.canvas.height > 0))) {
+      return entry.flashView;
+    }
     const nw = entry.nw || 1024;
     const nh = entry.nh || 256;
     const pair = _allocPooledCanvas(nw, nh, entry, 'flashView');
@@ -841,22 +892,109 @@ const SpireAssets = (function () {
     }
   }
 
-  function warmup() {
-    if (typeof Image === 'undefined') return;
-    // 第一优先级：主角精灵表与第 1 层核心小怪贴图立刻进入高优绿色通道并发拉取，彻底消除进战初期怪变圆球
-    ensureSheetEntry(HERO_SHEET_MAP.zero, true);
-    if (typeof getActiveZeroOutfit === 'function') {
-      const ao = getActiveZeroOutfit();
-      if (ao && ao.sheetKey && ao.sheetKey !== 'zero') ensureSheetEntry(HERO_SHEET_MAP[ao.sheetKey], false);
-    }
-    ensureSpriteEntry(PROP_MAP.foundry, 224, false);
-    const wave1Mobs = ['chaser', 'swarmer', 'stalker', 'splitter', 'mini_slime', 'magma_imp', 'shielder', 'shooter'];
-    for (let i = 0; i < wave1Mobs.length; i++) {
-      ensureSpriteEntry(MONSTER_SPRITE_MAP[wave1Mobs[i]], 256, false);
+  // 进战前紧急拉取并确保主角精灵表+当层核心魔物/首领贴图完成 GPU 解码，支持实时进度回调
+  function warmBattlePack(clsId, waveNum, sceneId, onProgress) {
+    const w = Math.max(1, Number(waveNum) || 1);
+    const sc = sceneId || (w <= 4 ? 'foundry' : (w <= 8 ? 'glacier' : (w <= 12 ? 'wasteland' : 'desert')));
+    const effKey = _resolveZeroOutfitSheetKey(clsId || 'allrounder');
+    const heroSheetRel = HERO_SHEET_MAP[effKey] || HERO_SHEET_MAP[clsId] || HERO_SHEET_MAP.zero;
+    const heroSprRel = HERO_MAP[effKey] || HERO_MAP[clsId] || HERO_MAP.allrounder;
+    const propRel = PROP_MAP[sc] || PROP_MAP.foundry;
+
+    const reqSet = [];
+    const pushReq = function (rel, kind, cap) {
+      if (!rel) return;
+      for (let i = 0; i < reqSet.length; i++) {
+        if (reqSet[i].rel === rel) return;
+      }
+      reqSet.push({ rel, kind, cap: cap || 256 });
+    };
+
+    pushReq(heroSheetRel, 'sheet', 1024);
+    pushReq(heroSprRel, 'sprite', 256);
+    pushReq(propRel, 'sprite', 224);
+
+    const mobs = ['chaser', 'stalker', 'swarmer', 'splitter', 'mini_slime', 'shooter', 'magma_imp', 'shielder'];
+    if (w >= 2) mobs.push('charger', 'iron_guard', 'rad_scorpion');
+    if (w >= 3) mobs.push('sand_worm', 'bomber', 'frost_knight', 'blade_duelist', 'frost_wisp', 'sniper_bug');
+    if (w >= 4) mobs.push('brute', 'spinner', 'mortar');
+    if (w >= 5) mobs.push('shadow_reaper', 'summoner', 'spore_mother');
+    if (w >= 6) mobs.push('juggernaut', 'healer');
+    for (let i = 0; i < mobs.length; i++) {
+      const mk = mobs[i];
+      if (MONSTER_SPRITE_MAP[mk]) pushReq(MONSTER_SPRITE_MAP[mk], 'sprite', mk === 'juggernaut' ? 300 : 256);
     }
 
-    // 第二优先级：序章首屏背景图与竞技场底图在空闲帧平缓预热，绝不抢占小怪并发槽位
+    if (w === 2 || w === 6 || w === 10 || w === 14 || w > 16) {
+      const miniByAct = w <= 4 ? ['vanguard', 'pyro_lord'] : (w <= 8 ? ['glacial_valkyrie', 'venom_matriarch'] : (w <= 12 ? ['shadow_stalker', 'storm_siren'] : ['iron_warden']));
+      for (let j = 0; j < miniByAct.length; j++) {
+        const mv = miniByAct[j];
+        if (BOSS_SPRITE_MAP[mv]) pushReq(BOSS_SPRITE_MAP[mv], 'sprite', 300);
+        if (HERO_SHEET_MAP[mv]) pushReq(HERO_SHEET_MAP[mv], 'sheet', 1024);
+      }
+    }
+    if (w === 3 || w === 4 || w === 7 || w === 8 || w === 11 || w === 12 || w === 15 || w >= 16) {
+      const actBoss = w <= 4 ? 'butcher' : (w <= 8 ? 'frost_queen' : (w <= 12 ? 'void_weaver' : 'solar_seraph'));
+      if (HERO_SHEET_MAP[actBoss]) pushReq(HERO_SHEET_MAP[actBoss], 'sheet', 1024);
+      if (HERO_P2_SHEET_MAP[actBoss]) pushReq(HERO_P2_SHEET_MAP[actBoss], 'sheet', 1024);
+      if (BOSS_SPRITE_MAP[actBoss]) pushReq(BOSS_SPRITE_MAP[actBoss], 'sprite', 300);
+    }
+
+    getArenaBg(sc);
+
+    const total = reqSet.length;
+    if (total === 0 || typeof Image === 'undefined') {
+      if (onProgress) onProgress(1, 1, true);
+      return true;
+    }
+
+    let done = 0;
+    const tick = function () {
+      done++;
+      if (onProgress) onProgress(done, total, done >= total);
+    };
+
+    for (let i = 0; i < total; i++) {
+      const item = reqSet[i];
+      let settled = false;
+      const onOne = function () {
+        if (settled) return;
+        settled = true;
+        tick();
+      };
+      if (item.kind === 'sheet') ensureSheetEntry(item.rel, true);
+      else ensureSpriteEntry(item.rel, item.cap, true);
+      const cached = loadImage(item.rel, onOne, onOne, 'urgent');
+      if (cached) onOne();
+    }
+    return done >= total;
+  }
+
+  function warmup() {
+    if (typeof Image === 'undefined') return;
+    // 第一优先级：主角当前穿戴战装精灵表 + 初始精灵表 + 第 1 层核心小怪贴图立刻进入高优绿色通道并发拉取并完成纹理解码
+    if (typeof getActiveZeroOutfit === 'function') {
+      const ao = getActiveZeroOutfit();
+      if (ao && ao.sheetKey && HERO_SHEET_MAP[ao.sheetKey]) {
+        ensureSheetEntry(HERO_SHEET_MAP[ao.sheetKey], true);
+        if (HERO_MAP[ao.sheetKey]) ensureSpriteEntry(HERO_MAP[ao.sheetKey], 256, true);
+      }
+    }
+    ensureSheetEntry(HERO_SHEET_MAP.zero, true);
+    ensureSpriteEntry(HERO_MAP.allrounder, 256, true);
+    ensureSpriteEntry(PROP_MAP.foundry, 224, true);
+    const wave1Mobs = ['chaser', 'swarmer', 'stalker', 'splitter', 'mini_slime', 'magma_imp', 'shielder', 'shooter'];
+    for (let i = 0; i < wave1Mobs.length; i++) {
+      ensureSpriteEntry(MONSTER_SPRITE_MAP[wave1Mobs[i]], 256, true);
+    }
+
+    // 第二优先级：其余 5 位可操作角色/首领精灵表与序章底图在空闲帧平缓预热
     const jobs = [
+      () => ensureSheetEntry(HERO_SHEET_MAP.jinyu, false),
+      () => ensureSheetEntry(HERO_SHEET_MAP.astria, false),
+      () => ensureSheetEntry(HERO_SHEET_MAP.jialan, false),
+      () => ensureSheetEntry(HERO_SHEET_MAP.qingyu, false),
+      () => ensureSheetEntry(HERO_SHEET_MAP.eclipse, false),
       () => loadImage('assets/spire/v3/awakening-coffin.jpg', null, null, false),
       () => loadImage('assets/spire/v3/awakening-lantern.jpg', null, null, false),
       () => loadImage('assets/spire/scene_1_vista.jpg', null, null, false),
@@ -871,9 +1009,22 @@ const SpireAssets = (function () {
 
   warmup();
 
+  const BOSS_UI_BUST_CUTOUT_MAP = {
+    butcher:        'assets/spire/ui_art/ui_bust_jinyu.png',
+    frost_queen:    'assets/spire/ui_art/ui_bust_astria.png',
+    void_weaver:    'assets/spire/ui_art/ui_bust_jialan.png',
+    plague_empress: 'assets/spire/ui_art/ui_bust_qingyu.png',
+    solar_seraph:   'assets/spire/ui_art/ui_bust_eclipse.png'
+  };
+
   function getBossCutoutSourcePath(variant, isMythic) {
-    if (isMythic && BOSS_P2_SPRITE_MAP[variant]) return BOSS_P2_SPRITE_MAP[variant];
-    return BOSS_SPRITE_MAP[variant] || HERO_MAP[variant] || 'assets/spire/hero_jinyu.png';
+    if (isMythic) {
+      if (PORTRAIT_P2_MAP[variant]) return PORTRAIT_P2_MAP[variant];
+      if (BOSS_P2_SPRITE_MAP[variant]) return BOSS_P2_SPRITE_MAP[variant];
+    }
+    if (BOSS_UI_BUST_CUTOUT_MAP[variant]) return BOSS_UI_BUST_CUTOUT_MAP[variant];
+    if (variant === 'crimson_lord' || variant === 'mech_colossus') return PORTRAIT_MAP[variant];
+    return BOSS_SPRITE_MAP[variant] || HERO_MAP[variant] || 'assets/spire/ui_art/ui_bust_jinyu.png';
   }
 
   return {
@@ -886,6 +1037,7 @@ const SpireAssets = (function () {
     getHeroSprite,
     warmZeroOutfit,
     warmWave,
+    warmBattlePack,
     getPropSprite,
     pickMonsterPath,
     getMonsterSprite,
@@ -1048,22 +1200,60 @@ function _bakeBossCutoutSlot(cacheKey, w, h, srcRel, isMythic) {
         g.imageSmoothingEnabled = true;
         if ('imageSmoothingQuality' in g) g.imageSmoothingQuality = 'high';
         g.clearRect(0, 0, w, h);
-        if (isMythic) {
+        const isOpaquePortrait = /\.jpe?g(?:\?|$)/i.test(srcRel);
+        if (isOpaquePortrait) {
+          // 高清立绘原画采用哥特八棱金冕徽章无硬边裁切，完美嵌合背后双旋星盘法阵
+          const cx = w * 0.5, cy = h * 0.49;
+          const rx = w * 0.42, ry = h * 0.43;
           g.save();
-          g.strokeStyle = 'rgba(225, 29, 72, 0.72)';
-          g.lineWidth = 4;
           g.beginPath();
-          g.moveTo(w * 0.16, h * 0.84);
-          g.lineTo(w * 0.50, h * 0.10);
-          g.lineTo(w * 0.84, h * 0.84);
-          g.closePath();
-          g.stroke();
+          g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          g.clip();
+          const sc = Math.max((rx * 2.06) / iw, (ry * 2.06) / ih);
+          const dw = iw * sc, dh = ih * sc;
+          g.drawImage(img, cx - dw * 0.5, cy - dh * 0.46, dw, dh);
           g.restore();
+          g.strokeStyle = isMythic ? '#ffd166' : 'rgba(246, 211, 121, 0.88)';
+          g.lineWidth = isMythic ? 4.2 : 3.0;
+          g.beginPath();
+          g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          g.stroke();
+          if (isMythic) {
+            g.strokeStyle = 'rgba(255, 42, 85, 0.82)';
+            g.lineWidth = 2.0;
+            g.beginPath();
+            g.ellipse(cx, cy, rx + 5.5, ry + 5.5, 0, 0, Math.PI * 2);
+            g.stroke();
+          }
+        } else {
+          if (isMythic) {
+            g.save();
+            g.strokeStyle = 'rgba(225, 29, 72, 0.72)';
+            g.lineWidth = 4;
+            g.beginPath();
+            g.moveTo(w * 0.16, h * 0.84);
+            g.lineTo(w * 0.50, h * 0.10);
+            g.lineTo(w * 0.84, h * 0.84);
+            g.closePath();
+            g.stroke();
+            g.restore();
+          }
+          const pad = isMythic ? 12 : 20;
+          const sc = Math.min((w - pad * 2) / iw, (h - pad * 2) / ih);
+          const dw = iw * sc, dh = ih * sc;
+          const dx = (w - dw) * 0.5, dy = (h - dh) * 0.52;
+          g.drawImage(img, dx, dy, dw, dh);
+          if (/ui_bust_|port_zero.*_bust/i.test(srcRel)) {
+            g.save();
+            g.globalCompositeOperation = 'destination-out';
+            const fadeG = g.createLinearGradient(0, h * 0.78, 0, h);
+            fadeG.addColorStop(0, 'rgba(0,0,0,0)');
+            fadeG.addColorStop(1, 'rgba(0,0,0,1)');
+            g.fillStyle = fadeG;
+            g.fillRect(0, h * 0.76, w, h * 0.25);
+            g.restore();
+          }
         }
-        const pad = isMythic ? 12 : 24;
-        const sc = Math.min((w - pad * 2) / iw, (h - pad * 2) / ih);
-        const dw = iw * sc, dh = ih * sc;
-        g.drawImage(img, (w - dw) * 0.5, (h - dh) * 0.54, dw, dh);
         rec.canvas = c;
         _bossCutoutOrder.push(cacheKey);
       } else {

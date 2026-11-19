@@ -187,6 +187,9 @@ function _renderStoryP5Bars() {
 
 function _renderEndlessP5Stage(activeEndlessHero, activeDiffObj, activeSceneOpt) {
   if (!activeEndlessHero) return;
+  if (typeof SpireAssets !== 'undefined' && SpireAssets && typeof SpireAssets.getHeroSheet === 'function') {
+    SpireAssets.getHeroSheet(activeEndlessHero.id, false, true);
+  }
   const isZero = activeEndlessHero.id === 'allrounder' && typeof getActiveZeroOutfit === 'function';
   const activeOutfit = isZero ? getActiveZeroOutfit() : null;
   const portUrl = typeof getHeroUiBustUrl === 'function'
@@ -413,7 +416,7 @@ function openZeroOutfitModal(opts) {
     return `
       <button type="button" class="p5-row outfit-pick-card${isSel ? ' active is-sel' : ''}" role="radio" aria-checked="${isSel ? 'true' : 'false'}" data-outfit="${id}" onclick="handleZeroOutfitRowClick('${id}')">
         <span class="p5-ico-edge">
-          <span class="p5-ico-inner">
+          <span class="p5-ico-inner is-portrait">
             <img src="${pUrl}" alt="${o.name}" class="outfit-pick-portrait" decoding="async">
           </span>
         </span>

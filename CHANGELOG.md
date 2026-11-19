@@ -4,7 +4,7 @@
 
 ---
 
-## [v2.2.8] - 2026-11-18
+## [v2.2.9] - 2026-11-19
 ### 🛠️ 行囊多遗物防溢出锁高 + 顶部 HUD 单横幅动态避让与第 4 层残余红条根治 + 精炼二次红框购买与全界面词条详情弹窗修复
 - **行囊三合一总览多遗物防撑破与三重返回兜底（`index.html`、`styles/p5-ui.css`、`src/ui/shop.js`、`src/ui/menus.js`）**：
   - 锁定桌面端与横屏 `#shopPaneOverview` 视口高度，仅允许已购遗物网格 `#ovRelicGrid` 内部纵向滚动，28+ 件遗物不再挤没随身武器一键合阶栏与底部切换坞；新增顶栏 `🛒 返回行商` 按钮、行囊态常驻 `◆ 前往下一层` 与 `Esc` 一键切回行商。
@@ -14,6 +14,19 @@
 - **精炼交互逻辑与全场景词条/羁绊详情弹窗修复（`src/ui/shop.js`、`src/ui/codex.js`、`src/ui/menus.js`、`src/game/director.js`、`styles/p5-ui.css`、`styles/narrative.css`）**：
   - 移除冗余 `◆ 再点购买` 文字章；保留 `🕯️ 开启试炼` 为直接单击开关；行商货架商品与秘匣/升级/五阶觉醒/战装/终局抉择多选一统一采用「首次点击醒目猩红选框（按钮变为 `购买 ◇XX` / 激活确认键）➔ 二次点击执行」。
   - 修复选中与未选中状态下点击底部羁绊/词条徽章（`.bar-prog-badge`）或详情按钮偶发无响应问题，补齐商店兵装货架、秘匣补给、升级刻印、五阶觉醒、驻留面板与圣典全六大页签的详情浮窗，且关闭详情绝不丢失当前红框选中态。
+
+---
+
+## [v2.2.8] - 2026-11-18
+### 🖼️ 全量怪物/器物/P5 半身立绘/场景底图裁切与破洞重绘修复 + ⚡ 根除网页端进局人物/小怪/首领黑块贴图问题
+- **根除网页端「显示加载完成但人物/小怪/Boss 变黑色贴图」问题（`src/core/env.js`、`src/data/boss_portraits.js`、`src/game/spawner.js`、`src/render/sprites.js`）**：
+  - 修复 `_isCompactDevice()` 将 `innerHeight <= 920` 的 1080p 桌面浏览器与 MacBook 误判为低配手机，导致高优贴图并发上限被压至 `4`、离屏染色池 `maxPool` 压至 `12`（多词缀精英与受击高亮同屏时每帧频繁建毁画布引发黑块）的问题；现桌面端并发提升至 `24`、染色池扩容至 `96`（移动端提升至 `8 / 28`），并补齐精灵表受击画布尺寸有效性校验。
+  - 在 `SpireAssets.loadImage()` 中对战斗贴图启用 `decoding = 'sync'`，并在 `onload` 后先完成 `img.decode()` 与 `4×4` 离屏画布 GPU 纹理强制上传后再置 `ready = true`。
+  - 升级 `SpireBootGate.verifyCriticalAssets()` 真正等待主角当前穿戴战装精灵表与首层核心魔物/首领贴图全部解码就绪后再解锁 100% 门禁，新增 `SpireAssets.warmBattlePack()` 在每层开战与选角时置顶预热当层贴图，并将极端弱网过渡造型由 `#161d2e` 纯黑剪影升级为全彩二头身战铠魔偶。
+- **全量残缺/抠穿战斗贴图、场景器物与四帧精灵表重绘修复（`assets/spire/*`）**：
+  - 全新重绘 `mob_s1_ronin.png`（补全斗笠尖顶）、`mob_s1_guard.png`、`mob_s2_knight.png`、`mob_s2_prism.png`、`mob_s3_duelist.png`、`mob_s4_shade.png` 及场景可破坏器物 `prop_s1_lantern.png`、`prop_s2_crystal.png`、`prop_s4_monolith.png`（彻底消除盔甲/白衣被抠穿的透明破洞与封魂碑贴图丢失）；重排 `sb_crimson_lord_p2_sheet.png` 四帧边距消除跨格穿帮切翅；从四帧精灵表提取零破洞单帧角色图并补齐 `assets/icon.png`（全仓 81 张 PNG 达成 `0` 切边、`0` 跨帧穿帮）。
+- **P5 半身透明立绘、全屏场景底图、绯狱妖主立绘与斜切 UI 框修复（`assets/spire/ui_art/*`、`styles/p5-ui.css`、`styles/narrative.css`、`src/ui/codex.js`、`src/ui/menus.js`）**：
+  - 无损重制全部 9 张 `520×640` `ui_art/*_bust.png`（消除左右/顶部一刀切硬边、残余金框与白雾噪点），无缝合成 `ui_scene_hero_0..5.jpg`（消除零号背景正中竖向拼接线与日蚀圣女发侧黑框水印），重绘 `port_crimson_lord.jpg` / `port_crimson_lord_p2.jpg` 完整立绘，恢复首领登场/二阶段高清半身破框立绘，并修复选角底栏头像、圣典/衣橱头像框及剧情二阶段立绘框的 `clip-path / object-fit` 裁切。
 
 ---
 
