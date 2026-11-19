@@ -2193,36 +2193,7 @@ function drawPhase2ShatterOverlay(isFullNameplate) {
       ctx.fillText('点击屏幕 / 空格 迎战二阶段 ▸', viewW - 28, viewH - 22);
     }
   } else {
-    if ((fx.hudT || 0) > 0 && (!endlessMode || fx.variant === 'plague_empress')) {
-      // 实机战场顶部二阶段觉醒铭牌血条框（1:1 对应设定集截图顶部名牌效果）
-      const hudAlpha = Math.min(1, fx.hudT / 0.55);
-      const barW = Math.min(540, viewW - 40), barH = 13;
-      const bx = (viewW - barW) * 0.5, by = compact ? 58 : 22;
-      const liveBoss = (fx.boss && fx.boss.hp > 0) ? fx.boss : (Array.isArray(enemies) ? enemies.find(x => x && x.variant === fx.variant && x.hp > 0) : null);
-      const hpRatio = liveBoss ? Math.max(0, Math.min(1, liveBoss.hp / Math.max(1, liveBoss.maxHp))) : 1;
-
-      ctx.save();
-      ctx.globalAlpha = hudAlpha * 0.92;
-      ctx.fillStyle = 'rgba(6, 9, 16, 0.86)';
-      ctx.fillRect(bx - 12, by - 8, barW + 24, 50);
-      ctx.strokeStyle = cfg.theme;
-      ctx.lineWidth = 1.6;
-      ctx.strokeRect(bx - 12, by - 8, barW + 24, 50);
-
-      ctx.fillStyle = '#1d2538';
-      ctx.fillRect(bx, by + 18, barW, barH);
-      ctx.fillStyle = cfg.theme;
-      ctx.fillRect(bx, by + 18, barW * hpRatio, barH);
-
-      ctx.fillStyle = '#ffe29a';
-      ctx.fillRect(bx + barW * 0.5 - 1.5, by + 15, 3, barH + 6);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${compact ? 12 : 14}px "PingFang SC", -apple-system, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(`★ ${cfg.name} · 二阶段 · ${cfg.title}`, viewW * 0.5, by + 11);
-      ctx.restore();
-    }
+    // 顶部二阶段首领血条统一由 DOM #bossBarWrap 接管，避免双层血条框重叠或留下残框红线
     const arShk = _computeImpactShakeOffset((fx.fxShake || 0) * 0.42, nowMs + 31);
     ctx.translate(arShk.x, arShk.y);
   }

@@ -2560,42 +2560,46 @@ function drawBattleScreenOverlays(now, sx, sy) {
     ctx.restore();
   }
 
-  // 屏幕顶部战术事件持久播报横幅（停留 3~4 秒，带剩余时间条，确保玩家不错过任何奇遇/环境异象）
+  // 屏幕顶部战术事件持久播报横幅（严格单条不堆叠，动态避让倒计时/首领血条/施法条底边，提高淡出截断阈值杜绝残影红线）
+  const _topHudClearY = (typeof SpirePerf !== 'undefined' && typeof SpirePerf.getTopHudClearY === 'function')
+    ? SpirePerf.getTopHudClearY(uiMode)
+    : ((uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 114)) + (SpirePerf.isBossBarVisible() ? 58 : 0));
+  let _hasActiveTopBanner = false;
   if (state === 'wave' && typeof banners !== 'undefined' && banners.length > 0) {
-    const _bossBannerOff = SpirePerf.isBossBarVisible() ? (uiMode === 'desktop' ? 54 : 42) : 0;
-    const baseY = (uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 114)) + _bossBannerOff;
-    const fSize = uiMode === 'desktop' ? 15.5 : 12.5;
-    ctx.save();
-    ctx.font = `900 ${fSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (let i = 0; i < banners.length; i++) {
-      const b = banners[i];
+    const b = banners[banners.length - 1];
+    if (b && b.t > 0.05) {
       const maxT = Math.max(0.2, b.maxT || 3.2);
       const elapsed = maxT - b.t;
       const enterP = Math.min(1, elapsed / 0.16);
-      const exitP = Math.min(1, Math.max(0, b.t / 0.45));
+      const exitP = Math.min(1, Math.max(0, b.t / 0.42));
       const alpha = enterP * exitP;
-      if (alpha <= 0.02) continue;
-      const maxW = Math.max(200, viewW - 28);
-      if (!b._tw || b._fSize !== fSize) {
-        b._tw = SpirePerf.measureText(ctx, b.txt);
-        b._fSize = fSize;
+      if (alpha > 0.08) {
+        _hasActiveTopBanner = true;
+        const fSize = uiMode === 'desktop' ? 14.5 : 12;
+        ctx.save();
+        ctx.font = `900 ${fSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const maxW = Math.max(200, viewW - 28);
+        if (!b._tw || b._fSize !== fSize) {
+          b._tw = SpirePerf.measureText(ctx, b.txt);
+          b._fSize = fSize;
+        }
+        const tw = Math.min(maxW, Math.max(220, b._tw + 44));
+        const bh = uiMode === 'desktop' ? 32 : 26;
+        const bx = viewW * 0.5 - tw * 0.5 - (1 - enterP) * 12;
+        const by = _topHudClearY - (1 - enterP) * 4;
+        ctx.globalAlpha = alpha;
+        drawP5TagFast(ctx, bx, by, tw, bh, b.color || '#e11d48', Math.max(0, Math.min(1, b.t / maxT)), 0.90);
+        ctx.globalAlpha = alpha * 0.98;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(b.txt, bx + tw * 0.5 + 3, by + bh * 0.5, tw - 26);
+        ctx.restore();
       }
-      const tw = Math.min(maxW, Math.max(226, b._tw + 46));
-      const bh = uiMode === 'desktop' ? 35 : 28;
-      const bx = viewW * 0.5 - tw * 0.5 - (1 - enterP) * 14;
-      const by = baseY + i * (bh + 8) - (1 - enterP) * 4;
-      ctx.globalAlpha = alpha;
-      drawP5TagFast(ctx, bx, by, tw, bh, b.color || '#e11d48', Math.max(0, Math.min(1, b.t / maxT)), 1.0);
-      ctx.globalAlpha = alpha * 0.98;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(b.txt, bx + tw * 0.5 + 3, by + bh * 0.5, tw - 26);
     }
-    ctx.restore();
   }
 
-  // 地图隐藏首领召唤祭坛现世期间：顶部 P5 斜切雷达提示签 + 屏幕边缘高辨识度方向指引信标（浓雾下同样穿透可见！）
+  // 地图隐藏首领召唤祭坛现世期间：顶部 P5 斜切雷达提示签（与临时播报互斥，绝不双条叠排）+ 屏幕边缘方向指引信标
   if (state === 'wave' && relics.length > 0) {
     const rel = relics[0];
     const rNow = (typeof _frameNow !== 'undefined' ? _frameNow : performance.now());
@@ -2607,28 +2611,26 @@ function drawBattleScreenOverlays(now, sx, sy) {
     const distWorld = player ? Math.hypot(rel.x - player.x, rel.y - player.y) : 0;
     const stepsM = Math.max(0, Math.round(Math.max(0, distWorld - (rel.r || 88)) / 28));
 
-    // 1) 顶部常驻 P5 斜切雷达签（自动避让首领血条与临时播报 banners，绝不遮挡走位）
-    const bannerCnt = (typeof banners !== 'undefined' && banners) ? banners.length : 0;
-    const _bossOff2 = SpirePerf.isBossBarVisible() ? (uiMode === 'desktop' ? 54 : 42) : 0;
-    const bannerBaseY = (uiMode === 'mobile-portrait' ? 148 : (uiMode === 'mobile-landscape' ? 68 : 114)) + _bossOff2;
-    const bannerStepH = (uiMode === 'desktop' ? 35 : 28) + 8;
-    const pillY = bannerBaseY + bannerCnt * bannerStepH;
-    const pillFont = uiMode === 'desktop' ? 13 : 11.5;
-    const pillH = uiMode === 'desktop' ? 30 : 25;
-    const pillTxt = rProg > 0.02
-      ? `⚡ 正在共鸣召唤隐藏Boss【${bIcon}${bName}】 ${Math.round(rProg * 100)}% · 请保持在阵内`
-      : `⛩️ 隐藏Boss可召唤：【${bIcon}${bName}】(${stepsM}m) · 沿脚下金箭头踏阵必掉首领秘宝`;
-    ctx.save();
-    ctx.font = `900 ${pillFont}px -apple-system, BlinkMacSystemFont, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    const maxPillW = Math.max(190, viewW - 24);
-    const pillW = Math.min(maxPillW, Math.max(220, SpirePerf.measureText(ctx, pillTxt) + 36));
-    const pillX = viewW * 0.5 - pillW * 0.5;
-    drawP5TagFast(ctx, pillX, pillY, pillW, pillH, rProg > 0.02 ? '#ffd166' : rCol, rProg, 0.92);
-    ctx.fillStyle = '#fef3c7';
-    ctx.fillText(pillTxt, viewW * 0.5 + 3, pillY + pillH * 0.5, pillW - 26);
-    ctx.restore();
+    // 1) 顶部常驻 P5 斜切雷达签（仅在无临时事件播报或正在踏阵充能时展示）
+    if (!_hasActiveTopBanner || rProg > 0.02) {
+      const pillY = _hasActiveTopBanner ? (_topHudClearY + (uiMode === 'desktop' ? 38 : 32)) : _topHudClearY;
+      const pillFont = uiMode === 'desktop' ? 13 : 11.5;
+      const pillH = uiMode === 'desktop' ? 29 : 25;
+      const pillTxt = rProg > 0.02
+        ? `⚡ 正在共鸣召唤隐藏Boss【${bIcon}${bName}】 ${Math.round(rProg * 100)}% · 请保持在阵内`
+        : `⛩️ 隐藏Boss祭坛：【${bIcon}${bName}】(${stepsM}m) · 沿脚下金箭头踏阵召唤`;
+      ctx.save();
+      ctx.font = `900 ${pillFont}px -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const maxPillW = Math.max(190, viewW - 24);
+      const pillW = Math.min(maxPillW, Math.max(220, SpirePerf.measureText(ctx, pillTxt) + 36));
+      const pillX = viewW * 0.5 - pillW * 0.5;
+      drawP5TagFast(ctx, pillX, pillY, pillW, pillH, rProg > 0.02 ? '#ffd166' : rCol, rProg, 0.90);
+      ctx.fillStyle = '#fef3c7';
+      ctx.fillText(pillTxt, viewW * 0.5 + 3, pillY + pillH * 0.5, pillW - 26);
+      ctx.restore();
+    }
 
     // 2) 视野外（或浓雾遮蔽外）屏幕边缘高辨识度脉冲方向信标 + 距离铭牌
     const rxScreen = (rel.x - cam.x) * camZoom + viewW * 0.5;

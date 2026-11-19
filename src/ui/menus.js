@@ -382,6 +382,16 @@ function selectZeroOutfitFromUI(outfitId) {
   }
 }
 
+function handleZeroOutfitRowClick(outfitId) {
+  const curId = typeof getActiveZeroOutfitId === 'function' ? getActiveZeroOutfitId() : 'witch';
+  if (curId === outfitId) {
+    confirmZeroOutfitModal();
+    return;
+  }
+  selectZeroOutfitFromUI(outfitId);
+}
+globalThis.handleZeroOutfitRowClick = handleZeroOutfitRowClick;
+
 function openZeroOutfitModal(opts) {
   const options = opts || {};
   _outfitModalNextStage = options.nextStage || '';
@@ -401,7 +411,7 @@ function openZeroOutfitModal(opts) {
     const isSel = id === curId;
     const pUrl = typeof getZeroUiBustUrl === 'function' ? getZeroUiBustUrl(id) : _menuAssetUrl(o.uiBust || o.portrait);
     return `
-      <button type="button" class="p5-row outfit-pick-card${isSel ? ' active is-sel' : ''}" role="radio" aria-checked="${isSel ? 'true' : 'false'}" data-outfit="${id}" onclick="selectZeroOutfitFromUI('${id}')">
+      <button type="button" class="p5-row outfit-pick-card${isSel ? ' active is-sel' : ''}" role="radio" aria-checked="${isSel ? 'true' : 'false'}" data-outfit="${id}" onclick="handleZeroOutfitRowClick('${id}')">
         <span class="p5-ico-edge">
           <span class="p5-ico-inner">
             <img src="${pUrl}" alt="${o.name}" class="outfit-pick-portrait" decoding="async">
@@ -728,6 +738,11 @@ window.addEventListener('keydown', e => {
     if (cm && !cm.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeCodex(); return; }
     const om = document.getElementById('outfitModal');
     if (om && !om.classList.contains('hidden')) { if (e.preventDefault) e.preventDefault(); closeZeroOutfitModal(); return; }
+    if (state === 'shop' && typeof shopHubTab !== 'undefined' && shopHubTab === 'overview') {
+      if (e.preventDefault) e.preventDefault();
+      if (typeof setShopHubTab === 'function') setShopHubTab('shop');
+      return;
+    }
     if (state === 'menu' && menuStage !== 'home') { if (e.preventDefault) e.preventDefault(); openMenuStage('home'); return; }
   }
   // 无尽模式人物选择选项卡支持左右方向键与数字键 1-6 快速切换角色
@@ -1463,7 +1478,7 @@ function renderBuildSummary(statsId, setsId) {
       if (c > 0) {
         const nextStep = def.steps.find(s => s > c) || def.steps[2];
         const active = c >= def.steps[0];
-        setPills.push(`<span class="set-pill${active ? ' active' : ''}" title="${def.desc}">${def.label} ${c}/${nextStep} · ${def.desc}</span>`);
+        setPills.push(`<span class="set-pill${active ? ' active' : ''}" style="cursor:pointer" title="${def.desc}" onclick="openShopSynergyModal('${key}')">${def.label} ${c}/${nextStep} · ${def.desc}</span>`);
       }
     }
     if (player.items) {
@@ -1473,7 +1488,7 @@ function renderBuildSummary(statsId, setsId) {
           if (meta) {
             const pillIco = typeof renderItemEmblemHtml === 'function' ? renderItemEmblemHtml(meta, meta.tier, meta.icon, 'pill-art-ico') : meta.icon;
             const rPill = typeof renderRarityPillHtml === 'function' ? renderRarityPillHtml(meta.tier, 'mini') : '';
-            setPills.push(`<span class="set-pill" title="${meta.desc}">${pillIco} ${meta.name}${cnt > 1 ? ' ×' + cnt : ''} ${rPill}</span>`);
+            setPills.push(`<span class="set-pill" style="cursor:pointer" title="${meta.desc}" onclick="openShopRelicModal('${iid}')">${pillIco} ${meta.name}${cnt > 1 ? ' ×' + cnt : ''} ${rPill}</span>`);
           }
         }
       }

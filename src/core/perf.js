@@ -132,9 +132,17 @@ const SpirePerf = (function () {
 
   let _bossBarVisible = false;
   let _bossBarDomRef = null;
+  let _timerDomRef = null;
+  let _bossCastDomRef = null;
+  let _cachedTopClearY = 0;
+  let _topClearTick = 0;
 
   function setBossBarVisible(vis) {
-    _bossBarVisible = !!vis;
+    const next = !!vis;
+    if (_bossBarVisible !== next) {
+      _bossBarVisible = next;
+      _topClearTick = 0;
+    }
   }
 
   function isBossBarVisible() {
@@ -145,8 +153,66 @@ const SpirePerf = (function () {
     return _bossBarVisible;
   }
 
+  // 动态测量顶部 DOM 计时胶囊、首领血条与机制提示条真实像素底边，彻底杜绝画布横幅与 DOM 血条遮挡
+  function getTopHudClearY(curUiMode) {
+    const isDesk = curUiMode === 'desktop';
+    const isMobLand = curUiMode === 'mobile-landscape';
+    if (_topClearTick > 0 && _cachedTopClearY > 0) {
+      _topClearTick--;
+      return _cachedTopClearY;
+    }
+    _topClearTick = 4;
+
+    let uiScale = 1;
+    let winH = 780;
+    if (typeof window !== 'undefined' && Number(window.innerHeight) > 200) {
+      winH = Number(window.innerHeight);
+      if (isDesk) uiScale = Math.max(0.88, Math.min(3.0, winH / 780));
+    }
+
+    const bossVis = isBossBarVisible();
+    const fallbackY = isDesk
+      ? Math.round((bossVis ? 186 : 96) * uiScale)
+      : (isMobLand ? (bossVis ? 124 : 66) : (bossVis ? 182 : 112));
+
+    if (typeof document !== 'undefined') {
+      if (!_timerDomRef) _timerDomRef = document.getElementById('timerCapsule');
+      if (!_bossBarDomRef) _bossBarDomRef = document.getElementById('bossBarWrap');
+      if (!_bossCastDomRef) _bossCastDomRef = document.getElementById('bossCastSub');
+
+      let domBottom = 0;
+      const probeBottom = (el, checkHidden) => {
+        if (!el || typeof el.getBoundingClientRect !== 'function') return;
+        if (checkHidden && el.classList && el.classList.contains('hidden')) return;
+        const r = el.getBoundingClientRect();
+        if (r && r.height > 4 && r.bottom > 8 && r.bottom < winH * 0.62) {
+          if (r.bottom > domBottom) domBottom = r.bottom;
+        }
+      };
+
+      probeBottom(_timerDomRef, false);
+      if (bossVis) {
+        probeBottom(_bossBarDomRef, true);
+        probeBottom(_bossCastDomRef, true);
+      }
+
+      if (domBottom > 12) {
+        const gap = isDesk ? Math.round(12 * Math.min(1.35, uiScale)) : 10;
+        _cachedTopClearY = Math.min(Math.round(winH * 0.46), Math.max(48, Math.round(domBottom + gap)));
+        return _cachedTopClearY;
+      }
+    }
+
+    _cachedTopClearY = fallbackY;
+    return _cachedTopClearY;
+  }
+
   function resetDomRefs() {
     _bossBarDomRef = null;
+    _timerDomRef = null;
+    _bossCastDomRef = null;
+    _cachedTopClearY = 0;
+    _topClearTick = 0;
   }
 
   return {
@@ -157,6 +223,7 @@ const SpirePerf = (function () {
     measureText,
     setBossBarVisible,
     isBossBarVisible,
+    getTopHudClearY,
     resetDomRefs
   };
 })();

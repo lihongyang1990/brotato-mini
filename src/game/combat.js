@@ -196,18 +196,11 @@ function addText(x, y, txt, color = '#fff', size = 16, customDur = 0, forceImpor
   });
 }
 
-// 屏幕上方战术事件持久横幅播报（停留 3.2~4.2 秒，清晰易读不挡操作）
-function announce(txt, color = '#ffd166', dur = 3.4) {
+// 屏幕上方战术事件持久横幅播报（严格保持单条替换显示，绝不叠出多排遮挡血条与视野）
+function announce(txt, color = '#ffd166', dur = 3.2) {
   if (typeof banners === 'undefined') return;
   const s = String(txt);
-  const existing = banners.find(b => b.txt === s);
-  if (existing) {
-    existing.t = Math.max(existing.t, dur);
-    existing.maxT = Math.max(existing.maxT, dur);
-    existing.color = color;
-    return;
-  }
-  if (banners.length >= 2) banners.shift();
+  banners.length = 0;
   banners.push({ txt: s, color, t: dur, maxT: dur, _tw: 0, _fSize: 0 });
 }
 

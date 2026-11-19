@@ -4,6 +4,19 @@
 
 ---
 
+## [v2.2.8] - 2026-11-18
+### 🛠️ 行囊多遗物防溢出锁高 + 顶部 HUD 单横幅动态避让与第 4 层残余红条根治 + 精炼二次红框购买与全界面词条详情弹窗修复
+- **行囊三合一总览多遗物防撑破与三重返回兜底（`index.html`、`styles/p5-ui.css`、`src/ui/shop.js`、`src/ui/menus.js`）**：
+  - 锁定桌面端与横屏 `#shopPaneOverview` 视口高度，仅允许已购遗物网格 `#ovRelicGrid` 内部纵向滚动，28+ 件遗物不再挤没随身武器一键合阶栏与底部切换坞；新增顶栏 `🛒 返回行商` 按钮、行囊态常驻 `◆ 前往下一层` 与 `Esc` 一键切回行商。
+- **战斗顶部 HUD 零遮挡单横幅动态避让 & 第 4 层水平残余红线根治（`src/core/perf.js`、`src/game/combat.js`、`src/game/boss_ai.js`、`src/game/spawner.js`、`src/game/update.js`、`src/render/vfx_overlays.js`、`src/render/renderer.js`、`styles/p5-ui.css`）**：
+  - 新增 `SpirePerf.getTopHudClearY` 实时探测 `#timerCapsule`、`#bossBarWrap` 与 `#bossCastSub` 真实像素底边，强制 `announce()` 单槽替换并与奇遇雷达签互斥显示；将首领召唤阵眼与改造地形提示转为角色/首领头顶局部飘字。
+  - 补齐 `--p5-red-bright` 变量定义、清理 `#bossBarWrap.hidden` 子层 `drop-shadow` GPU 残影、移除二阶段冗余画布顶框，并在无存活首领或提前击破首领时立即隐藏首领血条，彻底消除第 4 层倒计时下方残留水平暗红线。
+- **精炼交互逻辑与全场景词条/羁绊详情弹窗修复（`src/ui/shop.js`、`src/ui/codex.js`、`src/ui/menus.js`、`src/game/director.js`、`styles/p5-ui.css`、`styles/narrative.css`）**：
+  - 移除冗余 `◆ 再点购买` 文字章；保留 `🕯️ 开启试炼` 为直接单击开关；行商货架商品与秘匣/升级/五阶觉醒/战装/终局抉择多选一统一采用「首次点击醒目猩红选框（按钮变为 `购买 ◇XX` / 激活确认键）➔ 二次点击执行」。
+  - 修复选中与未选中状态下点击底部羁绊/词条徽章（`.bar-prog-badge`）或详情按钮偶发无响应问题，补齐商店兵装货架、秘匣补给、升级刻印、五阶觉醒、驻留面板与圣典全六大页签的详情浮窗，且关闭详情绝不丢失当前红框选中态。
+
+---
+
 ## [v2.2.7] - 2026-11-18
 ### 🎴 全流程 P5 黑白红双端 UI 定稿重构 + 👹 水底荒祠「绯狱妖主」独立二阶段与机神压迫感重塑 + ⚡ SpirePerf 空间网格防卡顿架构
 - **全流程 P5 丝绒暗红 × 黑底白边双端 UI 定稿（`index.html`、`styles/p5-ui.css`、`styles/mobile.css`、`styles/narrative.css`、`src/ui/viewport.js`、`src/ui/menus.js`、`src/ui/shop.js`、`src/ui/codex.js`）**：

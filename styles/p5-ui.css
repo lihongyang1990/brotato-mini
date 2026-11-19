@@ -8,6 +8,7 @@
   --p5-ink: #11131b;
   --p5-white: #f2ede6;
   --p5-red: #8c192b;
+  --p5-red-bright: #ff2a4f;
   --p5-red-deep: #580e1a;
   --p5-red-shadow: rgba(132, 23, 40, 0.85);
   --p5-gold: #e4be74;
@@ -105,11 +106,13 @@ body:has(.overlay.p5-stage:not(.hidden)) #dashTouchBtn {
   backdrop-filter: blur(5px) !important;
   -webkit-backdrop-filter: blur(5px) !important;
 }
-#weaponActionModal.overlay.p5-modal-backdrop,
 #audioModal.overlay.p5-modal-backdrop,
 #logModal.overlay.p5-modal-backdrop,
 #changelogModal.overlay.p5-modal-backdrop {
   z-index: 130 !important;
+}
+#weaponActionModal.overlay.p5-modal-backdrop {
+  z-index: 155 !important;
 }
 #presentationModal.overlay {
   z-index: 160 !important;
@@ -566,26 +569,41 @@ body.m-portrait #shopMenu[data-hub-tab="shop"] .shop-qingyu-atmo {
   transition: background 0.14s ease;
 }
 
-/* 悬浮 / 选中：保持阴影偏移量与盒尺寸 0px 变化，纯享丝绒暗红高亮与暗红硬阴影 */
-.p5-row:hover .p5-ico-edge,
+/* 悬浮：轻微暗红润色；选中（.is-sel / .active）：鲜红描边外框 + 丝绒深红底（无多余文字角标） */
+.p5-row:hover:not(.is-sel):not(.active):not(.sold-out):not(.is-static) .p5-ico-inner {
+  background: rgba(112, 18, 35, 0.58);
+}
+.p5-row:hover:not(.is-sel):not(.active):not(.sold-out):not(.is-static) .p5-bar-fill {
+  background: linear-gradient(92deg, rgba(112, 18, 35, 0.42) 0%, rgba(18, 16, 26, 0.96) 100%);
+}
 .p5-row.is-sel .p5-ico-edge,
 .p5-row.active .p5-ico-edge {
-  filter: drop-shadow(3px 4px 0 var(--p5-red-shadow));
+  background: var(--p5-red-bright) !important;
+  filter: drop-shadow(3px 4px 0 rgba(180, 18, 46, 0.92));
 }
-.p5-row:hover .p5-ico-inner,
 .p5-row.is-sel .p5-ico-inner,
 .p5-row.active .p5-ico-inner {
   background: var(--p5-red);
 }
-.p5-row:hover .p5-bar-edge,
 .p5-row.is-sel .p5-bar-edge,
 .p5-row.active .p5-bar-edge {
-  filter: drop-shadow(4px 5px 0 var(--p5-red-shadow));
+  background: var(--p5-red-bright) !important;
+  filter: drop-shadow(0 0 8px rgba(255, 42, 79, 0.42)) drop-shadow(4px 5px 0 rgba(180, 18, 46, 0.92));
 }
-.p5-row:hover .p5-bar-fill,
 .p5-row.is-sel .p5-bar-fill,
 .p5-row.active .p5-bar-fill {
-  background: linear-gradient(92deg, var(--p5-red) 0%, var(--p5-red-deep) 100%);
+  background: linear-gradient(92deg, #98172b 0%, var(--p5-red-deep) 100%);
+}
+.p5-buy-btn.is-armed-buy:not(:disabled) {
+  background: linear-gradient(92deg, #c81d3b 0%, #7d1124 100%) !important;
+  border-color: #ffffff !important;
+  color: #fff6dc !important;
+}
+.p5-cta-wrap > button:disabled,
+.p5-big-sec-wrap > button:disabled {
+  opacity: 0.48 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(0.35);
 }
 
 .p5-bar-top {
@@ -673,6 +691,16 @@ body.m-portrait #shopMenu[data-hub-tab="shop"] .shop-qingyu-atmo {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+}
+.bar-prog-badge[onclick],
+.codex-card .bar-prog-badge {
+  cursor: pointer;
+  pointer-events: auto;
+}
+.bar-prog-badge[onclick]:hover,
+.codex-card .bar-prog-badge:hover {
+  border-color: var(--p5-white);
+  color: #ffffff;
 }
 .bar-prog-badge.ready {
   background: rgba(224, 190, 146, 0.09);
@@ -1556,7 +1584,19 @@ body.m-portrait #shopMenu[data-hub-tab="shop"] .shop-qingyu-atmo {
   box-shadow: none !important;
   padding: 0 !important;
 }
+#bossBarWrap.hidden,
+#bossBarWrap.hud-boss-p5.hidden {
+  display: none !important;
+  filter: none !important;
+}
+#bossBarWrap.hidden > .p5-bar-edge,
+#bossBarWrap.hidden .p5-bar-fill {
+  display: none !important;
+  filter: none !important;
+  clip-path: none !important;
+}
 #bossBarWrap.hud-boss-p5 > .p5-bar-edge {
+  flex: 0 0 auto !important;
   width: 100%;
   padding: 2px !important;
   background: var(--p5-white) !important;
@@ -1649,7 +1689,7 @@ body.m-portrait #shopMenu[data-hub-tab="shop"] .shop-qingyu-atmo {
   align-items: center;
   justify-content: center;
   width: auto !important;
-  max-width: 94%;
+  max-width: min(calc(560 * var(--u)), 94vw) !important;
   margin: 0 auto !important;
   padding: calc(2.5 * var(--u)) calc(12 * var(--u)) !important;
   background: rgba(8, 9, 15, 0.95) !important;
@@ -1664,6 +1704,9 @@ body.m-portrait #shopMenu[data-hub-tab="shop"] .shop-qingyu-atmo {
   letter-spacing: 0.03em;
   line-height: 1.25;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 #bossBarWrap .boss-cast-sub.hidden {
   display: none !important;
@@ -2276,12 +2319,21 @@ body:not(.m-portrait) .desk-hero-standee .dhs-frame img.dhs-bust-img {
 }
 
 /* 08 角色与行囊总览双栏舞台（1:1 ui_p5_final.html L1668-1748：0.96fr : 1.04fr + 196×246 去框半身大立绘） */
+#shopMenu > .top-status-bar,
+#shopMenu > #shopHubDock {
+  flex: 0 0 auto !important;
+}
+#shopMenu > .hub-pane.is-active {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+}
 .overview-stage {
   position: relative;
   z-index: 4;
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
   grid-template-columns: 0.96fr 1.04fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: calc(24 * var(--u));
   padding: calc(12 * var(--u)) calc(36 * var(--u)) calc(14 * var(--u));
   max-width: calc(1200 * var(--u));
@@ -2290,13 +2342,33 @@ body:not(.m-portrait) .desk-hero-standee .dhs-frame img.dhs-bust-img {
   align-items: stretch;
   overflow: hidden;
 }
+body:not(.m-portrait) #shopPaneOverview.overview-stage.is-active {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
 .ov-left-col,
 .ov-right-col {
   display: flex;
   flex-direction: column;
   gap: calc(12 * var(--u));
   min-width: 0;
-  min-height: 0;
+}
+body:not(.m-portrait) .ov-left-col,
+body:not(.m-portrait) .ov-right-col {
+  min-height: 0 !important;
+  max-height: 100%;
+  overflow: hidden;
+}
+body:not(.m-portrait) .ov-left-col {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.ov-wpn-under-hero,
+.ov-stats-panel {
+  flex: 0 0 auto !important;
 }
 .ov-hero-card {
   position: relative;
@@ -2431,10 +2503,13 @@ body:not(.m-portrait) .desk-hero-standee .dhs-frame img.dhs-bust-img {
   color: var(--p5-gold);
 }
 .ov-relics-panel {
-  flex: 1 1 auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
+}
+body:not(.m-portrait) .ov-relics-panel {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow: hidden;
 }
 .ov-col-switch {
   display: flex;
@@ -2454,11 +2529,17 @@ body:not(.m-portrait) .desk-hero-standee .dhs-frame img.dhs-bust-img {
   border-color: var(--p5-white);
   color: #ffffff;
 }
-.ov-relic-grid {
-  flex: 1 1 auto;
-  overflow-y: auto;
+.ov-relic-grid,
+#ovRelicGrid {
   display: grid;
+  align-content: start;
   gap: calc(6 * var(--u));
+}
+body:not(.m-portrait) .ov-relic-grid,
+body:not(.m-portrait) #ovRelicGrid {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
 }
 .ov-relic-grid.cols-2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2835,6 +2916,13 @@ body:not(.m-ui) .hub-lbl-mob,
 body:not(.m-ui) #dockNextBtn {
   display: none !important;
 }
+body:not(.m-ui) #shopMenu[data-hub-tab="overview"] #dockNextBtn {
+  display: inline-flex !important;
+  max-width: calc(260 * var(--u));
+  background: linear-gradient(92deg, var(--p5-red) 0%, var(--p5-red-deep) 100%);
+  border-color: var(--p5-white);
+  color: #ffffff;
+}
 body.m-ui .hub-lbl-desk,
 body.m-ui .shop-brief-stats,
 body.m-ui #shopTrialBar,
@@ -3006,16 +3094,22 @@ body.m-portrait .shop-trial-btn-desk {
   display: none;
 }
 
-body.m-portrait .overview-stage.is-active {
+body.m-portrait #shopPaneOverview.overview-stage.is-active {
   display: flex !important;
   flex-direction: column !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
   padding: calc(8 * var(--u)) calc(15 * var(--u)) calc(12 * var(--u));
   gap: calc(10 * var(--u));
-  overflow-y: auto;
+  overflow-y: auto !important;
 }
 body.m-portrait .ov-left-col,
-body.m-portrait .ov-right-col {
-  overflow: visible;
+body.m-portrait .ov-right-col,
+body.m-portrait .ov-relics-panel,
+body.m-portrait #ovRelicGrid {
+  flex: 0 0 auto !important;
+  min-height: auto !important;
+  overflow: visible !important;
 }
 body.m-portrait .ov-hero-card {
   flex: 0 0 auto;

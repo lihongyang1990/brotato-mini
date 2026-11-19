@@ -1071,7 +1071,6 @@ function spawnSpecialRelic(forceId = null) {
   beep(880, 0.16, 'triangle', 0.075);
   const bossLabel = def.bossName || def.name;
   if (player) addText(player.x, player.y - 58, `⛩️ 隐藏Boss祭坛现世：${bossLabel}！`, '#ffd166', 19, 3.2);
-  announce(`⛩️ 隐藏首领召唤祭坛现世：【${def.icon}${bossLabel}】！跟随角色脚下金箭头指引踏入召唤（击败直接获得首领秘宝）`, '#ffd166', 5.4);
   logInfo('RELIC', `刷新地图奇遇圣物 ${def.name}(${def.id}) r=${rel.r} at (${Math.round(rx)},${Math.round(ry)})`);
   return rel;
 }
@@ -1170,7 +1169,7 @@ function spawnBossTerrain(kind, x, y, baseR = 74) {
       ang, rot: ang, halfLen, r: Math.round(28 * effMul), chasmElbow: Math.random() < 0.35, seed: Math.random() * 100
     }));
     if (rings.length < 40) rings.push({ x: tx, y: ty, r: 95, color: '#c77dff', t: 0.35, maxT: 0.35, kind: 'hex' });
-    announce('🕳️ 首领震塌石板！战场新增【石砌断层深渊】', '#c77dff', 2.6);
+    addText(tx, ty - 28, '🕳️ 石砌断层深渊!', '#c77dff', 14.5, 1.65, true);
   } else {
     const col = sceneKind === 'lava' ? '#ff6b35' : (sceneKind === 'ice_sheet' ? '#72efdd' : '#34d399');
     const bossForms = ['rect_strip', 'l_block', 'stepped_block', 'square_slab'];
@@ -1184,8 +1183,8 @@ function spawnBossTerrain(kind, x, y, baseR = 74) {
           : { kind: sceneKind, form: 'square_slab', x: cx, y: cy, rot: ang, w: Math.round(156 * effMul), h: Math.round(138 * effMul), r: Math.round(52 * effMul), pulse: 0, seed: Math.random() * 100 }));
     terrains.push(ensureTerrainGeometry(spec));
     if (rings.length < 40) rings.push({ x: cx, y: cy, r: Math.round((baseR + 24) * effMul), color: col, t: 0.35, maxT: 0.35, kind: 'star' });
-    const nameMap = { lava: '🌋 首领震裂石砖！新增【嵌石熔火槽】封锁走位！', swamp: '🧪 首领灌注秘毒！新增【翡翠秘毒方渠】污染地面！', ice_sheet: '🧊 首领凝结地砖！新增【寒晶方砖台】改造战场！' };
-    if (nameMap[sceneKind]) announce(nameMap[sceneKind], col, 2.6);
+    const nameMap = { lava: '🌋 嵌石熔火槽!', swamp: '🧪 翡翠秘毒渠!', ice_sheet: '🧊 寒晶方砖台!' };
+    if (nameMap[sceneKind]) addText(cx, cy - 28, nameMap[sceneKind], col, 14.5, 1.65, true);
   }
 }
 
@@ -1200,7 +1199,7 @@ function summonSpecialBoss(rel, forceCutscene = false) {
   // 首领纯死战机制：不再额外增加冗余倒计时，若常规时间耗尽未分胜负自动转入死战，击败即刻通关领赏！
   spawnWarning(rel.x, rel.y, 'special_boss', def.bossId);
   const bw = document.getElementById('bossBarWrap');
-  if (bw) { bw.classList.remove('hidden', 'mythic'); }
+  if (bw) { bw.classList.remove('mythic'); }
   if (player) {
     player.invuln = 0;
     addText(player.x, player.y - 54, `◆ 特殊首领【${def.bossName}】降临！`, '#ffd166', 20, 2.6);
@@ -1543,7 +1542,12 @@ function beginWave(retryMeta = null) {
   const bwWrap = document.getElementById('bossBarWrap');
   if (bwWrap) {
     bwWrap.classList.remove('mythic');
-    bwWrap.classList.toggle('hidden', !(isBossWave || isEliteWave));
+    bwWrap.classList.add('hidden');
+  }
+  const bcsWrap = document.getElementById('bossCastSub');
+  if (bcsWrap) bcsWrap.classList.add('hidden');
+  if (typeof SpirePerf !== 'undefined' && typeof SpirePerf.setBossBarVisible === 'function') {
+    SpirePerf.setBossBarVisible(false);
   }
 
   // 触发《烬塔残响》剧情演出导演：优先于怪物贴图预热发起，确保手机端开局序章/层前对话背景图独占高优先级连接秒出不黑屏！

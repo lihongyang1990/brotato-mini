@@ -97,9 +97,16 @@ function resolveSpireBossDefeat(enemy) {
     flow.defeatedBossVariant = enemy.variant;
     eBullets.length = 0;
     hazards.length = 0;
+    if (typeof slashes !== 'undefined') slashes.length = 0;
+    if (typeof beams !== 'undefined') beams.length = 0;
     bossCutscene = null;
-  if (typeof phase2ShatterFx !== 'undefined') phase2ShatterFx = null;
+    if (typeof phase2ShatterFx !== 'undefined') phase2ShatterFx = null;
     if (typeof pendingBossCutscene !== 'undefined') pendingBossCutscene = null;
+    if (typeof SpirePerf !== 'undefined' && SpirePerf.setBossBarVisible) SpirePerf.setBossBarVisible(false);
+    const bWrapEl = typeof document !== 'undefined' ? document.getElementById('bossBarWrap') : null;
+    const bSubEl = typeof document !== 'undefined' ? document.getElementById('bossCastSub') : null;
+    if (bWrapEl) { bWrapEl.classList.add('hidden'); bWrapEl.classList.remove('mythic'); }
+    if (bSubEl) { bSubEl.textContent = ''; bSubEl.classList.add('hidden'); }
     player.invuln = 0;
     awardEnemyRewards(enemy);
     return;
@@ -353,6 +360,8 @@ function quickMergeAllWeapons() {
     beep(820, 0.12, 'triangle', 0.07);
     logInfo('SHOP', `一键共鸣合阶完成 ×${mergedCount} 次`);
     if (state === 'shop') renderShop();
+    const smFix = typeof document !== 'undefined' ? document.getElementById('shopMenu') : null;
+    if (smFix) { smFix.scrollTop = 0; smFix.scrollLeft = 0; }
     checkPendingWeaponEvolutions();
   }
   return mergedCount;
@@ -389,7 +398,7 @@ function openShopSynergyModal(setKey) {
     .filter(([, w]) => w.set === setKey)
     .map(([, w]) => w.name)
     .join(' · ');
-  card.className = 'wpn-action-card t3';
+  card.className = 'wpn-action-card p5-modal-card t3';
   card.innerHTML = `
     <div class="wpn-act-head">
       <div class="item-emblem t3">${meta.icon || '✦'}</div>
@@ -407,7 +416,7 @@ function openShopSynergyModal(setKey) {
     <div class="wpn-act-set-line">✦ 所属兵装：${memberNames}</div>
     <div class="wpn-act-btns">
       <div class="wpn-act-btns-row">
-        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal()">明了</button>
+        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">明了</button>
       </div>
     </div>`;
   modal.classList.remove('hidden');
@@ -422,7 +431,7 @@ function openShopRelicModal(itemId) {
   selectedWeaponSlotIdx = -1;
   beep(505, 0.035, 'triangle', 0.03);
   const ownedCnt = (player && player.items && player.items[it.id]) || 0;
-  card.className = `wpn-action-card t${it.tier}`;
+  card.className = `wpn-action-card p5-modal-card t${it.tier}`;
   card.innerHTML = `
     <div class="wpn-act-head">
       <div class="item-emblem t${it.tier}">${_itmEmblem(it, it.tier)}</div>
@@ -442,9 +451,209 @@ function openShopRelicModal(itemId) {
     <div class="wpn-act-set-line">💎 商店基准价值：◇${it.cost}</div>
     <div class="wpn-act-btns">
       <div class="wpn-act-btns-row">
-        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal()">关闭</button>
+        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button>
       </div>
     </div>`;
+  modal.classList.remove('hidden');
+  return true;
+}
+
+function openShopWeaponOfferModal(offerIdx) {
+  const o = shopOffers && shopOffers[offerIdx];
+  const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
+  const card = typeof document !== 'undefined' ? document.getElementById('weaponActionCard') : null;
+  if (!o || o.kind !== 'weapon' || !modal || !card) return false;
+  const wid = o.id || o.weaponId;
+  const tpl = WEAPONS && WEAPONS[wid];
+  if (!tpl) return false;
+  selectedWeaponSlotIdx = -1;
+  beep(505, 0.035, 'triangle', 0.03);
+  const offerTier = o.tier || 1;
+  const dispName = _wpnDispName(wid, offerTier);
+  const sDef = SET_DEFS[tpl.set];
+  const sLabel = sDef ? sDef.label : '';
+  const setB = getSetBonuses();
+  const curCnt = (setB && setB.counts && tpl.set) ? (setB.counts[tpl.set] || 0) : 0;
+  const totalRange = getTotalRangeBonus();
+  const dmg = typeof calcWeaponPreviewDmg === 'function'
+    ? calcWeaponPreviewDmg(wid, tpl, offerTier, null)
+    : Math.round(tpl.dmg * (1 + (offerTier - 1) * 0.55) * getEffectiveDmgMul());
+  const effRange = typeof calcWeaponEffectiveRange === 'function'
+    ? calcWeaponEffectiveRange(tpl, offerTier, null, totalRange)
+    : tpl.range;
+  const effCd = (tpl.cd / Math.max(0.18, getEffectiveAtkSpd() * (tpl.isStaff ? (1 + (player.staffHaste || 0)) : 1) * (tpl.spdScale ? (1 + Math.max(0, getEffectiveSpdMul() - 1) * 0.45) : 1) * (1 + (offerTier - 1) * 0.08))).toFixed(2);
+  const ok = player && player.mats >= o.cost && canBuyWeapon(wid, offerTier);
+  const scaleBadges = typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(tpl, wid) : '';
+  const evoHtml = Array.isArray(tpl.evos) && tpl.evos.length
+    ? `<div style="display:flex;flex-direction:column;gap:5px;margin-top:6px">
+        <div style="font-size:11px;font-weight:900;color:var(--p5-gold)">◆ 五阶神话超限分支预览：</div>
+        ${tpl.evos.map(ev => `<div style="padding:5px 8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,92,138,0.40);font-size:11.5px;color:#e6e2ee"><b style="color:${ev.color || '#ffd6e5'}">★ ${ev.name}</b>：${ev.desc}</div>`).join('')}
+      </div>`
+    : '';
+  card.className = `wpn-action-card p5-modal-card t${offerTier}`;
+  card.innerHTML = `
+    <div class="wpn-act-head">
+      <div class="item-emblem t${offerTier}">${_wpnEmblem(wid, offerTier, '', tpl.icon)}</div>
+      <div class="card-meta" style="flex:1;min-width:0">
+        <div class="p5-title-group">
+          <div class="wpn-act-title">${dispName}</div>
+          ${_rarityPill(offerTier)}
+        </div>
+        <div class="card-badges">
+          ${sLabel ? `<span class="tag" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">${sLabel} (${curCnt})</span>` : ''}
+          ${scaleBadges}
+        </div>
+      </div>
+    </div>
+    <div class="stat-chips">
+      <span class="stat-chip">威力 ${dmg}</span>
+      <span class="stat-chip">间隔 ${effCd}s</span>
+      <span class="stat-chip">射程 ${effRange}</span>
+      <span class="stat-chip">行商售价 ◇${o.cost}</span>
+    </div>
+    <div class="wpn-act-desc">${tpl.desc}</div>
+    ${sDef ? `<div class="wpn-act-set-line" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">✦ 羁绊【${sLabel}】（随身 ${curCnt} 把）：${sDef.desc}</div>` : ''}
+    ${evoHtml}
+    <div class="wpn-act-btns">
+      <div class="wpn-act-btns-row">
+        ${ok ? `<button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="buyOffer(${offerIdx})">购买 ◇${o.cost}</button>` : ''}
+        <button type="button" class="btn ${ok ? 'btn-sec' : 'btn-go'}" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button>
+      </div>
+    </div>`;
+  modal.classList.remove('hidden');
+  return true;
+}
+
+function openShopEvoDetailModal(wId, evoIdx) {
+  const tpl = WEAPONS && WEAPONS[wId];
+  const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
+  const card = typeof document !== 'undefined' ? document.getElementById('weaponActionCard') : null;
+  if (!tpl || !Array.isArray(tpl.evos) || !tpl.evos[evoIdx] || !modal || !card) return false;
+  const opt = tpl.evos[evoIdx];
+  const sDef = SET_DEFS[tpl.set];
+  const scaleBadges = typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(tpl, wId) : '';
+  beep(515, 0.035, 'triangle', 0.03);
+  card.className = 'wpn-action-card p5-modal-card t5';
+  card.innerHTML = `
+    <div class="wpn-act-head">
+      <div class="item-emblem t5">${_wpnEmblem(wId, 5, opt.id, tpl.icon)}</div>
+      <div class="card-meta" style="flex:1;min-width:0">
+        <div class="p5-title-group">
+          <div class="wpn-act-title" style="color:${opt.color || '#ffd6e5'}">★ ${opt.name}</div>
+          ${_rarityPill(5)}
+        </div>
+        <div class="card-badges">
+          <span class="tag">原胚 · ${tpl.name}</span>
+          ${opt.tag ? `<span class="tag tag-owned">${opt.tag}</span>` : ''}
+          ${scaleBadges}
+        </div>
+      </div>
+    </div>
+    <div class="wpn-act-desc">${opt.desc}</div>
+    <div class="wpn-act-set-line">✦ 基础兵装机制：${tpl.desc}${sDef ? ` · 所属【${sDef.label}】` : ''}</div>
+    <div class="wpn-act-btns">
+      <div class="wpn-act-btns-row">
+        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button>
+      </div>
+    </div>`;
+  modal.classList.remove('hidden');
+  return true;
+}
+
+function openShopCrateChoiceModal(idx) {
+  const c = _currentCrateChoices && _currentCrateChoices[idx];
+  if (!c) return false;
+  if (c.kind === 'item' && c.item) return openShopRelicModal(c.item.id);
+  const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
+  const card = typeof document !== 'undefined' ? document.getElementById('weaponActionCard') : null;
+  if (!modal || !card) return false;
+  beep(505, 0.035, 'triangle', 0.03);
+  if (c.kind === 'weapon' && c.tpl) {
+    const tpl = c.tpl;
+    const sDef = SET_DEFS[tpl.set];
+    const scaleBadges = typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(tpl, c.id) : '';
+    card.className = `wpn-action-card p5-modal-card t${c.tier}`;
+    card.innerHTML = `
+      <div class="wpn-act-head">
+        <div class="item-emblem t${c.tier}">${_wpnEmblem(c.id, c.tier, '', tpl.icon)}</div>
+        <div class="card-meta" style="flex:1;min-width:0">
+          <div class="p5-title-group">
+            <div class="wpn-act-title">${_wpnDispName(c.id, c.tier)}</div>
+            ${_rarityPill(c.tier)}
+          </div>
+          <div class="card-badges">
+            ${sDef ? `<span class="tag" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">${sDef.label}</span>` : ''}
+            ${scaleBadges}
+          </div>
+        </div>
+      </div>
+      <div class="stat-chips">
+        <span class="stat-chip">基准伤害 ${tpl.dmg}</span>
+        <span class="stat-chip">间隔 ${tpl.cd}s</span>
+        <span class="stat-chip">射程 ${tpl.range}</span>
+        <span class="stat-chip">熔炼折现 +◇${c.recycleVal || 0}</span>
+      </div>
+      <div class="wpn-act-desc">${tpl.desc}</div>
+      ${sDef ? `<div class="wpn-act-set-line" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">✦ 羁绊【${sDef.label}】：${sDef.desc}</div>` : ''}
+      <div class="wpn-act-btns"><div class="wpn-act-btns-row"><button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button></div></div>`;
+    modal.classList.remove('hidden');
+    return true;
+  }
+  if (c.kind === 'supply' && c.supply) {
+    const sup = c.supply;
+    card.className = `wpn-action-card p5-modal-card t${c.tier || 3}`;
+    card.innerHTML = `
+      <div class="wpn-act-head">
+        <div class="item-emblem t${c.tier || 3}">${_itmEmblem(sup, c.tier || 3)}</div>
+        <div class="card-meta" style="flex:1;min-width:0">
+          <div class="p5-title-group">
+            <div class="wpn-act-title">${sup.name}</div>
+            ${_rarityPill(c.tier || 3)}
+          </div>
+          <div class="card-badges"><span class="tag tag-owned">魂灯秘髓补给 · 即刻生效</span></div>
+        </div>
+      </div>
+      <div class="wpn-act-desc">${sup.desc}</div>
+      <div class="wpn-act-set-line">♻️ 若熔炼折现可立即获得 +◇${c.recycleVal || 0}</div>
+      <div class="wpn-act-btns"><div class="wpn-act-btns-row"><button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button></div></div>`;
+    modal.classList.remove('hidden');
+    return true;
+  }
+  return false;
+}
+
+function openShopUpgradeModal(idx) {
+  const entry = _currentLevelPool && _currentLevelPool[idx];
+  const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
+  const card = typeof document !== 'undefined' ? document.getElementById('weaponActionCard') : null;
+  if (!entry || !entry.u || !modal || !card) return false;
+  const { u, cTier, tierLabel, descTxt } = entry;
+  beep(505, 0.035, 'triangle', 0.03);
+  const d1 = typeof u.tierDesc === 'function' ? u.tierDesc(0.78) : u.desc;
+  const d2 = typeof u.tierDesc === 'function' ? u.tierDesc(1.00) : u.desc;
+  const d3 = typeof u.tierDesc === 'function' ? u.tierDesc(1.35) : u.desc;
+  card.className = `wpn-action-card p5-modal-card t${cTier || 2}`;
+  card.innerHTML = `
+    <div class="wpn-act-head">
+      <div class="item-emblem t${cTier || 2}">${u.icon}</div>
+      <div class="card-meta" style="flex:1;min-width:0">
+        <div class="p5-title-group">
+          <div class="wpn-act-title">${u.name}</div>
+          ${_rarityPill(cTier || 2)}
+        </div>
+        <div class="card-badges">
+          <span class="tag tag-owned">${tierLabel}</span>
+          ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(u) : ''}
+        </div>
+      </div>
+    </div>
+    <div class="wpn-act-desc">当前共鸣效果：${descTxt}</div>
+    <div class="stat-chips">
+      <span class="stat-chip">微光(T1)：${d1}</span>
+      <span class="stat-chip">标准(T2)：${d2}</span>
+      <span class="stat-chip">高阶(T3)：${d3}</span>
+    </div>
+    <div class="wpn-act-btns"><div class="wpn-act-btns-row"><button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭</button></div></div>`;
   modal.classList.remove('hidden');
   return true;
 }
@@ -455,6 +664,10 @@ if (typeof globalThis !== 'undefined') {
   globalThis.quickMergeAllWeapons = quickMergeAllWeapons;
   globalThis.openShopSynergyModal = openShopSynergyModal;
   globalThis.openShopRelicModal = openShopRelicModal;
+  globalThis.openShopWeaponOfferModal = openShopWeaponOfferModal;
+  globalThis.openShopEvoDetailModal = openShopEvoDetailModal;
+  globalThis.openShopCrateChoiceModal = openShopCrateChoiceModal;
+  globalThis.openShopUpgradeModal = openShopUpgradeModal;
 }
 
 function getPendingEvoWeapon() {
@@ -515,23 +728,26 @@ function checkPendingWeaponEvolutions(onAllResolved) {
   if (subEl) subEl.textContent = tpl.melee
     ? '择定唯一神话觉醒方向，永久重塑兵装圣徽并额外觉醒 20% 概率斩碎敌弹！'
     : '择定唯一神话觉醒方向，永久重塑兵装圣徽外观与专属战斗机制';
-  _selectedEvoIdx = 0;
+  _selectedEvoIdx = -1;
   _evoPickHandlers = [];
   if (box) {
     box.innerHTML = '';
     const sLabel = SET_DEFS[tpl.set] ? SET_DEFS[tpl.set].label : '';
     const evoOpts = tpl.evos.slice(0, 2);
     const syncEvoSel = nextIdx => {
-      _selectedEvoIdx = Math.max(0, Math.min(evoOpts.length - 1, nextIdx));
+      _selectedEvoIdx = (typeof nextIdx === 'number' && nextIdx >= 0 && nextIdx < evoOpts.length) ? nextIdx : -1;
       Array.from(box.children).forEach((ch, ci) => ch.classList.toggle('is-sel', ci === _selectedEvoIdx));
       const cfm = document.getElementById('evoConfirmMainBtn');
-      if (cfm && evoOpts[_selectedEvoIdx]) {
-        cfm.textContent = `◆ 觉醒「${evoOpts[_selectedEvoIdx].name}」 →`;
+      if (cfm) {
+        cfm.disabled = _selectedEvoIdx < 0;
+        cfm.textContent = (_selectedEvoIdx >= 0 && evoOpts[_selectedEvoIdx])
+          ? `◆ 觉醒「${evoOpts[_selectedEvoIdx].name}」 →`
+          : '◆ 请先点击选择觉醒方向';
       }
     };
     evoOpts.forEach((opt, idx) => {
       const card = document.createElement('div');
-      card.className = 'p5-row t5 evo-choice-card' + (idx === 0 ? ' is-sel' : '');
+      card.className = 'p5-row t5 evo-choice-card';
       const artHtml = _wpnEmblem(targetW.id, 5, opt.id, tpl.icon);
       card.innerHTML = `
         <div class="p5-ico-edge"><div class="p5-ico-inner">${artHtml}</div></div>
@@ -543,11 +759,14 @@ function checkPendingWeaponEvolutions(onAllResolved) {
                 <span class="p5-bar-title" style="color:${opt.color || '#ffd6e5'}" title="${opt.name}">★ ${opt.name}</span>
                 ${_rarityPill(5)}
               </div>
-              <div class="sr-contract-hidden"><button type="button" class="evo-pick-btn">觉醒</button></div>
+              <div class="p5-bar-right">
+                <button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopEvoDetailModal('${targetW.id}', ${idx})">详情</button>
+                <div class="sr-contract-hidden"><button type="button" class="evo-pick-btn">觉醒</button></div>
+              </div>
             </div>
             <div class="p5-bar-cat">${opt.desc}</div>
             <div class="p5-bar-foot">
-              <span class="bar-prog-badge ready">★ ${sLabel ? sLabel + ' · ' : ''}神话分支 ${idx === 0 ? 'I' : 'II'} · ${opt.tag || '终极质变'}</span>
+              <span class="bar-prog-badge ready" onclick="event.stopPropagation();openShopEvoDetailModal('${targetW.id}', ${idx})">★ ${sLabel ? sLabel + ' · ' : ''}神话分支 ${idx === 0 ? 'I' : 'II'} · ${opt.tag || '终极质变'}</span>
             </div>
           </div>
         </div>`;
@@ -569,7 +788,7 @@ function checkPendingWeaponEvolutions(onAllResolved) {
       };
       box.appendChild(card);
     });
-    syncEvoSel(0);
+    syncEvoSel(-1);
   }
   modal.classList.remove('hidden');
   modal.scrollTop = 0;
@@ -1207,25 +1426,32 @@ function showCrateMenu() {
   const box = document.getElementById('crateBox');
   box.innerHTML = '';
   box.classList.toggle('single', choices.length <= 1);
-  _selectedCrateIdx = 0;
+  _currentCrateChoices = choices;
+  _selectedCrateIdx = -1;
   _crateTakeHandlers = [];
   _crateRecycleHandlers = [];
   _crateRecycleVals = [];
   const setB = getSetBonuses();
 
   const syncCrateSel = nextIdx => {
-    _selectedCrateIdx = Math.max(0, Math.min(choices.length - 1, nextIdx));
+    _selectedCrateIdx = (typeof nextIdx === 'number' && nextIdx >= 0 && nextIdx < choices.length) ? nextIdx : -1;
     Array.from(box.children).forEach((ch, ci) => ch.classList.toggle('is-sel', ci === _selectedCrateIdx));
+    const takeBtn = document.getElementById('crateTakeMainBtn');
+    if (takeBtn) {
+      takeBtn.disabled = _selectedCrateIdx < 0;
+      takeBtn.textContent = _selectedCrateIdx >= 0 ? '◆ 收归行囊 →' : '◆ 请先点击选择秘匣奖励';
+    }
     const meltBtn = document.getElementById('crateMeltBtn');
     if (meltBtn) {
-      const rv = _crateRecycleVals[_selectedCrateIdx] || 0;
-      meltBtn.textContent = `♻️ 熔炼折现 +◇${rv}`;
+      meltBtn.disabled = _selectedCrateIdx < 0;
+      const rv = _selectedCrateIdx >= 0 ? (_crateRecycleVals[_selectedCrateIdx] || 0) : 0;
+      meltBtn.textContent = _selectedCrateIdx >= 0 ? `♻️ 熔炼折现 +◇${rv}` : '♻️ 请先选择条目';
     }
   };
 
   choices.forEach((c, idx) => {
     const el = document.createElement('div');
-    el.className = `p5-row t${c.tier}${idx === 0 ? ' is-sel' : ''}`;
+    el.className = `p5-row t${c.tier}`;
     let icon = '🏮', title = '', descTxt = '', footBadgeTxt = '', footReady = false, onFootClick = '';
 
     if (c.kind === 'item') {
@@ -1251,7 +1477,7 @@ function showCrateMenu() {
       footBadgeTxt = c.canMergeNow
         ? `⚔️ 兵装 · ${setLabel} (${curCnt}/${nextStep}) · ${c.tier === 4 ? '拾取觉醒5阶神话!' : '可直接共鸣升阶!'}`
         : `⚔️ 兵装 · ${setLabel} (${curCnt}/${nextStep})${willHit ? ' ➔ 凑齐激活!' : ''}`;
-      onFootClick = tpl.set ? `event.stopPropagation();openShopSynergyModal('${tpl.set}')` : '';
+      onFootClick = tpl.set ? `event.stopPropagation();openShopSynergyModal('${tpl.set}')` : `event.stopPropagation();openShopCrateChoiceModal(${idx})`;
     } else if (c.kind === 'supply') {
       const sup = c.supply;
       icon = _itmEmblem(sup, c.tier);
@@ -1259,6 +1485,7 @@ function showCrateMenu() {
       descTxt = sup.desc;
       footBadgeTxt = '✨ 魂灯秘髓补给 · 即刻生效';
       footReady = true;
+      onFootClick = `event.stopPropagation();openShopCrateChoiceModal(${idx})`;
     }
     _crateRecycleVals[idx] = c.recycleVal || 0;
 
@@ -1273,7 +1500,7 @@ function showCrateMenu() {
               ${_rarityPill(c.tier)}
             </div>
             <div class="p5-bar-right">
-              ${c.kind === 'item' ? `<button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopRelicModal('${c.item.id}')">详情</button>` : (c.kind === 'weapon' && c.tpl && c.tpl.set ? `<button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopSynergyModal('${c.tpl.set}')">羁绊</button>` : '')}
+              <button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopCrateChoiceModal(${idx})">详情</button>
               <span class="sr-contract-hidden">
                 <button type="button" class="take-btn">收归</button>
                 <button type="button" class="recycle-btn">熔炼</button>
@@ -1282,7 +1509,7 @@ function showCrateMenu() {
           </div>
           <div class="p5-bar-cat">${descTxt}</div>
           <div class="p5-bar-foot">
-            <span class="bar-prog-badge${footReady ? ' ready' : ''}" ${onFootClick ? `onclick="${onFootClick}"` : ''}>${footBadgeTxt}</span>
+            <span class="bar-prog-badge${footReady ? ' ready' : ''}" onclick="${onFootClick}">${footBadgeTxt}</span>
           </div>
         </div>
       </div>`;
@@ -1333,12 +1560,12 @@ function showCrateMenu() {
     };
     box.appendChild(el);
   });
-  syncCrateSel(0);
+  syncCrateSel(-1);
 }
 
-let _selectedEvoIdx = 0, _evoPickHandlers = [];
-let _selectedCrateIdx = 0, _crateTakeHandlers = [], _crateRecycleHandlers = [], _crateRecycleVals = [];
-let _selectedLvlIdx = 0, _lvlPickHandlers = [], _lvlRerollCount = 0;
+let _selectedEvoIdx = -1, _evoPickHandlers = [];
+let _selectedCrateIdx = -1, _crateTakeHandlers = [], _crateRecycleHandlers = [], _crateRecycleVals = [], _currentCrateChoices = [];
+let _selectedLvlIdx = -1, _lvlPickHandlers = [], _lvlRerollCount = 0, _currentLevelPool = [];
 
 function rollLevelUpCardTier(lv, luck = 0) {
   const luckF = Math.min(1, Math.max(0, luck || 0) / 95);
@@ -1357,16 +1584,22 @@ function rollLevelUpCardTier(lv, luck = 0) {
 }
 
 function confirmSelectedEvolution() {
-  const fn = _evoPickHandlers[_selectedEvoIdx] || _evoPickHandlers[0];
+  if (_selectedEvoIdx < 0) return false;
+  const fn = _evoPickHandlers[_selectedEvoIdx];
   if (typeof fn === 'function') fn();
+  return true;
 }
 function takeSelectedCrateChoice() {
-  const fn = _crateTakeHandlers[_selectedCrateIdx] || _crateTakeHandlers[0];
+  if (_selectedCrateIdx < 0) return false;
+  const fn = _crateTakeHandlers[_selectedCrateIdx];
   if (typeof fn === 'function') fn();
+  return true;
 }
 function recycleSelectedCrateChoice() {
-  const fn = _crateRecycleHandlers[_selectedCrateIdx] || _crateRecycleHandlers[0];
+  if (_selectedCrateIdx < 0) return false;
+  const fn = _crateRecycleHandlers[_selectedCrateIdx];
   if (typeof fn === 'function') fn();
+  return true;
 }
 function _calcLvlRerollCost() {
   if (!player) return 6;
@@ -1376,8 +1609,10 @@ function _calcLvlRerollCost() {
   return calcDiscountedShopCost(base, 2);
 }
 function confirmSelectedLevelUp() {
-  const fn = _lvlPickHandlers[_selectedLvlIdx] || _lvlPickHandlers[0];
+  if (_selectedLvlIdx < 0) return false;
+  const fn = _lvlPickHandlers[_selectedLvlIdx];
   if (typeof fn === 'function') fn();
+  return true;
 }
 function rerollLevelUpChoices() {
   if (state !== 'levelup' || !player) return;
@@ -1417,19 +1652,26 @@ function _renderLevelUpPool() {
   const luckNow = (player && player.luck) || 0;
   const pool = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 4);
   box.innerHTML = '';
-  _selectedLvlIdx = 0;
+  _selectedLvlIdx = -1;
   _lvlPickHandlers = [];
+  _currentLevelPool = [];
   const syncLvlSel = nextIdx => {
-    _selectedLvlIdx = Math.max(0, Math.min(pool.length - 1, nextIdx));
+    _selectedLvlIdx = (typeof nextIdx === 'number' && nextIdx >= 0 && nextIdx < pool.length) ? nextIdx : -1;
     Array.from(box.children).forEach((ch, ci) => ch.classList.toggle('is-sel', ci === _selectedLvlIdx));
+    const cBtn = document.getElementById('lvlConfirmBtn');
+    if (cBtn) {
+      cBtn.disabled = _selectedLvlIdx < 0;
+      cBtn.textContent = _selectedLvlIdx >= 0 ? '◆ 确认刻印 →' : '◆ 请先点击选择共鸣刻印';
+    }
   };
   pool.forEach((u, idx) => {
     const cTier = rollLevelUpCardTier(lvNow, luckNow);
     const tierMul = cTier === 1 ? 0.78 : (cTier === 3 ? 1.35 : 1.00);
     const tierLabel = cTier === 1 ? '微光刻印' : (cTier === 3 ? '高阶刻印' : '记忆刻印');
     const descTxt = typeof u.tierDesc === 'function' ? u.tierDesc(tierMul) : u.desc;
+    _currentLevelPool[idx] = { u, cTier, tierMul, tierLabel, descTxt };
     const el = document.createElement('div');
-    el.className = `p5-row t${cTier}${idx === 0 ? ' is-sel' : ''}`;
+    el.className = `p5-row t${cTier}`;
     const plainScope = (u.scopeLabel || '').trim();
     const footTxt = `${tierLabel} · ${plainScope || '✦ 魂灯全局共鸣刻印'}`;
     el.innerHTML = `
@@ -1443,10 +1685,13 @@ function _renderLevelUpPool() {
               ${_rarityPill(cTier)}
               ${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(u) : ''}
             </div>
-            <div class="sr-contract-hidden"><button type="button" class="lvl-pick-btn">铭刻</button></div>
+            <div class="p5-bar-right">
+              <button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopUpgradeModal(${idx})">详情</button>
+              <div class="sr-contract-hidden"><button type="button" class="lvl-pick-btn">铭刻</button></div>
+            </div>
           </div>
           <div class="p5-bar-cat">${descTxt}</div>
-          <div class="p5-bar-foot"><span class="bar-prog-badge ready">${footTxt}</span></div>
+          <div class="p5-bar-foot"><span class="bar-prog-badge ready" onclick="event.stopPropagation();openShopUpgradeModal(${idx})">${footTxt}</span></div>
         </div>
       </div>`;
     const pick = () => {
@@ -1456,7 +1701,8 @@ function _renderLevelUpPool() {
       advancePostWave();
     };
     _lvlPickHandlers[idx] = pick;
-    el.querySelector('button').onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); pick(); };
+    const hiddenPickBtn = el.querySelector('.lvl-pick-btn');
+    if (hiddenPickBtn) hiddenPickBtn.onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); pick(); };
     el.onclick = () => {
       if (_selectedLvlIdx === idx) { pick(); return; }
       beep(510, 0.035, 'triangle', 0.03);
@@ -1464,7 +1710,7 @@ function _renderLevelUpPool() {
     };
     box.appendChild(el);
   });
-  syncLvlSel(0);
+  syncLvlSel(-1);
 }
 
 function showLevelUp() {
@@ -1623,6 +1869,7 @@ function openShop(fresh) {
     }
     mobDrawerOpen = false;
     shopHubTab = 'shop';
+    window._shopSelOfferIdx = -1;
     rollOffers();
   }
   const sm = document.getElementById('shopMenu');
@@ -1680,6 +1927,7 @@ function buyOffer(i) {
     addOrMergeWeapon(o.id, o.tier);
     logInfo('SHOP', `购入武器 ${tpl.name} Lv.${o.tier} (-${o.cost}💎, 剩余=${player.mats}💎)`);
     shopOffers[i] = null;
+    window._shopSelOfferIdx = -1;
     syncShopOfferDiscounts();
     beep(520, 0.07, 'triangle');
     renderShop();
@@ -1699,6 +1947,7 @@ function buyOffer(i) {
   syncSetHp();
   logInfo('SHOP', `购入道具 ${it.name} (-${o.cost}💎, 剩余=${player.mats}💎)`);
   shopOffers[i] = null;
+  window._shopSelOfferIdx = -1;
   syncShopOfferDiscounts();
   beep(520, 0.07, 'triangle');
   renderShop();
@@ -1877,7 +2126,11 @@ function renderShop() {
   const hudHideEl = document.getElementById('hud');
   if (hudHideEl && state === 'shop') hudHideEl.classList.add('hidden');
   const smEl = document.getElementById('shopMenu');
-  if (smEl && smEl.setAttribute) smEl.setAttribute('data-hub-tab', shopHubTab);
+  if (smEl) {
+    if (smEl.setAttribute) smEl.setAttribute('data-hub-tab', shopHubTab);
+    smEl.scrollTop = 0;
+    smEl.scrollLeft = 0;
+  }
   const paneMain = document.getElementById('shopPaneMain');
   const paneOv = document.getElementById('shopPaneOverview');
   if (paneMain && paneMain.classList) paneMain.classList.toggle('is-active', shopHubTab !== 'overview');
@@ -1886,6 +2139,8 @@ function renderShop() {
   const tabBtnOv = document.getElementById('hubTabOverviewBtn');
   if (tabBtnShop && tabBtnShop.classList) tabBtnShop.classList.toggle('on', shopHubTab !== 'overview');
   if (tabBtnOv && tabBtnOv.classList) tabBtnOv.classList.toggle('on', shopHubTab === 'overview');
+  const topBackBtn = document.getElementById('shopTopBackBtn');
+  if (topBackBtn && topBackBtn.classList) topBackBtn.classList.toggle('hidden', shopHubTab !== 'overview');
 
   const bgSceneEl = document.getElementById('shopBgScene');
   if (bgSceneEl && bgSceneEl.style) {
@@ -1996,10 +2251,13 @@ function renderShop() {
     if (!canTrial) {
       trialBar.classList.add('hidden');
       trialBar.classList.remove('is-armed');
+      trialBar.onclick = null;
       trialBar.innerHTML = '';
     } else {
       trialBar.classList.remove('hidden');
       trialBar.classList.toggle('is-armed', !!survivalTrialQueued);
+      trialBar.style.cursor = 'pointer';
+      trialBar.onclick = () => toggleSurvivalTrial();
       const actNum = Math.floor((nextFloorNum - 1) / 4) + 1;
       const actLabel = endlessMode ? `轮回第 ${actNum} 幕限 1 次` : `第 ${actNum} 幕限 1 次`;
       const minGoldComp = calcSurvivalTrialGoldComp(nextFloorNum, 3, player).total;
@@ -2023,7 +2281,7 @@ function renderShop() {
           </div>
           <div class="shop-trial-mob">${mobTitleTxt}</div>
         </div>
-        <button type="button" id="shopTrialToggleBtn" class="shop-trial-toggle${survivalTrialQueued ? ' is-armed' : ''}" onclick="toggleSurvivalTrial()"><span class="shop-trial-btn-desk">${btnTxt}</span><span class="shop-trial-btn-mob">${mobBtnTxt}</span></button>`;
+        <button type="button" id="shopTrialToggleBtn" class="shop-trial-toggle${survivalTrialQueued ? ' is-armed' : ''}" onclick="event.stopPropagation();toggleSurvivalTrial()"><span class="shop-trial-btn-desk">${btnTxt}</span><span class="shop-trial-btn-mob">${mobBtnTxt}</span></button>`;
     }
   }
   const inlineTrialWrap = document.getElementById('shopInlineTrialWrap');
@@ -2077,9 +2335,8 @@ function renderShop() {
       : '';
     briefEl.innerHTML = `<div class="sbs-items"><span>生命<b>${Math.max(0, Math.ceil(player.hp))}/${player.maxHp}</b></span><span>护甲<b>${armVal}</b></span><span>伤害<b class="gold">${dmgPctVal}%</b></span>${flatHiTxt}<span>攻速<b>${aspdPctVal}%</b></span><span>暴击<b class="gold">${critPctVal}%</b></span></div><span class="sbs-more">行囊总览 ▸</span>`;
   }
-  if (typeof window._shopSelOfferIdx !== 'number' || !shopOffers[window._shopSelOfferIdx]) {
-    const firstLive = shopOffers.findIndex(Boolean);
-    window._shopSelOfferIdx = firstLive >= 0 ? firstLive : 0;
+  if (typeof window._shopSelOfferIdx !== 'number' || (window._shopSelOfferIdx >= 0 && !shopOffers[window._shopSelOfferIdx])) {
+    window._shopSelOfferIdx = -1;
   }
   const box = document.getElementById('shopCards');
   if (box) {
@@ -2124,6 +2381,9 @@ function renderShop() {
           ? `<s style="opacity:.55;font-size:.82em;margin-right:2px">${o.rawCost}</s>◇ ${o.cost}`
           : `◇ ${o.cost}`;
         const synFootTxt = `${sLabel} (${curCnt}/${nextStep})${willAwakenT5 ? ' · 购入觉醒5阶!' : (hasMergePair ? ` · 可直接合阶 T${offerTier + 1}` : (willHitStep ? ' ➔ 凑齐激活!' : ''))}`;
+        const buyLabelPrefix = isRowSel
+          ? (willAwakenT5 ? '确认觉醒 ' : (hasMergePair ? '确认合阶 ' : '购买 '))
+          : (willAwakenT5 ? '觉醒 ' : (hasMergePair ? '合阶 ' : ''));
 
         el.innerHTML = `
           <div class="p5-ico-edge"><div class="p5-ico-inner">${_wpnEmblem(wid, offerTier, '', tpl.icon)}</div></div>
@@ -2136,24 +2396,32 @@ function renderShop() {
                   ${_rarityPill(offerTier)}
                 </div>
                 <div class="p5-bar-right">
+                  <button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopWeaponOfferModal(${i})">详情</button>
                   <button type="button" class="p5-lock-btn lock${o.locked ? ' is-locked' : ''}" title="${o.locked ? '点击解锁' : '锁定保留至下一层'}">${o.locked ? '🔒' : '🔓'}</button>
-                  <button type="button" class="p5-price-tag p5-buy-btn buy${hasMergePair ? ' merge-ready' : ''}" ${ok ? '' : 'disabled'}>${willAwakenT5 ? '觉醒 ' : (hasMergePair ? '合阶 ' : '')}${priceHtml}</button>
+                  <button type="button" class="p5-price-tag p5-buy-btn buy${hasMergePair ? ' merge-ready' : ''}${isRowSel ? ' is-armed-buy' : ''}" ${ok ? '' : 'disabled'}>${buyLabelPrefix}${priceHtml}</button>
                 </div>
               </div>
               <div class="p5-bar-subwrap">
                 <div class="p5-bar-cat">威力 ${dmg}${pelletsTxt} · 间隔 ${effCd}s · 射程 ${effRange}</div>
                 <div class="p5-bar-foot">
-                  <span class="bar-prog-badge${(hasMergePair || willHitStep) ? ' ready' : ''}" onclick="event.stopPropagation();openShopSynergyModal('${tpl.set}')">${synFootTxt}</span>
+                  <span class="bar-prog-badge${(hasMergePair || willHitStep) ? ' ready' : ''}" onclick="event.stopPropagation();${tpl.set ? `openShopSynergyModal('${tpl.set}')` : `openShopWeaponOfferModal(${i})`}">${synFootTxt}</span>
                 </div>
               </div>
             </div>
           </div>`;
-        el.querySelector('.buy').onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); buyOffer(i); };
-        el.onclick = () => {
-          window._shopSelOfferIdx = i;
+        const handleWpnOfferTrigger = e => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          if (window._shopSelOfferIdx !== i) {
+            window._shopSelOfferIdx = i;
+            beep(505, 0.035, 'triangle', 0.03);
+            renderShop();
+            return;
+          }
           if (ok) { buyOffer(i); return; }
-          renderShop();
+          openShopWeaponOfferModal(i);
         };
+        el.querySelector('.buy').onclick = handleWpnOfferTrigger;
+        el.onclick = handleWpnOfferTrigger;
       } else {
         const it = o.item;
         if (!it) return;
@@ -2174,8 +2442,9 @@ function renderShop() {
                   ${_rarityPill(offerTier)}
                 </div>
                 <div class="p5-bar-right">
+                  <button type="button" class="p5-detail-mini" onclick="event.stopPropagation();openShopRelicModal('${it.id}')">详情</button>
                   <button type="button" class="p5-lock-btn lock${o.locked ? ' is-locked' : ''}" title="${o.locked ? '点击解锁' : '锁定保留至下一层'}">${o.locked ? '🔒' : '🔓'}</button>
-                  <button type="button" class="p5-price-tag p5-buy-btn buy" ${ok ? '' : 'disabled'}>${priceHtml}</button>
+                  <button type="button" class="p5-price-tag p5-buy-btn buy${isRowSel ? ' is-armed-buy' : ''}" ${ok ? '' : 'disabled'}>${isRowSel ? '购买 ' : ''}${priceHtml}</button>
                 </div>
               </div>
               <div class="p5-bar-subwrap">
@@ -2186,13 +2455,19 @@ function renderShop() {
               </div>
             </div>
           </div>`;
-        el.querySelector('.buy').onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); buyOffer(i); };
-        el.onclick = () => {
-          window._shopSelOfferIdx = i;
+        const handleRelicOfferTrigger = e => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          if (window._shopSelOfferIdx !== i) {
+            window._shopSelOfferIdx = i;
+            beep(505, 0.035, 'triangle', 0.03);
+            renderShop();
+            return;
+          }
           if (ok) { buyOffer(i); return; }
           openShopRelicModal(it.id);
-          renderShop();
         };
+        el.querySelector('.buy').onclick = handleRelicOfferTrigger;
+        el.onclick = handleRelicOfferTrigger;
       }
       el.querySelector('.lock').onclick = e => {
         if (e && e.stopPropagation) e.stopPropagation();
@@ -2351,7 +2626,7 @@ function openWeaponSlotModal(idx) {
     combineBtnHtml = `<button type="button" id="wpnActCombineBtn" class="btn merge-ready" style="justify-content:center" onclick="combineWeaponSlotFromModal(${idx})">◆ ${w.tier === 4 ? '共鸣合成并觉醒五阶神话!' : `共鸣合成 ➔ 【${nextTierLbl} · ${tpl.name}】`}</button>`;
   }
 
-  card.className = `wpn-action-card t${w.tier}`;
+  card.className = `wpn-action-card p5-modal-card t${w.tier}`;
   card.innerHTML = `
     <div class="wpn-act-head">
       <div class="item-emblem t${w.tier}">${_wpnEmblem(w.id, w.tier, w.evo || '', tpl.icon)}</div>
@@ -2362,7 +2637,7 @@ function openWeaponSlotModal(idx) {
         </div>
         <div class="card-badges">
           ${scaleBadges}
-          ${sLabel ? `<span class="tag">${sLabel} (${curSetCnt})</span>` : ''}
+          ${sLabel ? `<span class="tag" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">${sLabel} (${curSetCnt})</span>` : ''}
         </div>
       </div>
     </div>
@@ -2374,7 +2649,7 @@ function openWeaponSlotModal(idx) {
       ${runRec && runRec.dmg > 0 ? `<span class="stat-chip">本局输出 ${_fmtRunNum(runRec.dmg)} (${runRec.kills || 0}斩)</span>` : ''}
     </div>
     <div class="wpn-act-desc">${tpl.desc}</div>
-    ${sDef ? `<div class="wpn-act-set-line">✦ 羁绊【${sLabel}】（当前 ${curSetCnt} 把）：${sDef.desc}</div>` : ''}
+    ${sDef ? `<div class="wpn-act-set-line" style="cursor:pointer" onclick="openShopSynergyModal('${tpl.set}')">✦ 羁绊【${sLabel}】（当前 ${curSetCnt} 把）：${sDef.desc}</div>` : ''}
     ${evoHintHtml}
     <div class="wpn-act-btns">
       ${combineBtnHtml}
@@ -2423,6 +2698,7 @@ function rerollShop() {
     rerollCost = calcDiscountedShopCost(rerollRawCost, 1);
   }
   shopOffers = shopOffers.map(o => (o && o.locked) ? o : null).filter(Boolean);
+  window._shopSelOfferIdx = -1;
   rollOffers(); beep(440, 0.05); renderShop();
 }
 

@@ -622,7 +622,7 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
       e.arenaMechCd = (s1 || s2) ? 0 : 3.0;
       triggerBossActionPose(e, 'cast_up', aimToPlayer, 0.60, '#72efdd');
       beep(560, 0.12, 'sine', 0.055);
-      announce('❄️ 艾丝特莉亚升起【双生极光共鸣棱柱】！击破冰棱柱可令首领真实破防（承伤+20%，持续20秒）！', '#72efdd', 3.2);
+      addText(e.x, e.y - e.r - 28, '❄️ 双生极光棱柱已升起 · 击破触发20s破防!', '#72efdd', 14.5, 1.85, true);
     } else {
       e.arenaMechCd = 3.0;
     }
@@ -639,7 +639,6 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
       triggerBossActionPose(e, 'cast_up', aimToPlayer, 1.0, '#c084fc');
       beep(520, 0.14, 'triangle', 0.06);
       shake = Math.max(shake, 2.2);
-      announce('⚠️ 【黑洞引力奇点】1秒高能预警！速撤离视界或踏入金色【晨曦庇护印】！', '#fde68a', 3.4);
       addText(e.x, e.y - e.r - 28, '⚠️ 1.0s 预警 · 黑洞引力奇点即将开启!', '#fde68a', 15, 1.95, true);
     } else {
       e.arenaMechCd = enraged ? 8.4 : 9.8;
@@ -663,7 +662,6 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
     triggerBossActionPose(e, 'cast_up', aimToPlayer, 1.0, '#fde68a');
     beep(520, 0.14, 'triangle', 0.065);
     shake = Math.max(shake, 2.4);
-    announce('⚠️ 【黑洞引力奇点】1秒高能预警！速撤离视界或踏入金色【晨曦庇护印】！', '#fde68a', 3.4);
     addText(e.x, e.y - e.r - 28, '⚠️ 1.0s 预警 · 超巨黑洞奇点即将开启!', '#fde68a', 15, 1.95, true);
   } else if (vId === 'mech_colossus') {
     if (pylonCnt === 0 && typeof spawnBossPylon === 'function') {
@@ -672,7 +670,7 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
       e.arenaMechCd = s1 ? 0 : 3.0;
       triggerBossActionPose(e, 'slam', aimToPlayer, 0.52, '#38bdf8');
       beep(310, 0.11, 'sawtooth', 0.05);
-      announce('⚙️ 倒悬机神部署【磁暴引力桩】！击破引力桩可令机神真实破防（承伤+20%，持续20秒）！', '#ff9f1c', 3.0);
+      addText(e.x, e.y - e.r - 28, '⚙️ 磁暴引力桩已部署 · 击破触发20s破防!', '#ff9f1c', 14.5, 1.85, true);
     } else {
       e.arenaMechCd = 3.0;
     }
@@ -684,7 +682,7 @@ function tickBossArenaMechanic(e, dt, aimToPlayer, distP, enraged, bossMult) {
       e.arenaMechCd = (s1 || s2) ? 0 : 3.0;
       triggerBossActionPose(e, 'spin', aimToPlayer, 0.54, '#a3e635');
       beep(420, 0.10, 'triangle', 0.05);
-      announce('🍃 青羽试炼影培植【万蛊共生母苞】！击破母苞可令首领真实破防（承伤+20%，持续20秒）！', '#5ef29b', 3.0);
+      addText(e.x, e.y - e.r - 28, '🍃 万蛊共生母苞已培植 · 击破触发20s破防!', '#5ef29b', 14.5, 1.85, true);
     } else {
       e.arenaMechCd = 3.0;
     }

@@ -3363,7 +3363,7 @@ function update(dt) {
           }
         }
       }
-    } else if (!pendingBossSpawn) {
+    } else {
       SpirePerf.setBossBarVisible(false);
       setHudWidth('bossFill', '0%');
       setHudText('bossHpText', '');

@@ -295,7 +295,7 @@ const SpireDirector = (function () {
     if (logOpen) { if (k === 'escape' || k === 'l') toggleLog(); return; }
     if (k === 'escape') { if (preview) closeReplay(); else setHidden(true); }
     else if (k === 'l') toggleLog(); else if (k === 'h') setHidden(true); else if (k === 'a') toggleAutoPlay();
-    else if (k === ' ' || k === 'enter') advanceOrSkip(false);
+    else if (k === ' ' || k === 'enter') { if (cur && cur.kind === 'choice' && cur.selectedChoiceId) choose(cur.selectedChoiceId); else advanceOrSkip(false); }
   }
   function setPreferences(values) {
     values = values || {};
@@ -679,13 +679,36 @@ const SpireDirector = (function () {
     if (hint !== lastHint) { ui.readHint.textContent = ui.cinReadHint.textContent = hint; lastHint = hint; }
   }
   function renderChoices() {
-    ui.choices.innerHTML = ''; ui.choices.scrollTop = 0; node('span', 'story-choice-eyebrow', ui.choices, cur.eyebrow || '由你决定');
+    ui.choices.innerHTML = ''; ui.choices.scrollTop = 0; cur.selectedChoiceId = null;
+    node('span', 'story-choice-eyebrow', ui.choices, cur.eyebrow || '由你决定');
     node('h2', 'story-choice-title', ui.choices, cur.title || '把灯拿好'); if (cur.text) node('p', 'story-choice-copy', ui.choices, cur.text);
+    const optEls = [];
+    let confirmBtn = null;
+    const syncChoiceSel = selId => {
+      cur.selectedChoiceId = selId;
+      optEls.forEach(btn => btn.classList.toggle('is-sel', btn.getAttribute('data-choice') === selId));
+      if (confirmBtn) {
+        confirmBtn.disabled = !selId;
+        confirmBtn.textContent = selId ? '◆ 确认抉择 →' : '◆ 请先点击选择分支';
+      }
+    };
     for (const option of cur.options) {
-      const el = button('', 'story-option', ui.choices, () => choose(option.id)); node('span', 'story-option-label', el, option.label);
-      if (option.detail) node('small', '', el, option.detail); el.disabled = !!option.disabled; el.setAttribute('data-choice', option.id);
+      const el = button('', 'story-option', ui.choices, () => {
+        if (option.disabled) return;
+        if (cur.selectedChoiceId === option.id) { choose(option.id); return; }
+        if (typeof beep === 'function') beep(505, 0.035, 'triangle', 0.03);
+        syncChoiceSel(option.id);
+      });
+      node('span', 'story-option-label', el, option.label);
+      if (option.detail) node('small', '', el, option.detail);
+      el.disabled = !!option.disabled; el.setAttribute('data-choice', option.id);
+      optEls.push(el);
     }
-    node('span', 'story-choice-footnote', ui.choices, '等待你的选择 · 不会自动提交');
+    confirmBtn = button('◆ 请先点击选择分支', 'story-choice-confirm', ui.choices, () => {
+      if (cur.selectedChoiceId) choose(cur.selectedChoiceId);
+    });
+    confirmBtn.disabled = true;
+    node('span', 'story-choice-footnote', ui.choices, '首次点击红框选中 · 再次点击或点下方按钮确认');
   }
   function choose(id) {
     if (!cur || cur.kind !== 'choice' || hidden || logOpen) return false;

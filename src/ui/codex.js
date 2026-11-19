@@ -172,6 +172,7 @@ function openCodexWeaponDetail(wId) {
       </div>`
     : '';
   card.className = `wpn-action-card p5-modal-card t${minT}`;
+  card.className = `wpn-action-card p5-modal-card t${Math.max(3, minT)}`;
   card.innerHTML = `
     <div class="wpn-act-head">
       <div class="item-emblem t${Math.max(3, minT)}">${wpnArt}</div>
@@ -181,7 +182,7 @@ function openCodexWeaponDetail(wId) {
           ${_codexRarityPill(minT)}
         </div>
         <div class="card-badges">
-          <span class="tag">${setLabel}</span>
+          <span class="tag" style="cursor:pointer" onclick="openShopSynergyModal('${w.set}')">${setLabel}</span>
           ${scaleBadges}
         </div>
       </div>
@@ -202,6 +203,43 @@ function openCodexWeaponDetail(wId) {
   modal.classList.remove('hidden');
 }
 globalThis.openCodexWeaponDetail = openCodexWeaponDetail;
+
+function openCodexGenericModal(cfg) {
+  const modal = typeof document !== 'undefined' ? document.getElementById('weaponActionModal') : null;
+  const card = typeof document !== 'undefined' ? document.getElementById('weaponActionCard') : null;
+  if (!cfg || !modal || !card) return false;
+  if (typeof beep === 'function') beep(515, 0.035, 'triangle', 0.03);
+  const t = cfg.tier || 3;
+  const chipsHtml = Array.isArray(cfg.chips) && cfg.chips.length
+    ? `<div class="stat-chips">${cfg.chips.filter(Boolean).map(ch => `<span class="stat-chip">${ch}</span>`).join('')}</div>`
+    : '';
+  const badgesHtml = Array.isArray(cfg.badges) && cfg.badges.length
+    ? `<div class="card-badges">${cfg.badges.filter(Boolean).map(b => `<span class="tag">${b}</span>`).join('')}</div>`
+    : '';
+  card.className = `wpn-action-card p5-modal-card t${t}`;
+  card.innerHTML = `
+    <div class="wpn-act-head">
+      <div class="item-emblem t${t}">${cfg.iconHtml || '✦'}</div>
+      <div class="card-meta" style="flex:1;min-width:0">
+        <div class="p5-title-group">
+          <div class="wpn-act-title">${cfg.title || ''}</div>
+          ${_codexRarityPill(t)}
+        </div>
+        ${badgesHtml}
+      </div>
+    </div>
+    ${chipsHtml}
+    <div class="wpn-act-desc">${cfg.desc || ''}</div>
+    ${cfg.foot ? `<div class="wpn-act-set-line">✦ ${cfg.foot}</div>` : ''}
+    <div class="wpn-act-btns" style="margin-top:10px">
+      <div class="wpn-act-btns-row">
+        <button type="button" class="btn btn-go" style="flex:1;justify-content:center" onclick="closeWeaponSlotModal(true)">关闭档案</button>
+      </div>
+    </div>`;
+  modal.classList.remove('hidden');
+  return true;
+}
+globalThis.openCodexGenericModal = openCodexGenericModal;
 
 function renderCodex() {
   const tabsEl = document.getElementById('codexTabs');
@@ -317,13 +355,13 @@ function renderCodex() {
                 ${_codexRarityPill(minT)}
               </div>
               <div class="p5-bar-right">
-                <span class="bar-prog-badge">${setLbl}</span>
-                <span class="bar-prog-badge ready">◇${w.cost}</span>
+                <span class="bar-prog-badge" onclick="event.stopPropagation();openShopSynergyModal('${w.set}')">${setLbl}</span>
+                <span class="bar-prog-badge ready" onclick="event.stopPropagation();openCodexWeaponDetail('${id}')">◇${w.cost}</span>
               </div>
             </div>
             <div class="p5-bar-cat">伤害 ${w.dmg}${w.pellets ? '×' + w.pellets : ''} · 间隔 ${w.cd}s · 射程 ${w.range} · ${w.desc}</div>
             <div class="p5-bar-foot">
-              <span class="bar-prog-badge">${evoNames || '点按查看神话分支'}</span>
+              <span class="bar-prog-badge" onclick="event.stopPropagation();openCodexWeaponDetail('${id}')">${evoNames || '点按查看神话分支'}</span>
               <span class="p5-foot-tags">${typeof renderWeaponScalingBadgesHtml === 'function' ? renderWeaponScalingBadgesHtml(w, id) : ''}</span>
             </div>
           </div>
@@ -358,13 +396,13 @@ function renderCodex() {
                 ${_codexRarityPill(it.tier)}
               </div>
               <div class="p5-bar-right">
-                ${it.maxCount ? `<span class="bar-prog-badge">${it.maxCount === 1 ? '唯一' : '上限×' + it.maxCount}</span>` : ''}
-                <span class="bar-prog-badge ready">◇${it.cost}</span>
+                ${it.maxCount ? `<span class="bar-prog-badge" onclick="event.stopPropagation();openShopRelicModal('${it.id}')">${it.maxCount === 1 ? '唯一' : '上限×' + it.maxCount}</span>` : ''}
+                <span class="bar-prog-badge ready" onclick="event.stopPropagation();openShopRelicModal('${it.id}')">◇${it.cost}</span>
               </div>
             </div>
             <div class="p5-bar-cat">${it.desc}</div>
             <div class="p5-bar-foot">
-              <span class="bar-prog-badge">记忆圣遗物</span>
+              <span class="bar-prog-badge" onclick="event.stopPropagation();openShopRelicModal('${it.id}')">记忆圣遗物</span>
               <span class="p5-foot-tags">${typeof renderRelicScopeBadgesHtml === 'function' ? renderRelicScopeBadgesHtml(it) : ''}</span>
             </div>
           </div>
@@ -378,6 +416,7 @@ function renderCodex() {
       const portSrc = typeof getHeroUiBustUrl === 'function' ? getHeroUiBustUrl(c.id) : _spireImgUrl(c.portrait);
       const row = document.createElement('div');
       row.className = 'p5-row codex-card t4';
+      row.onclick = () => openCodexGenericModal({ tier: 4, title: c.name, iconHtml: portSrc ? `<img src="${portSrc}" alt="${c.name}" style="width:100%;height:100%;object-fit:contain">` : c.icon, badges: [c.tag, c.dashName || '青焰瞬步'], chips: [`初始兵装 · ${c.loadout}`], desc: c.perks, foot: c.dashDesc ? `专属战技【${c.dashName || '青焰瞬步'}】：${c.dashDesc}` : '' });
       row.innerHTML = `
         <div class="p5-ico-edge"><div class="p5-ico-inner">${portSrc ? `<img src="${portSrc}" alt="${c.name}">` : c.icon}</div></div>
         <div class="p5-notch" aria-hidden="true"></div>
@@ -413,6 +452,7 @@ function renderCodex() {
       const sprUrl = _spireImgUrl(m.sprite);
       const row = document.createElement('div');
       row.className = `p5-row codex-card t${tierNum}`;
+      row.onclick = () => openCodexGenericModal({ tier: tierNum, title: m.name, iconHtml: sprUrl ? `<img src="${sprUrl}" alt="${m.name}" style="width:100%;height:100%;object-fit:contain">` : m.icon, badges: [m.wave, m.badge], chips: [m.stats], desc: m.desc });
       row.innerHTML = `
         <div class="p5-ico-edge"><div class="p5-ico-inner">${sprUrl ? `<img src="${sprUrl}" alt="${m.name}">` : m.icon}</div></div>
         <div class="p5-notch" aria-hidden="true"></div>
@@ -446,6 +486,7 @@ function renderCodex() {
       SCENES.forEach(sc => {
         const row = document.createElement('div');
         row.className = 'p5-row codex-card t3';
+        row.onclick = () => openCodexGenericModal({ tier: 3, title: sc.name, iconHtml: sc.icon, badges: [`${sc.eventIcon} ${sc.eventName}`, sc.exclMobName], chips: [sc.terrainSummary || '专属层域地形'], desc: sc.eventDesc });
         row.innerHTML = `
           <div class="p5-ico-edge"><div class="p5-ico-inner">${sc.icon}</div></div>
           <div class="p5-notch" aria-hidden="true"></div>
@@ -472,6 +513,7 @@ function renderCodex() {
       TERRAIN_CODEX.forEach(tr => {
         const row = document.createElement('div');
         row.className = 'p5-row codex-card t2';
+        row.onclick = () => openCodexGenericModal({ tier: 2, title: `【层域机关】${tr.name}`, iconHtml: tr.icon, badges: [tr.scenes], desc: tr.desc });
         row.innerHTML = `
           <div class="p5-ico-edge"><div class="p5-ico-inner">${tr.icon}</div></div>
           <div class="p5-notch" aria-hidden="true"></div>
@@ -494,6 +536,7 @@ function renderCodex() {
       SPECIAL_RELICS.forEach(rel => {
         const row = document.createElement('div');
         row.className = 'p5-row codex-card t4';
+        row.onclick = () => openCodexGenericModal({ tier: 4, title: `【记忆祭坛】${rel.name}`, iconHtml: rel.icon, badges: [`唤醒 ${rel.bossIcon} ${rel.bossName}`], chips: ['无尽模式第 17 层起现世'], desc: rel.rewardDesc, foot: '在祭坛法阵内驻留 1.1 秒即可唤醒专属记忆首领' });
         row.innerHTML = `
           <div class="p5-ico-edge"><div class="p5-ico-inner">${rel.icon}</div></div>
           <div class="p5-notch" aria-hidden="true"></div>
@@ -527,6 +570,7 @@ function renderCodex() {
         const supArt = typeof renderItemEmblemHtml === 'function' ? renderItemEmblemHtml(sup, t) : sup.icon;
         const row = document.createElement('div');
         row.className = `p5-row codex-card t${t}`;
+        row.onclick = () => openCodexGenericModal({ tier: t, title: sup.name, iconHtml: supArt, badges: ['秘匣战术补给'], chips: [`基准估值 ◇${sup.cost || 28}`], desc: sup.desc });
         row.innerHTML = `
           <div class="p5-ico-edge"><div class="p5-ico-inner">${supArt}</div></div>
           <div class="p5-notch" aria-hidden="true"></div>
@@ -549,6 +593,10 @@ function renderCodex() {
       upgradesArr.forEach(u => {
         const row = document.createElement('div');
         row.className = 'p5-row codex-card t2';
+        const d1 = typeof u.tierDesc === 'function' ? u.tierDesc(0.78) : u.desc;
+        const d2 = typeof u.tierDesc === 'function' ? u.tierDesc(1.00) : u.desc;
+        const d3 = typeof u.tierDesc === 'function' ? u.tierDesc(1.35) : u.desc;
+        row.onclick = () => openCodexGenericModal({ tier: 2, title: u.name, iconHtml: u.icon, badges: ['魂灯晋升刻印', (u.scopeLabel || '').trim() || '全局共鸣'], chips: [`微光: ${d1}`, `标准: ${d2}`, `高阶: ${d3}`], desc: u.desc });
         row.innerHTML = `
           <div class="p5-ico-edge"><div class="p5-ico-inner">${u.icon}</div></div>
           <div class="p5-notch" aria-hidden="true"></div>
